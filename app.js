@@ -9686,7 +9686,7 @@ function loadJsQR(){
   if(window._bottleScanner&&window._bottleScanner.jsqrLoading)return window._bottleScanner.jsqrLoading;
   var p=new Promise(function(resolve,reject){
     var s=document.createElement('script');
-    s.src='https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js';
+    s.src='/jsQR.min.js';
     s.async=true;
     s.onload=function(){
       if(window.jsQR)resolve(window.jsQR);

@@ -92,6 +92,9 @@ STATIC_ASSETS = {
     "/icon-512.png": "image/png",
     "/icon-maskable-512.png": "image/png",
     "/apple-touch-icon.png": "image/png",
+    # Self-hosted libs (so script-src needs no third-party CDN origins).
+    "/chart.umd.js": "text/javascript; charset=utf-8",
+    "/jsQR.min.js": "text/javascript; charset=utf-8",
 }
 
 # ---- baseline security headers (added to every response) ---------------------
@@ -99,8 +102,9 @@ STATIC_ASSETS = {
 # <script> and thousands of inline on* handlers, so the CSP MUST permit
 # 'unsafe-inline' for scripts/styles — a nonce/hash policy would disable inline
 # event handlers and brick the UI. We still constrain object/base/frame and pin
-# the few external origins actually used: Google Fonts (CSS + font files),
-# Chart.js (cdnjs) and jsQR (jsdelivr). connect-src stays broad because the
+# the few external origins actually used. Chart.js and jsQR are now SELF-HOSTED,
+# so script-src needs no third-party CDN; only Google Fonts (CSS + font files)
+# stay pinned for styles/fonts. connect-src stays broad because the
 # OPTIONAL Home Assistant integration talks to a user-configured host that may
 # be plain-http on the LAN. Referrer-Policy: no-referrer keeps the share token
 # (carried in the URL path) out of the Referer header sent to font/CDN origins.
@@ -109,7 +113,7 @@ STATIC_ASSETS = {
 # add HSTS if desired.
 _CSP = "; ".join([
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net",
+    "script-src 'self' 'unsafe-inline'",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob: https: http:",
