@@ -213,11 +213,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .dashboard-hero-text{flex:1;min-width:240px}
 @media (max-width:560px){.dashboard-hero{gap:14px}.dashboard-hero-logo{width:90px}}
 
-/* Floating Action Button */
-.fab{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom,0px));right:calc(24px + env(safe-area-inset-right,0px));width:56px;height:56px;border-radius:28px;background:linear-gradient(135deg,#c9a84c,#e8c46a);color:#0a0a0b;border:0;font-size:28px;font-weight:600;cursor:pointer;box-shadow:0 6px 20px rgba(201,168,76,.45),0 2px 8px rgba(0,0,0,.4);z-index:50;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);line-height:1;padding-bottom:3px;transition:transform .15s,box-shadow .15s}
-.fab:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(201,168,76,.6),0 3px 10px rgba(0,0,0,.5)}
-.fab:active{transform:translateY(0) scale(.96)}
-@media (max-width:560px){.fab{bottom:calc(16px + env(safe-area-inset-bottom,0px));right:calc(16px + env(safe-area-inset-right,0px));width:50px;height:50px;font-size:24px}}
 
 /* Low-stock alert */
 .stock-alert{background:linear-gradient(90deg,#1a0808,#250d0d);border:1px solid var(--red);border-left:3px solid var(--red2);color:var(--red2);padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;font-size:13px;display:flex;align-items:center;gap:10px}
