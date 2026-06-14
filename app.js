@@ -10671,10 +10671,16 @@ function applyTOSNAToBatch(batchId){
 // ==================== HONEY LIBRARY ====================
 // Full-page Honey Library view (accessible from sidebar)
 function renderHoneyLibrary(){
+  // In-season + usage-forecast sit side by side (equal-height cells) to save
+  // vertical space; either may be empty, so only grid when both are present.
+  var inSeason=renderHoneyInSeasonCard();
+  var forecast=renderHoneyUsageForecast();
+  var banners=(inSeason&&forecast)
+    ?'<div class="grid-2" style="align-items:stretch;margin-bottom:16px">'+inSeason+forecast+'</div>'
+    :((inSeason||forecast)?'<div style="margin-bottom:16px">'+(inSeason||forecast)+'</div>':'');
   return'<div class="page-title">Honey Library</div>'
     +'<div class="page-subtitle">Choose the honey, shape the mead · '+HONEY_TYPES.length+' varieties</div>'
-    +renderHoneyInSeasonCard()
-    +renderHoneyUsageForecast()
+    +banners
     +renderHoneyLibrarySection();
 }
 
@@ -10721,7 +10727,7 @@ function renderHoneyInSeasonCard(){
       +'<div style="line-height:2">'+rows+'</div>'
       +'</div>';
   }).join('');
-  return'<div class="card" style="margin-bottom:16px;border-left:3px solid var(--gold2)">'
+  return'<div class="card" style="border-left:3px solid var(--gold2);height:100%">'
     +'<div class="card-header"><div class="card-title">🌸 IN SEASON — '+monthName.toUpperCase()+'</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+hits.length+' VARIET'+(hits.length===1?'Y':'IES')+'</div></div>'
     +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:14px;line-height:1.55">Honeys at their freshness peak this month. Peak-of-season is the best time to source — local apiaries have just harvested, Mediterranean imports are most recent.</div>'
     +sections
@@ -10790,7 +10796,7 @@ function renderHoneyUsageForecast(){
       +status
       +'</div>';
   }).join('');
-  return'<div class="card" style="margin-bottom:16px;border-left:3px solid var(--gold2)"><div class="card-header"><div class="card-title">🍯 HONEY USAGE FORECAST</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+planned.length+' PLANNED BATCH'+(planned.length===1?'':'ES')+'</div></div>'
+  return'<div class="card" style="border-left:3px solid var(--gold2);height:100%"><div class="card-header"><div class="card-title">🍯 HONEY USAGE FORECAST</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+planned.length+' PLANNED BATCH'+(planned.length===1?'':'ES')+'</div></div>'
     +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:10px;line-height:1.55">Honey your <strong>planned</strong> batches will need vs. what\'s in your supplies (honey already brewed isn\'t counted). Watch seasonal honeys (lavender, chestnut) you can\'t just restock anytime.</div>'
     +rows
     +'</div>';
