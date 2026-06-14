@@ -1019,6 +1019,9 @@ class Handler(BaseHTTPRequestHandler):
                 else:
                     set_config("external_password", None)
                     set_config("lan_requires_password", None)  # moot with no password
+                # Rotate the session secret so any existing login cookies are
+                # invalidated when the password changes (or is removed).
+                set_config("session_secret", os.urandom(32).hex())
             if "lanRequiresPassword" in body:
                 set_config("lan_requires_password", "1" if body.get("lanRequiresPassword") else None)
             if "trustedNets" in body:
