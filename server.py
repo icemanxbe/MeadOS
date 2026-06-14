@@ -76,6 +76,14 @@ STATIC_ASSETS = {
     "/app.js": "text/javascript; charset=utf-8",
     "/app.css": "text/css; charset=utf-8",
     "/test.html": "text/html; charset=utf-8",  # zero-dep unit checks (dev tool)
+    # Generic copy of the brand logo, mirrored from settings on each save so the
+    # login page serves it as a plain file (no DB read). One extension exists.
+    "/login-logo.png": "image/png",
+    "/login-logo.webp": "image/webp",
+    "/login-logo.svg": "image/svg+xml",
+    "/login-logo.jpg": "image/jpeg",
+    "/login-logo.jpeg": "image/jpeg",
+    "/login-logo.gif": "image/gif",
     # PWA assets — all public (the install/offline shell isn't sensitive).
     "/sw.js": "text/javascript; charset=utf-8",
     "/manifest.webmanifest": "application/manifest+json; charset=utf-8",
@@ -237,6 +245,12 @@ def trust_cf_header():
     return get_config("trust_cf") == "1"
 
 
+def lan_requires_password():
+    # When on, LAN devices must also log in (no automatic LAN bypass). Only
+    # meaningful when an external password is set.
+    return get_config("lan_requires_password") == "1"
+
+
 # What counts as "the LAN". Deliberately NOT ipaddress.is_private: that also
 # matches TEST-NET ranges and 240.0.0.0/4 (Class E) — Cloudflare's Pseudo-IPv4
 # feature represents IPv6-only clients (phones on LTE!) with Class-E addresses,
@@ -311,18 +325,43 @@ def verify_session_token(tok):
         return False
 
 
+LOGIN_LOGO_EXTS = ("webp", "png", "svg", "jpg", "jpeg", "gif")
+
+
 def login_logo_src():
-    # Use the brewer's custom brand logo if one is set and directly servable
-    # (a /labels/ asset or a data: URL); otherwise the default MeadOS crest.
-    try:
-        row = db_get_state()
-        if row:
-            logo = ((json.loads(row[0]) or {}).get("settings") or {}).get("brandLogo")
-            if isinstance(logo, str) and (logo.startswith("/labels/") or logo.startswith("data:")):
-                return logo
-    except Exception:
-        pass
+    # Serve the generic login-logo.<ext> file (mirrored from the brand logo on
+    # save) — no DB read. Falls back to the default crest when absent.
+    for ext in LOGIN_LOGO_EXTS:
+        if os.path.isfile(os.path.join(BASE_DIR, "login-logo." + ext)):
+            return "/login-logo." + ext
     return "/icon.svg"
+
+
+def sync_login_logo(raw):
+    # Mirror settings.brandLogo (a /labels/ asset) to a generic login-logo.<ext>
+    # next to server.py so the login page can serve it without touching the DB.
+    # Cleared when no brand logo is set, so it reverts to the default crest.
+    try:
+        brand = ((json.loads(raw) or {}).get("settings") or {}).get("brandLogo") or ""
+    except (ValueError, AttributeError):
+        brand = ""
+    for ext in LOGIN_LOGO_EXTS:
+        p = os.path.join(BASE_DIR, "login-logo." + ext)
+        if os.path.isfile(p):
+            try:
+                os.remove(p)
+            except OSError:
+                pass
+    m = re.match(r"^/labels/([0-9a-f]{24}\.(png|jpg|jpeg|webp|svg|gif))$", brand)
+    if not m:
+        return
+    src = os.path.join(LABELS_DIR, m.group(1))
+    if os.path.isfile(src):
+        try:
+            with open(src, "rb") as fsrc, open(os.path.join(BASE_DIR, "login-logo." + m.group(2)), "wb") as fdst:
+                fdst.write(fsrc.read())
+        except OSError:
+            pass
 
 
 def login_page_html():
@@ -337,7 +376,7 @@ def login_page_html():
 body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0a0a0b;color:#e8e0d0;font-family:'Crimson Pro',serif;padding:24px}
 .box{width:100%;max-width:360px;background:linear-gradient(180deg,#131317,#101013);border:1px solid #2a2a35;border-radius:16px;padding:32px 28px;box-shadow:0 6px 30px rgba(0,0,0,.5);position:relative}
 .box::before{content:'';position:absolute;top:0;left:26px;right:26px;height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,.5),transparent)}
-.crest{width:128px;height:128px;object-fit:contain;display:block;margin:0 auto 16px;filter:drop-shadow(0 0 14px rgba(201,168,76,.45))}
+.crest{width:128px;height:128px;object-fit:contain;display:block;margin:0 auto 16px}
 .logo{font-family:'Cinzel',serif;font-size:22px;color:#c9a84c;letter-spacing:4px;text-align:center;font-weight:700;text-shadow:0 0 20px rgba(201,168,76,.3)}
 .sub{text-align:center;color:#8a7d66;font-size:12px;font-style:italic;margin:6px 0 22px}
 label{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;color:#8a7d66;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
@@ -542,6 +581,7 @@ def db_put_state(raw):
             "(SELECT id FROM history ORDER BY id DESC LIMIT ?)",
             (HISTORY_KEEP,),
         )
+    sync_login_logo(raw)  # keep the login-page logo file in sync with the brand logo
     return now
 
 
@@ -659,11 +699,11 @@ class Handler(BaseHTTPRequestHandler):
         return ""
 
     def _auth_ok(self):
-        """True when the request may proceed: no password set, LAN client,
-        a valid login-session cookie, or valid HTTP Basic credentials (kept for
-        programmatic clients; interactive users get the /login page)."""
+        """True when the request may proceed: no password set, a valid login
+        cookie, valid HTTP Basic credentials (kept for programmatic clients), or
+        a LAN client — unless 'require password on LAN' is enabled."""
         stored = get_config("external_password")
-        if not stored or self._is_lan():
+        if not stored:
             return True
         if verify_session_token(self._session_cookie()):
             return True
@@ -676,6 +716,8 @@ class Handler(BaseHTTPRequestHandler):
                     return True
             except Exception:
                 pass
+        if self._is_lan() and not lan_requires_password():
+            return True
         return False
 
     def _set_cookie_header(self):
@@ -883,6 +925,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {
                 "ok": True,
                 "protected": bool(get_config("external_password")),
+                "lanRequiresPassword": lan_requires_password(),
                 "lan": self._is_lan(),
                 "ip": self._client_ip(),
                 "trustedNets": [str(n) for n in trusted_networks() if n not in TRUSTED_NETS_CLI],
@@ -948,12 +991,14 @@ class Handler(BaseHTTPRequestHandler):
             else:
                 self._send(401, {"ok": False, "error": "Incorrect password"})
             return
-        if not self._auth_ok():
+        # /api/security is exempt from the auth gate (it has its own LAN-only
+        # check) so enabling "require password on LAN" can never lock you out.
+        if path != "/api/security" and not self._auth_ok():
             self._send_auth_required()
             return
         if path == "/api/security":
-            # Changing the password is restricted to LAN clients — otherwise an
-            # unprotected server could be locked by anyone on the internet.
+            # Security settings are LAN-only — otherwise anyone on the internet
+            # could lock (or unlock) the server.
             if not self._is_lan():
                 self.close_connection = True  # request body is left unread
                 self._send(403, {"ok": False, "error": "password can only be changed from inside the LAN"})
@@ -973,6 +1018,9 @@ class Handler(BaseHTTPRequestHandler):
                     set_config("external_password", hash_password(pw))
                 else:
                     set_config("external_password", None)
+                    set_config("lan_requires_password", None)  # moot with no password
+            if "lanRequiresPassword" in body:
+                set_config("lan_requires_password", "1" if body.get("lanRequiresPassword") else None)
             if "trustedNets" in body:
                 nets = body.get("trustedNets") or []
                 if not isinstance(nets, list):
@@ -991,6 +1039,7 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {
                 "ok": True,
                 "protected": bool(get_config("external_password")),
+                "lanRequiresPassword": lan_requires_password(),
                 "trustedNets": [str(n) for n in trusted_networks() if n not in TRUSTED_NETS_CLI],
                 "trustCf": trust_cf_header(),
             })
@@ -1086,7 +1135,11 @@ class Handler(BaseHTTPRequestHandler):
         base_rev = self.headers.get("X-Base-Rev")
         cur = db_get_state()
         cur_rev = cur[2] if cur else None
-        if base_rev != "*" and cur_rev and base_rev != cur_rev:
+        # Fail OPEN when the client sends no rev (e.g. a reverse proxy stripped
+        # the X-Data-Rev header, or an older client) — only reject when a client
+        # actually presents a stale, conflicting rev. Better a missed conflict
+        # check than silently dropping every save.
+        if base_rev and base_rev != "*" and cur_rev and base_rev != cur_rev:
             self._send(409, {"ok": False, "error": "conflict", "currentRev": cur_rev})
             return
         updated = db_put_state(raw)
