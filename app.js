@@ -11155,10 +11155,10 @@ function renderYeastLibrary(){
       +'</div>'
     +'</div>'
     +'<div style="font-family:var(--font-display);font-size:14px;color:var(--gold2);letter-spacing:2px;margin:18px 0 10px">DRY YEASTS</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:10px">'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(380px,100%),1fr));gap:10px">'
     +dries.map(card).join('')
     +'</div>'
-    +(liquids.length?'<div style="font-family:var(--font-display);font-size:14px;color:var(--gold2);letter-spacing:2px;margin:24px 0 10px">LIQUID YEASTS</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:10px">'+liquids.map(card).join('')+'</div>':'')
+    +(liquids.length?'<div style="font-family:var(--font-display);font-size:14px;color:var(--gold2);letter-spacing:2px;margin:24px 0 10px">LIQUID YEASTS</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(380px,100%),1fr));gap:10px">'+liquids.map(card).join('')+'</div>':'')
     +'<div style="margin-top:24px;padding:14px 18px;background:var(--bg2);border-radius:var(--radius);border-left:3px solid var(--gold2);font-size:13px;color:var(--text2);line-height:1.6">'
       +'<strong style="color:var(--gold2)">SACHET MATH:</strong> One sachet covers up to <em>sachetCoversL</em> liters at standard OG (≤1.090). High-OG batches (sack mead, OG 1.130+) reduce effective coverage — MeadOS computes this automatically in recipe scaling.'
     +'</div>';
@@ -11274,7 +11274,7 @@ function renderNutrientLibrary(){
         +'<button class="btn btn-secondary btn-sm" onclick="showView(\'protocol-guide\')">📖 Nutrient Protocols — Full Guide (SNA · TOSNA · TOSCA · TiOSNA)</button>'
       +'</div>'
     +'</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:10px;margin-bottom:24px">'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(380px,100%),1fr));gap:10px;margin-bottom:24px">'
     +visible.map(card).join('')
     +'</div>';
 }
@@ -11394,7 +11394,7 @@ function renderProtocolGuide(){
     +'<div class="card" style="margin-top:14px;margin-bottom:14px">'
       +'<div class="card-header"><div class="card-title">⚡ THE OTHER SCHEDULES</div></div>'
       +'<div style="font-size:13px;color:var(--text2);line-height:1.65;margin-bottom:14px">SNA and TOSNA are the two families. The schedules below are refinements MeadOS also supports — pick any of them from the nutrient dropdown when you start or edit a batch, and the <a onclick="showView(\'tools\')" style="color:var(--gold2);cursor:pointer">TOSCA / TOSNA scheduler</a> in Brewing Tools will compute the exact grams per dose.</div>'
-      +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">'
+      +'<div class="grid-3">'
         // TOSCA 2.0
         +'<div style="background:var(--bg2);padding:12px;border-radius:var(--radius);border-left:3px solid var(--green2)">'
           +'<div style="font-family:var(--font-display);font-size:15px;color:var(--green2);letter-spacing:1px">TOSCA 2.0</div>'
@@ -12433,7 +12433,7 @@ function renderMyCellar(){
       +'<div><div class="page-title" style="margin-bottom:6px">My Cellar</div><div class="page-subtitle" style="margin-bottom:0">'+cabs.length+' cabinet'+(cabs.length===1?'':'s')+' · '+totalShelves+' shelves</div></div>'
       +'<button class="btn btn-primary btn-sm" onclick="addCabinet()">＋ Add cabinet</button>'
     +'</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 280px;gap:18px;align-items:start" id="cellar-layout-grid">'
+    +'<div class="cellar-layout" style="display:grid;gap:18px;align-items:start" id="cellar-layout-grid">'
       +'<div>'+cabinetsHtml+'</div>'
       +'<div>'+renderCellarSidePanel(unassigned,unassignedFerm)+'</div>'
     +'</div>'
@@ -15378,9 +15378,10 @@ function renderTimeline(){
   }).join('');
   // margin-left matches the 140px row-label column so labels line up with the
   // bars/markers in the track, not the full card width.
-  var monthLabels='<div style="position:relative;height:14px;margin-bottom:4px;margin-left:140px">'
+  var lblStep=window.innerWidth<600?3:(markers.length>14?2:1);
+  var monthLabels='<div class="gantt-monthlabels" style="position:relative;height:14px;margin-bottom:4px">'
     +markers.map(function(m,i){
-      if(i%2!==0&&markers.length>14)return''; // skip every other when crowded
+      if(i%lblStep!==0)return''; // thin labels so they don't overlap (more aggressively on mobile)
       return'<span class="gantt-month-label" style="position:absolute;left:'+pct(m.ms)+'%;transform:translateX(2px)">'+m.label+'</span>';
     }).join('')
     +'</div>';
@@ -15393,7 +15394,7 @@ function renderTimeline(){
     var maturingW=minPct-startPct;
     var peakW=peakPct-minPct;
     var pastW=maxPct-peakPct;
-    return'<div style="display:grid;grid-template-columns:140px 1fr;gap:0;align-items:center;margin:2px 0">'
+    return'<div class="gantt-lane">'
       +'<div class="gantt-row-label" style="color:'+color+'">'+escHtml(r.batch.name)+'</div>'
       +'<div class="gantt-track" onclick="showView(\'batch\',\''+r.batch.id+'\')">'
       +markerHtml
@@ -15463,11 +15464,14 @@ function renderFermenterTimeline(){
       +'<div class="empty-state"><div class="es-icon">⚗</div><p>No fermenters configured yet. Add one in <a href="#" onclick="showView(\'settings\');return false;" style="color:var(--gold2)">Settings → Fermenters</a> to start tracking vessel occupancy.</p></div>';
   }
   if(window._ftOffset==null)window._ftOffset=0;
-  // Window: 6 months back, 12 months forward, shifted by _ftOffset months
+  // Window: desktop shows a 6-back / 12-forward overview; mobile zooms to a
+  // single month so the bars stay readable (paged with ±1mo buttons).
+  var ftMobile=window.innerWidth<=768;
+  var backM=ftMobile?0:6, fwdM=ftMobile?1:12;
   var now=new Date();
-  var anchorMs=new Date(now.getFullYear(),now.getMonth()+window._ftOffset,1).getTime();
-  var startMs=anchorMs-6*30*86400000;
-  var endMs=anchorMs+12*30*86400000;
+  var anchor=new Date(now.getFullYear(),now.getMonth()+window._ftOffset,1);
+  var startMs=new Date(anchor.getFullYear(),anchor.getMonth()-backM,1).getTime();
+  var endMs=new Date(anchor.getFullYear(),anchor.getMonth()+fwdM,1).getTime();
   var spanMs=endMs-startMs;
   function pct(ms){return((Math.max(startMs,Math.min(endMs,ms))-startMs)/spanMs)*100;}
   function clamp(ms){return Math.max(startMs,Math.min(endMs,ms));}
@@ -15483,9 +15487,10 @@ function renderFermenterTimeline(){
   var markerHtml=markers.map(function(m){
     return'<div class="gantt-month-marker" style="left:'+pct(m.ms)+'%"></div>';
   }).join('');
-  var monthLabels='<div style="position:relative;height:14px;margin-bottom:4px;margin-left:160px">'
+  var lblStep=window.innerWidth<600?3:(markers.length>14?2:1);
+  var monthLabels='<div class="gantt-monthlabels" style="position:relative;height:14px;margin-bottom:4px">'
     +markers.map(function(m,i){
-      if(i%2!==0&&markers.length>14)return'';
+      if(i%lblStep!==0)return''; // thin labels so they don't overlap (more aggressively on mobile)
       return'<span class="gantt-month-label" style="position:absolute;left:'+pct(m.ms)+'%;transform:translateX(2px)">'+m.label+'</span>';
     }).join('')
     +'</div>';
@@ -15552,7 +15557,7 @@ function renderFermenterTimeline(){
     var batchCount=APP.batches.filter(function(b){
       return getBatchVesselHistory(b).some(function(s){return s.fermenterId===f.id;});
     }).length;
-    return'<div style="display:grid;grid-template-columns:160px 1fr;gap:0;align-items:center;margin:6px 0">'
+    return'<div class="gantt-lane">'
       +'<div style="display:flex;align-items:center;gap:8px;padding-right:12px">'
       +'<div style="width:5px;height:32px;border-radius:2px;background:'+(f.color||'#c9a84c')+';flex-shrink:0"></div>'
       +'<div style="min-width:0"><div style="font-family:var(--font-mono);font-size:11px;color:var(--text2);letter-spacing:1px;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(f.name)+'</div>'
@@ -15566,11 +15571,12 @@ function renderFermenterTimeline(){
   }).join('');
 
   // Navigation
+  var ftStep=ftMobile?1:3;  // page month-by-month on mobile's zoomed-in view
   var nav='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">'
     +'<div style="display:flex;gap:6px">'
-    +'<button class="btn btn-secondary btn-sm" onclick="navFermTimeline(-3)" title="Shift 3 months back">◀ −3mo</button>'
+    +'<button class="btn btn-secondary btn-sm" onclick="navFermTimeline(-'+ftStep+')" title="Shift '+ftStep+' month'+(ftStep===1?'':'s')+' back">◀ −'+ftStep+'mo</button>'
     +'<button class="btn btn-secondary btn-sm" onclick="navFermTimeline(0)" title="Reset to today">⌂ Today</button>'
-    +'<button class="btn btn-secondary btn-sm" onclick="navFermTimeline(3)" title="Shift 3 months forward">+3mo ▶</button>'
+    +'<button class="btn btn-secondary btn-sm" onclick="navFermTimeline('+ftStep+')" title="Shift '+ftStep+' month'+(ftStep===1?'':'s')+' forward">+'+ftStep+'mo ▶</button>'
     +'</div>'
     +'<div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);letter-spacing:1px">'
     +new Date(startMs).toLocaleString('en-GB',{month:'short',year:'numeric'})

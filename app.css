@@ -72,6 +72,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
 .grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+/* let grid children shrink below their min-content instead of forcing the
+   track wider than the viewport (prevents horizontal overflow on mobile) */
+.grid-2>*,.grid-3>*,.grid-4>*{min-width:0}
 .stat-card{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:16px;text-align:center}
 .stat-val{font-family:var(--font-display);font-size:26px;color:var(--gold2);font-weight:500;line-height:1}
 .stat-label{font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;margin-top:6px;text-transform:uppercase}
@@ -232,6 +235,19 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .gantt-month-marker{position:absolute;top:0;bottom:0;width:1px;background:var(--border);z-index:1}
 .gantt-month-label{font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1px}
 .gantt-row-label{font-family:var(--font-display);font-size:12px;color:var(--text2);letter-spacing:1px;padding:0 8px 0 0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Fermenter-schedule lane: vessel label beside its track on desktop; on mobile
+   the label stacks above so the graph gets the full width and stays readable.
+   The month-label row drops its matching left offset to align with the tracks. */
+.gantt-lane{display:grid;grid-template-columns:160px 1fr;gap:0;align-items:center;margin:6px 0}
+.gantt-monthlabels{margin-left:160px}
+.cellar-layout{grid-template-columns:1fr 280px}
+@media (max-width:768px){
+  .gantt-lane{grid-template-columns:1fr;gap:4px;margin:10px 0}
+  .gantt-lane>.gantt-row-label{text-align:left;padding:0}
+  .gantt-monthlabels{margin-left:0}
+  /* cellar map: cabinet + unplaced panel stack instead of overflowing */
+  .cellar-layout{grid-template-columns:1fr}
+}
 
 /* Year-in-review */
 .yr-hero{background:linear-gradient(135deg,var(--bg2),var(--bg3));border:1px solid var(--gold);border-radius:var(--radius2);padding:32px;text-align:center;margin-bottom:20px;position:relative;overflow:hidden}
@@ -279,6 +295,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px}
 .chart-card-title{font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
 .chart-wrap{position:relative;height:200px}
+/* keep chart canvases from poking past their container on narrow screens */
+#main canvas{max-width:100%}
 @media (max-width:900px){
 .chart-grid{grid-template-columns:1fr}
 .grid-2,.grid-3{grid-template-columns:1fr}
