@@ -15061,7 +15061,7 @@ async function refreshSecurityStatus(){
   try{s=await res.json();}catch(e){}
   if(!s){el.textContent='—';return;}
   var status=s.protected
-    ?'<span style="color:var(--green2)">✓ Enabled.</span> Connections from outside the LAN get a browser password prompt. LAN devices are never asked.'
+    ?'<span style="color:var(--green2)">✓ Enabled.</span> Connections from outside the LAN get a styled login page. LAN devices are not asked'+(s.lanRequiresPassword?' — except you\'ve required it on LAN too.':' (unless you require it below).')
     :'<span style="color:var(--text2)">Off.</span> Anyone who can reach the server has full access (fine on a trusted LAN; enable this before exposing the server externally).';
   // Show how THIS connection is classified — makes proxy/CDN/hairpin issues
   // (public client IPs on requests that are really yours) self-diagnosing.
@@ -15073,6 +15073,7 @@ async function refreshSecurityStatus(){
       +'<button class="btn btn-secondary btn-sm" onclick="setExternalPassword()">'+(s.protected?'Change password':'Enable')+'</button>'
       +(s.protected?'<button class="btn btn-danger btn-sm" onclick="disableExternalPassword()">Disable</button>':'')
       +'</div>'
+      +(s.protected?'<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text2);cursor:pointer;margin-top:10px"><input type="checkbox" id="sec-lan-req" '+(s.lanRequiresPassword?'checked':'')+' onchange="saveLanRequiresPassword()" style="cursor:pointer"> Require the password on LAN devices too (no automatic bypass)</label>':'')
       +'<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">'
       +'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3);letter-spacing:1.5px;margin-bottom:6px">TRUSTED NETWORKS — COUNT AS LAN</div>'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
@@ -15096,6 +15097,15 @@ async function setExternalPassword(){
   if(res&&res.ok){toast('🔒 External access password set');refreshSecurityStatus();}
   else if(res&&res.status===403)toast('⚠ Only possible from inside the LAN');
   else toast('⚠ Failed to set password');
+}
+
+async function saveLanRequiresPassword(){
+  var cb=document.getElementById('sec-lan-req');
+  var on=!!(cb&&cb.checked);
+  var res=await apiFetch('/api/security',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lanRequiresPassword:on})});
+  if(res&&res.ok){toast(on?'🔒 LAN devices will need the password (applies on next load)':'LAN devices no longer need the password');refreshSecurityStatus();}
+  else if(res&&res.status===403)toast('⚠ Only possible from inside the LAN');
+  else toast('⚠ Failed');
 }
 
 async function saveTrustedNetworks(){
@@ -18266,6 +18276,23 @@ function renderOffFlavorWizard(){
   document.body.insertAdjacentHTML('beforeend',html);
 }
 
+// Open a troubleshooting topic's step-by-step guidance in a detail modal.
+// Topics live across two arrays (brewing + app/sync); search both by id.
+function openTroubleshootTopic(id){
+  var all=((typeof TROUBLESHOOT_TOPICS!=='undefined'&&TROUBLESHOOT_TOPICS)||[])
+    .concat((typeof APP_TROUBLESHOOT_TOPICS!=='undefined'&&APP_TROUBLESHOOT_TOPICS)||[]);
+  var t=all.find(function(x){return x.id===id;});
+  if(!t)return;
+  closeModal();
+  var stepsHtml=t.steps.map(function(s){return'<li style="margin-bottom:10px;line-height:1.55">'+s+'</li>';}).join('');
+  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:600px">'
+    +'<div class="modal-title">'+t.icon+' '+escHtml(t.title)+'</div>'
+    +(t.category?'<div style="font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin:-12px 0 14px">'+escHtml(t.category)+'</div>':'')
+    +'<ol style="padding-left:22px;margin:0;font-size:13.5px;color:var(--text2)">'+stepsHtml+'</ol>'
+    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'
+    +'</div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+}
 function renderTroubleshoot(){
   // Group by category
   var categories={};
@@ -18275,26 +18302,23 @@ function renderTroubleshoot(){
     categories[cat].push(t);
   });
   function renderTopic(t){
-    var stepsHtml=t.steps.map(function(s){return'<li style="margin-bottom:8px;line-height:1.5">'+s+'</li>';}).join('');
-    return'<details class="ts-topic" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);margin-bottom:8px;padding:0;overflow:hidden">'
-      +'<summary style="padding:14px 18px;cursor:pointer;font-family:var(--font-display);font-size:14px;letter-spacing:1px;color:var(--text);list-style:none;display:flex;align-items:center;gap:12px">'
-      +'<span style="font-size:18px">'+t.icon+'</span>'
-      +'<span style="flex:1">'+escHtml(t.title)+'</span>'
-      +'<span style="color:var(--text3);font-size:14px">▾</span>'
-      +'</summary>'
-      +'<div style="padding:0 18px 16px;border-top:1px solid var(--border);background:var(--bg3)">'
-      +'<ol style="padding-left:24px;margin:14px 0 0;font-size:13px;color:var(--text2)">'+stepsHtml+'</ol>'
-      +'</div></details>';
+    return'<div class="card" style="cursor:pointer;margin:0;padding:14px 16px" onclick="openTroubleshootTopic(\''+t.id+'\')">'
+      +'<div style="display:flex;align-items:center;gap:11px">'
+      +'<span style="font-size:20px;flex-shrink:0">'+t.icon+'</span>'
+      +'<div style="flex:1;min-width:0">'
+      +'<div style="font-size:13px;color:var(--text);line-height:1.35">'+escHtml(t.title)+'</div>'
+      +'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--gold2);letter-spacing:1px;margin-top:4px">'+t.steps.length+' STEP'+(t.steps.length===1?'':'S')+' →</div>'
+      +'</div></div></div>';
   }
   var categoryOrder=['Fermentation','Temperature','Off-Flavors','Clarity','Process','Bottling','Aging','Sanitation','Result'];
   var brewingHtml=categoryOrder.map(function(cat){
     if(!categories[cat])return'';
     return'<div style="margin-bottom:18px">'
       +'<h3 style="font-family:var(--font-display);font-size:13px;letter-spacing:3px;color:var(--gold2);margin:14px 0 8px;text-transform:uppercase">— '+cat+' —</h3>'
-      +categories[cat].map(renderTopic).join('')
+      +'<div class="grid-3">'+categories[cat].map(renderTopic).join('')+'</div>'
       +'</div>';
   }).join('');
-  var appHtml=APP_TROUBLESHOOT_TOPICS.map(renderTopic).join('');
+  var appHtml='<div class="grid-3">'+APP_TROUBLESHOOT_TOPICS.map(renderTopic).join('')+'</div>';
   return'<div class="page-title">Troubleshooting</div><div class="page-subtitle">Brewing problems and process guidance</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><button class="btn btn-primary" onclick="openOffFlavorWizard()">🧭 Off-flavor diagnostic wizard</button></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:16px;font-style:italic">Select a topic to see step-by-step guidance, or use the diagnostic wizard above to work backward from observed flavors.</div>'

@@ -14,3 +14,6 @@ __pycache__/
 # local tooling
 .claude/
 labels/
+
+# generated per-install login-page logo (mirrored from the brand logo on save)
+login-logo.*
