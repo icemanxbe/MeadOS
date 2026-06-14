@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>MeadOS — unit checks</title>
+<style>
+  body{font-family:'JetBrains Mono',monospace;background:#0a0a0b;color:#e8e0d0;padding:20px;line-height:1.6}
+  h1{font-size:16px;letter-spacing:1px}
+  .pass{color:#6ab87a}
+  .fail{color:#c05050;font-weight:bold}
+  #summary{font-size:18px;margin:4px 0 16px}
+  .muted{color:#8a7d66;font-size:12px}
+  #results div{padding:1px 0}
+</style>
+</head>
+<body>
+<h1>MeadOS — zero-dependency unit checks</h1>
+<div class="muted">Open this at <code>/test.html</code> (or via file://). It loads app.js and asserts the data/logic functions. Re-run after changes to catch regressions.</div>
+
+<!-- Minimal DOM skeleton so app.js init()/renderMain() don't crash on load. -->
+<div id="app" style="display:none">
+  <div id="topbar"><div id="topbar-crest"></div><div id="topbar-date"></div><div id="sync-badge"></div></div>
+  <div id="sidebar"><div id="sidebar-batches"></div></div>
+  <div id="main"></div>
+</div>
+<div id="toast"></div>
+<button id="quick-log-fab"></button>
+
+<div id="summary"></div>
+<div id="results"></div>
+
+<script src="/app.js"></script>
+<script>
+(function(){
+  var out=document.getElementById('results'), pass=0, fail=0;
+  function isoAgo(n){return new Date(Date.now()-n*86400000).toISOString().slice(0,10);}
+  function line(text,good,detail){
+    var d=document.createElement('div');
+    d.className=good?'pass':'fail';
+    d.textContent=(good?'✓ ':'✗ ')+text+(good?'':'  — '+(detail||''));
+    out.appendChild(d); good?pass++:fail++;
+  }
+  function ok(name,cond,detail){ line(name,!!cond,detail); }
+  function eq(name,actual,expected){ line(name,actual===expected,'got '+JSON.stringify(actual)+', expected '+JSON.stringify(expected)); }
+
+  // Known starting state (init()'s async loadData hasn't resolved yet, but we
+  // reset explicitly so tests are deterministic regardless).
+  APP.recipes=BUILTIN_RECIPES();
+  APP.batches=[]; APP.logs={}; APP.bottling={}; APP.tastings={};
+  APP.plannedBatches=[]; APP.supplies=[]; APP.celebrated={};
+
+  // calcABV
+  eq('calcABV 1.100 -> 1.000 = 13.1', calcABV(1.100,1.000), '13.1');
+
+  // getBatchStatus lifecycle
+  eq('status: 5d old = fermenting', getBatchStatus({id:'s1',startDate:isoAgo(5)}), 'fermenting');
+  eq('status: 60d, unbottled = aging', getBatchStatus({id:'s2',startDate:isoAgo(60)}), 'aging');
+  eq('status: failed object', getBatchStatus({id:'s4',failed:{category:'stuck'}}), 'failed');
+  (function(){
+    var b={id:'s3',startDate:isoAgo(100)};
+    APP.bottling.s3={date:isoAgo(30),bottleCount:6,countsAtBottling:{750:6},locations:{cellar:{750:6}},fg:1.0};
+    eq('status: bottled (bottles on hand)', getBatchStatus(b), 'bottled');
+    delete APP.bottling.s3;
+  })();
+
+  // getBatchVesselHistory — the session regression (failed batches must close)
+  (function(){
+    APP.recipes=[{id:'r1',fermentDays:30}]; APP.bottling={}; APP.logs={};
+    var active={id:'a1',recipeId:'r1',startDate:isoAgo(10),fermenterId:'f1'};
+    var h=getBatchVesselHistory(active);
+    eq('vessel: active batch stays open (null end)', h[h.length-1].endDate, null);
+    var failed={id:'a2',recipeId:'r1',startDate:isoAgo(40),fermenterId:'f1',failed:{category:'stuck'}};
+    APP.logs.a2=[{date:isoAgo(20),gravity:1.02}];
+    var h2=getBatchVesselHistory(failed);
+    ok('vessel: failed batch is closed (stops projecting)', h2[h2.length-1].endDate!=null, 'endDate='+h2[h2.length-1].endDate);
+    APP.recipes=BUILTIN_RECIPES();
+  })();
+
+  // beerXMLToRecipe marks imports as custom (so they're deletable)
+  (function(){
+    var xml='<?xml version="1.0"?><RECIPES><RECIPE><NAME>T</NAME><TYPE>Mead</TYPE><OG>1.090</OG><FG>1.000</FG><BATCH_SIZE>5</BATCH_SIZE></RECIPE></RECIPES>';
+    var r=beerXMLToRecipe(xml);
+    ok('import: recipe parses', !!r, 'got null');
+    ok('import: marked isCustom', !!(r&&r.isCustom));
+  })();
+
+  // computeShoppingNeeds smoke test
+  (function(){
+    var s=computeShoppingNeeds();
+    ok('shopping: returns {lines,...}', s && typeof s==='object' && Array.isArray(s.lines));
+  })();
+
+  // projectFermentation from a descending gravity series
+  (function(){
+    APP.recipes=[{id:'r1',fgTarget:1.000,fermentDays:30}];
+    var b={id:'p1',recipeId:'r1',startDate:isoAgo(10),og:1.100};
+    APP.logs={p1:[{date:isoAgo(10),gravity:1.100},{date:isoAgo(5),gravity:1.050},{date:isoAgo(0),gravity:1.020}]};
+    var p=projectFermentation(b);
+    ok('projection: returns a result', !!p);
+    ok('projection: drop rate > 0', p && p.ratePerDay>0, p?('rate='+p.ratePerDay):'null');
+    ok('projection: FG not above current gravity', p && p.estFG<=1.020+1e-9, p?('estFG='+p.estFG):'null');
+    APP.recipes=BUILTIN_RECIPES();
+  })();
+
+  var s=document.getElementById('summary');
+  s.textContent=(fail===0?'✓ ALL PASS':'✗ '+fail+' FAILED')+'  ('+pass+'/'+(pass+fail)+')';
+  s.className=fail===0?'pass':'fail';
+})();
+</script>
+</body>
+</html>

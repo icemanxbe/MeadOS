@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>MeadOS · Mead Brewing Companion</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0a0a0b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MeadOS">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+<link rel="icon" type="image/svg+xml" href="/icon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,500;1,300;1,400&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<script src="/chart.umd.js"></script>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div id="app">
+<div id="topbar">
+<div class="logo">
+<div class="logo-mark" id="topbar-crest"></div>
+<span class="logo-text">MEADŌS<span class="sub">Mead Brewing Companion</span></span>
+</div>
+<div class="topbar-right">
+<button class="btn-icon" onclick="openBottleScanner()" title="Scan a bottle/storage label QR code" id="scan-btn">📷</button>
+<button class="btn-icon" onclick="openGlobalSearch()" title="Search everything (Ctrl/Cmd-K)" id="search-btn">🔍</button>
+<span class="temp-pill" id="topbar-temp" style="display:none"></span>
+<span class="topbar-date" id="topbar-date"></span>
+<span class="sync-badge local" id="sync-badge">⬡ LOCAL</span>
+<button class="btn-icon" onclick="forceSyncNow()" title="Sync to server" id="sync-btn">↻</button>
+<button class="btn-icon" onclick="showView('settings')" title="Settings">⚙</button>
+</div>
+</div>
+<div id="sidebar">
+<div class="sidebar-section">Navigation</div>
+<div class="nav-item active" onclick="showView('dashboard')" id="nav-dashboard"><span class="ni">⬡</span><span>Dashboard</span></div>
+<div class="nav-item" onclick="showView('batches')" id="nav-batches"><span class="ni">⚗</span><span>My Batches</span></div>
+<div class="nav-item" onclick="showView('cellar')" id="nav-cellar"><span class="ni">🍾</span><span>The Cellar</span></div>
+<div class="nav-item" onclick="showView('timeline')" id="nav-timeline"><span class="ni">⌛</span><span>Aging Timeline</span></div>
+<div class="nav-item" onclick="showView('ferm-timeline')" id="nav-ferm-timeline"><span class="ni">⚗</span><span>Fermenter Schedule</span></div>
+<div class="nav-item" onclick="showView('compare')" id="nav-compare"><span class="ni">⚖</span><span>Compare</span></div>
+<div class="nav-item" onclick="showView('insights')" id="nav-insights"><span class="ni">💡</span><span>Insights</span></div>
+<div class="nav-item" onclick="showView('suppliers')" id="nav-suppliers"><span class="ni">🏪</span><span>Suppliers</span></div>
+<div class="nav-item" onclick="showView('coach')" id="nav-coach"><span class="ni">✦</span><span>Daily Coach</span></div>
+<div class="nav-item" onclick="showView('recipes')" id="nav-recipes"><span class="ni">📜</span><span>Recipes</span></div>
+<div class="nav-item" onclick="showView('honey')" id="nav-honey"><span class="ni">🍯</span><span>Honey Library</span></div>
+<div class="nav-item" onclick="showView('yeast-library')" id="nav-yeast-library"><span class="ni">🧫</span><span>Yeast Library</span></div>
+<div class="nav-item" onclick="showView('nutrient-library')" id="nav-nutrient-library"><span class="ni">⚗</span><span>Nutrient &amp; Protocols</span></div>
+<div class="nav-item" onclick="showView('calendar')" id="nav-calendar"><span class="ni">◈</span><span>Calendar</span></div>
+<div class="nav-item" onclick="showView('tools')" id="nav-tools"><span class="ni">⚒</span><span>Brewing Tools</span></div>
+<div class="nav-item" onclick="showView('supplies')" id="nav-supplies"><span class="ni">📦</span><span>Supplies</span></div>
+<div class="nav-item" onclick="showView('guide')" id="nav-guide"><span class="ni">❧</span><span>Mead Guide</span></div>
+<div class="nav-item" onclick="showView('troubleshoot')" id="nav-troubleshoot"><span class="ni">🛠</span><span>Troubleshoot</span></div>
+<div class="sidebar-section" style="margin-top:8px">Active Batches</div>
+<div class="sidebar-batch-list" id="sidebar-batches"></div>
+<div class="sidebar-bottom">
+<button class="btn btn-primary" style="width:100%;justify-content:center" onclick="openNewBatchModal()">＋ New Batch</button>
+</div>
+</div>
+<div id="main"></div>
+</div>
+<div id="toast"></div>
+<button id="quick-log-fab" class="fab" onclick="openQuickLogModal()" title="Quick gravity reading" aria-label="Quick log gravity">＋</button>
+<script src="/app.js"></script>
+</body>
+</html>
