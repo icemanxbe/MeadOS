@@ -43,6 +43,8 @@ import os
 import sqlite3
 import sys
 import urllib.parse
+import urllib.request
+import urllib.error
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -76,14 +78,6 @@ STATIC_ASSETS = {
     "/app.js": "text/javascript; charset=utf-8",
     "/app.css": "text/css; charset=utf-8",
     "/test.html": "text/html; charset=utf-8",  # zero-dep unit checks (dev tool)
-    # Generic copy of the brand logo, mirrored from settings on each save so the
-    # login page serves it as a plain file (no DB read). One extension exists.
-    "/login-logo.png": "image/png",
-    "/login-logo.webp": "image/webp",
-    "/login-logo.svg": "image/svg+xml",
-    "/login-logo.jpg": "image/jpeg",
-    "/login-logo.jpeg": "image/jpeg",
-    "/login-logo.gif": "image/gif",
     # PWA assets — all public (the install/offline shell isn't sensitive).
     "/sw.js": "text/javascript; charset=utf-8",
     "/manifest.webmanifest": "application/manifest+json; charset=utf-8",
@@ -249,6 +243,68 @@ def trust_cf_header():
     return get_config("trust_cf") == "1"
 
 
+# ---- Home Assistant connection (token kept server-side, never in state) ----
+# The HA long-lived token used to ride the synced state blob, so it sat in the
+# DB, in 50 history snapshots, and was served to every device. Now it lives in
+# config and all HA calls are proxied server-side (POST /api/ha) so the browser
+# never holds it. URLs are not secret but are also kept here so the proxy needs
+# no state parse per call.
+def _jwt_exp(tok):
+    # Decode (without verifying) the exp claim of a JWT long-lived token so the
+    # UI can show a rotation reminder. Returns unix seconds or None.
+    if not tok or tok.count(".") != 2:
+        return None
+    try:
+        payload = tok.split(".")[1]
+        payload += "=" * (-len(payload) % 4)
+        exp = json.loads(base64.urlsafe_b64decode(payload)).get("exp")
+        return int(exp) if isinstance(exp, (int, float)) else None
+    except (ValueError, TypeError):
+        return None
+
+
+def extract_ha_token(raw):
+    """If a state blob carries the HA token (legacy / stale client), move it to
+    config and strip it from the blob. Returns the cleaned JSON string (same
+    object when nothing changed)."""
+    if '"haToken"' not in raw:
+        return raw
+    try:
+        obj = json.loads(raw)
+    except ValueError:
+        return raw
+    ss = obj.get("sharedSettings")
+    if not isinstance(ss, dict) or "haToken" not in ss:
+        return raw
+    tok = (ss.pop("haToken") or "").strip()
+    # Adopt the token/URLs ONLY as a one-time migration (when nothing is
+    # configured server-side yet). After that, a stale client's state can no
+    # longer clobber the server-managed token — we just strip and discard it.
+    if tok and not get_config("ha_token"):
+        set_config("ha_token", tok)
+        if ss.get("haUrl"):
+            set_config("ha_url", ss["haUrl"])
+        if ss.get("haUrlExternal"):
+            set_config("ha_url_external", ss["haUrlExternal"])
+    return json.dumps(obj)
+
+
+def migrate_ha_token():
+    # One-time on boot: clean the token out of the currently-stored state.
+    row = db_get_state()
+    if not row:
+        return
+    cleaned = extract_ha_token(row[0])
+    if cleaned is not row[0]:
+        with db_connect() as conn:
+            conn.execute("UPDATE state SET data = ?, bytes = ? WHERE id = 1",
+                         (cleaned, len(cleaned)))
+
+
+def ha_proxy_urls():
+    return [u for u in (get_config("ha_url"), get_config("ha_url_external")) if u]
+
+
 def lan_requires_password():
     # When on, LAN devices must also log in (no automatic LAN bypass). Only
     # meaningful when an external password is set.
@@ -329,43 +385,32 @@ def verify_session_token(tok):
         return False
 
 
-LOGIN_LOGO_EXTS = ("webp", "png", "svg", "jpg", "jpeg", "gif")
-
-
 def login_logo_src():
-    # Serve the generic login-logo.<ext> file (mirrored from the brand logo on
-    # save) — no DB read. Falls back to the default crest when absent.
-    for ext in LOGIN_LOGO_EXTS:
-        if os.path.isfile(os.path.join(BASE_DIR, "login-logo." + ext)):
-            return "/login-logo." + ext
-    return "/icon.svg"
-
-
-def sync_login_logo(raw):
-    # Mirror settings.brandLogo (a /labels/ asset) to a generic login-logo.<ext>
-    # next to server.py so the login page can serve it without touching the DB.
-    # Cleared when no brand logo is set, so it reverts to the default crest.
+    # Read the brand logo straight from the stored state — the SAME image MeadOS
+    # renders everywhere — so the login page can never drift out of sync or get
+    # wiped by a save. /labels/ assets are served publicly (see do_GET), so an
+    # unauthenticated visitor can load it. Falls back to the default crest.
+    row = db_get_state()
+    if not row:
+        return "/icon.svg"
     try:
-        brand = ((json.loads(raw) or {}).get("settings") or {}).get("brandLogo") or ""
-    except (ValueError, AttributeError):
-        brand = ""
-    for ext in LOGIN_LOGO_EXTS:
-        p = os.path.join(BASE_DIR, "login-logo." + ext)
-        if os.path.isfile(p):
-            try:
-                os.remove(p)
-            except OSError:
-                pass
-    m = re.match(r"^/labels/([0-9a-f]{24}\.(png|jpg|jpeg|webp|svg|gif))$", brand)
-    if not m:
-        return
-    src = os.path.join(LABELS_DIR, m.group(1))
-    if os.path.isfile(src):
-        try:
-            with open(src, "rb") as fsrc, open(os.path.join(BASE_DIR, "login-logo." + m.group(2)), "wb") as fdst:
-                fdst.write(fsrc.read())
-        except OSError:
-            pass
+        st = json.loads(row[0])
+    except ValueError:
+        return "/icon.svg"
+    brand = ""
+    # The blob stores brand identity under sharedSettings; tolerate a plain
+    # `settings` block too in case an older/partial blob used that shape.
+    for container in (st.get("sharedSettings"), st.get("settings")):
+        if isinstance(container, dict) and container.get("brandLogo"):
+            brand = container["brandLogo"]
+            break
+    if isinstance(brand, str) and brand:
+        if brand.startswith("data:image/"):
+            return brand  # self-contained, allowed by img-src 'self' data:
+        if re.match(r"^/labels/[0-9a-f]{24}\.(png|jpg|jpeg|webp|svg|gif)$", brand) \
+                and os.path.isfile(os.path.join(LABELS_DIR, brand[len("/labels/"):])):
+            return brand
+    return "/icon.svg"
 
 
 def login_page_html():
@@ -559,6 +604,9 @@ def db_get_state():
 
 
 def db_put_state(raw):
+    # A stale (SW-cached) client could still ship the HA token inside the state
+    # blob — relocate it to config so it never lands in the DB or history.
+    raw = extract_ha_token(raw)
     saved_at = None
     try:
         saved_at = json.loads(raw).get("savedAt")
@@ -585,7 +633,6 @@ def db_put_state(raw):
             "(SELECT id FROM history ORDER BY id DESC LIMIT ?)",
             (HISTORY_KEEP,),
         )
-    sync_login_logo(raw)  # keep the login-page logo file in sync with the brand logo
     return now
 
 
@@ -949,6 +996,15 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, row[0].encode("utf-8"), extra_headers={"X-Data-Rev": row[2] or ""})
             else:
                 self._send(404, {"ok": False, "error": "no data stored yet"})
+        elif path == "/api/ha-config":
+            tok = get_config("ha_token")
+            self._send(200, {"ok": True, "hasToken": bool(tok), "tokenExp": _jwt_exp(tok)})
+        elif path == "/api/ha-token":
+            # Hand the raw token to an authenticated client — needed ONLY for the
+            # HA media-browser WebSocket, which can't traverse the HTTP proxy.
+            # ponytail: the token is no longer in the synced state blob; this is
+            # the one remaining client-side exposure, gated behind the login.
+            self._send(200, {"ok": True, "token": get_config("ha_token") or ""})
         elif path == "/api/health":
             self._send(200, db_health())
         elif path == "/api/history":
@@ -1050,6 +1106,69 @@ class Handler(BaseHTTPRequestHandler):
                 "trustedNets": [str(n) for n in trusted_networks() if n not in TRUSTED_NETS_CLI],
                 "trustCf": trust_cf_header(),
             })
+            return
+        if path == "/api/ha-config":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "invalid body"})
+                return
+            if body.get("clearToken"):
+                set_config("ha_token", None)
+            elif body.get("token"):
+                set_config("ha_token", str(body["token"]).strip())
+            if "url" in body:
+                set_config("ha_url", (str(body["url"]).strip() or None))
+            if "urlExternal" in body:
+                set_config("ha_url_external", (str(body["urlExternal"]).strip() or None))
+            tok = get_config("ha_token")
+            self._send(200, {"ok": True, "hasToken": bool(tok), "tokenExp": _jwt_exp(tok)})
+            return
+        if path == "/api/ha":
+            # Server-side proxy for Home Assistant REST calls. The browser sends
+            # {path, method, body}; we attach the Bearer token (held in config)
+            # and forward to the configured HA URL, trying internal then external.
+            # HA's status + body are passed straight back through.
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                req = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "invalid body"})
+                return
+            ha_path = str(req.get("path") or "")
+            if not ha_path.startswith("/api/") or ".." in ha_path or "://" in ha_path:
+                self._send(400, {"ok": False, "error": "bad HA path"})
+                return
+            token = get_config("ha_token")
+            urls = ha_proxy_urls()
+            if not token or not urls:
+                self._send(502, {"ok": False, "error": "Home Assistant not configured"})
+                return
+            method = str(req.get("method") or "GET").upper()
+            payload = req.get("body")
+            data = payload.encode("utf-8") if isinstance(payload, str) and payload else None
+            headers = {"Authorization": "Bearer " + token}
+            if data:
+                headers["Content-Type"] = "application/json"
+            last_err = "unreachable"
+            for base in urls:
+                hreq = urllib.request.Request(
+                    base.rstrip("/") + ha_path, data=data, method=method, headers=headers)
+                try:
+                    with urllib.request.urlopen(hreq, timeout=12) as resp:
+                        out = resp.read()
+                        ctype = resp.headers.get("Content-Type", "application/json")
+                        self._send(resp.status, out, ctype)
+                        return
+                except urllib.error.HTTPError as e:
+                    # HA answered (e.g. 401/404) — that's a real response, pass it on.
+                    self._send(e.code, e.read() or b"",
+                               e.headers.get("Content-Type", "application/json"))
+                    return
+                except (urllib.error.URLError, OSError) as e:  # unreachable — try next URL
+                    last_err = str(getattr(e, "reason", e))
+            self._send(502, {"ok": False, "error": "HA unreachable: " + last_err})
             return
         if path == "/api/asset":
             try:
@@ -1166,6 +1285,7 @@ def main():
     for s in args.trust:
         TRUSTED_NETS_CLI.append(ipaddress.ip_network(s, strict=False))
     db_init()
+    migrate_ha_token()  # relocate any token still sitting in the stored state blob
     srv = ThreadingHTTPServer((args.host, args.port), Handler)
     print("MeadOS server running on http://%s:%d" % (args.host, args.port))
     print("Data: %s (SQLite, WAL mode, last %d saves kept in history)" % (DB_PATH, HISTORY_KEEP))
