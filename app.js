@@ -3812,6 +3812,30 @@ function predictTastingProfile(batch){
 }
 
 // ==================== STUCK FERMENTATION GUIDE ====================
+// What nutrients has this batch ACTUALLY received? Reads both sources of truth:
+//   • manual entries in the additions log (APP.additions)
+//   • nutrient steps the user checked off in the brew coach (APP.tasksDone,
+//     keyed "<batchId>-step-<day>", matched against the batch's effective steps)
+// Returns {manual, done, expected, total} so the diagnosis can tell "never fed"
+// from "partway through the schedule" from "fully fed" — per the real batch.
+function getNutrientStatus(batch,recipe){
+  var nutRe=/nutrient|fermaid|dap|sna|tosna|go-?ferm|nutrivit/i;
+  var manual=0;
+  ((APP.additions&&APP.additions[batch.id])||[]).forEach(function(a){
+    if(nutRe.test((a.what||a.name||'')+''))manual++;
+  });
+  recipe=recipe||APP.recipes.find(function(r){return r.id===batch.recipeId;});
+  var expected=0,done=0;
+  if(recipe&&typeof getEffectiveSteps==='function'){
+    (getEffectiveSteps(batch,recipe)||[]).forEach(function(s){
+      if(!nutRe.test(s.title||''))return;
+      expected++;
+      if(typeof isTaskDone==='function'&&isTaskDone(batch.id+'-step-'+s.day))done++;
+    });
+  }
+  return{manual:manual,done:done,expected:expected,total:manual+done};
+}
+
 // Decision-tree based diagnostic. Returns step-by-step recommendations
 // given current batch state.
 function diagnoseStuckFermentation(batchId){
@@ -3848,12 +3872,20 @@ function diagnoseStuckFermentation(batchId){
     diagnoses.push({severity:'high',title:'Yeast at ABV ceiling',
       detail:'Current ABV is ~'+currentAbv.toFixed(1)+'% — at or near '+yeast.name.split('—')[0].trim()+'\'s '+yeast.abvMax+'% tolerance. The yeast has done what it can. Either accept current gravity, or pitch a higher-tolerance yeast (EC-1118: 18%, or fresh K1-V1116 starter for stuck ferments).'});
   }
-  // Test 5: Nutrient deficiency? Heuristic: if no additions logged and OG was high
-  var additions=(APP.additions&&APP.additions[b.id])||[];
-  var nutrientAdditions=additions.filter(function(a){return/nutrient|fermaid|dap|sna|tosna/i.test(a.what||'');});
-  if(b.og&&b.og>=1.090&&nutrientAdditions.length===0){
-    diagnoses.push({severity:'medium',title:'Possible nutrient deficiency',
-      detail:'OG '+b.og+' is high and no nutrient additions logged. Honey is nutrient-poor; high-OG meads NEED staggered nutrient additions. Add Fermaid-O or DAP (see Tools → TOSNA Scheduler) and degas vigorously before pitching to release CO₂.'});
+  // Test 5: Nutrient deficiency — based on what this batch ACTUALLY received,
+  // counting both logged additions and nutrient steps ticked off in the coach.
+  var nut=getNutrientStatus(b,recipe);
+  if(b.og&&b.og>=1.090){
+    if(nut.total===0){
+      diagnoses.push({severity:'medium',title:'Possible nutrient deficiency',
+        detail:'OG '+b.og+' is high and no nutrient additions are recorded for this batch — nothing in the additions log, and no nutrient steps checked off in the coach. Honey is nutrient-poor; high-OG meads NEED staggered nutrient additions. If you genuinely haven\'t fed it, add Fermaid-O or DAP (see Tools → TOSNA Scheduler) and degas vigorously to release CO₂. If you did feed it, tick the nutrient steps in the coach (or log the addition) so this clears.'});
+    }else if(nut.expected>0&&nut.done<nut.expected&&nut.manual===0){
+      diagnoses.push({severity:'low',title:'Nutrient schedule incomplete',
+        detail:'You\'ve completed '+nut.done+' of '+nut.expected+' planned nutrient doses for this batch. If the remaining doses are still before the 1/3 sugar break, add them now and tick them off; once past the break, extra nutrient won\'t help and can feed spoilage organisms.'});
+    }else{
+      diagnoses.push({severity:'info',title:'Nutrients accounted for',
+        detail:'This batch has '+nut.total+' nutrient addition'+(nut.total===1?'':'s')+' recorded'+(nut.expected?' ('+nut.done+'/'+nut.expected+' scheduled doses ticked off'+(nut.manual?' + '+nut.manual+' logged':'')+')':'')+', so a nitrogen deficiency is unlikely to be the cause. Look to temperature, ABV ceiling, or pH instead.'});
+    }
   }
   // Test 6: pH out of range? (no pH data — heuristic recommend testing)
   if(daysSinceStart>14&&attenuation<0.4){
@@ -3865,8 +3897,9 @@ function diagnoseStuckFermentation(batchId){
     diagnoses.push({severity:'low',title:'Slow start — may be light pitch',
       detail:'Only '+(attenuation*100).toFixed(0)+'% attenuation after '+daysSinceStart+' days. Could be normal lag (give it 3-5 more days at proper temp) OR insufficient yeast. Use Tools → Pitch Calculator to verify the right amount for your OG.'});
   }
-  // Test 8: Just give it more time
-  if(diagnoses.length===0&&attenuation<0.7&&daysSinceStart<35){
+  // Test 8: Just give it more time (only when nothing actionable was found —
+  // info-level notes like "nutrients accounted for" don't count as red flags)
+  if(!diagnoses.some(function(d){return d.severity!=='info';})&&attenuation<0.7&&daysSinceStart<35){
     diagnoses.push({severity:'info',title:'Likely just slow — give it time',
       detail:'No obvious red flags. Mead ferments take 2-6 weeks for full attenuation. As long as gravity is dropping (even slowly) and temp is in range, patience is the answer. Check again in a week.'});
   }
@@ -3875,7 +3908,7 @@ function diagnoseStuckFermentation(batchId){
   if(lastTemp!=null&&lastTemp<yeast.optimalTempLow){
     actions.push('Warm to '+(yeast.optimalTempLow+2)+'°C over 24h (don\'t shock the yeast).');
   }
-  if(daysSinceStart>10&&nutrientAdditions.length===0&&b.og>=1.090){
+  if(daysSinceStart>10&&nut.total===0&&b.og>=1.090){
     actions.push('Degas vigorously (stir 60+ sec) and add nutrient — '+(b.volume*1.5).toFixed(1)+'g DAP or Fermaid-O.');
   }
   if(currentAbv>=yeast.abvMax-1){
@@ -4511,45 +4544,39 @@ async function apiFetch(path,opts){
 //   • publish a small status summary entity for the companion Lovelace card
 // Leave the URL blank to run MeadOS fully standalone.
 
+// The HA token lives server-side now (see /api/ha proxy). APP._haTokenSet is
+// loaded from /api/ha-config at boot; we never hold the raw token in the app.
 function haConfigured(){
-  return!!(APP.settings.useHA&&(APP.settings.haUrl||APP.settings.haUrlExternal)&&APP.settings.token);
+  return!!(APP.settings.useHA&&(APP.settings.haUrl||APP.settings.haUrlExternal)&&APP._haTokenSet);
 }
 
-function getAuthToken(){
-  return APP.settings.token||null;
+// Fetch the {hasToken,tokenExp} status from the server (token itself stays put).
+async function loadHAConfig(){
+  try{
+    var r=await fetch('/api/ha-config');
+    if(!r.ok)return;
+    var j=await r.json();
+    APP._haTokenSet=!!(j&&j.hasToken);
+    APP._haTokenExp=(j&&j.tokenExp)||null;
+  }catch(e){}
 }
 
 // ---- Dual-URL resolution (internal + external) ----
-// Two base URLs can be configured: an internal/LAN one and an external one
-// (e.g. Nabu Casa or your reverse proxy). Calls try the URL that worked most
-// recently first, then fall back to the other — so the same MeadOS instance
-// works from home AND on the road without touching settings. The working URL
-// is remembered per device in localStorage (networks differ per device).
+// Two base URLs can be configured: internal/LAN and external (Nabu Casa or a
+// reverse proxy). REST calls are proxied server-side now; this only feeds the
+// media-browser WebSocket, which connects from the browser. Internal first.
 function haCandidateUrls(){
   var urls=[];
   [APP.settings.haUrl,APP.settings.haUrlExternal].forEach(function(u){
     if(u&&urls.indexOf(u)<0)urls.push(u);
   });
-  var last=window._haActiveUrl;
-  if(!last){try{last=localStorage.getItem('meadows_haActiveUrl');}catch(e){}}
-  if(last&&urls.indexOf(last)>0){
-    urls.splice(urls.indexOf(last),1);
-    urls.unshift(last);
-  }
   return urls;
 }
 
-// The HA base URL for non-fetch consumers (WebSocket, media URLs):
-// last-known-working first, then internal, then external.
+// The HA base URL for the media-browser WebSocket: internal, then external.
 function haBaseUrl(){
   var urls=haCandidateUrls();
   return urls.length?urls[0]:'';
-}
-
-function markHAActiveUrl(url){
-  if(window._haActiveUrl===url)return;
-  window._haActiveUrl=url;
-  try{localStorage.setItem('meadows_haActiveUrl',url);}catch(e){}
 }
 
 // fetch with a deadline — an unreachable LAN IP can otherwise hang for the
@@ -4564,64 +4591,37 @@ async function haFetchWithTimeout(url,opts,ms){
 }
 
 // ---- Token expiry inspection ----
-// JWTs encode an "exp" claim (unix seconds) in the payload. We don't validate
-// the signature here — we just decode the payload to know when the token will
-// stop working. Used by the settings panel to surface a rotation reminder.
-function decodeJWTExpiry(jwt){
-  if(!jwt||typeof jwt!=='string')return null;
-  var parts=jwt.split('.');
-  if(parts.length!==3)return null;
-  try{
-    // Base64URL → base64 → JSON
-    var payload=parts[1].replace(/-/g,'+').replace(/_/g,'/');
-    while(payload.length%4)payload+='=';
-    var decoded=atob(payload);
-    var obj=JSON.parse(decoded);
-    if(typeof obj.exp!=='number')return null;
-    return{exp:obj.exp,iat:obj.iat||null,iss:obj.iss||null};
-  }catch(e){return null;}
-}
-
-// Returns {daysLeft, expDate, status} for the configured HA token, or null
-// if no token / non-JWT token. `status` ∈ 'expired' | 'critical' (<30d) |
-// 'warning' (<90d) | 'ok'.
+// The server decodes the token's JWT exp claim (it holds the token now) and
+// reports it via /api/ha-config → APP._haTokenExp. Returns {daysLeft, expDate,
+// status} or null. `status` ∈ 'expired' | 'critical' (<30d) | 'warning' (<90d) | 'ok'.
 function getActiveTokenExpiry(){
-  var tok=getAuthToken();
-  if(!tok)return null;
-  var meta=decodeJWTExpiry(tok);
-  if(!meta)return null;
+  var exp=APP._haTokenExp;
+  if(!exp)return null;
   var nowSec=Math.floor(Date.now()/1000);
-  var secsLeft=meta.exp-nowSec;
+  var secsLeft=exp-nowSec;
   var daysLeft=Math.floor(secsLeft/86400);
   var status='ok';
   if(secsLeft<=0)status='expired';
   else if(daysLeft<30)status='critical';
   else if(daysLeft<90)status='warning';
-  return{
-    daysLeft:daysLeft,
-    expDate:new Date(meta.exp*1000),
-    status:status,
-    source:'manual'
-  };
+  return{daysLeft:daysLeft,expDate:new Date(exp*1000),status:status,source:'server'};
 }
 
-// Authenticated fetch against the configured Home Assistant instance.
-// Tries each configured base URL (last-working first) and remembers which
-// one answered. Returns null when HA is not configured or fully unreachable.
+// Authenticated HA call, proxied through our own server (POST /api/ha) so the
+// token never reaches the browser. The server forwards to the configured HA
+// URL and passes the response straight back, so callers keep using res.ok /
+// res.status / res.json(). Returns null when HA isn't configured or the proxy
+// itself is unreachable.
 async function haFetch(path,opts){
   if(!haConfigured())return null;
   opts=opts||{};
-  opts.headers=Object.assign({'Authorization':'Bearer '+APP.settings.token},opts.headers||{});
-  var urls=haCandidateUrls();
-  for(var i=0;i<urls.length;i++){
-    try{
-      var res=await haFetchWithTimeout(urls[i]+path,opts,8000);
-      // Any HTTP response — even 4xx — proves this base URL is reachable.
-      markHAActiveUrl(urls[i]);
-      return res;
-    }catch(e){/* unreachable or timed out — try the next candidate */}
-  }
-  return null;
+  try{
+    return await haFetchWithTimeout('/api/ha',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({path:path,method:opts.method||'GET',body:opts.body||null})
+    },14000);
+  }catch(e){return null;}
 }
 
 async function haWriteState(entityId,state,attributes){
@@ -4706,36 +4706,18 @@ async function haFetchHistory(entityId,hoursBack){
 }
 
 async function haTestConnection(){
+  // The MeadOS server reaches HA (not the browser), so this pings HA's root API
+  // through the proxy — no browser CORS / mixed-content concerns to report.
   if(!APP.settings.useHA)return{ok:false,msg:'Home Assistant integration is disabled'};
-  var targets=[];
-  if(APP.settings.haUrl)targets.push({label:'internal',url:APP.settings.haUrl});
-  if(APP.settings.haUrlExternal)targets.push({label:'external',url:APP.settings.haUrlExternal});
-  if(!targets.length)return{ok:false,msg:'No Home Assistant URL'};
-  if(!getAuthToken())return{ok:false,msg:'No token — paste a long-lived access token'};
-  var parts=[],anyOk=false,firstOk=null;
-  for(var i=0;i<targets.length;i++){
-    var t=targets[i],res=null;
-    try{res=await haFetchWithTimeout(t.url+'/api/',{headers:{'Authorization':'Bearer '+APP.settings.token}},8000);}catch(e){res=null;}
-    if(res&&res.ok){
-      anyOk=true;
-      if(!firstOk)firstOk=t.url;
-      parts.push('✓ '+t.label+' reachable');
-    }else if(res&&res.status===401){
-      parts.push('✗ '+t.label+': auth rejected — check the token');
-    }else if(res){
-      parts.push('✗ '+t.label+': HTTP '+res.status);
-    }else if(window.location.protocol==='https:'&&/^http:\/\//i.test(t.url)){
-      parts.push('✗ '+t.label+': blocked as mixed content — MeadOS is loaded over HTTPS, so HA must be HTTPS too');
-    }else{
-      parts.push('✗ '+t.label+': no response — wrong URL, unreachable from this network, or CORS not allowed');
-    }
-  }
-  if(firstOk)markHAActiveUrl(firstOk);
-  var msg=parts.join(' · ');
-  if(!anyOk){
-    msg+='. If the URL is right, the usual culprit is CORS: add '+window.location.origin+' to http: → cors_allowed_origins in HA\'s configuration.yaml and restart HA (see the note above the URL fields).';
-  }
-  return{ok:anyOk,msg:msg};
+  if(!(APP.settings.haUrl||APP.settings.haUrlExternal))return{ok:false,msg:'No Home Assistant URL'};
+  if(!APP._haTokenSet)return{ok:false,msg:'No token — paste a long-lived access token, then Save'};
+  var res=await haFetch('/api/');  // HA REST root — 200 with a valid token
+  if(res&&res.ok)return{ok:true,msg:'✓ Home Assistant reachable'};
+  if(res&&res.status===401)return{ok:false,msg:'✗ Auth rejected — the stored token is wrong or expired'};
+  // 502 is our proxy's "couldn't reach HA" code (the MeadOS server forwards).
+  if(res&&res.status===502)return{ok:false,msg:'✗ The MeadOS server can\'t reach the HA URL(s). Check the address and that HA is up.'};
+  if(res)return{ok:false,msg:'✗ Home Assistant returned HTTP '+res.status};
+  return{ok:false,msg:'✗ No response from the MeadOS server.'};
 }
 
 async function saveData(force){
@@ -6028,7 +6010,8 @@ function packageState(){
       sanitizer:(APP.settings&&APP.settings.sanitizer)||'chemipro_san',
       haUrl:(APP.settings&&APP.settings.haUrl)||'',
       haUrlExternal:(APP.settings&&APP.settings.haUrlExternal)||'',
-      haToken:(APP.settings&&APP.settings.token)||'',
+      // haToken is intentionally NOT synced — it lives server-side (config) and
+      // HA calls go through the /api/ha proxy. See saveHASettings / loadHAConfig.
       useHA:!(APP.settings&&APP.settings.useHA===false),
       haPublishSummary:!!(APP.settings&&APP.settings.haPublishSummary),
       tempSensorEntity:(APP.settings&&APP.settings.tempSensorEntity)||'',
@@ -6108,7 +6091,7 @@ function applyState(d){
     if(ss.sanitizer&&typeof SANITIZERS!=='undefined'&&SANITIZERS[ss.sanitizer])APP.settings.sanitizer=ss.sanitizer;
     if(ss.haUrl&&typeof ss.haUrl==='string')APP.settings.haUrl=ss.haUrl;
     if(ss.haUrlExternal&&typeof ss.haUrlExternal==='string')APP.settings.haUrlExternal=ss.haUrlExternal;
-    if(ss.haToken&&typeof ss.haToken==='string')APP.settings.token=ss.haToken;
+    // ss.haToken (legacy blobs) is ignored — the server strips it into config.
     if(typeof ss.useHA==='boolean')APP.settings.useHA=ss.useHA;
     if(typeof ss.haPublishSummary==='boolean')APP.settings.haPublishSummary=ss.haPublishSummary;
     if(ss.tempSensorEntity&&typeof ss.tempSensorEntity==='string')APP.settings.tempSensorEntity=ss.tempSensorEntity;
@@ -6397,22 +6380,73 @@ function findBatchByRef(ref){
   return APP.batches.find(function(b){return b.id===ref;})||null;
 }
 
+// Read the recent gravity trend to tell whether fermentation is still moving.
+// "stopped"  — last two readings (≥2 days apart, or three in a row) are flat
+// "maybe"    — flat but the readings are close in time / only two exist
+// "slowing"  — still dropping, but only a little
+// "active"   — dropping normally   ·   "unknown" — fewer than two readings
+function getFermentationActivity(b){
+  var logs=(APP.logs[b.id]||[]).filter(function(l){return l&&l.gravity!=null;})
+    .slice().sort(function(a,c){return (a.date||'').localeCompare(c.date||'');});
+  if(logs.length<2)return{state:'unknown',count:logs.length};
+  var last=logs[logs.length-1],prev=logs[logs.length-2];
+  var drop=prev.gravity-last.gravity; // >0 = still dropping
+  var daysApart=Math.abs(Math.round((new Date(last.date)-new Date(prev.date))/86400000));
+  var flat3=false;
+  if(logs.length>=3)flat3=Math.abs(logs[logs.length-3].gravity-last.gravity)<=0.003;
+  if(Math.abs(drop)<=0.002){
+    return{state:(daysApart>=2||flat3)?'stopped':'maybe',last:last.gravity,daysApart:daysApart};
+  }
+  if(drop>0&&drop<=0.005)return{state:'slowing',last:last.gravity,drop:drop};
+  return{state:'active',last:last.gravity,drop:drop};
+}
+
 function getBatchStatus(b){
   if(b.failed)return'failed';
   if(b.status)return b.status;
-  var d=daysSince(b.startDate);
   if(APP.bottling[b.id]){
     // Batch is 'complete' ONLY when bottled AND every bottle has been drunk/gifted
     // (i.e. on-hand count is 0 with an original count > 0). Until then it's 'bottled'.
     if(bottlesOnHand(APP.bottling[b.id])===0&&bottlesOriginal(APP.bottling[b.id])>0)return'complete';
     return'bottled';
   }
-  // Pre-bottling lifecycle stages. A batch NEVER auto-completes from age alone —
-  // some styles (sack, bochet, melomel) age for a year or more before bottling.
-  // Once past the "aging" threshold it just stays in 'aging' until the user bottles it.
-  if(d<14)return'fermenting';
-  if(d<42)return'conditioning';
-  return'aging';
+  var d=daysSince(b.startDate);
+  // Pre-bottling lifecycle follows what's ACTUALLY happened — completed brew-coach
+  // steps and the gravity trend — not just elapsed days. So a batch won't jump to
+  // the next stage on the calendar if you haven't racked / marked the steps.
+  var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+  var steps=(recipe&&typeof getEffectiveSteps==='function')?getEffectiveSteps(b,recipe):[];
+  var anyStepDone=false,rackDone=false,ageDone=false;
+  steps.forEach(function(s){
+    if(typeof isTaskDone!=='function'||!isTaskDone(b.id+'-step-'+s.day))return;
+    anyStepDone=true;
+    var t=s.title||'';
+    if(/rack|secondary|transfer/i.test(t))rackDone=true;
+    if(/aging|bulk|stabil|clarif|cold ?crash|oak|back-?sweet/i.test(t))ageDone=true;
+  });
+  var hasLogs=(APP.logs[b.id]||[]).some(function(l){return l&&l.gravity!=null;});
+  // No tracking data at all → fall back to the original calendar estimate so the
+  // stage isn't stuck at "fermenting" for someone who doesn't use the coach.
+  if(!anyStepDone&&!hasLogs){
+    if(d<14)return'fermenting';
+    if(d<42)return'conditioning';
+    return'aging';
+  }
+  if(ageDone)return'aging';
+  if(rackDone)return d>=42?'aging':'conditioning';
+  if(getFermentationActivity(b).state==='stopped')return'conditioning';
+  return'fermenting';
+}
+
+// Small at-a-glance pill for whether fermentation is still moving. Empty for
+// bottled/failed batches and for normal active fermentation (no need to shout).
+function fermentationBadge(b){
+  if(!b||b.failed||APP.bottling[b.id])return'';
+  var f=getFermentationActivity(b);
+  if(f.state==='stopped')return'<span class="badge" style="background:rgba(122,160,64,0.18);color:#a8d27a;border-color:rgba(122,160,64,0.45)" title="The last gravity readings are flat — fermentation looks finished. Confirm with one more reading, then rack or stabilize.">● fermentation stopped</span>';
+  if(f.state==='maybe')return'<span class="badge" style="background:rgba(200,160,32,0.16);color:var(--honey);border-color:var(--amber)" title="Recent readings barely moved. Take another reading 2–3 days apart to confirm it has truly stopped.">● maybe stopped</span>';
+  if(f.state==='slowing')return'<span class="badge" style="background:rgba(122,160,64,0.10);color:#9bbf6e;border-color:rgba(122,160,64,0.30)" title="Gravity is still dropping, but slowly — fermentation is winding down.">● slowing</span>';
+  return'';
 }
 
 function statusBadge(s){
@@ -6559,7 +6593,7 @@ function renderDashboard(){
         +'<div class="card-header" style="margin-bottom:12px">'
         +'<div><div class="card-title" style="color:'+color+'">'+escHtml(b.name)+'</div>'
         +'<div class="card-subtitle">'+fmtDuration(d)+' · '+fmtDate(b.startDate)+'</div></div>'
-        +statusBadge(status)+'</div>'
+        +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'+statusBadge(status)+fermentationBadge(b)+'</div></div>'
         +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">'
         +'<div style="text-align:center"><div style="font-family:var(--font-display);font-size:20px;color:var(--gold2)">'+(b.og||'—')+'</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-top:2px">OG</div></div>'
         +'<div style="text-align:center"><div style="font-family:var(--font-display);font-size:20px;color:var(--green2)">'+(lastG||'—')+'</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-top:2px">CURRENT</div></div>'
@@ -7232,10 +7266,8 @@ function renderBatchDetail(){
         }
         if(sensorEntity){
           return'<div class="chart-card" style="margin-top:12px"><div class="chart-card-title">'+(tBottled?'🌡 Storage Temperature':'🌡 Temperature History')+'  ·  <span style="color:var(--text3);font-size:11px">'+sensorLabel+'</span>'
-            +'<div style="display:inline-flex;gap:4px;margin-left:auto;float:right">'
-            +'<button class="btn btn-secondary btn-sm" onclick="setBatchTempRange(\''+b.id+'\',24)" style="padding:2px 8px;font-size:10px">24h</button>'
-            +'<button class="btn btn-secondary btn-sm" onclick="setBatchTempRange(\''+b.id+'\',168)" style="padding:2px 8px;font-size:10px">7d</button>'
-            +'<button class="btn btn-secondary btn-sm" onclick="setBatchTempRange(\''+b.id+'\',720)" style="padding:2px 8px;font-size:10px">30d</button>'
+            +'<div style="display:inline-flex;gap:6px;margin-left:auto;float:right">'
+            +(function(){var tr=window._batchTempRange||168;return[[24,'24h'],[168,'7d'],[720,'30d']].map(function(o){var a=o[0]===tr;return'<button class="btn btn-secondary btn-sm" onclick="setBatchTempRange(\''+b.id+'\','+o[0]+')" style="padding:6px 12px;font-size:12px;min-width:48px'+(a?';background:rgba(232,196,106,0.18);color:var(--gold2);border-color:var(--gold)':'')+'">'+o[1]+'</button>';}).join('');}())
             +'</div></div>'
             +'<div class="chart-wrap" style="height:220px;position:relative"><canvas id="batch-temp-history-chart"></canvas>'
             +'<div id="batch-temp-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px;font-style:italic">Loading history…</div>'
@@ -7394,6 +7426,7 @@ function renderBatchDetail(){
     +'<div class="page-title" style="margin-bottom:0;color:'+color+'">'+escHtml(b.name)+'</div>'
     +(b.serial?'<span title="Batch serial — unique per year. Stable from creation; safe to reference on labels and storage boxes." style="font-family:var(--font-mono);font-size:11px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:10px;letter-spacing:0.5px">#'+escHtml(b.serial)+'</span>':'')
     +statusBadge(status)
+    +fermentationBadge(b)
     +'<div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">'
     +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" onclick="printBatchCertificate(\''+b.id+'\')" title="Print a one-page certificate for this batch">📜 Certificate</button>':'')
     +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" onclick="openPermanentRecord(\''+b.id+'\')" title="Print or save the complete batch journal — every log, addition, tasting, cost, signed off with brewer name">📜 Complete Record</button>':'')
@@ -11677,24 +11710,12 @@ function renderSettings(){
         +'<div><div style="font-weight:600;color:var(--text);margin-bottom:2px">'+escHtml(s.label)+'</div>'
         +'<div style="color:var(--text3);font-style:italic;line-height:1.5">'+s.sub+'</div></div></div>';
     }())
-    +(function(){
-      // CORS: MeadOS runs on its own origin now, so HA must whitelist it
-      // before the browser will let any API call through. Surface the exact
-      // YAML with the right origins so it's a copy-paste job.
-      var origins=[window.location.origin];
-      var ext=((APP.settings&&APP.settings.externalUrl)||'').trim();
-      if(ext){try{var o=new URL(ext).origin;if(origins.indexOf(o)<0)origins.push(o);}catch(e){}}
-      return'<details style="margin-bottom:14px"><summary style="cursor:pointer;font-size:13px;color:var(--gold2);padding:6px 0">⚠ Required once: allow MeadOS in Home Assistant (CORS)</summary>'
-        +'<div style="font-size:12.5px;color:var(--text2);margin-top:8px;line-height:1.6">MeadOS runs on its own server, and browsers only allow it to call the HA API when HA explicitly whitelists it. Without this, every connection attempt fails regardless of URL or token. Add to <code>configuration.yaml</code> and restart Home Assistant:</div>'
-        +'<pre style="background:var(--bg4);padding:10px;border-radius:var(--radius);font-family:var(--font-mono);font-size:11px;color:var(--text2);margin-top:8px;overflow-x:auto">http:\n  cors_allowed_origins:\n'+origins.map(function(o){return'    - '+escHtml(o);}).join('\n')+'</pre>'
-        +'<div style="font-size:11.5px;color:var(--text3);margin-top:6px;font-style:italic">These are the addresses MeadOS is served from (current address + Public URL). If you open MeadOS via other hostnames, list those too.</div>'
-        +'</details>';
-    }())
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.6;padding:8px 12px;background:var(--bg);border-left:2px solid var(--green2);border-radius:var(--radius)">The <strong>MeadOS server</strong> talks to Home Assistant on your behalf, so there\'s no browser CORS setup and no mixed-content issue — just make sure the MeadOS server can reach the HA URL below.</div>'
     +'<div class="form-group"><label class="form-label">HA URL — internal / LAN</label><input class="form-input" id="set-url" type="text" placeholder="http://192.168.x.x:8123 (any port works)" value="'+escHtml(APP.settings.haUrl||'')+'"></div>'
     +'<div class="form-group"><label class="form-label">HA URL — external <span style="font-weight:400;color:var(--text3);font-size:11px;margin-left:6px">optional</span></label><input class="form-input" id="set-url-external" type="text" placeholder="https://xyz.ui.nabu.casa or https://ha.yourdomain.com" value="'+escHtml(APP.settings.haUrlExternal||'')+'">'
-    +'<div style="font-size:12px;color:var(--text3);margin-top:4px">MeadOS automatically uses whichever URL responds — internal at home, external on the road — and remembers the working one per device. Either field may be left blank.</div></div>'
-    +'<div class="form-group"><label class="form-label">Long-Lived Access Token</label><input class="form-input" id="set-token" type="password" placeholder="HA → Profile → Security → Long-Lived Access Tokens" value="'+escHtml(APP.settings.token||'')+'">'
-    +'<div style="font-size:12px;color:var(--text3);margin-top:4px">URLs and token are stored in the shared database — set them once and every browser/device picks them up automatically. Heads-up: anyone who can open this MeadOS server can therefore also read the token.</div></div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-top:4px">The MeadOS server tries the internal URL first, then the external one. Either field may be left blank.</div></div>'
+    +'<div class="form-group"><label class="form-label">Long-Lived Access Token</label><input class="form-input" id="set-token" type="password" autocomplete="off" placeholder="'+(APP._haTokenSet?'•••••••• stored — leave blank to keep it':'HA → Profile → Security → Long-Lived Access Tokens')+'" value="">'
+    +'<div style="font-size:12px;color:var(--text3);margin-top:4px">Stored on the MeadOS server only and used via a server-side proxy — it is never sent to other devices or saved in the synced data.'+(APP._haTokenSet?' <a href="#" onclick="clearHAToken();return false" style="color:var(--red2)">Clear stored token</a>':'')+'</div></div>'
     +'<div class="form-group"><label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text2);cursor:pointer"><input type="checkbox" id="set-useha" '+(APP.settings.useHA?'checked':'')+' style="cursor:pointer"> Enable Home Assistant integration</label></div>'
     +'<div class="form-group"><label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text2);cursor:pointer"><input type="checkbox" id="set-publish-summary" '+(APP.settings.haPublishSummary?'checked':'')+' style="cursor:pointer"> Publish status summary to <code style="font-size:12px">sensor.meadows_data</code> on every save</label></div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onclick="saveHASettings()">Save &amp; Test</button>'
@@ -15200,73 +15221,8 @@ function renderTastingOverlayRadar(batches){
 }
 
 // ==================== QUICK GRAVITY LOG FAB ====================
-function openQuickLogModal(){
-  // Only show batches that are actively fermenting (not bottled, not complete)
-  var active=APP.batches.filter(function(b){var s=getBatchStatus(b);return s!=='complete'&&s!=='bottled'&&s!=='failed';});
-  closeModal();
-  if(!active.length){
-    document.body.insertAdjacentHTML('beforeend',
-      '<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:380px">'
-      +'<div class="modal-title">QUICK GRAVITY LOG</div>'
-      +'<div style="padding:14px 0;color:var(--text2);text-align:center;font-style:italic">No active batches to log against.</div>'
-      +'<div class="modal-actions"><button class="btn btn-primary" onclick="closeModal();openNewBatchModal()">＋ Start a Batch</button></div>'
-      +'</div></div>');
-    return;
-  }
-  // Preselect the currently-viewed batch if applicable, else the most recently started
-  var preselect=(currentView==='batch'&&active.find(function(b){return b.id===currentBatchId;}))?currentBatchId:active[active.length-1].id;
-  var opts=active.map(function(b){
-    var color=getBatchColor(b);
-    var d=daysSince(b.startDate);
-    return'<option value="'+b.id+'"'+(b.id===preselect?' selected':'')+'>'+escHtml(b.name)+' — Day '+d+'</option>';
-  }).join('');
-  var tempVal=currentTemp?currentTemp.value.toFixed(1):'';
-  document.body.insertAdjacentHTML('beforeend',
-    '<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:420px">'
-    +'<div class="modal-title">⚗ QUICK GRAVITY LOG</div>'
-    +'<div class="form-group"><label class="form-label">Batch</label><select class="form-select" id="ql-batch">'+opts+'</select></div>'
-    +'<div class="form-row"><div class="form-group"><label class="form-label">Gravity (SG)</label><input class="form-input" id="ql-grav" type="number" step="0.001" placeholder="1.020" autofocus></div>'
-    +'<div class="form-group"><label class="form-label">Temp (°C)</label><input class="form-input" id="ql-temp" type="number" step="0.5" value="'+tempVal+'"'+(currentTemp?'':' placeholder="20"')+'></div></div>'
-    +'<div class="form-group"><label class="form-label">Quick Note (optional)</label><input class="form-input" id="ql-note" type="text" placeholder="airlock slowing, smells great…"></div>'
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveQuickLog()">Save Reading</button></div>'
-    +'</div></div>');
-  setTimeout(function(){var g=document.getElementById('ql-grav');if(g)g.focus();},50);
-}
-
-function saveQuickLog(){
-  var bid=document.getElementById('ql-batch').value;
-  var rawG=parseFloat(document.getElementById('ql-grav').value);
-  if(!rawG||rawG<0.9||rawG>1.2){toast('⚠ Enter a valid gravity (0.990 – 1.200)');return;}
-  var temp=parseFloat(document.getElementById('ql-temp').value);
-  // Hydrometer temp correction — match addLog. Hydrometers calibrate at 20°C;
-  // approx 0.00013 SG points per °C above/below. Skip when temp is missing
-  // or essentially at calibration temp.
-  var grav=rawG;
-  if(!isNaN(temp)&&Math.abs(temp-20)>=1){
-    grav=Math.round((rawG+(temp-20)*0.00013)*1000)/1000;
-  }
-  var entry={
-    id:genId(),
-    date:today(),
-    gravity:grav,
-    gravityRaw:rawG,
-    temp:isNaN(temp)?null:temp,
-    airlock:'',
-    note:document.getElementById('ql-note').value.trim()
-  };
-  if(!APP.logs[bid])APP.logs[bid]=[];
-  APP.logs[bid].push(entry);
-  APP.logs[bid].sort(function(a,b){return a.date.localeCompare(b.date);});
-  closeModal();
-  scheduleSave();
-  var b=APP.batches.find(function(x){return x.id===bid;});
-  var abv=b&&b.og?calcABV(b.og,grav):null;
-  toast('✦ '+grav.toFixed(3)+' logged'+(abv?' · ~'+abv+'% ABV':''));
-  renderMain();
-}
-
-// Keyboard shortcut for quick-log was removed per user request — it interfered with
-// typing letters that contain 'g' inside batch name / recipe name input fields.
+// The quick-gravity FAB and its modal were removed per user request — log
+// readings from a batch's own gravity-log screen instead.
 
 // ==================== LOW-STOCK SUPPLY ALERT ====================
 function getLowSupplies(){
@@ -15484,7 +15440,7 @@ function renderProactiveAlerts(){
         ?'never tasted'
         :'last tasted '+p.daysSinceLastTasting+' days ago';
       items.push(
-        '<div class="stock-alert" style="cursor:pointer;border-left-color:var(--gold2);background:rgba(232,196,106,0.08)" onclick="showView(\'batch\',\''+p.batch.id+'\');setTimeout(function(){setBatchTab(\''+p.batch.id+'\',\'tasting\')},10)">'
+        '<div class="stock-alert warn" style="cursor:pointer" onclick="showView(\'batch\',\''+p.batch.id+'\');setTimeout(function(){setBatchTab(\''+p.batch.id+'\',\'tasting\')},10)">'
           +'<span class="icon">🍷</span>'
           +'<span><strong>Time for a tasting?</strong> '+escHtml(p.batch.name)+' is '+p.milestoneLabel+' aged · '+lastNote+'. <span style="text-decoration:underline">Log a fresh tasting →</span></span>'
         +'</div>'
@@ -15922,8 +15878,9 @@ function computeShoppingNeeds(){
 function renderShoppingListCard(){
   var s=computeShoppingNeeds();
   var fmtN=function(n){return (Math.abs(n-Math.round(n))<0.005)?String(Math.round(n)):n.toFixed(2);};
-  // Supplies at or below their restock threshold — always worth buying.
-  var low=(APP.supplies||[]).filter(function(x){var th=parseFloat(x.threshold)||0,q=parseFloat(x.qty)||0;return th>0&&q<=th;});
+  // Supplies worth restocking — same rule as the dashboard alert: below a set
+  // threshold, OR out of stock entirely (qty 0) even without a threshold.
+  var low=getLowSupplies();
   if(!s.planCount&&!low.length)return'';
   var ccy=s.currency;
   var planHtml='';
@@ -15951,9 +15908,11 @@ function renderShoppingListCard(){
   }
   var lowHtml='';
   if(low.length){
-    lowHtml='<div style="font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin:'+(s.planCount?'14px':'0')+' 0 6px">Running low (below threshold)</div>'
+    lowHtml='<div style="font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin:'+(s.planCount?'14px':'0')+' 0 6px">Running low / out of stock</div>'
       +low.map(function(x){
-        return'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)"><div><span style="font-size:13px;color:var(--text)">'+escHtml(x.name)+'</span>'+(x.brand?'<span style="color:var(--text3);font-size:11px;font-style:italic"> · '+escHtml(x.brand)+'</span>':'')+'</div><span style="font-family:var(--font-mono);font-size:11px;color:var(--red2)">'+fmtN(parseFloat(x.qty)||0)+' '+escHtml(x.unit||'')+' left · ⚠ ≤'+fmtN(parseFloat(x.threshold)||0)+'</span></div>';
+        var q=parseFloat(x.qty)||0,th=parseFloat(x.threshold)||0;
+        var badge=q<=0?'out of stock'+(th>0?' · ⚠ ≤'+fmtN(th)+' '+escHtml(x.unit||''):''):(fmtN(q)+' '+escHtml(x.unit||'')+' left'+(th>0?' · ⚠ ≤'+fmtN(th):''));
+        return'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)"><div><span style="font-size:13px;color:var(--text)">'+escHtml(x.name)+'</span>'+(x.brand?'<span style="color:var(--text3);font-size:11px;font-style:italic"> · '+escHtml(x.brand)+'</span>':'')+'</div><span style="font-family:var(--font-mono);font-size:11px;color:var(--red2)">'+badge+'</span></div>';
       }).join('');
   }
   return'<div class="card" style="margin-top:16px"><div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><div class="card-title">🛒 SHOPPING LIST</div>'
@@ -15970,10 +15929,10 @@ function copyShoppingList(){
     s.lines.forEach(function(l){if(l.buy>0)lines.push('• '+l.label+': buy '+fmtN(l.buy)+' '+l.unit);});
     if(s.extras.length){lines.push('Also gather:');s.extras.forEach(function(e){lines.push('• '+e.item+(e.amounts.filter(Boolean).length?' ('+e.amounts.filter(Boolean).join(' + ')+')':''));});}
   }
-  var low=(APP.supplies||[]).filter(function(x){var th=parseFloat(x.threshold)||0,q=parseFloat(x.qty)||0;return th>0&&q<=th;});
+  var low=getLowSupplies();
   if(low.length){
-    lines.push('— Running low —');
-    low.forEach(function(x){lines.push('• '+x.name+(x.brand?' ('+x.brand+')':'')+': '+fmtN(parseFloat(x.qty)||0)+' '+(x.unit||'')+' left, restock at '+fmtN(parseFloat(x.threshold)||0));});
+    lines.push('— Running low / out of stock —');
+    low.forEach(function(x){var q=parseFloat(x.qty)||0,th=parseFloat(x.threshold)||0;lines.push('• '+x.name+(x.brand?' ('+x.brand+')':'')+': '+(q<=0?'out of stock':fmtN(q)+' '+(x.unit||'')+' left')+(th>0?', restock at '+fmtN(th):''));});
   }
   var txt=lines.join('\n');
   // ponytail: execCommand is deprecated but it's the only copy path on plain-http
@@ -19826,17 +19785,25 @@ if(typeof window._haWSReady==='undefined')window._haWSReady=null;
 if(typeof window._haWSPending==='undefined')window._haWSPending={};
 if(typeof window._haWSId==='undefined')window._haWSId=0;
 
+// The media-browser WebSocket needs the raw token (it can't go through the
+// HTTP proxy). Fetch it on demand from the server — it isn't kept in app state.
+function fetchHAToken(){
+  return fetch('/api/ha-token')
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(j){return(j&&j.token)||null;})
+    .catch(function(){return null;});
+}
+
 function ensureHAWebSocket(){
   if(window._haWSReady)return window._haWSReady;
-  window._haWSReady=new Promise(function(resolve,reject){
+  window._haWSReady=fetchHAToken().then(function(token){return new Promise(function(resolve,reject){
+    if(!token){reject(new Error('No HA token'));return;}
     var base=(typeof haBaseUrl==='function'?haBaseUrl():'')||'';
     if(!base){reject(new Error('No HA URL configured'));return;}
     // http→ws, https→wss
     base=base.replace(/^http/,'ws');
     if(base.slice(-1)==='/')base=base.slice(0,-1);
     var url=base+'/api/websocket';
-    var token=(typeof getAuthToken==='function')?getAuthToken():APP.settings.token;
-    if(!token){reject(new Error('No HA token'));return;}
     console.log('[MeadOS] HA WebSocket connecting to',url);
     var ws;
     try{ws=new WebSocket(url);}catch(e){reject(e);return;}
@@ -19884,7 +19851,7 @@ function ensureHAWebSocket(){
     setTimeout(function(){
       if(!settled){settled=true;window._haWSReady=null;try{ws.close();}catch(e){}reject(new Error('WebSocket connect timeout'));}
     },8000);
-  });
+  });});
   return window._haWSReady;
 }
 
@@ -22710,11 +22677,10 @@ function saveHASettings(){
   if(urlEl)APP.settings.haUrl=normUrl(urlEl.value);
   var extUrlEl=document.getElementById('set-url-external');
   if(extUrlEl)APP.settings.haUrlExternal=normUrl(extUrlEl.value);
-  // URLs changed — forget which one worked last so the next call re-probes.
-  window._haActiveUrl=null;
-  try{localStorage.removeItem('meadows_haActiveUrl');}catch(e){}
+  // The token is write-only: only a freshly-typed value is sent to the server;
+  // a blank field keeps whatever token is already stored there.
   var tokEl=document.getElementById('set-token');
-  if(tokEl)APP.settings.token=tokEl.value.trim();
+  var typedToken=tokEl?tokEl.value.trim():'';
   var brewerEl=document.getElementById('set-brewer');
   if(brewerEl)APP.settings.brewerName=brewerEl.value.trim();
   var extEl=document.getElementById('set-external-url');
@@ -22739,9 +22705,35 @@ function saveHASettings(){
   if(ccyEl)APP.settings.currency=ccyEl.value;
   saveSettings();
   scheduleSave(); // brewer name rides the shared blob — sync it too
-  toast('Settings saved');
-  startTempPolling();
-  if(typeof haConfigured==='function'&&haConfigured())testConnection();
+  // Push the HA connection to the server: URLs + (only if typed) the token.
+  // The token is stored server-side and proxied — never in the synced blob.
+  var cfg={url:APP.settings.haUrl,urlExternal:APP.settings.haUrlExternal};
+  if(typedToken)cfg.token=typedToken;
+  fetch('/api/ha-config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)})
+    .then(function(r){return r.json();})
+    .then(function(j){
+      APP._haTokenSet=!!(j&&j.hasToken);
+      APP._haTokenExp=(j&&j.tokenExp)||null;
+      if(tokEl)tokEl.value='';  // clear the field; status now reads "stored"
+      toast('Settings saved');
+      startTempPolling();
+      if(haConfigured())testConnection();
+    })
+    .catch(function(){toast('Settings saved — but HA config sync failed');});
+}
+
+// Clear the server-side HA token (e.g. on rotation or disconnect).
+function clearHAToken(){
+  if(!confirm('Remove the stored Home Assistant token from the server?'))return;
+  fetch('/api/ha-config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clearToken:true})})
+    .then(function(r){return r.json();})
+    .then(function(j){
+      APP._haTokenSet=!!(j&&j.hasToken);
+      APP._haTokenExp=(j&&j.tokenExp)||null;
+      toast('HA token cleared');
+      if(typeof showView==='function')showView('settings');
+    })
+    .catch(function(){toast('Could not clear token');});
 }
 
 // Auto-save handler for the Costs & Supplies card. Wired to each input's
@@ -22974,6 +22966,9 @@ async function init(){
   }
   updateTopbarDate();
   await loadData();
+  // Learn whether the server holds an HA token (and when it expires) — the
+  // token itself never comes to the browser. Drives haConfigured() & reminders.
+  await loadHAConfig();
   // Prefetch any media-source IDs in custom labels / brand logo so cache is warm
   if(typeof prefetchAllMediaUrls==='function')prefetchAllMediaUrls();
   // Ensure fermenters exist on fresh installs (loadData may have been a no-op
