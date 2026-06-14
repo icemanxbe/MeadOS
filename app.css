@@ -4,7 +4,7 @@
 --border:#2a2a35;--border2:#363645;
 --gold:#c9a84c;--gold2:#e8c97a;--gold3:#f5e4b0;
 --amber:#d4860a;--honey:#e8a020;
---text:#e8e0d0;--text2:#a89880;--text3:#6a5f50;
+--text:#e8e0d0;--text2:#a89880;--text3:#8a7d66;
 --green:#4a8c5c;--green2:#6ab87a;
 --red:#8c3a3a;--red2:#c05050;
 --blue:#3a5a8c;--blue2:#5a8ac0;
@@ -371,3 +371,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 #toast{box-shadow:0 6px 26px rgba(0,0,0,0.5),0 0 16px rgba(201,168,76,0.10)}
 /* sidebar footer lifts off the list */
 .sidebar-bottom{box-shadow:0 -8px 18px rgba(0,0,0,0.25)}
+/* keyboard accessibility: a visible focus ring for tab users (mouse clicks
+   don't trigger :focus-visible, so this stays out of the way for pointer use).
+   Inputs already show a gold focus border, so suppress the double ring there. */
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:3px}
+.form-input:focus-visible,.form-select:focus-visible,.form-textarea:focus-visible,.search-input:focus-visible{outline:none}
