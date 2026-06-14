@@ -75,6 +75,7 @@ LABEL_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+\.(png|jpe?g|webp|svg|gif)$", re.I)
 STATIC_ASSETS = {
     "/app.js": "text/javascript; charset=utf-8",
     "/app.css": "text/css; charset=utf-8",
+    "/test.html": "text/html; charset=utf-8",  # zero-dep unit checks (dev tool)
     # PWA assets — all public (the install/offline shell isn't sensitive).
     "/sw.js": "text/javascript; charset=utf-8",
     "/manifest.webmanifest": "application/manifest+json; charset=utf-8",
@@ -272,6 +273,92 @@ def verify_password(pw, stored):
         return False
 
 
+# ---- session cookies (HTML login page instead of HTTP Basic) -----------------
+# After a correct password on /login, the browser gets a signed, HttpOnly
+# session cookie so it isn't re-prompted. Cookies are HMAC-signed with a
+# per-install secret (so they can't be forged) and carry an expiry.
+SESSION_DAYS = 30
+
+
+def _now_epoch():
+    return int(datetime.now(timezone.utc).timestamp())
+
+
+def session_secret():
+    s = get_config("session_secret")
+    if not s:
+        s = os.urandom(32).hex()
+        set_config("session_secret", s)
+    return s
+
+
+def make_session_token():
+    payload = str(_now_epoch() + SESSION_DAYS * 86400)  # expiry epoch
+    sig = hmac.new(session_secret().encode(), payload.encode(), hashlib.sha256).hexdigest()
+    return payload + "." + sig
+
+
+def verify_session_token(tok):
+    if not tok or "." not in tok:
+        return False
+    payload, sig = tok.rsplit(".", 1)
+    expected = hmac.new(session_secret().encode(), payload.encode(), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig, expected):
+        return False
+    try:
+        return int(payload) > _now_epoch()
+    except ValueError:
+        return False
+
+
+def login_page_html():
+    # Self-contained styled login page (matches the app's dark/gold theme).
+    return """<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MeadOS · Sign in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Pro:ital@0;1&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0}
+body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0a0a0b;color:#e8e0d0;font-family:'Crimson Pro',serif;padding:24px}
+.box{width:100%;max-width:360px;background:linear-gradient(180deg,#131317,#101013);border:1px solid #2a2a35;border-radius:16px;padding:32px 28px;box-shadow:0 6px 30px rgba(0,0,0,.5);position:relative}
+.box::before{content:'';position:absolute;top:0;left:26px;right:26px;height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,.5),transparent)}
+.logo{font-family:'Cinzel',serif;font-size:22px;color:#c9a84c;letter-spacing:4px;text-align:center;font-weight:700;text-shadow:0 0 20px rgba(201,168,76,.3)}
+.sub{text-align:center;color:#8a7d66;font-size:12px;font-style:italic;margin:6px 0 22px}
+label{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;color:#8a7d66;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
+input{width:100%;background:#18181c;border:1px solid #2a2a35;border-radius:6px;color:#e8e0d0;font-family:inherit;font-size:15px;padding:11px 13px;outline:none;transition:border-color .2s}
+input:focus{border-color:#c9a84c;box-shadow:0 0 0 2px rgba(201,168,76,.12)}
+button{width:100%;margin-top:16px;padding:11px;border-radius:6px;border:1px solid #c9a84c;background:linear-gradient(135deg,#2a1f08,#3d2e0a);color:#e8c97a;font-family:'Cinzel',serif;letter-spacing:2px;font-size:14px;cursor:pointer;transition:all .2s}
+button:hover{background:linear-gradient(135deg,#3d2e0a,#5a4510)}
+button:disabled{opacity:.6;cursor:default}
+.err{color:#c05050;font-size:13px;text-align:center;min-height:18px;margin-top:12px}
+</style></head><body>
+<form class="box" onsubmit="return go(event)">
+<div class="logo">MEAD&#332;S</div>
+<div class="sub">Mead Brewing Companion</div>
+<label for="pw">Password</label>
+<input id="pw" type="password" autocomplete="current-password" autofocus>
+<button id="btn" type="submit">Sign in</button>
+<div class="err" id="err"></div>
+</form>
+<script>
+function go(e){
+  e.preventDefault();
+  var btn=document.getElementById('btn'),err=document.getElementById('err');
+  btn.disabled=true;err.textContent='';
+  fetch('/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password:document.getElementById('pw').value})})
+    .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});})
+    .then(function(res){
+      if(res.ok&&res.j&&res.j.ok){location.replace('/index.html'+(location.hash||''));}
+      else{err.textContent=(res.j&&res.j.error)||'Sign in failed';btn.disabled=false;}
+    })
+    .catch(function(){err.textContent='Network error';btn.disabled=false;});
+  return false;
+}
+</script>
+</body></html>"""
+
+
 # ---- public share projection -------------------------------------------------
 # Fields of a batch that are safe to expose on a public share page. Everything
 # else (cost, private notes, internal fermenterId, etc.) is dropped. Whitelist,
@@ -442,6 +529,20 @@ def db_put_state(raw):
     return now
 
 
+def db_history_list():
+    with db_connect() as conn:
+        rows = conn.execute(
+            "SELECT id, saved_at, updated_at, bytes FROM history ORDER BY id DESC"
+        ).fetchall()
+    return [{"id": r[0], "savedAt": r[1], "updatedAt": r[2], "bytes": r[3]} for r in rows]
+
+
+def db_history_get(hid):
+    with db_connect() as conn:
+        row = conn.execute("SELECT data FROM history WHERE id = ?", (hid,)).fetchone()
+    return row[0] if row else None
+
+
 def db_health():
     with db_connect() as conn:
         row = conn.execute(
@@ -480,7 +581,7 @@ class Handler(BaseHTTPRequestHandler):
         super().end_headers()
 
     # ---- helpers ----
-    def _send(self, code, body, ctype="application/json; charset=utf-8"):
+    def _send(self, code, body, ctype="application/json; charset=utf-8", extra_headers=None):
         if isinstance(body, (dict, list)):
             body = json.dumps(body)
         data = body.encode("utf-8") if isinstance(body, str) else body
@@ -489,6 +590,10 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Expose-Headers", "X-Data-Rev")
+        if extra_headers:
+            for k, v in extra_headers.items():
+                self.send_header(k, v)
         self.end_headers()
         self.wfile.write(data)
 
@@ -529,11 +634,22 @@ class Handler(BaseHTTPRequestHandler):
             return True
         return any(ip in net for net in trusted_networks())
 
+    def _session_cookie(self):
+        raw = self.headers.get("Cookie", "")
+        for part in raw.split(";"):
+            part = part.strip()
+            if part.startswith("meados_session="):
+                return part[len("meados_session="):]
+        return ""
+
     def _auth_ok(self):
         """True when the request may proceed: no password set, LAN client,
-        or valid HTTP Basic credentials (any username, password checked)."""
+        a valid login-session cookie, or valid HTTP Basic credentials (kept for
+        programmatic clients; interactive users get the /login page)."""
         stored = get_config("external_password")
         if not stored or self._is_lan():
+            return True
+        if verify_session_token(self._session_cookie()):
             return True
         hdr = self.headers.get("Authorization", "")
         if hdr.startswith("Basic "):
@@ -546,13 +662,19 @@ class Handler(BaseHTTPRequestHandler):
                 pass
         return False
 
+    def _set_cookie_header(self):
+        # Secure only when the request arrived over HTTPS (don't set it on a
+        # plain-http LAN/proxy hop, or the cookie would never be stored).
+        secure = "; Secure" if self.headers.get("X-Forwarded-Proto", "").lower() == "https" else ""
+        return "meados_session=%s; HttpOnly; SameSite=Lax; Path=/; Max-Age=%d%s" % (
+            make_session_token(), SESSION_DAYS * 86400, secure)
+
     def _send_auth_required(self):
-        # Close the connection: the request body (if any) is unread, and with
-        # keep-alive it would otherwise be parsed as the next request.
+        # API 401 — no WWW-Authenticate header, so browsers don't pop the native
+        # Basic dialog; interactive page loads get the styled /login page instead.
         self.close_connection = True
-        data = b'{"ok": false, "error": "password required"}'
+        data = b'{"ok": false, "error": "login required"}'
         self.send_response(401)
-        self.send_header("WWW-Authenticate", 'Basic realm="MeadOS", charset="UTF-8"')
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
@@ -645,6 +767,21 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/favicon.ico":
             self._send(204, b"", "image/x-icon")
             return
+        if path == "/login":
+            # Public: the form itself must load before you're authenticated.
+            # If already in (LAN / valid cookie / no password), skip to the app.
+            if self._auth_ok():
+                self.send_response(302)
+                self.send_header("Location", "/index.html")
+                self.send_header("Content-Length", "0")
+                self.end_headers()
+                return
+            self._send(200, login_page_html(), "text/html; charset=utf-8")
+            return
+        if path == "/logout":
+            self._send(200, {"ok": True}, extra_headers={
+                "Set-Cookie": "meados_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0"})
+            return
         if path in STATIC_ASSETS:
             # Public so share-page guests (who may be behind the external
             # password) can load the app shell's JS/CSS. These contain no
@@ -719,7 +856,12 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, bounce, "text/html; charset=utf-8")
             return
         if not self._auth_ok():
-            self._send_auth_required()
+            # Interactive app-shell load → show the styled login page; API calls
+            # get a plain 401 (the client can react without a native dialog).
+            if path in ("/index.html", "/meadows.html"):
+                self._send(200, login_page_html(), "text/html; charset=utf-8")
+            else:
+                self._send_auth_required()
             return
         if path == "/api/security":
             self._send(200, {
@@ -740,19 +882,59 @@ class Handler(BaseHTTPRequestHandler):
         elif path == "/api/data":
             row = db_get_state()
             if row:
-                self._send(200, row[0].encode("utf-8"))
+                # X-Data-Rev lets the client detect concurrent edits on save.
+                self._send(200, row[0].encode("utf-8"), extra_headers={"X-Data-Rev": row[2] or ""})
             else:
                 self._send(404, {"ok": False, "error": "no data stored yet"})
         elif path == "/api/health":
             self._send(200, db_health())
+        elif path == "/api/history":
+            self._send(200, {"ok": True, "items": db_history_list()})
+        elif path.startswith("/api/history/"):
+            try:
+                hid = int(path.rsplit("/", 1)[1])
+            except ValueError:
+                self._send(400, {"ok": False, "error": "bad history id"})
+                return
+            data = db_history_get(hid)
+            if data is None:
+                self._send(404, {"ok": False, "error": "snapshot not found"})
+            else:
+                self._send(200, data.encode("utf-8"))
         else:
             self._send(404, {"ok": False, "error": "not found"})
 
     def do_POST(self):
+        path = self.path.split("?", 1)[0]
+        if path == "/login":
+            # Public: this IS the authentication step. Verify the password and,
+            # on success, hand back a signed session cookie.
+            stored = get_config("external_password")
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+            except ValueError:
+                length = 0
+            body = self.rfile.read(length).decode("utf-8", "replace") if length else ""
+            pw = ""
+            if "application/json" in self.headers.get("Content-Type", ""):
+                try:
+                    pw = (json.loads(body) or {}).get("password") or ""
+                except ValueError:
+                    pw = ""
+            else:
+                for kv in body.split("&"):
+                    if kv.startswith("password="):
+                        pw = urllib.parse.unquote_plus(kv[len("password="):])
+            if not stored:
+                self._send(400, {"ok": False, "error": "no password is set on this server"})
+            elif verify_password(pw, stored):
+                self._send(200, {"ok": True}, extra_headers={"Set-Cookie": self._set_cookie_header()})
+            else:
+                self._send(401, {"ok": False, "error": "Incorrect password"})
+            return
         if not self._auth_ok():
             self._send_auth_required()
             return
-        path = self.path.split("?", 1)[0]
         if path == "/api/security":
             # Changing the password is restricted to LAN clients — otherwise an
             # unprotected server could be locked by anyone on the internet.
@@ -849,6 +1031,21 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._send(200, {"ok": True, "removed": removed})
             return
+        if path == "/api/history/restore":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+                hid = int(body.get("id"))
+            except (ValueError, UnicodeDecodeError, TypeError):
+                self._send(400, {"ok": False, "error": "invalid body / id"})
+                return
+            data = db_history_get(hid)
+            if data is None:
+                self._send(404, {"ok": False, "error": "snapshot not found"})
+                return
+            updated = db_put_state(data)  # becomes current + a fresh history entry
+            self._send(200, {"ok": True, "updatedAt": updated, "bytes": len(data)})
+            return
         if path != "/api/data":
             self._send(404, {"ok": False, "error": "not found"})
             return
@@ -866,6 +1063,15 @@ class Handler(BaseHTTPRequestHandler):
             json.loads(raw)  # reject non-JSON so the db can't be corrupted
         except (ValueError, UnicodeDecodeError):
             self._send(400, {"ok": False, "error": "body is not valid JSON"})
+            return
+        # Concurrency guard: the client sends the rev it last loaded in X-Base-Rev.
+        # If the stored state moved on since then, another device saved first —
+        # reject so we don't silently clobber it. "*" forces an overwrite.
+        base_rev = self.headers.get("X-Base-Rev")
+        cur = db_get_state()
+        cur_rev = cur[2] if cur else None
+        if base_rev != "*" and cur_rev and base_rev != cur_rev:
+            self._send(409, {"ok": False, "error": "conflict", "currentRev": cur_rev})
             return
         updated = db_put_state(raw)
         self._send(200, {"ok": True, "bytes": len(raw), "updatedAt": updated})

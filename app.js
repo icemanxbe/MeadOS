@@ -4738,7 +4738,7 @@ async function haTestConnection(){
   return{ok:anyOk,msg:msg};
 }
 
-async function saveData(){
+async function saveData(force){
   var data=packageState();
   var json=JSON.stringify(data);
   // Always cache locally
@@ -4747,14 +4747,25 @@ async function saveData(){
   setSyncStatus('syncing');
   var res=await apiFetch('/api/data',{
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    // X-Base-Rev is the rev we last loaded; the server rejects (409) if the
+    // stored state moved on since — so a second device can't be clobbered.
+    // '*' forces an overwrite (used by the conflict resolver).
+    headers:{'Content-Type':'application/json','X-Base-Rev':force?'*':(window._dataRev||'')},
     body:json
   });
+  // Conflict — another device saved newer data. Don't retry-clobber; ask.
+  if(res&&res.status===409){
+    setSyncStatus('error');
+    lastSyncMeta={ts:new Date(),bytes:json.length,mode:'server',ok:false,detail:'conflict — newer data on server'};
+    if(typeof onSaveConflict==='function')onSaveConflict();
+    return false;
+  }
   var ok=!!(res&&res.ok);
   lastSyncMeta={ts:new Date(),bytes:json.length,mode:'server',ok:ok,detail:ok?'saved to server (SQLite)':'server unreachable'};
   setSyncStatus(ok?'synced':'error');
   if(ok){
-    // Success — clear any pending state, record sync timestamp
+    // Success — capture the new rev, clear any pending state, record timestamp
+    try{var b=await res.json();if(b&&b.updatedAt)window._dataRev=b.updatedAt;}catch(e){}
     pendingSync=false;
     try{
       localStorage.removeItem('meadows_pendingSync');
@@ -4767,6 +4778,92 @@ async function saveData(){
     markPendingSync();
   }
   return ok;
+}
+
+// Save-conflict resolver: shown when the server rejects a save because another
+// device saved first. The user decides whose version wins (no silent clobber).
+function onSaveConflict(){
+  if(window._saveConflictShown)return; // don't stack modals on repeated 409s
+  window._saveConflictShown=true;
+  closeModal();
+  document.body.insertAdjacentHTML('beforeend',
+    '<div class="modal-overlay"><div class="modal" style="max-width:460px">'
+    +'<div class="modal-title">⚠ SAVE CONFLICT</div>'
+    +'<div style="font-size:13px;color:var(--text2);line-height:1.65;margin-bottom:16px">Another device saved newer data while you were editing. To avoid silently overwriting it, your last change was <strong>not</strong> saved. Choose how to resolve:</div>'
+    +'<div style="display:flex;flex-direction:column;gap:8px">'
+    +'<button class="btn btn-secondary" onclick="resolveSaveConflict(\'reload\')">↻ Load their version (discard my unsaved changes)</button>'
+    +'<button class="btn btn-danger" onclick="resolveSaveConflict(\'overwrite\')">⚠ Keep mine (overwrite the server)</button>'
+    +'</div></div></div>');
+}
+function resolveSaveConflict(choice){
+  window._saveConflictShown=false;
+  closeModal();
+  if(choice==='reload'){
+    loadData().then(function(){renderMain();toast('↻ Loaded the latest from server');});
+  }else if(choice==='overwrite'){
+    saveData(true).then(function(ok){if(ok)toast('✦ Saved — overwrote the server copy');});
+  }
+}
+
+// ==================== CSV EXPORT ====================
+function downloadCSV(filename,header,rows){
+  var esc=function(v){v=(v==null?'':String(v));return /[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+  var text=[header.join(',')].concat(rows.map(function(r){return r.map(esc).join(',');})).join('\n');
+  var blob=new Blob([text],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);a.download=filename;
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);
+}
+function exportBatchesCSV(){
+  var rows=(APP.batches||[]).map(function(b){
+    var bot=APP.bottling[b.id]||{};
+    return [b.serial||b.id,b.name,b.style||'',b.startDate||'',b.og||'',bot.fg||'',bot.abv||'',b.honey||'',b.honeyType||'',b.yeast||'',getBatchStatus(b),bot.date||'',bot.bottleCount||''];
+  });
+  downloadCSV('meados-batches.csv',['Serial','Name','Style','Started','OG','FG','ABV','HoneyKg','HoneyType','Yeast','Status','Bottled','Bottles'],rows);
+  toast('✦ Exported '+rows.length+' batch'+(rows.length===1?'':'es'));
+}
+function exportGravityCSV(){
+  var rows=[];
+  (APP.batches||[]).forEach(function(b){
+    (APP.logs[b.id]||[]).forEach(function(l){
+      rows.push([b.serial||b.id,b.name,l.date,l.gravity,(l.temp==null?'':l.temp),(l.ph==null?'':l.ph)]);
+    });
+  });
+  downloadCSV('meados-gravity-logs.csv',['Batch','Name','Date','Gravity','TempC','pH'],rows);
+  toast('✦ Exported '+rows.length+' reading'+(rows.length===1?'':'s'));
+}
+
+// ==================== VERSION HISTORY (server snapshots) ====================
+async function loadHistoryPanel(){
+  var el=document.getElementById('history-list');
+  if(el)el.innerHTML='Loading…';
+  var res=await apiFetch('/api/history');
+  if(!res||!res.ok){if(el)el.innerHTML='<span style="color:var(--red2)">Could not load history (server unreachable).</span>';return;}
+  var data=null;try{data=await res.json();}catch(e){}
+  var items=(data&&data.items)||[];
+  if(!el)return;
+  if(!items.length){el.innerHTML='No snapshots yet — they appear here once you\'ve saved.';return;}
+  el.innerHTML=items.map(function(it){
+    var when=it.savedAt||it.updatedAt||'';
+    var dt=when?new Date(when):null;
+    var label=(dt&&!isNaN(dt))?dt.toLocaleString('en-GB',{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'(unknown time)';
+    var kb=it.bytes?(it.bytes/1024).toFixed(0)+' KB':'';
+    return'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">'
+      +'<div><span style="color:var(--text)">'+label+'</span> <span style="font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-left:6px">'+kb+'</span></div>'
+      +'<button class="btn btn-secondary btn-sm" onclick="restoreHistorySnapshot('+it.id+',&quot;'+label.replace(/"/g,'')+'&quot;)">Restore</button>'
+      +'</div>';
+  }).join('');
+}
+async function restoreHistorySnapshot(id,label){
+  if(!confirm('Restore the snapshot from '+label+'?\n\nYour current data is saved as a new snapshot first, so you can switch back.'))return;
+  try{await saveData();}catch(e){}  // best-effort: ensure current state is in history
+  var res=await apiFetch('/api/history/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})});
+  if(!res||!res.ok){toast('⚠ Restore failed');return;}
+  try{var b=await res.json();if(b&&b.updatedAt)window._dataRev=b.updatedAt;}catch(e){}
+  await loadData();
+  renderMain();
+  toast('✦ Restored snapshot from '+label);
 }
 
 // ==================== HA COMPANION-CARD SUMMARY ====================
@@ -4959,6 +5056,8 @@ async function loadData(){
   var res=await apiFetch(APP._shareMode?'/api/share':'/api/data');
   if(res&&res.status===200){
     try{
+      // Capture the rev so the next save can detect concurrent edits.
+      if(res.headers&&res.headers.get)window._dataRev=res.headers.get('X-Data-Rev')||null;
       var parsed=await res.json();
       if(parsed){
         applyState(parsed);
@@ -6854,6 +6953,57 @@ function updateBatchSearchResults(q){
 function setBatchFilter(s){APP.filters.batchStatus=s;renderMain();}
 
 // ==================== BATCH DETAIL ====================
+// Project where fermentation is heading from the logged gravity readings:
+// recent drop rate (regression over the last few points), projected FG, and a
+// rough completion estimate. Linear extrapolation under-counts the tail (a real
+// ferment slows), so the UI labels it as approximate.
+function projectFermentation(b){
+  if(!b)return null;
+  var st=(typeof getBatchStatus==='function')?getBatchStatus(b):'';
+  if(st==='bottled'||st==='complete'||st==='failed')return null;
+  var logs=(APP.logs[b.id]||[]).filter(function(l){return l.gravity;}).slice()
+    .sort(function(a,c){return(a.date||'').localeCompare(c.date||'');});
+  if(logs.length<2)return null;
+  var t0=new Date(b.startDate).getTime();
+  var pts=logs.map(function(l){return {d:(new Date(l.date).getTime()-t0)/86400000,g:l.gravity};})
+    .filter(function(p){return!isNaN(p.d)&&p.d>=0;});
+  if(pts.length<2)return null;
+  var last=pts[pts.length-1];
+  // Least-squares slope over the last up-to-4 readings (gravity per day).
+  var win=pts.slice(-4),n=win.length,sx=0,sy=0,sxy=0,sxx=0;
+  win.forEach(function(p){sx+=p.d;sy+=p.g;sxy+=p.d*p.g;sxx+=p.d*p.d;});
+  var denom=n*sxx-sx*sx;
+  var ratePerDay=denom!==0?-((n*sxy-sx*sy)/denom):0; // positive = dropping
+  if(ratePerDay<0)ratePerDay=0;
+  var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+  var estFG=Math.min((recipe&&recipe.fgTarget)||1.000,last.g);
+  var remaining=last.g-estFG;
+  var atten=b.og&&b.og>1?Math.round((b.og-last.g)/(b.og-1)*100):null;
+  var STALL=0.0008; // pts/day; below this it's basically not moving
+  var nearFG=remaining<=0.003;
+  var stalled=ratePerDay<STALL&&!nearFG;
+  var daysToFG=(ratePerDay>=STALL&&remaining>0)?Math.ceil(remaining/ratePerDay):null;
+  var doneMs=daysToFG!=null?(new Date(logs[logs.length-1].date).getTime()+daysToFG*86400000):null;
+  return {ratePerDay:ratePerDay,estFG:estFG,atten:atten,remaining:remaining,daysToFG:daysToFG,doneMs:doneMs,stalled:stalled,nearFG:nearFG,lastG:last.g};
+}
+function renderFermentationProjection(b){
+  var p=projectFermentation(b);
+  if(!p)return'';
+  var accent=p.stalled?'var(--red2)':(p.nearFG?'var(--green2)':'var(--gold2)');
+  var title=p.nearFG?'✓ NEAR FINAL GRAVITY':(p.stalled?'⚠ POSSIBLY STALLED':'⏳ FERMENTATION PROJECTION');
+  function cell(label,val,c){return'<div style="text-align:center;padding:10px 6px;background:var(--bg3);border-radius:var(--radius)"><div style="font-family:var(--font-display);font-size:18px;color:'+(c||'var(--gold2)')+'">'+val+'</div><div class="micro-label">'+label+'</div></div>';}
+  var cells=cell('ATTENUATION',p.atten!=null?p.atten+'%':'—')
+    +cell('DROP RATE',p.ratePerDay>0.0001?(p.ratePerDay*1000).toFixed(1)+'<span style="font-size:10px;color:var(--text3)"> pt/d</span>':'~0')
+    +cell('PROJ. FG',p.estFG.toFixed(3))
+    +cell('EST. DONE',p.daysToFG!=null?'~'+p.daysToFG+'d':(p.nearFG?'≈ now':'—'),p.nearFG?'var(--green2)':'var(--gold2)');
+  var note=p.stalled
+    ?'Gravity has barely moved recently but isn\'t near target — check temperature, add nutrient, or consider a re-pitch (see Troubleshooting).'
+    :(p.nearFG?'Close to the projected final gravity. Take two stable readings a few days apart to confirm it\'s done, then rack/bottle.'
+    :'Estimated from your recent readings\' drop rate. Fermentation slows as it finishes, so the real completion is usually a little later.');
+  return'<div class="card" style="margin-bottom:16px;border-left:3px solid '+accent+'"><div class="card-header"><div class="card-title" style="color:'+accent+'">'+title+'</div></div>'
+    +'<div class="grid-4" style="margin-bottom:10px">'+cells+'</div>'
+    +'<div style="font-size:11.5px;color:var(--text3);font-style:italic;line-height:1.5">'+note+'</div></div>';
+}
 function renderBatchDetail(){
   var b=APP.batches.find(function(x){return x.id===currentBatchId;});
   if(!b)return'<div class="empty-state"><p>Batch not found.</p><br><button class="btn btn-secondary" onclick="showView(\'batches\')">← Back to Cellar</button></div>';
@@ -6928,6 +7078,7 @@ function renderBatchDetail(){
       }()):'')
       +(b.notes?'<tr><td style="color:var(--text3)">Notes</td><td style="font-style:italic">'+escHtml(b.notes)+'</td></tr>':'')
       +'</table></div>'
+      +renderFermentationProjection(b)
       +(b.rackings&&b.rackings.length?(function(){
         var rows=b.rackings.slice().sort(function(a,c){return(a.date||'').localeCompare(c.date||'');}).map(function(r,i){
           var fromF=getFermenter(r.fromFermenterId),toF=getFermenter(r.toFermenterId);
@@ -11619,11 +11770,16 @@ function renderSettings(){
     +'3. Paste, save. Done.'
     +'</div></div>'
     +'<div class="card"><div class="card-header"><div class="card-title">DATA BACKUP</div></div>'
-    +'<div style="font-size:13px;color:var(--text2);margin-bottom:16px">Export all data as JSON for backup or transfer.</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:16px">Export all data as JSON for backup, or as CSV for spreadsheet analysis.</div>'
     +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
     +'<button class="btn btn-secondary" onclick="exportData()">Export Backup</button>'
     +'<button class="btn btn-secondary" onclick="document.getElementById(\'import-file\').click()">Import Backup</button>'
+    +'<button class="btn btn-secondary" onclick="exportBatchesCSV()" title="One row per batch">⬇ Batches CSV</button>'
+    +'<button class="btn btn-secondary" onclick="exportGravityCSV()" title="One row per gravity reading">⬇ Gravity logs CSV</button>'
     +'<input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)"></div></div>'
+    +'<div class="card"><div class="card-header"><div class="card-title">VERSION HISTORY</div><button class="btn btn-secondary btn-sm" onclick="loadHistoryPanel()">↻ Refresh</button></div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px">The server keeps your recent saved snapshots. Restore one if something got messed up — restoring first saves the current state, so it\'s reversible.</div>'
+    +'<div id="history-list" style="font-size:13px;color:var(--text3)">Click <strong>Refresh</strong> to load snapshots.</div></div>'
     +'</div>'
     +'<div>'
     +'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">BRAND IDENTITY</div></div>'
