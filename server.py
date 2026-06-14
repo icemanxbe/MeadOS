@@ -311,9 +311,23 @@ def verify_session_token(tok):
         return False
 
 
+def login_logo_src():
+    # Use the brewer's custom brand logo if one is set and directly servable
+    # (a /labels/ asset or a data: URL); otherwise the default MeadOS crest.
+    try:
+        row = db_get_state()
+        if row:
+            logo = ((json.loads(row[0]) or {}).get("settings") or {}).get("brandLogo")
+            if isinstance(logo, str) and (logo.startswith("/labels/") or logo.startswith("data:")):
+                return logo
+    except Exception:
+        pass
+    return "/icon.svg"
+
+
 def login_page_html():
     # Self-contained styled login page (matches the app's dark/gold theme).
-    return """<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
+    return ("""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>MeadOS · Sign in</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -323,6 +337,7 @@ def login_page_html():
 body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0a0a0b;color:#e8e0d0;font-family:'Crimson Pro',serif;padding:24px}
 .box{width:100%;max-width:360px;background:linear-gradient(180deg,#131317,#101013);border:1px solid #2a2a35;border-radius:16px;padding:32px 28px;box-shadow:0 6px 30px rgba(0,0,0,.5);position:relative}
 .box::before{content:'';position:absolute;top:0;left:26px;right:26px;height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,.5),transparent)}
+.crest{width:128px;height:128px;object-fit:contain;display:block;margin:0 auto 16px;filter:drop-shadow(0 0 14px rgba(201,168,76,.45))}
 .logo{font-family:'Cinzel',serif;font-size:22px;color:#c9a84c;letter-spacing:4px;text-align:center;font-weight:700;text-shadow:0 0 20px rgba(201,168,76,.3)}
 .sub{text-align:center;color:#8a7d66;font-size:12px;font-style:italic;margin:6px 0 22px}
 label{display:block;font-family:'JetBrains Mono',monospace;font-size:11px;color:#8a7d66;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
@@ -334,6 +349,7 @@ button:disabled{opacity:.6;cursor:default}
 .err{color:#c05050;font-size:13px;text-align:center;min-height:18px;margin-top:12px}
 </style></head><body>
 <form class="box" onsubmit="return go(event)">
+<img src="__LOGO_SRC__" alt="MeadOS" class="crest">
 <div class="logo">MEAD&#332;S</div>
 <div class="sub">Mead Brewing Companion</div>
 <label for="pw">Password</label>
@@ -356,7 +372,7 @@ function go(e){
   return false;
 }
 </script>
-</body></html>"""
+</body></html>""").replace("__LOGO_SRC__", login_logo_src())
 
 
 # ---- public share projection -------------------------------------------------
