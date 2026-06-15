@@ -511,7 +511,7 @@ notes:'Frozen raspberries work BETTER than fresh — ice crystals rupture cell w
 },
 
 {
-id:'r14',name:'Blackcurrant Melomel',brandName:'Cassis',style:'Melomel',difficulty:'Intermediate',brandColor:'#3a1040',useGenericLabel:true,
+id:'r14',name:'Blackcurrant Melomel',brandName:'Cassis',style:'Melomel',difficulty:'Intermediate',brandColor:'#9a63b8',useGenericLabel:true,
 category:'Melomel',additionStage:'primary',
 volume:5.0,ogTarget:1.110,fgTarget:1.012,abvTarget:13.0,fermentDays:42,ageDays:120,
 minAgeDays:120,peakAgeDays:365,maxAgeDays:1095,
@@ -727,7 +727,7 @@ notes:'START WITH ONE CHILI. Capsaicin is fat-soluble but extracts into alcohol 
 },
 
 {
-id:'r22',name:'Coffee Mead',brandName:'Café',style:'Specialty',difficulty:'Intermediate',brandColor:'#3a2820',useGenericLabel:true,
+id:'r22',name:'Coffee Mead',brandName:'Café',style:'Specialty',difficulty:'Intermediate',brandColor:'#b5835a',useGenericLabel:true,
 category:'Specialty',additionStage:'secondary',
 volume:5.0,ogTarget:1.095,fgTarget:1.010,abvTarget:11.5,fermentDays:35,ageDays:90,
 minAgeDays:90,peakAgeDays:180,maxAgeDays:540,
@@ -814,7 +814,7 @@ notes:'Use CEYLON cinnamon (true cinnamon) — cassia is harsher and dominates. 
 },
 
 {
-id:'r25',name:'Sack Mead · Port-Style (Ruby)',brandName:'Porto Robijn',style:'Sack',difficulty:'Advanced',brandColor:'#6a1428',useGenericLabel:true,
+id:'r25',name:'Sack Mead · Port-Style (Ruby)',brandName:'Porto Robijn',style:'Sack',difficulty:'Advanced',brandColor:'#b8485e',useGenericLabel:true,
 category:'Sack',additionStage:'primary',
 volume:5.0,ogTarget:1.140,fgTarget:1.028,abvTarget:14.5,fermentDays:60,ageDays:365,
 minAgeDays:240,peakAgeDays:540,maxAgeDays:1825,
