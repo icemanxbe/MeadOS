@@ -1,4 +1,8 @@
 'use strict';
+/* MeadOS — © 2026 icemanxbe (https://github.com/icemanxbe/MeadOS)
+   Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE): free to
+   use, modify and share for noncommercial purposes; selling is not permitted.
+   Required Notice: Copyright © 2026 icemanxbe (https://github.com/icemanxbe/MeadOS) */
 
 var MEADOS_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMjAgMzIwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNlOGM5N2EiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNjOWE4NGMiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiByeD0iNjYiIGZpbGw9IiMxNDE0MTciIHN0cm9rZT0iIzJhMmEzNSIgc3Ryb2tlLXdpZHRoPSI0Ii8+PHBvbHlnb24gcG9pbnRzPSIxNjAsNDYgMjU0LDEwMCAyNTQsMjA4IDE2MCwyNjIgNjYsMjA4IDY2LDEwMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjciIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cG9seWdvbiBwb2ludHM9IjE2MCw3MCAyMzMsMTEyIDIzMywxOTYgMTYwLDIzOCA4NywxOTYgODcsMTEyIiBmaWxsPSJub25lIiBzdHJva2U9IiNjOWE4NGMiIHN0cm9rZS13aWR0aD0iMiIgb3BhY2l0eT0iMC40NSIvPjxwYXRoIGQ9Ik0xNjAgOTYgQzE4OCAxMzggMjA2IDE2MiAyMDYgMTkwIGE0NiA0NiAwIDAgMSAtOTIgMCBDMTE0IDE2MiAxMzIgMTM4IDE2MCA5NiBaIiBmaWxsPSJ1cmwoI2cpIi8+PHBhdGggZD0iTTE0MSAxODQgYTIxIDI3IDAgMCAwIDE1IDMyIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYzZDYiIHN0cm9rZS13aWR0aD0iNyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBvcGFjaXR5PSIwLjY1Ii8+PC9zdmc+";
 // Minimal QR code generator — public domain
@@ -258,7 +262,7 @@ steps:[
 notes:'Frozen supermarket forest-fruit blends are perfect. Avoid blends with strawberry — different fermentation profile. The blackcurrant brings the signature depth.'
 },
 {
-id:'r5',name:'Blueberry Mead',brandName:'Blueberry',style:'Melomel',difficulty:'Beginner',brandColor:'#384068',
+id:'r5',name:'Blueberry Mead',brandName:'Blueberry',style:'Melomel',difficulty:'Beginner',brandColor:'#6e84cc',
 volume:5.0,ogTarget:1.096,fgTarget:1.010,abvTarget:11.3,fermentDays:42,ageDays:120,
 minAgeDays:90,peakAgeDays:300,maxAgeDays:900,
 tags:['Single fruit','Indigo','Antioxidant'],
@@ -286,7 +290,7 @@ steps:[
 notes:'Wild blueberries give the deepest color. Frozen-then-thawed extraction is essential — fresh blueberry skins resist releasing their character.'
 },
 {
-id:'r6',name:'Cherry Mead',brandName:'Cherry',style:'Melomel',difficulty:'Intermediate',brandColor:'#8a2030',
+id:'r6',name:'Cherry Mead',brandName:'Cherry',style:'Melomel',difficulty:'Intermediate',brandColor:'#c8505f',
 volume:5.0,ogTarget:1.100,fgTarget:1.010,abvTarget:11.8,fermentDays:42,ageDays:150,
 minAgeDays:120,peakAgeDays:300,maxAgeDays:1095,
 tags:['Stone fruit','Ruby red','Long aging'],
@@ -431,7 +435,7 @@ notes:'AVOID juice with preservatives (sodium benzoate, potassium sorbate) — t
 },
 
 {
-id:'r11',name:'Pyment · Grape Mead',brandName:'Pyment',style:'Pyment',difficulty:'Intermediate',brandColor:'#7a2040',useGenericLabel:true,
+id:'r11',name:'Pyment · Grape Mead',brandName:'Pyment',style:'Pyment',difficulty:'Intermediate',brandColor:'#c06484',useGenericLabel:true,
 category:'Pyment',additionStage:'primary',
 volume:5.0,ogTarget:1.110,fgTarget:1.010,abvTarget:13.5,fermentDays:56,ageDays:180,
 minAgeDays:180,peakAgeDays:540,maxAgeDays:1825,
@@ -979,6 +983,141 @@ steps:[
 {day:540,title:'Peak Tasting (18 months)',desc:'When this style truly arrives. Caramel + maple + honey are one note. Sweetness is balanced by the slight oxidative depth long aging provides. Serve at 12-14°C — cold dulls the aromatics.'}
 ],
 notes:'BOCHET TECHNIQUE: The caramelization defines this mead. Aim for DEEP amber smelling of toffee/marshmallow. Color guide: maple syrup color = under-caramelized. Espresso color = burnt. Halfway between = perfect. If unsure, stop early — under-caramelized still tastes good; burnt is irrecoverable bitter charcoal.\n\nMAPLE TIMING: Add maple BEFORE pitching yeast (in primary). Adding maple in secondary creates a different style — fresher maple, less integrated. For this recipe the caramel + maple need time together.\n\nVESSEL HEADSPACE: Bochets foam more than traditional meads — caramelized sugars + maple + active yeast = vigorous primary. Use a 9 L primary fermenter and target ~6 L of must (≈67% fill); the extra headspace handles the krausen volcano cleanly.\n\nWHY WORTH THE EFFORT: This is one of the most rewarding meads to brew. Caramelization is the only "active" technique mead has — the rest is patience. The result is unlike anything else: bourbon-rich, dessert-sweet, dark and dramatic.\n\nDISTANT COUSIN: r26 (Aged Tawny Bochet) is the truly long-aged version of this style — 18 months MINIMUM, 3+ years to peak. This recipe (r29) is the "shorter" bochet — drinkable at 1 year, peak at 18 months. Brew both as a side-by-side comparison brew at 3-year intervals.'
+},
+{
+id:'r30',name:'Sparkling Traditional Mead',brandName:'Pétillant d\'Or',style:'Sparkling',difficulty:'Intermediate',brandColor:'#e0c878',useGenericLabel:true,
+category:'Sparkling',
+volume:5.0,ogTarget:1.090,fgTarget:1.000,abvTarget:11.8,fermentDays:35,ageDays:90,
+minAgeDays:60,peakAgeDays:240,maxAgeDays:730,
+tags:['Sparkling','Champagne-style','Dry','Carbonated','Celebration'],
+description:'A bone-dry, bottle-conditioned mead that drinks like a honey champagne — fine bubbles, crisp finish, the honey aromatics lifted by the carbonation. Fermented fully dry with a champagne yeast, then primed and conditioned in pressure-rated bottles. The classic celebration mead.',
+ingredients:[
+{item:'Wildflower Honey',amount:'1.5 kg',notes:'A light, floral honey (acacia, orange blossom, clover) shows best through bubbles'},
+{item:'Spring Water',amount:'to the 5 L mark',notes:'Add the honey first, then top up to 5 L — do NOT pour 5 L of water on top of the honey, it would overshoot the volume'},
+{item:'Lalvin EC-1118 Champagne Yeast',amount:'5 g (a part-pack covers 5 L — reseal & fridge the rest)',notes:'Ferments bone-dry and shrugs off bottle-conditioning pressure'},
+{item:'Mead Yeast Nutrient',amount:'~12 g (1 sachet — you won\'t need a second for 5 L)',notes:'Split into two staggered additions'},
+{item:'Corn sugar (dextrose) for priming',amount:'~33 g at bottling',notes:'≈2.5 volumes CO₂ in 5 L — use Brewing Tools → Carbonation for your exact target/temperature'}
+],
+steps:[
+{day:0,title:'Brew Day',desc:'Clean & sanitize. Dissolve 1.5 kg honey into ~3.5 L room-temp water, then top up to the 5 L mark (honey adds volume, so topping to the mark keeps you at 5 L). Stir vigorously to aerate. Take OG (~1.090). Rehydrate EC-1118 (GoFerm if you have it) and pitch. IMPORTANT: do NOT stabilize this batch at any point — sorbate/sulfite would kill the carbonation.'},
+{day:1,title:'First Nutrient (SNA 1/2)',desc:'Once airlock activity starts, add ~6 g nutrient (half the sachet). Stir gently. Save the other half for day 3 — one sachet is plenty for 5 L.'},
+{day:3,title:'Second Nutrient (SNA 2/2)',desc:'Add the remaining ~6 g. Degas by stirring. Log a gravity reading.'},
+{day:14,title:'Gravity Check',desc:'Fermentation slowing. Keep it warm enough (18–24°C) for EC-1118 to finish bone-dry toward 0.998–1.000 — leftover sugar plus priming would over-carbonate.'},
+{day:28,title:'Rack when fermentation is DONE (≈ now, but go by gravity)',desc:'Not a fixed day: rack only once two readings 2–3 days apart are identical and at/near 0.998–1.000. Rack off the lees into a clean vessel, leaving some yeast in suspension — you need live yeast to carbonate. Do NOT add sulfite/sorbate.'},
+{day:42,title:'Confirm dry & let it clear',desc:'Give it 2–4 weeks to clear and re-confirm a stable, fully-dry gravity before priming. The clearer and drier, the cleaner the sparkle.'},
+{day:56,title:'Prime & Bottle — EARLIEST point, later is fine',desc:'Treat this as the earliest sensible bottling day, not a deadline. Dissolve the priming sugar (Brewing Tools → Carbonation: ~33 g corn sugar for ~2.5 vol in 5 L) in a little warm water, gently mix it through the whole batch, then bottle in PRESSURE-RATED bottles (champagne/Belgian + crown caps or wired corks). Keep one clear PET tester bottle to feel the pressure build.'},
+{day:77,title:'Condition (2–3 weeks warm)',desc:'Leave the bottles at 18–22°C for 2–3 weeks so the yeast eats the priming sugar and carbonates. Squeeze the PET tester — firm = carbonated. Then chill to settle the yeast.'},
+{day:120,title:'First Tasting',desc:'Chill thoroughly and pour gently, leaving the last splash + yeast behind. Crisp, dry and sparkling. It keeps improving for months and the bubbles hold.'}
+],
+notes:'GOLDEN RULE: a sparkling mead must NOT be stabilized — sorbate/sulfite stop the yeast that makes the bubbles. Ferment fully dry, prime, bottle-condition. SAFETY: pressure-rated bottles only; ~2.5 vol is "sparkling", 3+ vol needs champagne bottles with wired closures. See Mead Guide → Sparkling & Carbonated Mead and Brewing Tools → Carbonation / Priming Sugar.'
+},
+{
+id:'r31',name:'Sparkling Cyser',brandName:'Cidre Pétillant',style:'Sparkling',difficulty:'Beginner',brandColor:'#a8c85a',useGenericLabel:true,
+category:'Cyser',
+volume:5.0,ogTarget:1.065,fgTarget:1.000,abvTarget:8.5,fermentDays:28,ageDays:60,
+minAgeDays:45,peakAgeDays:150,maxAgeDays:365,
+tags:['Sparkling','Cyser','Apple','Carbonated','Easy','Autumn'],
+description:'Apple juice + honey, fermented dry and bottle-conditioned into a crisp sparkling cyser — somewhere between a dry cider and a light mead. Approachable, fast, and a crowd-pleaser. Honey rounds the apple; the bubbles keep it lively.',
+ingredients:[
+{item:'Fresh apple juice (no preservatives)',amount:'to the 5 L mark (≈4 L)',notes:'Cloudy/pressed juice has more character. Must be preservative-free (no sorbate/benzoate) or it won\'t ferment — this is your liquid, added in place of most of the water'},
+{item:'Wildflower Honey',amount:'0.9 kg',notes:'Apple juice supplies a lot of the sugar, so less honey than a traditional'},
+{item:'Spring Water',amount:'only if needed to reach the 5 L mark',notes:'Usually the juice + honey already reach ~5 L — top up only if short'},
+{item:'Lalvin EC-1118 Champagne Yeast',amount:'5 g (part-pack; reseal the rest)',notes:'Clean, dry, sparkling-friendly. A cider yeast also works'},
+{item:'Mead Yeast Nutrient',amount:'~9 g (well under a sachet)',notes:'Apple juice already carries some nutrition; you won\'t need a full sachet'},
+{item:'Corn sugar (dextrose) for priming',amount:'~33 g at bottling',notes:'≈2.5 vol — see Brewing Tools → Carbonation'}
+],
+steps:[
+{day:0,title:'Brew Day',desc:'Sanitize everything. Warm ~1 L of the apple juice, dissolve 0.9 kg honey into it, then combine with the rest of the juice in the fermenter and top up to the 5 L mark with juice (or a splash of water if needed). Take OG (~1.065). Pitch EC-1118. Do NOT stabilize — this needs to carbonate later.'},
+{day:2,title:'Nutrient (single dose)',desc:'Add ~9 g nutrient once it\'s bubbling. That\'s all the nutrient this needs — keep the rest of the sachet for another batch.'},
+{day:10,title:'Gravity Check',desc:'Vigorous, fruity ferment. Heading for a dry 0.998–1.002. Keep at 16–22°C for clean apple character.'},
+{day:21,title:'Rack when fermentation is DONE (go by gravity, not the date)',desc:'Once two readings are stable and dry, rack off the lees, leaving some yeast in suspension for carbonation. No sulfite/sorbate.'},
+{day:35,title:'Prime & Bottle — earliest point, later is fine',desc:'Earliest sensible bottling, not a deadline. Mix in the priming sugar (~33 g corn sugar for ~2.5 vol in 5 L — Brewing Tools → Carbonation) and bottle in pressure-rated bottles. Swing-tops or heavy beer bottles are fine at this carbonation level.'},
+{day:56,title:'Condition (2–3 weeks warm), then chill',desc:'18–22°C for 2–3 weeks to carbonate, then refrigerate. Best young and fresh.'},
+{day:75,title:'Tasting',desc:'Serve cold. Dry, appley, lightly sparkling — like a honeyed dry cider. Drink within a year for the brightest fruit.'}
+],
+notes:'Preservative-free juice is essential — sorbate/benzoate in supermarket juice will stop fermentation. Like all sparkling meads, do NOT stabilize; ferment dry, prime, and bottle-condition in pressure-rated bottles (see Mead Guide → Sparkling & Carbonated Mead).'
+},
+{
+id:'r32',name:'Hydromel · Sparkling Session Mead',brandName:'Hydromel Léger',style:'Sparkling',difficulty:'Beginner',brandColor:'#d8c87a',useGenericLabel:true,
+category:'Hydromel',
+volume:5.0,ogTarget:1.045,fgTarget:0.998,abvTarget:6.2,fermentDays:21,ageDays:30,
+minAgeDays:21,peakAgeDays:90,maxAgeDays:240,
+tags:['Sparkling','Hydromel','Session','Low-ABV','Quick','Carbonated','Easy'],
+description:'A light, low-alcohol sparkling mead (≈6%) you can brew fast and drink young — think honey "spritz". Low gravity means a quick clean ferment; bottle-conditioned for a refreshing fizz. The gateway sparkling mead.',
+ingredients:[
+{item:'Wildflower Honey',amount:'0.75 kg',notes:'Light honey keeps it delicate and sessionable'},
+{item:'Spring Water',amount:'to the 5 L mark',notes:'Add the honey first, then top up to 5 L'},
+{item:'Lalvin EC-1118 Champagne Yeast',amount:'5 g (part-pack; reseal the rest)',notes:'Even a pinch ferments this low gravity; one part-pack is ample'},
+{item:'Mead Yeast Nutrient',amount:'~6 g (about half a sachet)',notes:'Low gravity needs little nutrient — save the rest'},
+{item:'Corn sugar (dextrose) for priming',amount:'~33 g at bottling',notes:'≈2.5 vol — Brewing Tools → Carbonation'}
+],
+steps:[
+{day:0,title:'Brew Day',desc:'Sanitize. Dissolve 0.75 kg honey into ~3.5 L water, top up to the 5 L mark. Stir to aerate. Take OG (~1.045). Pitch EC-1118. Do NOT stabilize.'},
+{day:2,title:'Nutrient (single dose)',desc:'Add ~6 g nutrient when fermentation starts — about half a sachet is plenty at this gravity.'},
+{day:10,title:'Gravity Check',desc:'This finishes fast. Aiming for a dry ~0.998. Ferment 16–20°C for a clean, crisp result.'},
+{day:14,title:'Rack when fermentation is DONE (gravity-gated)',desc:'When the reading is stable and dry, rack off the lees, leaving some yeast for carbonation. No stabilizers.'},
+{day:21,title:'Prime & Bottle — earliest point, later is fine',desc:'Earliest sensible bottling, not a deadline. Mix in ~33 g corn sugar (≈2.5 vol in 5 L — Brewing Tools → Carbonation) and bottle in pressure-rated bottles.'},
+{day:42,title:'Condition (2 weeks warm), then chill',desc:'18–22°C for ~2 weeks to carbonate, then refrigerate. Drink young — this is at its best fresh and fizzy.'},
+{day:60,title:'Tasting',desc:'Serve very cold. Light, dry, gently sparkling, low-alcohol — the perfect summer mead.'}
+],
+notes:'Low-ABV meads are less self-preserving, so keep sanitation tight and drink within ~6–12 months. Do NOT stabilize — ferment dry, prime, bottle-condition (Mead Guide → Sparkling & Carbonated Mead).'
+},
+{
+id:'r33',name:'Sparkling Berry Melomel',brandName:'Mousseux des Bois',style:'Sparkling',difficulty:'Intermediate',brandColor:'#b05a9a',useGenericLabel:true,
+category:'Melomel',additionStage:'secondary',
+volume:5.0,ogTarget:1.075,fgTarget:1.000,abvTarget:9.8,fermentDays:30,ageDays:75,
+minAgeDays:60,peakAgeDays:180,maxAgeDays:365,
+tags:['Sparkling','Melomel','Forest Fruits','Berry','Carbonated','Fruit'],
+description:'A dry sparkling melomel bursting with forest-fruit aroma — the fruit goes in secondary so the berry character survives bright and fresh, then it\'s bottle-conditioned to a pink, lively sparkle. Pectic enzyme keeps it from hazing.',
+ingredients:[
+{item:'Wildflower Honey',amount:'1.3 kg',notes:'A clean honey lets the berries lead'},
+{item:'Spring Water',amount:'to the 5 L mark',notes:'Add honey first, then top up to 5 L (the fruit added later raises volume slightly — that\'s fine, it settles)'},
+{item:'Frozen forest fruits (blackberry/blackcurrant/raspberry/blueberry)',amount:'1.0–1.2 kg',notes:'Frozen-then-thawed ruptures the cells for better extraction; added in SECONDARY'},
+{item:'Pectic enzyme',amount:'~2.5 g (≈0.5 g/L) with the fruit',notes:'Prevents pectin haze from the fruit. Scale with the recipe-size slider (~0.5 g per litre)'},
+{item:'Lalvin EC-1118 Champagne Yeast',amount:'5 g (part-pack; reseal the rest)',notes:'Dry, sparkling-friendly, lets the fruit shine'},
+{item:'Mead Yeast Nutrient',amount:'~12 g (1 sachet)',notes:'Staggered; one sachet covers 5 L'},
+{item:'Corn sugar (dextrose) for priming',amount:'~33 g at bottling',notes:'≈2.5 vol — Brewing Tools → Carbonation'}
+],
+steps:[
+{day:0,title:'Brew Day',desc:'Sanitize. Dissolve 1.3 kg honey into ~3.5 L water, top up to the 5 L mark. Take OG (~1.075). Pitch EC-1118. Do NOT stabilize at any point. (Fruit comes later — primary stays clean and fast.)'},
+{day:1,title:'First Nutrient (SNA 1/2)',desc:'Add ~6 g nutrient once fermenting. Half a sachet now, half on day 3.'},
+{day:3,title:'Second Nutrient (SNA 2/2)',desc:'Add the remaining ~6 g. Degas. One sachet total is enough for 5 L.'},
+{day:14,title:'Primary Gravity Check',desc:'Heading dry. Let primary finish before adding fruit so the berries aren\'t blown off by vigorous CO₂.'},
+{day:21,title:'Rack onto the fruit (when primary is DONE)',desc:'Once primary is stable and dry, sanitize 1.0–1.2 kg thawed forest fruit and add it to a clean secondary (in a mesh bag for easy removal). Stir in ~2.5 g pectic enzyme (≈0.5 g/L — scale with the volume slider). Rack the mead onto the fruit. A gentle secondary ferment will restart — keep an airlock on.'},
+{day:35,title:'Press/Pull the fruit',desc:'After ~1–2 weeks on the fruit, taste; when the berry character is vibrant (not jammy), pull the bag and let it gently squeeze-drain. Let the mead settle and clear. Do NOT stabilize.'},
+{day:50,title:'Confirm dry & clear',desc:'Re-confirm a stable, dry gravity and reasonable clarity. Leftover sugar + priming would over-carbonate.'},
+{day:60,title:'Prime & Bottle — earliest point, later is fine',desc:'Earliest sensible bottling, not a deadline. Mix in ~33 g corn sugar (≈2.5 vol in 5 L — Brewing Tools → Carbonation) and bottle in pressure-rated bottles, leaving the fruit sediment behind.'},
+{day:81,title:'Condition (2–3 weeks warm), then chill',desc:'18–22°C for 2–3 weeks to carbonate, then refrigerate. Pour gently — a little fruit/yeast sediment is normal.'},
+{day:120,title:'Tasting',desc:'Serve cold. Pink, dry, sparkling and berry-bright. Best within a year while the fruit aroma is fresh.'}
+],
+notes:'FRUIT TIMING: this version adds fruit in SECONDARY to preserve fresh berry aroma (vigorous primary CO₂ scrubs out a lot of fruit volatiles). PECTIC ENZYME: fruit brings pectin that hazes; ~0.5 g/L clears it — the dose scales with your batch size. Sparkling rule still applies: do NOT stabilize; ferment dry, prime, bottle-condition (Mead Guide → Sparkling & Carbonated Mead).'
+},
+{
+id:'r34',name:'Sparkling Ginger Mead',brandName:'Gingembre Mousseux',style:'Sparkling',difficulty:'Beginner',brandColor:'#d59a4a',useGenericLabel:true,
+category:'Metheglin',additionStage:'primary',
+volume:5.0,ogTarget:1.055,fgTarget:0.998,abvTarget:7.4,fermentDays:24,ageDays:45,
+minAgeDays:30,peakAgeDays:120,maxAgeDays:300,
+tags:['Sparkling','Metheglin','Ginger','Spiced','Carbonated','Easy','Refreshing'],
+description:'A zippy sparkling ginger mead — honey + fresh ginger fermented dry and bottle-conditioned into a grown-up ginger beer with backbone. Warming, dry, fizzy and dangerously drinkable. A perennial favourite.',
+ingredients:[
+{item:'Wildflower Honey',amount:'0.9 kg',notes:'A light honey lets the ginger lead'},
+{item:'Fresh ginger root',amount:'60–90 g, grated or thinly sliced',notes:'More = spicier. Add in primary for an integrated warmth; a little extra in secondary for a fresher bite'},
+{item:'Spring Water',amount:'to the 5 L mark',notes:'Add honey + ginger, then top up to 5 L'},
+{item:'Lemon (juice + a little zest)',amount:'1 lemon (optional)',notes:'Brightens the ginger; zest only, no pith'},
+{item:'Lalvin EC-1118 Champagne Yeast',amount:'5 g (part-pack; reseal the rest)',notes:'Clean and dry; ferments the ginger out crisp'},
+{item:'Mead Yeast Nutrient',amount:'~9 g (under a sachet)',notes:'Low-moderate gravity needs little — save the rest'},
+{item:'Corn sugar (dextrose) for priming',amount:'~33 g at bottling',notes:'≈2.5 vol — or push to ~3 vol (champagne bottles) for a ginger-beer fizz; Brewing Tools → Carbonation'}
+],
+steps:[
+{day:0,title:'Brew Day',desc:'Sanitize. Grate/slice 60–90 g ginger (in a mesh bag). Dissolve 0.9 kg honey into ~3.5 L warm water, add the ginger (and lemon if using), then top up to the 5 L mark. Take OG (~1.055). Pitch EC-1118. Do NOT stabilize.'},
+{day:2,title:'Nutrient (single dose)',desc:'Add ~9 g nutrient once bubbling — under a full sachet is plenty; keep the rest.'},
+{day:10,title:'Gravity Check & taste the ginger',desc:'Fermenting toward a dry ~0.998. Taste — if you want more punch, you\'ll add a little fresh ginger in secondary.'},
+{day:16,title:'Rack when fermentation is DONE (gravity-gated)',desc:'When stable and dry, pull the primary ginger bag and rack off the lees, leaving some yeast for carbonation. Optionally add a small fresh-ginger bag now for a brighter top-note; taste daily and pull when right. No stabilizers.'},
+{day:24,title:'Prime & Bottle — earliest point, later is fine',desc:'Earliest sensible bottling, not a deadline. Pull any secondary ginger, mix in ~33 g corn sugar (≈2.5 vol in 5 L; ~3 vol for a sharper fizz, champagne bottles — Brewing Tools → Carbonation) and bottle in pressure-rated bottles.'},
+{day:45,title:'Condition (2–3 weeks warm), then chill',desc:'18–22°C for 2–3 weeks to carbonate, then refrigerate. Drink young for the brightest ginger.'},
+{day:70,title:'Tasting',desc:'Serve ice-cold. Dry, warming, sparkling — a sophisticated ginger beer with a honey heart. Lovely with a squeeze of lime.'}
+],
+notes:'GINGER TIMING: primary ginger integrates into a smooth warmth; a small secondary ginger addition adds a fresher, sharper top-note — do both for depth + brightness. Sparkling rule: do NOT stabilize; ferment dry, prime, bottle-condition in pressure-rated bottles (Mead Guide → Sparkling & Carbonated Mead).'
 }
 ];}
 
@@ -11890,7 +12029,8 @@ function renderSettings(){
     +'<div class="card"><div class="card-header"><div class="card-title">DANGER ZONE</div></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:16px">Permanently delete all batches, logs, and settings. Cannot be undone.</div>'
     +'<button class="btn btn-danger" onclick="resetAllData()">Reset All Data</button></div>'
-    +'</div></div>';
+    +'</div></div>'
+    +'<div style="text-align:center;font-size:11px;color:var(--text3);margin:26px 0 6px;line-height:1.8">MEADŌS · © 2026 <a href="https://github.com/icemanxbe/MeadOS" target="_blank" rel="noopener" style="color:var(--gold2);text-decoration:none">icemanxbe</a><br><a href="https://github.com/icemanxbe/MeadOS/blob/main/LICENSE" target="_blank" rel="noopener" style="color:var(--text3)">PolyForm Noncommercial License 1.0.0</a> — free to use &amp; modify, not to sell</div>';
 }
 
 // ==================== FERMENTERS MANAGEMENT (Settings card) ====================
