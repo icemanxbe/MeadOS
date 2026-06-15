@@ -193,10 +193,11 @@ ingredients:[
 {item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:''},
 {item:'Mead Yeast Nutrient',amount:'12 g',notes:'Staggered'},
 {item:'Cinnamon Sticks',amount:'2 sticks',notes:'Added at secondary'},
-{item:'Apple slices (optional)',amount:'1 apple',notes:'Adds depth in secondary'}
+{item:'Apple slices (optional)',amount:'1 apple',notes:'Adds depth in secondary'},
+{item:'Pectic Enzyme',amount:'2 g',notes:'Optional — apple juice is pectin-rich; prevents a lasting haze'}
 ],
 steps:[
-{day:0,title:'Brew Day',desc:'Clean (Chemipro OXI 4g/L or PBW), then sanitize (Chemipro SAN 2ml/L or Star San 1.5ml/L). Combine apple juice, water and honey — stir 10+ minutes until honey fully dissolves. Take OG. Pitch M05 by sprinkling on surface. Seal with airlock.'},
+{day:0,title:'Brew Day',desc:'Clean (Chemipro OXI 4g/L or PBW), then sanitize (Chemipro SAN 2ml/L or Star San 1.5ml/L). Combine apple juice, water and honey — stir 10+ minutes until honey fully dissolves. Add the pectic enzyme (amount in the ingredient list — it scales with the batch-size slider) and stir in. Take OG. Pitch M05 by sprinkling on surface. Seal with airlock.'},
 {day:1,title:'First Nutrient',desc:'Add 6g nutrient. You should see clear bubbling. Gentle swirl to mix and degas.'},
 {day:3,title:'Second Nutrient',desc:'Add remaining 6g. Log gravity — should be dropping steadily.'},
 {day:14,title:'Rack with Cinnamon',desc:'Rack to clean secondary. Add 2 cinnamon sticks (and optional sliced apple in a sanitized muslin bag). The slow infusion produces gentle warmth, not aggressive heat.'},
@@ -235,6 +236,9 @@ notes:'Pink color can fade over time — that\'s normal. Frozen strawberries fro
 },
 {
 id:'r4',name:'Forest Fruits Mead',brandName:'Forest Fruits',style:'Melomel',difficulty:'Beginner',brandColor:'#5a3868',
+category:'Melomel',additionStage:'primary',
+linked:[{id:'r35',label:'fruit in secondary'}],
+linkedNote:'Two ways to build the same forest-fruit melomel. THIS one ferments the fruit in the PRIMARY for deeper colour and body; the linked version adds the fruit in the SECONDARY for a fresher, more aromatic result.',
 volume:5.0,ogTarget:1.098,fgTarget:1.008,abvTarget:11.8,fermentDays:42,ageDays:90,
 minAgeDays:60,peakAgeDays:240,maxAgeDays:900,
 tags:['Berries','Deep purple','Complex'],
@@ -259,7 +263,38 @@ steps:[
 {day:70,title:'Bottle',desc:'Bottle in clear or amber glass. The Forest Fruits label deserves the spotlight.'},
 {day:120,title:'First Tasting',desc:'Best after 4 months minimum. Improves dramatically for 1+ year. Pairs with dark chocolate, game, soft cheeses.'}
 ],
-notes:'Frozen supermarket forest-fruit blends are perfect. Avoid blends with strawberry — different fermentation profile. The blackcurrant brings the signature depth.'
+notes:'Frozen supermarket forest-fruit blends are perfect. Avoid blends with strawberry — different fermentation profile. The blackcurrant brings the signature depth. This is the PRIMARY-fruit version; see the linked secondary-fruit version for a fresher, more aromatic take.'
+},
+{
+id:'r35',name:'Forest Fruits Mead · Fruit in Secondary',brandName:'Forest Fruits',style:'Melomel',difficulty:'Intermediate',brandColor:'#7a4d88',useGenericLabel:true,
+category:'Melomel',additionStage:'secondary',
+linked:[{id:'r4',label:'fruit in primary'}],
+linkedNote:'Two ways to build the same forest-fruit melomel. THIS one adds the fruit in the SECONDARY for a fresher, more aromatic result; the linked version ferments the fruit in the PRIMARY for deeper colour and body.',
+volume:5.0,ogTarget:1.092,fgTarget:1.004,abvTarget:11.5,fermentDays:42,ageDays:90,
+minAgeDays:60,peakAgeDays:240,maxAgeDays:900,
+tags:['Berries','Fresh aroma','Secondary'],
+description:'The same forest-fruit melomel, but the berries go into the SECONDARY rather than the primary. You ferment a clean traditional base first, then rack onto the fruit — keeping the berry aroma bright and fresh instead of fermenting it out, at the cost of a little colour and body. The aroma-forward sibling of the primary-fruit recipe.',
+ingredients:[
+{item:'Wildflower Honey',amount:'1.5 kg',notes:'Robust honey holds up to berries'},
+{item:'Mixed Forest Fruits (frozen)',amount:'1.2 kg',notes:'Blackberry, raspberry, blueberry, blackcurrant — added in SECONDARY, not on brew day'},
+{item:'Spring Water',amount:'4.5 L',notes:''},
+{item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:''},
+{item:'Mead Yeast Nutrient',amount:'12 g',notes:'Staggered through the first third'},
+{item:'Pectic Enzyme',amount:'2 g',notes:'Add with the fruit in secondary — prevents pectin haze'},
+{item:'Potassium Metabisulfite',amount:'0.3 g',notes:'Pair with sorbate only if you back-sweeten after the fruit'},
+{item:'Potassium Sorbate',amount:'1 g',notes:'Pair with metabisulfite to stabilise before any back-sweetening'}
+],
+steps:[
+{day:0,title:'Brew Day (clean traditional base)',desc:'No fruit yet. Clean and sanitise. Dissolve the honey fully, then top up with spring water to the 5 L mark. Take OG. Pitch M05. Seal with an airlock — you are fermenting a plain base that the fruit goes into later.'},
+{day:1,title:'First Nutrient',desc:'Add ~6 g nutrient once fermentation is clearly underway. Gentle swirl to mix and degas.'},
+{day:3,title:'Second Nutrient',desc:'Add the remaining ~6 g before the 1/3 sugar break. Log gravity.'},
+{day:21,title:'Rack onto the fruit (when primary is DONE)',desc:'Only once fermentation has finished — a stable gravity across two readings 2–3 days apart, not a fixed day. Sanitise 1.2 kg thawed forest fruit in a mesh bag in a clean secondary, stir in the pectic enzyme (amount in the ingredient list — it scales with the batch-size slider), then rack the mead onto the fruit. A gentle secondary ferment usually restarts — keep an airlock on.'},
+{day:35,title:'Taste & pull the fruit',desc:'After ~2 weeks on the fruit, taste daily. Pull the fruit bag when the aroma is vivid but not jammy — you can leave it longer, but you can never take it back once it is over-extracted.'},
+{day:42,title:'Stabilise & (optional) back-sweeten',desc:'For an off-dry finish, stabilise FIRST with potassium sorbate AND metabisulfite together — either one alone will not reliably stop a restart on fresh fruit sugar — wait 24 h, then back-sweeten with honey to taste.'},
+{day:56,title:'Bottle',desc:'Bottle in clear or amber glass to show the bright berry colour.'},
+{day:120,title:'First Tasting',desc:'Fresher and more aromatic than the primary-fruit version, with a touch less body and colour. Best within a year while the aroma is at its peak.'}
+],
+notes:'Fruit in secondary = fresher aroma, less colour and body, and it WILL try to re-ferment, so stabilise (sorbate + metabisulfite) before sweetening. Fruit in primary (the linked recipe) = deeper colour and body but a quieter, fermented-through berry note. Same fruit, two different meads.'
 },
 {
 id:'r5',name:'Blueberry Mead',brandName:'Blueberry',style:'Melomel',difficulty:'Beginner',brandColor:'#6e84cc',
@@ -447,10 +482,11 @@ ingredients:[
 {item:'Spring Water',amount:'1.0 L',notes:''},
 {item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:'M05 ideal; alternatives: EC-1118 (drier), 71B (smoother)'},
 {item:'Mead Yeast Nutrient',amount:'12 g',notes:''},
-{item:'Wine Tannin Powder',amount:'1-2 g',notes:'Optional — for more wine-like grip'}
+{item:'Wine Tannin Powder',amount:'1-2 g',notes:'Optional — for more wine-like grip'},
+{item:'Pectic Enzyme',amount:'2 g',notes:'Grapes are pectin-rich; prevents a lasting haze'}
 ],
 steps:[
-{day:0,title:'Brew Day',desc:'PRIMARY ADDITION: Mix all liquids and honey. Add tannin powder if using. Pitch yeast.'},
+{day:0,title:'Brew Day',desc:'PRIMARY ADDITION: Mix all liquids and honey. Add tannin powder if using, plus the pectic enzyme (amount in the ingredient list — it scales with the batch-size slider). Pitch yeast.'},
 {day:1,title:'First Nutrient',desc:'6g.'},
 {day:3,title:'Second Nutrient',desc:'6g. Log gravity — rapid drop expected.'},
 {day:14,title:'Rack',desc:'Rack off heavy lees.'},
@@ -8312,13 +8348,31 @@ function annotateNutrientDesc(desc){
   if(!desc)return desc;
   var sachet=APP.settings.sachetSize||12;
   // Match patterns like "Add 6g nutrient", "add 12 g yeast nutrient", "6g of nutrient", etc.
-  return desc.replace(/(\d+(?:\.\d+)?)\s*g\s+(?:of\s+)?(?:yeast\s+)?nutrient/gi,function(m,g){
+  desc=desc.replace(/(\d+(?:\.\d+)?)\s*g\s+(?:of\s+)?(?:yeast\s+)?nutrient/gi,function(m,g){
     var grams=parseFloat(g);
     var n=Math.round(grams/sachet*10)/10;
     var nDisplay=Math.abs(n-Math.round(n))<0.05?Math.round(n):n;
     var lab=parseFloat(nDisplay)===1?'sachet':'sachets';
     return m+' (~'+nDisplay+' '+lab+')';
   });
+  // ---- Universal brewing-convention reminders, applied to every recipe's steps
+  // so the guidance is consistent everywhere they render (detail, coach, calendar).
+  var low=desc.toLowerCase();
+  // Stabilising with metabisulfite but NOT sorbate won't actually stop a restart.
+  if(/(metabisulf|metabisulph|campden|k-?meta|sodium\s+metabisul)/i.test(desc)
+      && !/sorbate/i.test(desc)
+      && /(stabili|back-?sweet|sweeten|restart|prevent)/i.test(low)){
+    desc+=' ⚠ To truly stabilise (e.g. before back-sweetening), add potassium sorbate (~1 g/4.5 L) ALONGSIDE the metabisulfite — metabisulfite alone will not stop the yeast restarting.';
+  }
+  // Racking should be gated on a finished fermentation, not a calendar day.
+  if(/\brack/i.test(desc) && !/(stable|finished|fermentation is done|two readings|done fermenting)/i.test(low)){
+    desc+=' (Rack only once fermentation is finished — a stable gravity across two readings — not on a fixed day.)';
+  }
+  // A "bottle" step is the EARLIEST sensible point, never a deadline.
+  if(/\bbottl(e|es|ed|ing)\b/i.test(desc) && !/earliest/i.test(low) && !/priming|carbonat|sparkling/i.test(low)){
+    desc+=' (This is the earliest sensible bottling point, not a deadline — longer bulk aging is generally safer and better.)';
+  }
+  return desc;
 }
 
 // Display-only: most recipe step lists describe brew-day "stir to aerate" but
@@ -8432,11 +8486,18 @@ function identifyNutrientFromText(itemText){
 // scales linearly as before.
 function scaleRecipeIngredients(r,scaleVol){
   var linearFactor=scaleVol/(r.volume||5);
+  var volStr=(Math.abs(scaleVol-Math.round(scaleVol))<0.05?String(Math.round(scaleVol)):scaleVol.toFixed(1));
   return r.ingredients.map(function(ing){
     var amt=ing.amount;
     var note=ing.notes;
     var item=ing.item||'';
-    var m=amt.match(/^([0-9]+(?:\.[0-9]+)?)\s*(kg|g|L|ml)\b/i);
+    // WATER: never a fixed volume to pour — you top up to the batch mark after
+    // the honey/fruit/etc. are in (they add their own volume). Show that instead.
+    if(/^spring water$/i.test(item.trim())||/^water$/i.test(item.trim())){
+      return Object.assign({},ing,{amount:'top up to the '+volStr+' L mark',
+        notes:note||'Add the honey and other ingredients first, then top up with water to the '+volStr+' L mark — do NOT pour this much water on top, it would overshoot the volume'});
+    }
+    var m=amt.match(/^~?\s*([0-9]+(?:\.[0-9]+)?)\s*(kg|g|L|ml)\b/i);
     if(!m)return Object.assign({},ing,{amount:amt,notes:note});
     var baseValue=parseFloat(m[1]);
     var unitLower=m[2].toLowerCase();
@@ -8474,7 +8535,12 @@ function scaleRecipeIngredients(r,scaleVol){
         var nSachets=Math.max(1,Math.ceil(scaleVol/product.sachetCoversL));
         amt+='  ·  '+nSachets+' '+(nSachets===1?'sachet':'sachets');
       }
-      // Bulk powders: no sachet annotation — user measures from a tub
+      // Bulk powders: no sachet annotation — user measures from a tub.
+      // Flag when you won't use a whole sachet so the rest can be saved.
+      var sachetSz=parseFloat(APP.settings&&APP.settings.sachetSize)||12;
+      if(grams>0&&grams<sachetSz-0.5){
+        note=(note?note+' · ':'')+'only ~'+Math.round(grams)+' g — under a full sachet, so save the rest for another batch';
+      }
     }else{
       // Everything else (honey, water, fruit, sulfite, sorbate, pectic):
       // straightforward linear scaling
@@ -8819,6 +8885,20 @@ function renderRecipeDetail(){
     +'<div class="brand-bar" style="background:'+r.brandColor+'"></div>'
     +'<div class="page-subtitle">'+r.style+' · '+r.difficulty+' · ~'+r.abvTarget+'% ABV · '+r.fermentDays+'-day fermentation</div>'
     +'<div class="info-box" style="border-left-color:'+r.brandColor+';margin-bottom:16px"><div style="font-size:14px;color:var(--text2);font-style:italic;line-height:1.6">'+escHtml(r.description)+'</div></div>'
+    +(function(){
+      // Cross-links between tied recipes (e.g. fruit-in-primary vs fruit-in-secondary).
+      if(!Array.isArray(r.linked)||!r.linked.length)return'';
+      var chips=r.linked.map(function(lk){
+        var lr=APP.recipes.find(function(x){return x.id===lk.id;});
+        if(!lr)return'';
+        return'<span onclick="currentRecipeId=\''+lr.id+'\';showView(\'recipe-detail\')" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;background:var(--bg3);border:1px solid '+lr.brandColor+'99;color:var(--text);padding:5px 11px;border-radius:14px">↔ '+escHtml(lr.name)+(lk.label?' · <span style="color:var(--text3)">'+escHtml(lk.label)+'</span>':'')+'</span>';
+      }).join('');
+      if(!chips)return'';
+      return'<div class="info-box" style="border-left-color:var(--gold);margin-bottom:16px">'
+        +'<div style="font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;color:var(--text3);margin-bottom:7px">RELATED VERSION'+(r.linked.length>1?'S':'')+'</div>'
+        +(r.linkedNote?'<div style="font-size:13px;color:var(--text2);line-height:1.55;margin-bottom:10px">'+escHtml(r.linkedNote)+'</div>':'')
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap">'+chips+'</div></div>';
+    }())
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px"><button class="btn btn-primary" id="scale-brew-btn" onclick="openNewBatchModal(\''+r.id+'\','+scaleVol+')">Brew This Recipe ('+scaleVol+'L) →</button>'
     +'<button class="btn btn-secondary" onclick="openPlanBatchModal(null,\''+r.id+'\',window.recipeScaleVol||'+scaleVol+')" title="Queue this recipe into the Brew Plan and shopping list at the current scale">🗓 Plan a Batch</button>'
     +'<button class="btn btn-secondary" onclick="openBrewSessionPlanner(\''+r.id+'\','+scaleVol+')" title="Print a pre-brew checklist for this recipe">📋 Brew Session Planner</button>'
