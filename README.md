@@ -265,7 +265,9 @@ referenced by a batch, recipe, or version-history snapshot.
 
 ## License
 
-[MIT](LICENSE)
+[PolyForm Noncommercial License 1.0.0](LICENSE) — free to use, modify and share
+for any **noncommercial** purpose (personal, hobby, research, nonprofit/education).
+**Selling it or using it for commercial advantage is not permitted.**
 
 ---
 
