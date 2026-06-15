@@ -7242,9 +7242,7 @@ function renderBatchDetail(){
       +'<div class="form-group"><label class="form-label">Notes & Observations</label><textarea class="form-textarea" id="log-note" placeholder="Color, aroma, taste, clarity…"></textarea></div>'
       +'<button class="btn btn-primary" onclick="addLog(\''+b.id+'\')">Log Reading</button></div></div>'
       +'<div><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">FERMENTATION CHARTS</div></div>'
-      +'<div class="chart-grid">'
       +'<div class="chart-card"><div class="chart-card-title">📉 Gravity &amp; ABV  ·  <span style="color:var(--text3)">SG falls (left), ABV rises (right) · solid = readings, dashed = projection</span></div><div class="chart-wrap" style="height:240px"><canvas id="batch-gravity-chart"></canvas></div></div>'
-      +'</div>'
       +(function(){
         // Resolve which sensor to graph: prefer the batch's fermenter binding,
         // fall back to the global fermentation sensor, then to nothing (only
@@ -11861,6 +11859,9 @@ function renderSettings(){
     +'<button class="btn btn-secondary" onclick="exportBatchesCSV()" title="One row per batch">⬇ Batches CSV</button>'
     +'<button class="btn btn-secondary" onclick="exportGravityCSV()" title="One row per gravity reading">⬇ Gravity logs CSV</button>'
     +'<input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)"></div></div>'
+    +'<div class="card"><div class="card-header"><div class="card-title">🧹 UNUSED IMAGES</div><button class="btn btn-secondary btn-sm" onclick="scanOrphanImages()">Scan</button></div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:8px;line-height:1.55">Uploaded label, brand, and photo images are stored as files on the server (under <code style="font-size:11px">assets/</code>). Over time some stop being referenced by any batch or recipe. Scan to find those orphans and free the space — version history is checked too, so nothing a restorable snapshot still needs is removed.</div>'
+    +'<div id="orphan-result" style="font-size:13px;color:var(--text3)">Click <strong>Scan</strong> to check for unused images.</div></div>'
     +'<div class="card"><div class="card-header"><div class="card-title">VERSION HISTORY</div><button class="btn btn-secondary btn-sm" onclick="loadHistoryPanel()">↻ Refresh</button></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px">The server keeps your recent saved snapshots. Restore one if something got messed up — restoring first saves the current state, so it\'s reversible.</div>'
     +'<div id="history-list" style="font-size:13px;color:var(--text3)">Click <strong>Refresh</strong> to load snapshots.</div></div>'
@@ -15939,53 +15940,123 @@ function computeShoppingNeeds(){
   return{lines:lines,extras:extrasList,currency:ccy,planCount:plans.length};
 }
 
-// Which recipes can you start RIGHT NOW from the honey + yeast on hand? Honey is
-// the gating ingredient: max volume = haveHoney / (honey needed per litre at the
-// recipe's OG). Needs at least one yeast packet too. Returns recipes you can make
-// at full volume first, then ones you can make at a reduced (scaled) volume.
-function computeBrewableRecipes(){
+// What chemical/adjunct supplies does a recipe call for? Scanned from its
+// ingredient list so brewability covers more than honey + yeast.
+function detectRecipeSupplyNeeds(r){
+  var hay=((r.ingredients||[]).map(function(i){return i.item||'';}).join(' ')).toLowerCase();
+  return {
+    pectic:/pectic|pectin/.test(hay),
+    sulfite:/metabisul|campden|sulfite|sulphite|k-?meta/.test(hay),
+    sorbate:/sorbate/.test(hay)
+  };
+}
+
+// Which recipes can you actually start from what's in supplies — checking honey,
+// yeast, nutrient AND the recipe-specific chemicals (pectic enzyme, metabisulfite,
+// sorbate). `scaleVol` is the batch size to evaluate (the block's scale slider).
+// Also cross-references planned batches: flags recipes whose ingredients are
+// already reserved for a scheduled batch (so you don't accidentally starve it).
+function computeBrewableRecipes(scaleVol){
   var supplies=APP.supplies||[];
-  var haveHoney=supplies.filter(function(s){return s.type==='honey';}).reduce(function(a,s){return a+(parseFloat(s.qty)||0);},0);
-  var yeastPackets=supplies.filter(function(s){return s.type==='yeast';}).reduce(function(a,s){return a+(parseFloat(s.qty)||0);},0);
-  var list=[];
-  if(haveHoney>0&&yeastPackets>0){
-    (APP.recipes||[]).forEach(function(r){
-      var vol=r.volume||5,og=r.ogTarget||1.095;
-      if(og<=1)return;
-      var honeyPerL=(og-1)*1000/292; // kg honey per litre of must
-      if(honeyPerL<=0)return;
-      var maxVol=haveHoney/honeyPerL;
-      if(maxVol<1)return; // not even a 1 L batch
-      var abv=r.abvTarget||Math.round((og-(r.fgTarget||1.010))*131.25*10)/10;
-      list.push({recipe:r,og:og,fullVol:vol,maxVol:maxVol,canFull:maxVol>=vol,abv:abv});
-    });
-    list.sort(function(a,b){if(a.canFull!==b.canFull)return a.canFull?-1:1;return b.maxVol-a.maxVol;});
-  }
-  return{haveHoney:haveHoney,yeastPackets:yeastPackets,list:list};
+  function haveType(t){return supplies.filter(function(s){return s.type===t;}).reduce(function(a,s){return a+(parseFloat(s.qty)||0);},0);}
+  var have={honey:haveType('honey'),yeast:haveType('yeast'),nutrient:haveType('nutrient'),pectic:haveType('pectic'),sulfite:haveType('sulfite'),sorbate:haveType('sorbate')};
+  // Supplies already committed to planned/scheduled batches.
+  var planned={honey:0,yeast:0,nutrient:0};
+  (APP.plannedBatches||[]).forEach(function(pb){
+    var r=(APP.recipes||[]).find(function(x){return x.id===pb.recipeId;});
+    if(!r)return;
+    var v=parseFloat(pb.volume)||r.volume||5,og=r.ogTarget||1.095;
+    if(og>1)planned.honey+=(og-1)*1000*v/292;
+    planned.yeast+=1;
+    planned.nutrient+=Math.max(1,Math.ceil(v/5));
+  });
+  var vol=parseFloat(scaleVol)||5;
+  var list=(APP.recipes||[]).map(function(r){
+    var og=r.ogTarget||1.095;
+    if(og<=1)return null;
+    var honeyPerL=(og-1)*1000/292;
+    if(honeyPerL<=0)return null;
+    var honeyNeed=honeyPerL*vol;
+    var nutrientNeed=Math.max(1,Math.ceil(vol/5));
+    var chem=detectRecipeSupplyNeeds(r);
+    var missing=[];
+    if(have.honey<honeyNeed-0.001)missing.push('honey');
+    if(have.yeast<1)missing.push('yeast');
+    if(have.nutrient<nutrientNeed)missing.push('nutrient');
+    if(chem.pectic&&have.pectic<=0)missing.push('pectic enzyme');
+    if(chem.sulfite&&have.sulfite<=0)missing.push('metabisulfite');
+    if(chem.sorbate&&have.sorbate<=0)missing.push('sorbate');
+    // Would brewing this now leave too little for the scheduled batches?
+    var starves=[];
+    if(planned.honey>0&&have.honey-honeyNeed<planned.honey-0.001)starves.push('honey');
+    if(planned.yeast>0&&have.yeast-1<planned.yeast)starves.push('yeast');
+    if(planned.nutrient>0&&have.nutrient-nutrientNeed<planned.nutrient)starves.push('nutrient');
+    var abv=r.abvTarget||Math.round((og-(r.fgTarget||1.010))*131.25*10)/10;
+    return{recipe:r,og:og,abv:abv,honeyNeed:honeyNeed,maxVol:have.honey/honeyPerL,missing:missing,starves:starves,makeable:missing.length===0};
+  }).filter(Boolean);
+  list.sort(function(a,b){if(a.makeable!==b.makeable)return a.makeable?-1:1;return b.maxVol-a.maxVol;});
+  return{have:have,planned:planned,hasPlanned:(APP.plannedBatches||[]).length>0,vol:vol,list:list};
+}
+
+function toggleBrewWhatYouHave(){
+  window._bwyhOpen=!window._bwyhOpen;
+  var card=document.getElementById('bwyh-card');
+  if(card)card.outerHTML=renderBrewWhatYouHaveCard();
+}
+function setBrewWhatYouHaveVol(v){
+  window._bwyhVol=parseFloat(v)||5;
+  var lbl=document.getElementById('bwyh-vol-label');
+  if(lbl)lbl.textContent=fmtVol(window._bwyhVol);
+  var list=document.getElementById('bwyh-list');
+  if(list)list.innerHTML=renderBwyhList();
+}
+function renderBwyhList(){
+  var r=computeBrewableRecipes(window._bwyhVol);
+  if(!r.list.length)return'<div style="font-size:13px;color:var(--text3);font-style:italic;padding:6px 0">No recipes to evaluate yet.</div>';
+  var makeable=r.list.filter(function(x){return x.makeable;});
+  var shown=(makeable.length?makeable:r.list).slice(0,12);
+  // Styled exactly like the Recipes page cards: colored top bar, name in the
+  // recipe's brand colour, mono stats line, and a tag-style brewability badge.
+  var cards=shown.map(function(x){
+    var rec=x.recipe,ok=x.makeable,color=rec.brandColor||'#c9a84c';
+    var badge;
+    if(ok&&x.starves.length)badge='<span class="recipe-tag" style="color:var(--gold2);border-color:var(--gold2)">⚠ '+escHtml(x.starves.join('/'))+' reserved</span>';
+    else if(ok)badge='<span class="recipe-tag" style="color:#a8d27a;border-color:rgba(122,160,64,0.5)">✓ Ready to brew</span>';
+    else badge='<span class="recipe-tag" style="color:var(--red2);border-color:var(--red2)">Needs '+escHtml(x.missing.join(', '))+'</span>';
+    return'<div class="recipe-card" style="cursor:pointer" onclick="openPlanBatchModal(null,\''+rec.id+'\','+window._bwyhVol+')" title="Plan a '+escHtml(fmtVol(window._bwyhVol))+' batch of '+escHtml(rec.name)+'">'
+      +'<div class="recipe-card-bar" style="background:'+color+'"></div>'
+      +'<div class="recipe-card-body" style="padding:13px 14px">'
+      +'<div class="recipe-name" style="color:'+color+'">'+escHtml(rec.name)+'</div>'
+      +'<div class="recipe-style">'+escHtml(rec.style||'')+(rec.category&&rec.category!==rec.style?' · '+escHtml(rec.category):'')+'</div>'
+      +'<div style="display:flex;gap:12px;font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-bottom:9px"><span>OG '+x.og.toFixed(3)+'</span><span>~'+x.abv+'% ABV</span></div>'
+      +'<div>'+badge+'</div>'
+      +'</div></div>';
+  }).join('');
+  var note=makeable.length?'':'<div style="font-size:12px;color:var(--text3);font-style:italic;margin-bottom:8px">Nothing fully makeable at '+escHtml(fmtVol(window._bwyhVol))+' — these are the closest; the badge shows what\'s missing.</div>';
+  return note+'<div class="bwyh-grid">'+cards+'</div>';
 }
 
 function renderBrewWhatYouHaveCard(){
-  var r=computeBrewableRecipes();
-  var fmtN=function(n){return(Math.abs(n-Math.round(n))<0.05)?String(Math.round(n)):n.toFixed(1);};
-  var head='<div class="card" style="margin-bottom:16px"><div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><div class="card-title">🍯 BREW WITH WHAT YOU HAVE</div>'
-    +(r.haveHoney>0||r.yeastPackets>0?'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+fmtWt(r.haveHoney)+' honey · '+fmtN(r.yeastPackets)+' yeast</span>':'')+'</div>';
-  if(r.haveHoney<=0||r.yeastPackets<=0){
-    return head+'<div style="font-size:13px;color:var(--text3);font-style:italic;line-height:1.6">Add '+(r.haveHoney<=0?'some honey':'a yeast packet')+' to your supplies and this will list the recipes you can start right now.</div></div>';
-  }
-  if(!r.list.length){
-    return head+'<div style="font-size:13px;color:var(--text3);font-style:italic">You have '+fmtWt(r.haveHoney)+' honey — not quite enough for a 1 L batch of any recipe yet.</div></div>';
-  }
-  var rows=r.list.slice(0,8).map(function(x){
-    var rec=x.recipe;
-    var planVol=x.canFull?x.fullVol:Math.floor(x.maxVol*10)/10;
-    var volNote=x.canFull?('full '+fmtVol(x.fullVol)+' batch'):('up to '+fmtVol(x.maxVol));
-    return'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
-      +'<div style="min-width:0"><div style="font-size:13px;color:var(--text)">'+escHtml(rec.name)+(x.canFull?'':' <span style="color:var(--gold2);font-size:9px;font-family:var(--font-mono);letter-spacing:1px">SCALED</span>')+'</div>'
-      +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3)">OG '+x.og.toFixed(3)+' · ~'+x.abv+'% · '+volNote+'</div></div>'
-      +'<button class="btn btn-secondary btn-sm" onclick="openPlanBatchModal(null,\''+rec.id+'\','+planVol+')" style="flex-shrink:0">🗓 Plan</button>'
-      +'</div>';
-  }).join('');
-  return head+'<div style="font-size:12px;color:var(--text3);margin-bottom:8px">Recipes you can start now from your honey + yeast on hand. Honey is the limiter — “scaled” entries are shrunk to fit what you have.</div>'+rows+'</div>';
+  if(window._bwyhVol==null)window._bwyhVol=5;
+  if(window._bwyhOpen==null)window._bwyhOpen=false;
+  var r=computeBrewableRecipes(window._bwyhVol);
+  var makeableCount=r.list.filter(function(x){return x.makeable;}).length;
+  var header='<div class="card" id="bwyh-card" style="margin-bottom:16px">'
+    +'<div onclick="toggleBrewWhatYouHave()" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none">'
+    +'<div class="card-title">🍯 BREW WITH WHAT YOU HAVE</div>'
+    +'<div style="display:flex;align-items:center;gap:10px"><span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:0.5px">'+makeableCount+' ready · '+fmtWt(r.have.honey)+' honey</span><span style="color:var(--gold2);font-size:13px">'+(window._bwyhOpen?'▾':'▸')+'</span></div>'
+    +'</div>';
+  if(!window._bwyhOpen)return header+'</div>';
+  var plannedNote=r.hasPlanned?'<div style="font-size:11.5px;color:var(--text3);margin-top:10px;font-style:italic">Cross-checked against your planned batches — a ⚠ badge means brewing it now would leave too little for a scheduled batch.</div>':'';
+  var body='<div style="font-size:12px;color:var(--text3);margin:10px 0 4px">Recipes you can start now from your supplies — honey, yeast, nutrient and the chemicals each recipe calls for (pectic enzyme, metabisulfite, sorbate).</div>'
+    +'<div style="display:flex;align-items:center;gap:12px;margin:8px 0 12px">'
+    +'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px;white-space:nowrap">BATCH SIZE</span>'
+    +'<input type="range" min="1" max="12" step="0.5" value="'+window._bwyhVol+'" oninput="setBrewWhatYouHaveVol(this.value)" style="flex:1">'
+    +'<span id="bwyh-vol-label" style="font-family:var(--font-display);font-size:16px;color:var(--gold2);min-width:70px;text-align:right">'+fmtVol(window._bwyhVol)+'</span>'
+    +'</div>'
+    +'<div id="bwyh-list">'+renderBwyhList()+'</div>'
+    +plannedNote;
+  return header+body+'</div>';
 }
 
 function renderShoppingListCard(){
@@ -20047,9 +20118,9 @@ function prefetchAllMediaUrls(){
 // URL. Keeping URLs instead of megabytes of base64 in the state blob is what
 // keeps page loads fast. Falls back to the data URL when the server can't
 // store it (offline, etc.) — heavier but functional.
-async function storeImageAsset(dataUrl){
+async function storeImageAsset(dataUrl,kind){
   try{
-    var res=await apiFetch('/api/asset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:dataUrl})});
+    var res=await apiFetch('/api/asset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:dataUrl,kind:kind||'labels'})});
     if(res&&res.ok){
       var j=await res.json();
       if(j&&j.url)return j.url;
@@ -20081,7 +20152,7 @@ async function regenerateAppIcon(){
       ctx.fillStyle='#0a0a0b';ctx.fillRect(0,0,S,S);
       ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
       ctx.drawImage(img,(S-w)/2,(S-h)/2,w,h);
-      APP.settings.appIcon=await storeImageAsset(cv.toDataURL('image/png'));
+      APP.settings.appIcon=await storeImageAsset(cv.toDataURL('image/png'),'brand');
     }
   }catch(e){APP.settings.appIcon=null;}
   if(prev&&prev!==APP.settings.appIcon&&typeof deleteAssetIfUnused==='function')deleteAssetIfUnused(prev);
@@ -20103,6 +20174,7 @@ function assetUrlReferenced(url){
   var labels=(APP.settings&&APP.settings.customLabels)||{};
   for(var k in labels){if(labels[k]===url)return true;}
   if(APP.settings&&APP.settings.brandLogo===url)return true;
+  if(APP.settings&&APP.settings.appIcon===url)return true;
   return false;
 }
 
@@ -20112,7 +20184,7 @@ function assetUrlReferenced(url){
 // guarantee, but no user-facing error either).
 async function deleteAssetIfUnused(url){
   if(classifyLabelRef(url)!=='url')return;       // only our own stored URLs
-  if(url.indexOf('/labels/')!==0)return;          // not an uploaded asset
+  if(url.indexOf('/labels/')!==0&&url.indexOf('/assets/')!==0)return; // not an uploaded asset
   if(assetUrlReferenced(url))return;              // still in use elsewhere
   try{
     await apiFetch('/api/asset/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url})});
@@ -20134,7 +20206,7 @@ async function migrateInlineImagesToAssets(){
   if(!jobs.length)return;
   var moved=0;
   for(var i=0;i<jobs.length;i++){
-    var ref=await storeImageAsset(jobs[i].data);
+    var ref=await storeImageAsset(jobs[i].data,jobs[i].kind==='label'?'labels':'brand');
     if(ref!==jobs[i].data){
       if(jobs[i].kind==='label')APP.settings.customLabels[jobs[i].key]=ref;
       else APP.settings.brandLogo=ref;
@@ -20198,6 +20270,7 @@ function openImagePicker(opts){
   window._pickerState={
     title:title,
     callback:callback,
+    kind:opts.kind||'labels',  // assets/<kind>/ subdir for uploads
     maxDim:maxDim,
     preferPng:preferPng,
     folder:folder,
@@ -20281,7 +20354,7 @@ function handlePickerUpload(input){
       status.textContent='✓ Loaded '+info.w+'×'+info.h+' · '+(info.bytes/1024).toFixed(0)+'KB';
     }
     if(status)status.textContent='✓ Loaded '+info.w+'×'+info.h+' · storing on server…';
-    storeImageAsset(dataUrl).then(function(ref){
+    storeImageAsset(dataUrl,s.kind||'labels').then(function(ref){
       var cb=s.callback;closeImagePicker();cb(ref);
     });
   });
@@ -20451,6 +20524,7 @@ function clearDesignerBackground(){
 function pickBrandLogo(){
   openImagePicker({
     title:'Pick brand logo',
+    kind:'brand',
     maxDim:900,
     preferPng:true,
     onPick:function(ref){
@@ -22527,7 +22601,7 @@ function addBatchPhoto(batchId){
     toast('⏳ Processing photo…');
     readImageAsDataUrl(file,{maxDim:1400},function(err,dataUrl){
       if(err){toast('⚠ '+err.message);return;}
-      storeImageAsset(dataUrl).then(function(url){
+      storeImageAsset(dataUrl,'photos').then(function(url){
         openPhotoMetaModal(batchId,url);
       });
     });
@@ -22964,6 +23038,41 @@ async function pullFromServer(){
 }
 var pullFromHA=pullFromServer; // legacy name
 
+// Scan the server for orphaned uploaded images (not referenced by any batch,
+// recipe, or restorable snapshot) and offer to delete them.
+async function scanOrphanImages(){
+  var el=document.getElementById('orphan-result');
+  if(el)el.innerHTML='Scanning…';
+  try{
+    var res=await apiFetch('/api/assets/orphans');
+    var j=res&&res.ok?await res.json():null;
+    if(!j||!j.ok){if(el)el.innerHTML='<span style="color:var(--red2)">Scan failed.</span>';return;}
+    var n=(j.orphans||[]).length;
+    if(!n){if(el)el.innerHTML='<span style="color:var(--green2)">✓ No unused images — everything on disk is in use.</span>';return;}
+    window._orphanNames=j.orphans.map(function(o){return o.name;});
+    if(el)el.innerHTML='<div style="margin-bottom:10px"><strong style="color:var(--gold2)">'+n+'</strong> unused image'+(n===1?'':'s')+' · '+fmtBytes(j.totalBytes||0)+' reclaimable.</div>'
+      +'<button class="btn btn-danger btn-sm" onclick="deleteOrphanImages()">🗑 Delete '+n+' unused image'+(n===1?'':'s')+'</button>';
+  }catch(e){if(el)el.innerHTML='<span style="color:var(--red2)">Scan failed.</span>';}
+}
+async function deleteOrphanImages(){
+  if(!window._orphanNames||!window._orphanNames.length)return;
+  if(!confirm('Permanently delete '+window._orphanNames.length+' unused image file'+(window._orphanNames.length===1?'':'s')+' from the server? Images still referenced anywhere (including version history) are kept automatically.'))return;
+  var el=document.getElementById('orphan-result');
+  if(el)el.innerHTML='Deleting…';
+  try{
+    var res=await apiFetch('/api/assets/cleanup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({names:window._orphanNames})});
+    var j=res&&res.ok?await res.json():null;
+    if(j&&j.ok){
+      window._orphanNames=null;
+      if(el)el.innerHTML='<span style="color:var(--green2)">✓ Deleted '+j.deleted+' image'+(j.deleted===1?'':'s')+' · freed '+fmtBytes(j.freedBytes||0)+'.</span>';
+    }else if(res&&res.status===403){
+      if(el)el.innerHTML='<span style="color:var(--red2)">Cleanup is only allowed from inside your LAN.</span>';
+    }else{
+      if(el)el.innerHTML='<span style="color:var(--red2)">Cleanup failed.</span>';
+    }
+  }catch(e){if(el)el.innerHTML='<span style="color:var(--red2)">Cleanup failed.</span>';}
+}
+
 function exportData(){
   // Full snapshot — every persisted bucket. Versioned with CURRENT_SCHEMA_VERSION
   // so older exports can be migrated on import. Anything in packageState should
@@ -23254,7 +23363,7 @@ async function initShareMode(token){
   // page renders the label EXACTLY as configured (just with QR + drinking-window
   // suppressed). Feeding customLabels/recipeOverlays lets getLabelImage and
   // getRecipeOverlays resolve them via the normal label render path.
-  window._shareLabelImage=(typeof payload.labelImage==='string'&&/^(data:image\/|\/labels\/)/.test(payload.labelImage))?payload.labelImage:'';
+  window._shareLabelImage=(typeof payload.labelImage==='string'&&/^(data:image\/|\/labels\/|\/assets\/)/.test(payload.labelImage))?payload.labelImage:'';
   if(window._shareLabelImage){
     APP.settings.customLabels=APP.settings.customLabels||{};
     APP.settings.customLabels[b.recipeId]=window._shareLabelImage;

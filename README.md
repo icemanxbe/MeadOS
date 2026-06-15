@@ -10,20 +10,20 @@
 
 ## Highlights
 
-- 🧪 **Batch tracking** — gravity logs with charts, ABV estimation, fermenter assignment, status timeline from brew day to bottle, stuck-fermentation diagnosis, failure post-mortems
+- 🧪 **Batch tracking** — gravity logs on a combined gravity-and-projected-ABV chart (watch ABV rise as gravity falls, with a dashed finish projection), fermenter assignment, a status timeline that follows the brew-coach steps you actually complete (plus a "fermentation stopped" flag when readings go flat), stuck-fermentation diagnosis that reads your logged nutrient additions, and failure post-mortems
 - 📜 **29 built-in recipes** — traditionals, melomels, cysers, metheglins, bochets, braggots, sack & port-style meads, each with day-by-day step schedules, plus your own custom recipes and reusable templates
 - ✦ **Recipe Designer wizard** — pick a style, volume, target ABV and sweetness; it back-solves the honey/OG/FG math, recommends a yeast that can finish the ABV, suggests a nutrient protocol, and assembles ingredients + a step schedule, then hands off to the editor to fine-tune and save
 - 🗓 **Brew Planner** — queue planned batches (from the planner or straight off a recipe page, at your chosen scale) onto the Fermenter Schedule as ghost bars (with vessel-conflict warnings), roll them up into a single shopping list — netted against your supplies and topped up with anything below its restock threshold, surfaced at the top of the Supplies page — then "deploy" a plan straight into a real batch
 - 📷 **Photo journal** — a per-batch photo diary (brew day → fermentation → racking → bottling → tasting) with captions, stage tags and a full-screen lightbox; images are stored as files server-side so they never bloat page loads
 - 🍾 **Multi-cabinet cellar** — model any number of wine fridges, racks or shelves; place bottles and fermenters visually, track drinking windows (ready → peak → past max) per batch
-- 📦 **Inventory** — honey, yeast, nutrient, chemicals and bottle stock with cost tracking, automatic deduction on brew day, and a supplier rolodex tagged by the honey types each supplier stocks
-- 🧮 **Brewing tools** — ABV, honey-for-target-gravity, **TOSNA 2.0 scheduler** (YAN scaled by yeast nitrogen demand × honey darkness, with sugar-break explainer and nutrient-vs-protocol warnings), **SO₂/sulfite** (molecular-fraction model → free SO₂ + K-meta dose) and **acid/TA adjustment**, backsweetening + stabilization, hydrometer temperature correction, SG↔Brix, yeast pitch, blending (incl. water dilution), sanitizer & cleaner dosing (Chemipro SAN or Star San)
+- 📦 **Inventory** — honey, yeast, nutrient, chemicals and bottle stock with cost tracking, automatic deduction on brew day, a supplier rolodex tagged by the honey types each supplier stocks, and a **brew-with-what-you-have** panel that shows which recipes you can start *right now* from your stock (checking honey, yeast, nutrient and the chemicals each recipe calls for), scaled to any batch size and cross-checked against your planned batches
+- 🧮 **Brewing tools** — ABV, honey-for-target-gravity, **TOSNA 2.0 scheduler** (YAN scaled by yeast nitrogen demand × honey darkness, with sugar-break explainer and nutrient-vs-protocol warnings), **SO₂/sulfite** (molecular-fraction model → free SO₂ + K-meta dose) and **acid/TA adjustment**, backsweetening + stabilization, **carbonation / priming sugar** (target CO₂ volumes → sugar dose with a per-bottle amount and a bottle-pressure safety warning), hydrometer temperature correction, SG↔Brix, yeast pitch, blending (incl. water dilution), sanitizer & cleaner dosing (Chemipro SAN or Star San)
 - 🍷 **Tasting & BJCP scoring** — free-text notes, a 1–5 tasting wheel, and an optional formal BJCP scoresheet (aroma/appearance/flavor/mouthfeel/overall → weighted total + descriptor band) per tasting, with evolution charts across a batch's life
 - 📐 **Metric / US / imperial** — toggle units (L·kg / gal·lb) in the batch flow and on the recipe scale slider; everything stored metric internally
 - 🏷 **Labels & QR codes** — procedural bottle labels, printable A4 label sheets, storage-box labels, certificate / gift-card / permanent-record print-outs, and QR codes that deep-link back into the app
 - 🔗 **Share links** — every batch gets a public read-only page with live age, gravity log and tasting notes, reached via an unguessable `/share/<token>` URL that exposes that one batch and nothing else
 - 📅 **Calendar feed** — subscribe any phone/desktop calendar to a private `.ics` of your brewing schedule (nutrient doses, racking, bottling, ready/peak dates) — no Home Assistant required
-- 📱 **Installable PWA** — add to your home screen; works offline (cached app shell), with iOS safe-area support
+- 📱 **Installable PWA** — add to your home screen (with your uploaded brand logo as the app icon); works offline (cached app shell), with iOS safe-area support
 - 📚 **Libraries** — honey varieties with fermentation data (F:G ratio, fructose-stall risk, fructophilic-yeast warnings), 21 yeast strains (nitrogen demand, fructophilic flag, temp ranges), nutrients & protocols, plus a mead guide and troubleshooting compendium. Recipes cross-reference which honey/yeast/nutrient/adjunct combinations produce which outcomes.
 - 📊 **Insights & comparison** — lifetime fun-facts (mead brewed, favourite honey/yeast, success rate, even "bee math"), a full grouped side-by-side batch comparison with difference highlighting, and an aging timeline that buckets batches into drink-now / maturing / past-peak
 - ✦ **Daily coach** — due-today task list generated from each batch's recipe schedule, with overdue flags, anniversaries and milestone celebrations
@@ -116,7 +116,7 @@ python3 server.py --host 127.0.0.1       # local-only, don't expose on the LAN
 ## Feature tour
 
 ### Batches
-Create a batch from any recipe (or scale a recipe to your target volume first). Log gravity readings — charts, attenuation and estimated ABV update live. Batches move through *fermenting → conditioning → aging → bottled* automatically based on the recipe schedule, and a guided bottling workflow walks you through pre-flight checks, the final gravity reading, a sanitizer contact timer, per-size bottle counts and label printing.
+Create a batch from any recipe (or scale a recipe to your target volume first). Log gravity readings — the combined gravity/ABV chart, attenuation and estimated ABV update live. Batches move through *fermenting → conditioning → aging → bottled* based on the brew-coach steps you actually complete (it won't skip ahead if you haven't racked) and the real gravity trend, and a guided bottling workflow walks you through pre-flight checks, the final gravity reading, a sanitizer contact timer, per-size bottle counts and label printing.
 
 ### Cellar
 Define your real-world storage: any number of cabinets (a wine fridge in the living room, a rack in the basement…), each with named shelves. Place bottled batches and bulk-aging fermenters on shelves visually. Each batch shows its drinking window — when it's ready, when it peaks, when to drink it by — and the cellar view totals everything by style and value. Cabinets can optionally bind Home Assistant temperature/humidity sensors for a live wine-fridge-style LED readout and history charts.
@@ -131,7 +131,7 @@ Track honey, yeast, nutrient, chemicals and miscellaneous supplies with quantiti
 A full set of calculators (see highlights above), plus deep reference libraries for honey varieties, yeast strains and nutrient protocols, a mead-making guide, and a troubleshooting section covering stuck ferments, off-flavors and more.
 
 ### Sharing
-Each batch has a share link (`…/#share=2026-001`) and QR code rendering a clean read-only page — live age, stats, gravity log and tasting notes — for anyone who can reach your server. The full app also supports deep links (`#batch=…`, `#recipe=…`, `#view=…`) you can bookmark or print on labels.
+Each batch has a share link (`…/#share=2026-001`) and QR code rendering a clean read-only page — your bottle label (rendered exactly as in the Label Maker, minus the QR and drinking-window boxes), live age, a fermentation curve with both gravity and ABV, a human-readable drinking window, the gravity log and tasting notes — for anyone who can reach your server. The full app also supports deep links (`#batch=…`, `#recipe=…`, `#view=…`) you can bookmark or print on labels.
 
 Running behind a reverse proxy? Set **Settings → Server Data → Public URL** (e.g. `https://mead.example.com`) and all share links and QR codes are built from that address instead of whatever URL you happen to be browsing on internally.
 
@@ -147,19 +147,9 @@ MeadOS never *requires* Home Assistant and never stores data in it. If you have 
 - picking label images from HA media storage
 - an optional status summary entity (`sensor.meadows_data`) feeding a ready-made Lovelace dashboard card (Settings → HA Companion Card)
 
-Setup:
+Setup — enter an *internal/LAN* HA URL, optionally an *external* one (Nabu Casa, reverse proxy), and a long-lived access token (HA → Profile → Security) under **Settings → Home Assistant**, then Save. That's it — no `configuration.yaml` / CORS changes and no mixed-content worries, because the **MeadOS server talks to HA on your behalf** (a server-side proxy), not the browser. It tries the internal URL first, then the external one.
 
-1. **Allow MeadOS in HA (CORS).** Since MeadOS runs on its own server, HA must whitelist it before the browser permits any API call. Add to HA's `configuration.yaml` and restart (the Settings page shows this snippet with your exact origins):
-
-   ```yaml
-   http:
-     cors_allowed_origins:
-       - http://<meados-host>:8080
-   ```
-
-2. **URLs + token.** Enter an *internal/LAN* HA URL, optionally an *external* one (Nabu Casa, reverse proxy), and a long-lived access token (HA → Profile → Security). MeadOS automatically uses whichever URL responds — internal at home, external on the road — and remembers the working one per device. Any port works. The connection settings are stored in the shared database, so this is a **one-time setup** — every browser and device picks them up automatically. (Consequence: anyone who can open your MeadOS page can also read the HA token — the MeadOS server and HA share one trust boundary.)
-
-3. Note: if you serve MeadOS over HTTPS, the HA URL must be HTTPS too (browsers block mixed content).
+The token is held **server-side only** and never rides the synced data blob, so it can't leak through a shared/exported state or be read by other devices. (It's still proxied to HA, so the MeadOS server and HA share one trust boundary — protect the MeadOS server with the external-access password if you expose it.)
 
 ---
 
@@ -257,13 +247,21 @@ meados/
 ├── app.css                 # styles
 ├── server.py               # zero-dependency Python server + SQLite storage
 ├── sw.js                   # service worker (offline shell)
-├── manifest.webmanifest    # PWA manifest
-├── icon-*.png / icon.svg   # PWA / home-screen icons
 ├── meados.db               # created on first save (gitignore this)
-├── labels/                 # uploaded label/logo images (gitignore this)
+├── assets/
+│   ├── icons/              # bundled PWA / home-screen icons
+│   ├── vendor/             # self-hosted Chart.js + jsQR
+│   ├── labels/             # uploaded bottle-label art   (gitignored)
+│   ├── photos/             # uploaded photo-journal images (gitignored)
+│   └── brand/              # uploaded brand logo + app icon (gitignored)
 └── docs/
     └── screenshots/
 ```
+
+The PWA manifest is generated dynamically (so the install/home-screen icon can
+follow your uploaded brand logo). Uploaded images are stored as files, split by
+purpose; **Settings → Unused Images** scans for and deletes any no longer
+referenced by a batch, recipe, or version-history snapshot.
 
 ## License
 
