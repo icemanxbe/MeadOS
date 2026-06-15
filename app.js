@@ -210,6 +210,9 @@ notes:'Crisp aromatic apples (like Jonagold) give beautiful character. Don\'t ov
 },
 {
 id:'r3',name:'Strawberry Mead',brandName:'Strawberry',style:'Melomel',difficulty:'Beginner',brandColor:'#c04858',
+category:'Melomel',additionStage:'primary',
+linked:[{id:'r36',label:'fruit in secondary'}],
+linkedNote:'Two ways to build strawberry mead. THIS one ferments the fruit in the PRIMARY — simplest, with a soft fermented-through strawberry note; the linked version adds the fruit in the SECONDARY for the freshest, most fragrant "just-picked" character (strawberry aroma is delicate and fades through a full ferment).',
 volume:5.0,ogTarget:1.094,fgTarget:1.008,abvTarget:11.5,fermentDays:35,ageDays:60,
 minAgeDays:30,peakAgeDays:90,maxAgeDays:300,
 tags:['Summer','Fruity','Pink'],
@@ -232,7 +235,38 @@ steps:[
 {day:49,title:'Bottle',desc:'Bottle in clear glass to showcase the pink color. Keep chilled — strawberry mead loses character with heat exposure.'},
 {day:75,title:'First Tasting',desc:'Best young and chilled — drink within 1 year for peak fruit character.'}
 ],
-notes:'Pink color can fade over time — that\'s normal. Frozen strawberries from late June/July harvest give best results. Avoid waterlogged supermarket berries.'
+notes:'Pink color can fade over time — that\'s normal. Frozen strawberries from late June/July harvest give best results. Avoid waterlogged supermarket berries. This is the PRIMARY-fruit version; see the linked secondary-fruit version for the freshest aroma.'
+},
+{
+id:'r36',name:'Strawberry Mead · Fruit in Secondary',brandName:'Strawberry',style:'Melomel',difficulty:'Intermediate',brandColor:'#d06070',useGenericLabel:true,
+category:'Melomel',additionStage:'secondary',
+linked:[{id:'r3',label:'fruit in primary'}],
+linkedNote:'Two ways to build strawberry mead. THIS one adds the fruit in the SECONDARY for the freshest, most fragrant "just-picked" character; the linked version ferments the fruit in the PRIMARY — simpler, with a softer fermented-through note.',
+volume:5.0,ogTarget:1.090,fgTarget:1.004,abvTarget:11.3,fermentDays:35,ageDays:60,
+minAgeDays:30,peakAgeDays:90,maxAgeDays:300,
+tags:['Summer','Fresh aroma','Pink','Secondary'],
+description:'Strawberry aroma is the most delicate of the berries — it fades fastest through a full ferment. This version keeps it bright by fermenting a clean traditional base first, then racking onto the strawberries in secondary. The freshest, most fragrant of the two strawberry meads, with a slightly paler pink.',
+ingredients:[
+{item:'Acacia or Wildflower Honey',amount:'1.45 kg',notes:''},
+{item:'Strawberries (frozen)',amount:'1.1 kg',notes:'Frozen breaks cell walls — added in SECONDARY, not on brew day'},
+{item:'Spring Water',amount:'4.5 L',notes:''},
+{item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:''},
+{item:'Mead Yeast Nutrient',amount:'12 g',notes:'Staggered through the first third'},
+{item:'Pectic Enzyme',amount:'2 g',notes:'Add with the fruit in secondary — keeps it clear'},
+{item:'Potassium Metabisulfite',amount:'0.3 g',notes:'Pair with sorbate only if you back-sweeten after the fruit'},
+{item:'Potassium Sorbate',amount:'1 g',notes:'Pair with metabisulfite to stabilise before any back-sweetening'}
+],
+steps:[
+{day:0,title:'Brew Day (clean traditional base)',desc:'No fruit yet. Clean and sanitise. Dissolve the honey fully, then top up with spring water to the 5 L mark. Take OG. Pitch M05. Seal with an airlock — the strawberries go in later.'},
+{day:1,title:'First Nutrient',desc:'Add ~6 g nutrient once fermentation is clearly underway. Gentle swirl to mix and degas.'},
+{day:3,title:'Second Nutrient',desc:'Add the remaining ~6 g before the 1/3 sugar break. Log gravity.'},
+{day:14,title:'Rack onto the fruit (when primary is DONE)',desc:'Only once fermentation has finished — a stable gravity across two readings 2–3 days apart, not a fixed day. Sanitise 1.1 kg thawed strawberries (no need to chop) in a mesh bag in a clean secondary, stir in the pectic enzyme (amount in the ingredient list — it scales with the slider), then rack the mead onto the fruit. A gentle secondary ferment usually restarts — keep an airlock on.'},
+{day:24,title:'Taste & pull the fruit',desc:'After ~10 days on the fruit, taste daily. Pull the fruit bag the moment the aroma is fresh and vivid — strawberry turns jammy fast if left too long.'},
+{day:35,title:'Stabilise & (optional) back-sweeten',desc:'For an off-dry finish that highlights the fruit, stabilise FIRST with potassium sorbate AND metabisulfite together — either alone will not reliably stop a restart on fresh fruit sugar — wait 24 h, then back-sweeten lightly with honey to taste.'},
+{day:49,title:'Bottle',desc:'Bottle in clear glass to showcase the pink. Keep chilled — strawberry mead loses character with heat.'},
+{day:75,title:'First Tasting',desc:'Brighter and more fragrant than the primary-fruit version. Best young and chilled — drink within a year for peak fruit.'}
+],
+notes:'Fruit in secondary = the freshest strawberry aroma, but it WILL try to re-ferment, so stabilise (sorbate + metabisulfite) before sweetening. Fruit in primary (the linked recipe) = simpler and a touch deeper in colour, with a softer note. Frozen late-June/July berries give the best result either way.'
 },
 {
 id:'r4',name:'Forest Fruits Mead',brandName:'Forest Fruits',style:'Melomel',difficulty:'Beginner',brandColor:'#5a3868',
@@ -298,6 +332,9 @@ notes:'Fruit in secondary = fresher aroma, less colour and body, and it WILL try
 },
 {
 id:'r5',name:'Blueberry Mead',brandName:'Blueberry',style:'Melomel',difficulty:'Beginner',brandColor:'#6e84cc',
+category:'Melomel',additionStage:'primary',
+linked:[{id:'r38',label:'fruit in secondary'}],
+linkedNote:'Two ways to build blueberry mead. THIS one ferments the fruit in the PRIMARY for the deepest indigo colour and earthy depth; the linked version adds the fruit in the SECONDARY for a fresher, brighter blueberry note with a touch less colour.',
 volume:5.0,ogTarget:1.096,fgTarget:1.010,abvTarget:11.3,fermentDays:42,ageDays:120,
 minAgeDays:90,peakAgeDays:300,maxAgeDays:900,
 tags:['Single fruit','Indigo','Antioxidant'],
@@ -322,7 +359,38 @@ steps:[
 {day:70,title:'Clear & Bottle',desc:'Should be clear by now. Bottle in clear glass — the indigo color is the star.'},
 {day:150,title:'First Tasting',desc:'Blueberry mead benefits enormously from aging. Try at 5 months, then 8, then 12 — you\'ll see dramatic improvement.'}
 ],
-notes:'Wild blueberries give the deepest color. Frozen-then-thawed extraction is essential — fresh blueberry skins resist releasing their character.'
+notes:'Wild blueberries give the deepest color. Frozen-then-thawed extraction is essential — fresh blueberry skins resist releasing their character. This is the PRIMARY-fruit version; see the linked secondary-fruit version for a fresher, brighter take.'
+},
+{
+id:'r38',name:'Blueberry Mead · Fruit in Secondary',brandName:'Blueberry',style:'Melomel',difficulty:'Intermediate',brandColor:'#8298d8',useGenericLabel:true,
+category:'Melomel',additionStage:'secondary',
+linked:[{id:'r5',label:'fruit in primary'}],
+linkedNote:'Two ways to build blueberry mead. THIS one adds the fruit in the SECONDARY for a fresher, brighter blueberry note; the linked version ferments the fruit in the PRIMARY for the deepest indigo colour and earthy depth.',
+volume:5.0,ogTarget:1.092,fgTarget:1.006,abvTarget:11.0,fermentDays:42,ageDays:120,
+minAgeDays:60,peakAgeDays:240,maxAgeDays:720,
+tags:['Single fruit','Fresh aroma','Indigo','Secondary'],
+description:'The brighter, fresher sibling of the primary-fruit blueberry mead. A clean traditional base ferments out first, then racks onto crushed blueberries in secondary — keeping a fresher fruit note and a touch more tartness, with slightly less of the deep earthy indigo you get from fermenting the fruit through.',
+ingredients:[
+{item:'Acacia or Wildflower Honey',amount:'1.55 kg',notes:''},
+{item:'Blueberries (frozen)',amount:'1.1 kg',notes:'Frozen essential — added in SECONDARY, not on brew day'},
+{item:'Spring Water',amount:'4.5 L',notes:''},
+{item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:''},
+{item:'Mead Yeast Nutrient',amount:'12 g',notes:'Staggered through the first third'},
+{item:'Pectic Enzyme',amount:'2 g',notes:'Add with the fruit in secondary — blueberries are pectin-rich'},
+{item:'Potassium Metabisulfite',amount:'0.3 g',notes:'Pair with sorbate only if you back-sweeten after the fruit'},
+{item:'Potassium Sorbate',amount:'1 g',notes:'Pair with metabisulfite to stabilise before any back-sweetening'}
+],
+steps:[
+{day:0,title:'Brew Day (clean traditional base)',desc:'No fruit yet. Clean and sanitise. Dissolve the honey fully, then top up with spring water to the 5 L mark. Take OG. Pitch M05. Seal with an airlock — the blueberries go in later.'},
+{day:1,title:'First Nutrient',desc:'Add ~6 g nutrient once fermentation is clearly underway. Gentle swirl to mix and degas.'},
+{day:3,title:'Second Nutrient',desc:'Add the remaining ~6 g before the 1/3 sugar break. Log gravity.'},
+{day:21,title:'Rack onto the fruit (when primary is DONE)',desc:'Only once fermentation has finished — a stable gravity across two readings 2–3 days apart, not a fixed day. Thaw 1.1 kg blueberries and lightly crush half (releases colour), sanitise into a mesh bag in a clean secondary, stir in the pectic enzyme (amount in the ingredient list — it scales with the slider), then rack the mead onto the fruit. Keep an airlock on for the gentle restart.'},
+{day:35,title:'Taste & pull the fruit',desc:'After ~2 weeks on the fruit, taste daily. Pull the bag when the blueberry note is fresh and clean — over-long contact turns it stewed.'},
+{day:42,title:'Stabilise & (optional) back-sweeten',desc:'For an off-dry finish, stabilise FIRST with potassium sorbate AND metabisulfite together — either alone will not reliably stop a restart on fresh fruit sugar — wait 24 h, then back-sweeten with honey to taste.'},
+{day:70,title:'Clear & Bottle',desc:'Should be clearing by now; cold-crash a week if hazy. Bottle in clear glass — the indigo is the star.'},
+{day:150,title:'First Tasting',desc:'Fresher and a touch tarter than the primary-fruit version. Still rewards aging — try at 5, 8 and 12 months.'}
+],
+notes:'Fruit in secondary = fresher, brighter blueberry and a little more tartness, but it WILL try to re-ferment, so stabilise (sorbate + metabisulfite) before sweetening. Fruit in primary (the linked recipe) = the deepest colour and earthy depth. Frozen-then-thawed berries are essential either way.'
 },
 {
 id:'r6',name:'Cherry Mead',brandName:'Cherry',style:'Melomel',difficulty:'Intermediate',brandColor:'#c8505f',
@@ -526,6 +594,8 @@ notes:'Boil the DME but not the honey — boiling honey drives off delicate arom
 {
 id:'r13',name:'Raspberry Melomel',brandName:'Raspberry',style:'Melomel',difficulty:'Beginner',brandColor:'#a02050',useGenericLabel:true,
 category:'Melomel',additionStage:'primary',
+linked:[{id:'r37',label:'fruit in secondary'}],
+linkedNote:'Two ways to build raspberry melomel. THIS one ferments the fruit in the PRIMARY — raspberry is robust enough to hold up, giving a reliable magenta melomel; the linked version adds the fruit in the SECONDARY for an even more intense, perfumed fresh-raspberry aroma.',
 volume:5.0,ogTarget:1.100,fgTarget:1.010,abvTarget:12.0,fermentDays:42,ageDays:60,
 minAgeDays:60,peakAgeDays:180,maxAgeDays:540,
 tags:['Berry','Tart','Vibrant','Primary'],
@@ -547,9 +617,39 @@ steps:[
 {day:42,title:'Bottle',desc:'Brilliant magenta. Bottle in clear glass to show the color.'},
 {day:90,title:'First Tasting',desc:'Vibrant raspberry. Best drunk young — color fades over 1+ years.'}
 ],
-notes:'Frozen raspberries work BETTER than fresh — ice crystals rupture cell walls. Same trick with strawberries, blueberries, blackberries. Don\'t blend the fruit — pulp causes nightmare clarity issues.'
+notes:'Frozen raspberries work BETTER than fresh — ice crystals rupture cell walls. Same trick with strawberries, blueberries, blackberries. Don\'t blend the fruit — pulp causes nightmare clarity issues. This is the PRIMARY-fruit version; see the linked secondary-fruit version for the most intense fresh-raspberry aroma.'
 },
-
+{
+id:'r37',name:'Raspberry Melomel · Fruit in Secondary',brandName:'Raspberry',style:'Melomel',difficulty:'Intermediate',brandColor:'#c0406a',useGenericLabel:true,
+category:'Melomel',additionStage:'secondary',
+linked:[{id:'r13',label:'fruit in primary'}],
+linkedNote:'Two ways to build raspberry melomel. THIS one adds the fruit in the SECONDARY for an even more intense, perfumed fresh-raspberry aroma; the linked version ferments the fruit in the PRIMARY — raspberry is robust enough to hold up there, and it is the simpler route.',
+volume:5.0,ogTarget:1.096,fgTarget:1.004,abvTarget:11.8,fermentDays:42,ageDays:60,
+minAgeDays:45,peakAgeDays:150,maxAgeDays:480,
+tags:['Berry','Fresh aroma','Vibrant','Secondary'],
+description:'Raspberry already survives a primary ferment well — but adding the fruit in secondary pushes the aroma even further, giving an intense, almost perfumed fresh-raspberry nose and a vivid magenta. A clean base ferments out first, then racks onto the berries.',
+ingredients:[
+{item:'Wildflower Honey',amount:'1.7 kg',notes:''},
+{item:'Frozen Raspberries (then thawed)',amount:'1.0 kg',notes:'Freezing ruptures cell walls — added in SECONDARY, not on brew day'},
+{item:'Spring Water',amount:'4.5 L',notes:''},
+{item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:''},
+{item:'Mead Yeast Nutrient',amount:'12 g',notes:'Staggered through the first third'},
+{item:'Pectic Enzyme',amount:'2 g',notes:'Add with the fruit in secondary — prevents haze'},
+{item:'Potassium Metabisulfite',amount:'0.3 g',notes:'Pair with sorbate only if you back-sweeten after the fruit'},
+{item:'Potassium Sorbate',amount:'1 g',notes:'Pair with metabisulfite to stabilise before any back-sweetening'}
+],
+steps:[
+{day:0,title:'Brew Day (clean traditional base)',desc:'No fruit yet. Clean and sanitise. Dissolve the honey fully, then top up with spring water to the 5 L mark. Take OG. Pitch M05. Seal with an airlock — the raspberries go in later.'},
+{day:1,title:'First Nutrient',desc:'Add ~6 g nutrient once fermentation is clearly underway. Gentle swirl to mix and degas.'},
+{day:3,title:'Second Nutrient',desc:'Add the remaining ~6 g before the 1/3 sugar break. Log gravity.'},
+{day:21,title:'Rack onto the fruit (when primary is DONE)',desc:'Only once fermentation has finished — a stable gravity across two readings 2–3 days apart, not a fixed day. Thaw and gently crush 1.0 kg raspberries, sanitise into a mesh bag in a clean secondary, stir in the pectic enzyme (amount in the ingredient list — it scales with the slider), then rack the mead onto the fruit. Keep an airlock on for the gentle restart.'},
+{day:33,title:'Taste & pull the fruit',desc:'After ~12 days on the fruit, taste daily. Pull the bag when the aroma peaks — squeeze gently, never hard, or the seeds give bitterness.'},
+{day:42,title:'Stabilise & (optional) back-sweeten',desc:'For an off-dry finish, stabilise FIRST with potassium sorbate AND metabisulfite together — either alone will not reliably stop a restart on fresh fruit sugar — wait 24 h, then back-sweeten with honey to taste.'},
+{day:56,title:'Bottle',desc:'Brilliant magenta. Bottle in clear glass to show the colour.'},
+{day:90,title:'First Tasting',desc:'More perfumed and aromatic than the primary-fruit version. Best drunk young — the fresh aroma is the point, and colour fades over a year.'}
+],
+notes:'Fruit in secondary = the most intense fresh-raspberry aroma, but it WILL try to re-ferment, so stabilise (sorbate + metabisulfite) before sweetening. Fruit in primary (the linked recipe) = simpler and still excellent, since raspberry holds up to a primary ferment. Don\'t blend the fruit — pulp wrecks clarity.'
+},
 {
 id:'r14',name:'Blackcurrant Melomel',brandName:'Cassis',style:'Melomel',difficulty:'Intermediate',brandColor:'#9a63b8',useGenericLabel:true,
 category:'Melomel',additionStage:'primary',
