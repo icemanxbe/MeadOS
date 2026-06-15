@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# MeadOS — © 2026 icemanxbe (https://github.com/icemanxbe/MeadOS)
+# Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE):
+# free to use, modify and share for noncommercial purposes; selling is not permitted.
+# Required Notice: Copyright © 2026 icemanxbe (https://github.com/icemanxbe/MeadOS)
 """MeadOS server — serves the app and stores all shared data in SQLite.
 
 Zero dependencies: Python 3.8+ standard library only.
@@ -631,6 +635,7 @@ button:disabled{opacity:.6;cursor:default}
 <button id="btn" type="submit">Sign in</button>
 <div class="err" id="err"></div>
 </form>
+<div style="text-align:center;margin-top:20px;font-size:10px;color:#5e533f;letter-spacing:.5px;line-height:1.7">© 2026 icemanxbe · PolyForm Noncommercial 1.0.0</div>
 <script>
 function go(e){
   e.preventDefault();
