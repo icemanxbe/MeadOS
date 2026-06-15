@@ -297,6 +297,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .ts-item:active{transform:translateY(0)}
 .ts-item .ts-ico{font-size:20px;flex-shrink:0;line-height:1}
 .ts-item .ts-meta{display:block;font-family:var(--font-mono);font-size:9.5px;color:var(--gold2);letter-spacing:1px;margin-top:4px}
+/* Brew-with-what-you-have: same recipe-card theming as the Recipes page */
+.bwyh-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
 /* keep chart canvases from poking past their container on narrow screens */
 #main canvas{max-width:100%}
 @media (max-width:900px){

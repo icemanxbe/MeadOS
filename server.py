@@ -54,20 +54,183 @@ MAX_BODY = 64 * 1024 * 1024  # 64 MB — far above any realistic state size
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 INDEX_FILE = os.path.join(BASE_DIR, "index.html")
 
-# Uploaded label/logo images live as plain files next to index.html instead
-# of base64 blobs inside the state JSON — keeping the state small (page loads
-# went from multi-second JSON parses back to instant) and letting you browse,
-# back up, or manually drop images into the folder. Files are also reachable
-# by hand: put mylabel.png in labels/ and reference it as /labels/mylabel.png.
-LABELS_DIR = os.path.join(BASE_DIR, "labels")
+# Uploaded images live as plain files (not base64 blobs in the state JSON) so
+# state stays small and the files are browsable/backup-able. They're organised
+# under assets/ by purpose for tidiness:
+#   assets/labels/  — bottle-label art
+#   assets/photos/  — batch photo-journal images
+#   assets/brand/   — brand logo + app/PWA icons (config images)
+# Content-addressed filenames (sha256 prefix) are globally unique, so the same
+# file resolves no matter which subdir it's in — that's what lets old
+# /labels/<name> references keep working after the reorg (see find_user_asset).
+LABELS_DIR = os.path.join(BASE_DIR, "labels")  # legacy dir, still searched
+ASSETS_DIR = os.path.join(BASE_DIR, "assets")
+USER_ASSET_DIRS = {
+    "labels": os.path.join(ASSETS_DIR, "labels"),
+    "photos": os.path.join(ASSETS_DIR, "photos"),
+    "brand":  os.path.join(ASSETS_DIR, "brand"),
+}
+# Bundled web assets moved out of the repo root for tidiness. The URL path is
+# unchanged (e.g. /icon-192.png); only the on-disk location moved here.
+BUNDLED_ASSET_FILE = {
+    "/icon.svg": "assets/icons/icon.svg",
+    "/icon-192.png": "assets/icons/icon-192.png",
+    "/icon-512.png": "assets/icons/icon-512.png",
+    "/icon-maskable-512.png": "assets/icons/icon-maskable-512.png",
+    "/apple-touch-icon.png": "assets/icons/apple-touch-icon.png",
+    "/chart.umd.js": "assets/vendor/chart.umd.js",
+    "/jsQR.min.js": "assets/vendor/jsQR.min.js",
+}
 LABEL_EXTS = {
     "image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp",
     "image/svg+xml": ".svg", "image/gif": ".gif",
 }
 LABEL_NAME_RE = None  # compiled lazily below (re imported at top)
+ASSET_NAME_RE = re.compile(r"^[0-9a-f]{24}\.(?:png|jpe?g|webp|svg|gif)$", re.I)
+# A public image reference: /labels/<name> (legacy) or /assets/<sub>/<name>.
+PUBLIC_REF_RE = re.compile(
+    r"^/(?:labels|assets/(?:labels|photos|brand))/([0-9a-f]{24}\.(?:png|jpe?g|webp|svg|gif))$", re.I)
 MAX_ASSET = 16 * 1024 * 1024
 
 DB_PATH = os.path.join(BASE_DIR, "meados.db")  # overridden by --db
+
+
+def find_user_asset(name):
+    """Locate a content-addressed upload by filename across the user-asset dirs
+    (and the legacy labels/ dir). Returns the full path or None. Names are unique
+    (content hash), so search-by-name keeps every old reference working no matter
+    which subdir the file ends up in."""
+    if not name or not ASSET_NAME_RE.match(name):
+        return None
+    for d in list(USER_ASSET_DIRS.values()) + [LABELS_DIR]:
+        p = os.path.join(d, name)
+        if os.path.isfile(p):
+            return p
+    return None
+
+
+def public_asset_ref(ref):
+    """Return ref unchanged if it's a valid /labels/ or /assets/ image reference
+    that resolves to a real file on disk; else None."""
+    if not isinstance(ref, str):
+        return None
+    m = PUBLIC_REF_RE.match(ref)
+    return ref if (m and find_user_asset(m.group(1))) else None
+
+
+_ASSET_REF_PAT = re.compile(
+    r"/(?:labels|assets/(?:labels|photos|brand))/([0-9a-f]{24}\.(?:png|jpe?g|webp|svg|gif))", re.I)
+
+
+def referenced_asset_names():
+    """Every asset filename referenced by the current state OR any history
+    snapshot — so orphan cleanup never deletes an image a restorable snapshot
+    still needs."""
+    names = set()
+    blobs = []
+    row = db_get_state()
+    if row:
+        blobs.append(row[0])
+    try:
+        with db_connect() as conn:
+            for (d,) in conn.execute("SELECT data FROM history"):
+                if d:
+                    blobs.append(d)
+    except sqlite3.Error:
+        pass
+    for b in blobs:
+        for m in _ASSET_REF_PAT.finditer(b or ""):
+            names.add(m.group(1).lower())
+    return names
+
+
+def scan_orphan_assets():
+    """Uploaded image files not referenced anywhere (current state or history)."""
+    referenced = referenced_asset_names()
+    out, seen = [], set()
+    for sub, d in list(USER_ASSET_DIRS.items()) + [("labels", LABELS_DIR)]:
+        if not os.path.isdir(d):
+            continue
+        for fn in os.listdir(d):
+            if not ASSET_NAME_RE.match(fn) or fn.lower() in seen:
+                continue
+            seen.add(fn.lower())
+            if fn.lower() not in referenced:
+                try:
+                    sz = os.path.getsize(os.path.join(d, fn))
+                except OSError:
+                    sz = 0
+                out.append({"name": fn, "dir": sub, "bytes": sz})
+    return out
+
+
+def _asset_kind_map():
+    """name -> 'labels'|'photos'|'brand' for the CURRENT state's references, used
+    to sort existing uploads into the right subdir during migration."""
+    m = {}
+    row = db_get_state()
+    if not row:
+        return m
+    try:
+        st = json.loads(row[0])
+    except ValueError:
+        return m
+
+    def add(ref, kind):
+        if isinstance(ref, str):
+            mm = re.search(r"/([0-9a-f]{24}\.(?:png|jpe?g|webp|svg|gif))$", ref, re.I)
+            if mm:
+                m[mm.group(1).lower()] = kind
+
+    ss = st.get("sharedSettings") if isinstance(st.get("sharedSettings"), dict) else {}
+    add(ss.get("brandLogo"), "brand")
+    add(ss.get("appIcon"), "brand")
+    cl = ss.get("customLabels") if isinstance(ss.get("customLabels"), dict) else {}
+    for v in cl.values():
+        add(v, "labels")
+    photos = st.get("photos") if isinstance(st.get("photos"), dict) else {}
+    for arr in photos.values():
+        if isinstance(arr, list):
+            for p in arr:
+                if isinstance(p, dict):
+                    add(p.get("url"), "photos")
+    return m
+
+
+def migrate_assets():
+    """One-time tidy (idempotent): move bundled web assets and existing uploads
+    into the assets/ tree. Safe because find_user_asset resolves files wherever
+    they end up, so references keep working throughout."""
+    for d in ([ASSETS_DIR, os.path.join(ASSETS_DIR, "icons"), os.path.join(ASSETS_DIR, "vendor")]
+              + list(USER_ASSET_DIRS.values())):
+        os.makedirs(d, exist_ok=True)
+    # Bundled icons/vendor: repo root -> assets/.
+    for url, rel in BUNDLED_ASSET_FILE.items():
+        dst = os.path.join(BASE_DIR, rel)
+        legacy = os.path.join(BASE_DIR, url[1:])
+        if not os.path.isfile(dst) and os.path.isfile(legacy):
+            try:
+                os.replace(legacy, dst)
+            except OSError:
+                pass
+    # Existing uploads: legacy labels/ -> assets/<kind>/ by reference.
+    if os.path.isdir(LABELS_DIR):
+        kinds = _asset_kind_map()
+        for fn in os.listdir(LABELS_DIR):
+            if not ASSET_NAME_RE.match(fn):
+                continue
+            dst = os.path.join(USER_ASSET_DIRS[kinds.get(fn.lower(), "labels")], fn)
+            if os.path.exists(dst):
+                continue
+            try:
+                os.replace(os.path.join(LABELS_DIR, fn), dst)
+            except OSError:
+                pass
+        try:
+            if not os.listdir(LABELS_DIR):
+                os.rmdir(LABELS_DIR)
+        except OSError:
+            pass
 
 
 LABEL_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+\.(png|jpe?g|webp|svg|gif)$", re.I)
@@ -128,10 +291,11 @@ SECURITY_HEADERS = (
 )
 
 
-def store_label_asset(data_url):
-    """Decode a data: URL and persist it under labels/. Content-addressed
-    filename (sha256 prefix) so identical uploads dedupe. Returns the public
-    URL path, or raises ValueError on malformed/unsupported input."""
+def store_label_asset(data_url, kind="labels"):
+    """Decode a data: URL and persist it under assets/<kind>/. Content-addressed
+    filename (sha256 prefix) so identical uploads dedupe. `kind` ∈ labels|photos|
+    brand (anything else → labels). Returns the public URL path, or raises
+    ValueError on malformed/unsupported input."""
     m = re.match(r"^data:([a-zA-Z0-9./+-]+);base64,(.+)$", data_url, re.S)
     if not m:
         raise ValueError("not a base64 data URL")
@@ -144,13 +308,15 @@ def store_label_asset(data_url):
         raise ValueError("invalid base64 payload")
     if not blob or len(blob) > MAX_ASSET:
         raise ValueError("image empty or larger than %d MB" % (MAX_ASSET // 1048576))
+    sub = kind if kind in USER_ASSET_DIRS else "labels"
     name = hashlib.sha256(blob).hexdigest()[:24] + LABEL_EXTS[mime]
-    os.makedirs(LABELS_DIR, exist_ok=True)
-    path = os.path.join(LABELS_DIR, name)
+    d = USER_ASSET_DIRS[sub]
+    os.makedirs(d, exist_ok=True)
+    path = os.path.join(d, name)
     if not os.path.exists(path):
         with open(path, "wb") as f:
             f.write(blob)
-    return "/labels/" + name
+    return "/assets/" + sub + "/" + name
 
 
 def utcnow():
@@ -406,8 +572,7 @@ def login_logo_src():
     if isinstance(brand, str) and brand:
         if brand.startswith("data:image/"):
             return brand  # self-contained, allowed by img-src 'self' data:
-        if re.match(r"^/labels/[0-9a-f]{24}\.(png|jpg|jpeg|webp|svg|gif)$", brand) \
-                and os.path.isfile(os.path.join(LABELS_DIR, brand[len("/labels/"):])):
+        if public_asset_ref(brand):
             return brand
     return "/icon.svg"
 
@@ -426,8 +591,7 @@ def app_icon_src():
                     if isinstance(ic, str) and ic:
                         if ic.startswith("data:image/"):
                             return ic
-                        if re.match(r"^/labels/[0-9a-f]{24}\.(png|jpg|jpeg|webp|svg|gif)$", ic) \
-                                and os.path.isfile(os.path.join(LABELS_DIR, ic[len("/labels/"):])):
+                        if public_asset_ref(ic):
                             return ic
                     break
         except ValueError:
@@ -539,7 +703,8 @@ def build_share_payload(state, token):
     photos = (state.get("photos") or {}).get(batch_id) or []
     photos = [
         _pick(p, SHARE_PHOTO_FIELDS) for p in photos
-        if isinstance(p, dict) and isinstance(p.get("url"), str) and p.get("url").startswith("/labels/")
+        if isinstance(p, dict) and isinstance(p.get("url"), str)
+        and (p["url"].startswith("/labels/") or p["url"].startswith("/assets/"))
     ]
 
     # Only ship a recipe object when the batch uses a CUSTOM recipe (built-in
@@ -564,7 +729,7 @@ def build_share_payload(state, token):
     label_image = None
     custom_labels = ss.get("customLabels") if isinstance(ss.get("customLabels"), dict) else {}
     lref = custom_labels.get(rid) if rid else None
-    if isinstance(lref, str) and (lref.startswith("/labels/") or lref.startswith("data:image/")):
+    if isinstance(lref, str) and (public_asset_ref(lref) or lref.startswith("data:image/")):
         label_image = lref
 
     # The recipe's Label-Maker overlay config (text positions/colours), so the
@@ -966,8 +1131,8 @@ class Handler(BaseHTTPRequestHandler):
             src = app_icon_src()  # squared app icon, brand logo, or /icon.svg
             data = None
             mime = "image/png"
-            if src.startswith("/labels/"):
-                fp = os.path.join(LABELS_DIR, src[len("/labels/"):])
+            fp = find_user_asset(src.rsplit("/", 1)[-1]) if (src.startswith("/labels/") or src.startswith("/assets/")) else None
+            if fp:
                 ext = os.path.splitext(fp)[1].lower()
                 mime = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
                         ".webp": "image/webp", ".svg": "image/svg+xml", ".gif": "image/gif"}.get(ext, "image/png")
@@ -985,7 +1150,7 @@ class Handler(BaseHTTPRequestHandler):
                     data = None
             if data is None:  # no/unreadable brand logo → bundled default
                 try:
-                    with open(os.path.join(BASE_DIR, "icon-512.png"), "rb") as f:
+                    with open(os.path.join(BASE_DIR, BUNDLED_ASSET_FILE["/icon-512.png"]), "rb") as f:
                         data = f.read()
                     mime = "image/png"
                 except OSError:
@@ -1006,7 +1171,10 @@ class Handler(BaseHTTPRequestHandler):
             # data still requires auth or a share token. Served with an ETag so
             # the ~1.4 MB app.js transfers only when it actually changes; the
             # browser revalidates with a tiny conditional request otherwise.
-            fpath = os.path.join(BASE_DIR, path[1:])
+            # Bundled icons/vendor libs live under assets/ now (BUNDLED_ASSET_FILE).
+            fpath = os.path.join(BASE_DIR, BUNDLED_ASSET_FILE.get(path, path[1:]))
+            if not os.path.isfile(fpath) and path in BUNDLED_ASSET_FILE:
+                fpath = os.path.join(BASE_DIR, path[1:])  # fall back to legacy root location
             if not os.path.isfile(fpath):
                 self._send(404, {"ok": False, "error": "not found"})
                 return
@@ -1030,17 +1198,15 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(data)
             return
-        if path.startswith("/labels/"):
-            # Public: label art must render on share pages for guests. Strict
-            # filename allow-list prevents path traversal; long immutable
-            # caching because content-addressed names never change content;
+        if path.startswith("/labels/") or path.startswith("/assets/"):
+            # Public: uploaded images (label art, photos, brand) must render on
+            # share pages for guests. Resolved by content-hash filename across the
+            # asset dirs, so old /labels/<name> refs and new /assets/<sub>/<name>
+            # refs both work. Long immutable caching (names never change content);
             # CSP sandbox neutralizes scripts inside uploaded SVGs.
-            name = path[len("/labels/"):]
-            if not LABEL_NAME_RE.match(name):
-                self._send(404, {"ok": False, "error": "not found"})
-                return
-            fpath = os.path.join(LABELS_DIR, name)
-            if not os.path.isfile(fpath):
+            name = path.rsplit("/", 1)[-1]
+            fpath = find_user_asset(name)
+            if not fpath:
                 self._send(404, {"ok": False, "error": "not found"})
                 return
             ext = os.path.splitext(name)[1].lower()
@@ -1115,6 +1281,10 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {"ok": True, "token": get_config("ha_token") or ""})
         elif path == "/api/health":
             self._send(200, db_health())
+        elif path == "/api/assets/orphans":
+            orphans = scan_orphan_assets()
+            self._send(200, {"ok": True, "orphans": orphans,
+                             "totalBytes": sum(o["bytes"] for o in orphans)})
         elif path == "/api/history":
             self._send(200, {"ok": True, "items": db_history_list()})
         elif path.startswith("/api/history/"):
@@ -1290,18 +1460,17 @@ class Handler(BaseHTTPRequestHandler):
                 return
             try:
                 body = json.loads(self.rfile.read(length).decode("utf-8"))
-                url = store_label_asset(body.get("data") or "")
+                url = store_label_asset(body.get("data") or "", body.get("kind") or "labels")
             except (ValueError, UnicodeDecodeError) as e:
                 self._send(400, {"ok": False, "error": str(e)})
                 return
             self._send(200, {"ok": True, "url": url})
             return
         if path == "/api/asset/delete":
-            # Delete a stored asset file. The client only calls this once it has
-            # confirmed no other reference (photo/label/logo) still points at the
-            # URL — assets are content-addressed, so the same file can back many
-            # references. We just validate the path is a real labels/ asset name
-            # and unlink it. Idempotent: a missing file is still "ok".
+            # Delete a stored asset file. The client calls this once it has
+            # confirmed no other reference still points at the URL — assets are
+            # content-addressed, so the same file can back many references. We
+            # resolve the file across the asset dirs and unlink it. Idempotent.
             try:
                 length = int(self.headers.get("Content-Length", 0))
                 body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
@@ -1309,26 +1478,56 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(400, {"ok": False, "error": "invalid body"})
                 return
             ref = str(body.get("url") or "")
-            name = ref[len("/labels/"):] if ref.startswith("/labels/") else ""
-            # Filenames are 24 hex chars + a known extension (see store_label_asset)
-            if not re.match(r"^[0-9a-f]{24}\.(png|jpg|webp|svg|gif)$", name):
+            name = ref.rsplit("/", 1)[-1] if (ref.startswith("/labels/") or ref.startswith("/assets/")) else ""
+            if not ASSET_NAME_RE.match(name):
                 self._send(400, {"ok": False, "error": "not a deletable asset path"})
                 return
-            target = os.path.join(LABELS_DIR, name)
-            # Defence in depth against traversal: resolved path must stay in LABELS_DIR
-            if os.path.dirname(os.path.abspath(target)) != os.path.abspath(LABELS_DIR):
-                self._send(400, {"ok": False, "error": "path outside asset directory"})
-                return
+            target = find_user_asset(name)
             removed = False
-            try:
-                os.remove(target)
-                removed = True
-            except FileNotFoundError:
-                pass
-            except OSError as e:
-                self._send(500, {"ok": False, "error": str(e)})
-                return
+            if target:
+                try:
+                    os.remove(target)
+                    removed = True
+                except FileNotFoundError:
+                    pass
+                except OSError as e:
+                    self._send(500, {"ok": False, "error": str(e)})
+                    return
             self._send(200, {"ok": True, "removed": removed})
+            return
+        if path == "/api/assets/cleanup":
+            # Delete orphaned uploads — files no current state or history snapshot
+            # references. LAN-only (it deletes files) and re-verified server-side
+            # against the live reference set so nothing in use is removed.
+            if not self._is_lan():
+                self.close_connection = True
+                self._send(403, {"ok": False, "error": "asset cleanup is LAN-only"})
+                return
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "invalid body"})
+                return
+            want = body.get("names")
+            referenced = referenced_asset_names()
+            deleted, freed = 0, 0
+            targets = scan_orphan_assets()
+            for o in targets:
+                if want and o["name"] not in want:
+                    continue
+                if o["name"].lower() in referenced:
+                    continue  # became referenced since the scan — skip
+                fp = find_user_asset(o["name"])
+                if fp:
+                    try:
+                        sz = os.path.getsize(fp)
+                        os.remove(fp)
+                        deleted += 1
+                        freed += sz
+                    except OSError:
+                        pass
+            self._send(200, {"ok": True, "deleted": deleted, "freedBytes": freed})
             return
         if path == "/api/history/restore":
             try:
@@ -1394,6 +1593,7 @@ def main():
         TRUSTED_NETS_CLI.append(ipaddress.ip_network(s, strict=False))
     db_init()
     migrate_ha_token()  # relocate any token still sitting in the stored state blob
+    migrate_assets()    # tidy uploads + bundled assets into the assets/ tree
     srv = ThreadingHTTPServer((args.host, args.port), Handler)
     print("MeadOS server running on http://%s:%d" % (args.host, args.port))
     print("Data: %s (SQLite, WAL mode, last %d saves kept in history)" % (DB_PATH, HISTORY_KEEP))
