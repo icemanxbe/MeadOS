@@ -993,7 +993,8 @@ function GUIDE_SECTIONS(){return[
 {title:'Fermentation Stages',icon:'🔄',content:'Lag (0-24h): Yeast acclimatize. No visible activity is normal.\n\nPrimary (1-14 days): Vigorous bubbling, CO2 production, gravity drops 50-70%. Mead is cloudy. Vessel: 9 L primary.\n\nSecondary (weeks 2-6): Slow bubbling, gravity stabilizes, yeast flocculate, clarity improves. Rack from 9 L → 7.6 L or 5 L secondary.\n\nConditioning (1-3 months): Flavors integrate, harsh notes soften, dramatic clarity improvement. Often happens in the 5 L bulk aging vessel.\n\nAging (3-12+ months): True transformation. Where mead becomes excellent. Keep in 5 L bulk aging vessel with minimal headspace.'},
 {title:'Troubleshooting',icon:'🔧',content:'No fermentation after 48h: Check temperature, verify yeast wasn\'t cooked, add nutrient, swirl gently.\n\nRotten egg smell: Stressed yeast. Stir vigorously to degas, add nutrient, raise temp slightly.\n\nStuck fermentation: Warm to 22-24°C, add nutrient, repitch fresh M05 in rehydrated form.\n\nCloudy mead: Normal during fermentation. Cold crash (2 weeks at 2-4°C) drops most haze. Bentonite for stubborn cases.\n\nToo dry: Stabilize with sorbate + metabisulfite, wait 24h, then back-sweeten with honey to taste.\n\nOff-flavors persist past 3 months: Likely contamination. Document and start over with better sanitation.'},
 {title:'Headspace by Stage',icon:'📐',content:'Different stages want different headspace. The 3-vessel staged setup lets you match each phase.\n\n━━ Primary (9 L vessel) ━━\nFill to ~7 L (78% full). Leaves 2 L of headspace for foam, krausen, and CO₂ blow-off during vigorous primary fermentation. Wider headspace is forgiving — under-filling here is safer than over-filling.\n\n━━ Secondary (7.6 L or 5 L vessel) ━━\nFill: After racking from primary, you\'ll have ~6 L (with ~1 L lost to lees). A 7.6 L secondary at 80% fill is ideal during active secondary; or rack directly into a 5 L vessel (~95% fill) if secondary fermentation is nearly done.\n\n━━ Bulk aging (5 L vessel) ━━\nFill as close to 100% as possible. Top up with cooled boiled water if needed, or use sanitized glass marbles. Oxygen exposure during aging is the enemy of aromatics — minimal headspace is everything here.\n\nGENERAL RULES:\n• Primary NEEDS headspace (foam, CO₂, krausen).\n• Secondary WANTS less headspace (oxidation begins to matter).\n• Bulk aging DEMANDS minimal headspace (oxygen = enemy of aromatics).\n• Always rack gently under the surface — no splashing.\n• Add 0.5 g potassium metabisulfite at each racking stage to suppress oxidation.'},
-{title:'Bottling',icon:'🍾',content:'When to bottle: Two identical gravity readings 3-7 days apart at target FG. Clear, mature flavor.\n\nProcess: Clean bottles & caps with Chemipro OXI, then sanitize with your no-rinse sanitizer (Chemipro SAN 2 ml/L or Star San 1.5 ml/L). Siphon (don\'t pour) into bottles. Leave minimal headspace (~1.5cm). Cap immediately.\n\nUse the guided bottling workflow in the batch view — it walks you through pre-flight, gravity check, sanitize timer, fill, label preview, and final save.\n\nLabel each bottle: Batch name, date bottled, OG/FG, ABV, batch number. Use the bottle label download for printable labels.\n\nStorage: Upright 2 weeks (lets cork seat or cap settle), then horizontal for cork bottles, upright for cap bottles. Cool, dark, stable temperature. Print a storage label for each box — it shows batch identity, contents, drinking window, and a QR code linking back to this app.\n\nClear vs amber glass: Clear shows off color (good for melomels). Amber protects delicate aromatics (good for spiced/traditional).'}
+{title:'Bottling',icon:'🍾',content:'When to bottle: Two identical gravity readings 3-7 days apart at target FG. Clear, mature flavor.\n\nProcess: Clean bottles & caps with Chemipro OXI, then sanitize with your no-rinse sanitizer (Chemipro SAN 2 ml/L or Star San 1.5 ml/L). Siphon (don\'t pour) into bottles. Leave minimal headspace (~1.5cm). Cap immediately.\n\nUse the guided bottling workflow in the batch view — it walks you through pre-flight, gravity check, sanitize timer, fill, label preview, and final save.\n\nLabel each bottle: Batch name, date bottled, OG/FG, ABV, batch number. Use the bottle label download for printable labels.\n\nStorage: Upright 2 weeks (lets cork seat or cap settle), then horizontal for cork bottles, upright for cap bottles. Cool, dark, stable temperature. Print a storage label for each box — it shows batch identity, contents, drinking window, and a QR code linking back to this app.\n\nClear vs amber glass: Clear shows off color (good for melomels). Amber protects delicate aromatics (good for spiced/traditional).'},
+{title:'Sparkling & Carbonated Mead',icon:'🍾',content:'A sparkling mead carries dissolved CO₂ — from a gentle pétillant fizz to full champagne-style bubbles. There are two routes, and one rule that beats everything: you can only naturally carbonate a mead that can still referment.\n\n━━ THE GOLDEN RULE ━━\nBottle conditioning makes bubbles by feeding a small, measured dose of sugar to live yeast in a sealed bottle. So you must NOT have stabilized: potassium sorbate + sulfite stop yeast from reproducing, and a stabilized mead will never carbonate naturally. Decide on sparkling BEFORE you stabilize. If you already sorbated, your only route is forced carbonation in a keg.\n\n━━ FERMENT IT OUT FIRST ━━\nThe mead must be fully fermented to a stable final gravity (two identical readings several days apart) BEFORE priming. Leftover unfermented sugar + priming sugar + a sealed bottle = over-pressure and broken glass. Prime a finished mead with exactly the sugar the calculator specifies — never a rough scoop.\n\n━━ TARGET CARBONATION (CO₂ volumes) ━━\n• Still: under 0.5\n• Lightly sparkling / pétillant: ~1.5–2.0\n• Sparkling: ~2.5\n• Highly sparkling: ~3.0\n• Champagne-style: ~3.5–4.0\nHigher target = more pressure = stronger bottles required.\n\n━━ METHOD 1 · BOTTLE CONDITIONING (priming) ━━\n1. Confirm fermentation is finished and the mead is NOT stabilized.\n2. Use Brewing Tools → Carbonation / Priming Sugar for the exact dose from your volume, temperature and target.\n3. Dissolve the sugar in a little warm water, gently mix it into the whole batch (no splashing — avoid oxygen), then bottle.\n4. Cap in pressure-rated bottles and condition 2–3 weeks at 18–22°C so the yeast eats the priming sugar.\n5. Chill before serving — cold holds the CO₂ and settles the yeast.\n\n━━ METHOD 2 · FORCED CARBONATION (keg) ━━\nWith a corny keg you carbonate under CO₂ pressure instead of yeast: chill the mead, set the regulator to the pressure for your target volumes at that temperature, and wait a few days (or shake-carbonate faster). No live yeast needed — this is the only option for an already-stabilized mead.\n\n━━ BOTTLES & CLOSURES (safety) ━━\nStill-wine bottles are NOT pressure-rated — never use them for sparkling. Use:\n• Champagne / Belgian heavy bottles with crown caps, or corks held by a wire muselet/agrafe.\n• Swing-top (Grolsch) or heavy beer bottles for lower carbonation (up to ~2.5 vol).\nKeep one clear PET tester bottle — squeeze it to feel when the pressure has built. Condition the bottles inside a closed tub or box, just in case one fails.\n\n━━ CLEARING THE YEAST (optional) ━━\nBottle-conditioned mead leaves a fine yeast layer. Either pour gently and leave the last splash behind (pétillant naturel style), or — for crystal-clear champagne-style — riddle (tilt neck-down over days) and disgorge the frozen plug, then top up and re-cork. Most home meadmakers simply pour carefully.\n\nSee Brewing Tools → Carbonation / Priming Sugar for the exact sugar dose and a pressure-safety check.'}
 ];}
 
 // LABEL_IMAGES was previously a baked-in map of base64-encoded WebP images
@@ -6002,6 +6003,7 @@ function packageState(){
       recipeOverlays:(APP.settings&&APP.settings.recipeOverlays)||{},
       customLabels:(APP.settings&&APP.settings.customLabels)||{},
       brandLogo:(APP.settings&&APP.settings.brandLogo)||null,
+      appIcon:(APP.settings&&APP.settings.appIcon)||null,
       brewerName:(APP.settings&&APP.settings.brewerName)||'',
       externalUrl:(APP.settings&&APP.settings.externalUrl)||'',
       currency:(APP.settings&&APP.settings.currency)||'€',
@@ -6083,6 +6085,7 @@ function applyState(d){
     if(ss.recipeOverlays&&typeof ss.recipeOverlays==='object')APP.settings.recipeOverlays=ss.recipeOverlays;
     if(ss.customLabels&&typeof ss.customLabels==='object')APP.settings.customLabels=ss.customLabels;
     if('brandLogo' in ss)APP.settings.brandLogo=ss.brandLogo;
+    if('appIcon' in ss)APP.settings.appIcon=ss.appIcon;
     if(ss.brewerName)APP.settings.brewerName=ss.brewerName;
     if(typeof ss.externalUrl==='string')APP.settings.externalUrl=ss.externalUrl;
     if(ss.currency)APP.settings.currency=ss.currency;
@@ -7240,8 +7243,7 @@ function renderBatchDetail(){
       +'<button class="btn btn-primary" onclick="addLog(\''+b.id+'\')">Log Reading</button></div></div>'
       +'<div><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">FERMENTATION CHARTS</div></div>'
       +'<div class="chart-grid">'
-      +'<div class="chart-card"><div class="chart-card-title">📉 Gravity (SG)  ·  <span style="color:var(--text3)">solid = readings, dashed = projection</span></div><div class="chart-wrap"><canvas id="batch-gravity-chart"></canvas></div></div>'
-      +'<div class="chart-card"><div class="chart-card-title">📈 Estimated ABV %</div><div class="chart-wrap"><canvas id="batch-abv-chart"></canvas></div></div>'
+      +'<div class="chart-card"><div class="chart-card-title">📉 Gravity &amp; ABV  ·  <span style="color:var(--text3)">SG falls (left), ABV rises (right) · solid = readings, dashed = projection</span></div><div class="chart-wrap" style="height:240px"><canvas id="batch-gravity-chart"></canvas></div></div>'
       +'</div>'
       +(function(){
         // Resolve which sensor to graph: prefer the batch's fermenter binding,
@@ -7265,9 +7267,10 @@ function renderBatchDetail(){
             :sensorEntity?'from '+escHtml(sensorEntity)+' (global fallback)':'';
         }
         if(sensorEntity){
-          return'<div class="chart-card" style="margin-top:12px"><div class="chart-card-title">'+(tBottled?'🌡 Storage Temperature':'🌡 Temperature History')+'  ·  <span style="color:var(--text3);font-size:11px">'+sensorLabel+'</span>'
-            +'<div style="display:inline-flex;gap:6px;margin-left:auto;float:right">'
-            +(function(){var tr=window._batchTempRange||168;return[[24,'24h'],[168,'7d'],[720,'30d']].map(function(o){var a=o[0]===tr;return'<button class="btn btn-secondary btn-sm" onclick="setBatchTempRange(\''+b.id+'\','+o[0]+')" style="padding:6px 12px;font-size:12px;min-width:48px'+(a?';background:rgba(232,196,106,0.18);color:var(--gold2);border-color:var(--gold)':'')+'">'+o[1]+'</button>';}).join('');}())
+          return'<div class="chart-card" style="margin-top:12px"><div class="chart-card-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+            +'<span>'+(tBottled?'🌡 Storage Temperature':'🌡 Temperature History')+'  ·  <span style="color:var(--text3);font-size:11px">'+sensorLabel+'</span></span>'
+            +'<div style="display:inline-flex;gap:6px;margin-left:auto">'
+            +(function(){var tr=window._batchTempRange||168;return[[24,'24h'],[168,'7d'],[720,'30d']].map(function(o){var a=o[0]===tr;return'<button class="btn btn-secondary btn-sm temp-range-btn" data-trange="'+o[0]+'" onclick="setBatchTempRange(\''+b.id+'\','+o[0]+')" style="padding:6px 12px;font-size:12px;min-width:48px'+(a?';background:rgba(232,196,106,0.18);color:var(--gold2);border-color:var(--gold)':'')+'">'+o[1]+'</button>';}).join('');}())
             +'</div></div>'
             +'<div class="chart-wrap" style="height:220px;position:relative"><canvas id="batch-temp-history-chart"></canvas>'
             +'<div id="batch-temp-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px;font-style:italic">Loading history…</div>'
@@ -7304,8 +7307,8 @@ function renderBatchDetail(){
       +'<div>'
       +(todayTasks.length?todayTasks.map(function(td){
         var overdue=td.isOverdue;
-        var dayLabel=td.isDue?' (TODAY)':(overdue?' ('+fmtDuration(td.daysFromDue)+' overdue — DO NOW)':' (in '+fmtDuration(-td.daysFromDue)+')');
-        return'<div class="coach-box" style="margin-bottom:16px'+(overdue?';border-left:4px solid var(--red2);background:rgba(180,80,80,0.10)':'')+'"><div class="coach-title"'+(overdue?' style="color:var(--red2)"':'')+'>'+(overdue?'⚠':'⚗')+' ACTION DUE — DAY '+td.day+dayLabel+'</div>'
+        var dayLabel=td.isDue?' (TODAY)':(overdue?' ('+fmtDuration(td.daysFromDue)+' overdue — DO NOW)':td.done?' (done)':' (in '+fmtDuration(-td.daysFromDue)+')');
+        return'<div class="coach-box" style="margin-bottom:16px'+(overdue?';border-color:var(--red);border-left:4px solid var(--red2);background:linear-gradient(135deg,#251012,#180b0b)':'')+'"><div class="coach-title"'+(overdue?' style="color:var(--red2)"':'')+'>'+(overdue?'⚠':'⚗')+' ACTION DUE — DAY '+td.day+dayLabel+'</div>'
           +'<div style="font-family:var(--font-display);font-size:15px;color:'+(overdue?'var(--red2)':'var(--gold2)')+';margin-bottom:8px">'+escHtml(td.title)+'</div>'
           +'<div class="coach-text">'+escHtml(td.desc)+'</div>'
           +'<div class="coach-tasks" style="margin-top:12px"><div class="coach-task"><div class="task-cb '+(td.done?'checked':'')+'" onclick="toggleTask(\''+td.id+'\',this)">'+(td.done?'✓':'')+'</div><span style="font-size:13px">'+(td.done?'Done today — uncheck if not':'Mark as completed')+'</span></div></div></div>';
@@ -7483,7 +7486,10 @@ function initBatchCharts(){
     // Calibrate k from existing readings if possible, else default to fermentDays-based
     var projLabels=[],projGrav=[],projAbv=[];
     var startDate=new Date(b.startDate);
-    if(logs.length>=1){
+    // Only project while there's still sugar to ferment. Once the last reading
+    // is at/below the target FG the exponential model can't be calibrated from
+    // it (and would draw a bogus dashed spike), so we just show the readings.
+    if(logs.length>=1&&(logs[logs.length-1].gravity-fgTarget)>0.003){
       var lastG=logs[logs.length-1].gravity;
       var lastDay=Math.max(1,daysSince(logs[logs.length-1].date)+daysSince(b.startDate)-daysSince(logs[logs.length-1].date));
       // Estimate k from last reading: if (lastG - fgTarget) > 0 then k = ln((og-fg)/(lastG-fg))/day
@@ -7513,30 +7519,23 @@ function initBatchCharts(){
 
     var gctx=document.getElementById('batch-gravity-chart');
     if(gctx){
+      // Gravity (left axis) and estimated ABV (right axis) on one chart, so the
+      // ABV rise as gravity falls is visible at a glance. Both carry the dashed
+      // projection forward to expected finish.
       new Chart(gctx,{
         type:'line',
         data:{labels:allLabels,datasets:[
-          {label:'Gravity',data:gravFull,borderColor:color,backgroundColor:color+'22',tension:0.35,fill:true,pointRadius:5,pointBackgroundColor:color,pointBorderColor:'#fff',pointBorderWidth:1.5,spanGaps:false},
-          {label:'Projected',data:gravProjFull,borderColor:color+'88',borderDash:[5,4],tension:0.2,fill:false,pointRadius:0,spanGaps:true,borderWidth:1.5}
+          {label:'Gravity',data:gravFull,borderColor:color,backgroundColor:color+'22',tension:0.35,fill:true,pointRadius:4,pointBackgroundColor:color,pointBorderColor:'#fff',pointBorderWidth:1.5,spanGaps:false,yAxisID:'y'},
+          {label:'Gravity (proj.)',data:gravProjFull,borderColor:color+'88',borderDash:[5,4],tension:0.2,fill:false,pointRadius:0,spanGaps:true,borderWidth:1.5,yAxisID:'y'},
+          {label:'ABV %',data:abvFull,borderColor:'#6ab87a',backgroundColor:'transparent',tension:0.35,fill:false,pointRadius:4,pointBackgroundColor:'#6ab87a',pointBorderColor:'#fff',pointBorderWidth:1.5,spanGaps:false,yAxisID:'y1'},
+          {label:'ABV % (proj.)',data:abvProjFull,borderColor:'#6ab87a88',borderDash:[5,4],tension:0.2,fill:false,pointRadius:0,spanGaps:true,borderWidth:1.5,yAxisID:'y1'}
         ]},
-        options:{responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return(c.dataset.label||'')+': '+(c.parsed.y?c.parsed.y.toFixed(3):'—');}}}},
+        options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+          plugins:{legend:{display:true,labels:{color:'#8a7d66',font:{size:10},boxWidth:14,filter:function(it){return!/proj/.test(it.text);}}},
+            tooltip:{callbacks:{label:function(c){if(c.parsed.y==null)return null;return(c.dataset.label||'')+': '+(c.dataset.yAxisID==='y1'?c.parsed.y.toFixed(2)+'%':c.parsed.y.toFixed(3));}}}},
           scales:{x:{ticks:{color:'#6a5f50',font:{size:10},maxRotation:30,autoSkip:true},grid:{color:'#2a2a35'}},
-            y:{ticks:{color:'#6a5f50',font:{size:10},callback:function(v){return v.toFixed(3);}},grid:{color:'#2a2a35'}}}}
-      });
-    }
-    var actx=document.getElementById('batch-abv-chart');
-    if(actx){
-      new Chart(actx,{
-        type:'line',
-        data:{labels:allLabels,datasets:[
-          {label:'ABV %',data:abvFull,borderColor:'#6ab87a',backgroundColor:'#6ab87a22',tension:0.35,fill:true,pointRadius:5,pointBackgroundColor:'#6ab87a',pointBorderColor:'#fff',pointBorderWidth:1.5,spanGaps:false},
-          {label:'Projected',data:abvProjFull,borderColor:'#6ab87a88',borderDash:[5,4],tension:0.2,fill:false,pointRadius:0,spanGaps:true,borderWidth:1.5}
-        ]},
-        options:{responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return(c.dataset.label||'')+': '+(c.parsed.y?c.parsed.y.toFixed(2)+'%':'—');}}}},
-          scales:{x:{ticks:{color:'#6a5f50',font:{size:10},maxRotation:30,autoSkip:true},grid:{color:'#2a2a35'}},
-            y:{beginAtZero:true,ticks:{color:'#6a5f50',font:{size:10},callback:function(v){return v.toFixed(1)+'%';}},grid:{color:'#2a2a35'}}}}
+            y:{position:'left',title:{display:true,text:'Gravity (SG)',color:'#6a5f50',font:{size:9}},ticks:{color:'#6a5f50',font:{size:10},callback:function(v){return v.toFixed(3);}},grid:{color:'#2a2a35'}},
+            y1:{position:'right',beginAtZero:true,title:{display:true,text:'ABV %',color:'#6a9f70',font:{size:9}},ticks:{color:'#6a9f70',font:{size:10},callback:function(v){return v.toFixed(0)+'%';}},grid:{drawOnChartArea:false}}}}
       });
     }
     // ===== Temperature trace =====
@@ -7843,8 +7842,8 @@ function renderCoach(){
         +'<div class="info-box" style="margin:0 0 12px;border-left-color:'+color+'"><div style="font-size:13px;color:var(--text2)">'+statusMsg+'</div></div>'
         +(visibleTasks.length?visibleTasks.map(function(td){
           var overdueClass=td.isOverdue?' overdue':'';
-          var dayLabel=td.isDue?' (TODAY)':(td.isOverdue?' ('+fmtDuration(td.daysFromDue)+' overdue — DO NOW)':' (in '+fmtDuration(-td.daysFromDue)+')');
-          return'<div class="coach-box'+overdueClass+'" style="margin-bottom:12px'+(td.isOverdue?';border-left:4px solid var(--red2);background:rgba(180,80,80,0.10)':'')+'"><div class="coach-title"'+(td.isOverdue?' style="color:var(--red2)"':'')+'>'+(td.isOverdue?'⚠':'⚗')+' ACTION DUE — DAY '+td.day+dayLabel+'</div>'
+          var dayLabel=td.isDue?' (TODAY)':(td.isOverdue?' ('+fmtDuration(td.daysFromDue)+' overdue — DO NOW)':td.done?' (done)':' (in '+fmtDuration(-td.daysFromDue)+')');
+          return'<div class="coach-box'+overdueClass+'" style="margin-bottom:12px'+(td.isOverdue?';border-color:var(--red);border-left:4px solid var(--red2);background:linear-gradient(135deg,#251012,#180b0b)':'')+'"><div class="coach-title"'+(td.isOverdue?' style="color:var(--red2)"':'')+'>'+(td.isOverdue?'⚠':'⚗')+' ACTION DUE — DAY '+td.day+dayLabel+'</div>'
             +'<div style="font-family:var(--font-display);font-size:14px;color:'+(td.isOverdue?'var(--red2)':'var(--gold2)')+';margin-bottom:6px">'+escHtml(td.title)+'</div>'
             +'<div class="coach-text">'+escHtml(annotateNutrientDesc(td.desc))+'</div>'
             +'<div class="coach-tasks" style="margin-top:12px"><div class="coach-task"><div class="task-cb '+(td.done?'checked':'')+'" onclick="toggleTask(\''+td.id+'\',this)">'+(td.done?'✓':'')+'</div><span style="font-size:13px">'+(td.done?'Done today — uncheck if not':'Mark as done')+'</span></div></div></div>';
@@ -9191,6 +9190,26 @@ function renderTools(){
     +'<div style="margin-top:10px;padding:10px;background:var(--bg4);border-radius:var(--radius);font-family:var(--font-mono);font-size:12px;color:var(--text2);line-height:1.7" id="bs-protocol">—</div>'
     +'<div style="margin-top:8px;font-size:11px;color:var(--text3);font-style:italic">Sorbate alone doesn\'t kill yeast — it blocks reproduction. Must be combined with K-meta (free SO₂) or refrigeration. Wait 48h after stabilizing before adding sweetener.</div>'
     +'</div>'
+    +'<div class="card"><div class="card-header"><div class="card-title">🍾 CARBONATION / PRIMING SUGAR</div></div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.55">Priming sugar to bottle-condition a sparkling mead. The mead must be <strong>fully fermented</strong> and <strong>not stabilized</strong> — sorbate/sulfite stop the refermentation that makes the bubbles. Enter the highest temperature the mead has reached since fermentation; that sets how much CO₂ is already dissolved.</div>'
+    +'<div class="form-row-3"><div class="form-group"><label class="form-label">Volume (L)</label><input class="form-input" id="cb-vol" type="number" value="5" step="0.1" oninput="calcCarbonation()"></div>'
+    +'<div class="form-group"><label class="form-label">Mead temp (°C)</label><input class="form-input" id="cb-temp" type="number" value="20" step="0.5" oninput="calcCarbonation()"></div>'
+    +'<div class="form-group"><label class="form-label">Priming sugar</label><select class="form-select" id="cb-sugar" onchange="calcCarbonation()"><option value="4.0">Corn sugar (dextrose)</option><option value="3.8">Table sugar (sucrose)</option><option value="5.0">Honey</option><option value="5.7">DME</option></select></div></div>'
+    +'<div class="form-group"><label class="form-label">Style / target carbonation</label><select class="form-select" id="cb-style" onchange="calcCarbonation()">'
+    +'<option value="2.0">Lightly sparkling / pétillant (~2.0 vol)</option>'
+    +'<option value="2.5" selected>Sparkling (~2.5 vol)</option>'
+    +'<option value="3.0">Highly sparkling (~3.0 vol)</option>'
+    +'<option value="3.5">Champagne-style (~3.5 vol)</option>'
+    +'<option value="custom">Custom…</option></select></div>'
+    +'<div class="form-group" id="cb-custom-wrap" style="display:none"><label class="form-label">Custom target CO₂ (volumes)</label><input class="form-input" id="cb-target" type="number" value="2.5" step="0.1" min="0" oninput="calcCarbonation()"></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">'
+    +'<div style="text-align:center;padding:14px 8px;background:var(--bg3);border-radius:var(--radius)"><div style="font-family:var(--font-display);font-size:22px;color:var(--gold2)" id="cb-sugar-out">—</div><div class="micro-label">PRIMING SUGAR</div></div>'
+    +'<div style="text-align:center;padding:14px 8px;background:var(--bg3);border-radius:var(--radius)"><div style="font-family:var(--font-display);font-size:22px;color:var(--gold2)" id="cb-perL">—</div><div class="micro-label">PER LITER</div></div>'
+    +'</div>'
+    +'<div style="margin-top:10px;padding:10px;background:var(--bg4);border-radius:var(--radius);font-family:var(--font-mono);font-size:12px;color:var(--text2);line-height:1.7" id="cb-detail">—</div>'
+    +'<div id="cb-warn"></div>'
+    +'<div style="margin-top:8px;font-size:11px;color:var(--text3);font-style:italic">Bottle-condition only a fully-fermented, un-stabilized mead in pressure-rated bottles (champagne/Belgian + crown caps or wired corks). Keep one PET tester bottle to feel the pressure. Condition 2–3 weeks at 18–22°C, then chill. See Mead Guide → Sparkling &amp; Carbonated Mead.</div>'
+    +'</div>'
     +'<div class="card"><div class="card-header"><div class="card-title">🧪 SO₂ / SULFITE CALCULATOR</div></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.55">Only the <em>molecular</em> fraction of free SO₂ is antimicrobial, and that fraction collapses as pH rises. Enter your pH to see the free SO₂ you must hold to reach the protective molecular target, and the K-meta dose to get there. <strong>Confirm with a free-SO₂ measurement</strong> — this estimates, it doesn\'t replace titration.</div>'
     +'<div class="form-row-3"><div class="form-group"><label class="form-label">Must / wine pH</label><input class="form-input" id="so2-ph" type="number" value="3.4" step="0.05" oninput="calcSO2()"></div>'
@@ -9225,6 +9244,7 @@ function initTools(){
   calcNutrient();
   calcTOSNA();
   calcBacksweet();
+  if(typeof calcCarbonation==='function')calcCarbonation();
   calcPitch();
   if(typeof calcSO2==='function')calcSO2();
   if(typeof calcAcid==='function')calcAcid();
@@ -9401,6 +9421,49 @@ function calcTOSNA(){
   if(breakEl){
     breakEl.innerHTML='<strong style="color:var(--text2)">What\'s the 1/3 sugar break?</strong> It\'s the moment about one-third of the sugar has fermented — at OG '+og.toFixed(3)+' that\'s roughly <strong>SG '+breakSG.toFixed(3)+'</strong> ('+ogPoints+' gravity points → stop adding nitrogen once ~'+Math.round(ogPoints/3)+' points are gone). Yeast take up nitrogen during their early growth phase, so all nutrients go in before this point; dosing later — especially DAP — feeds fusels instead of cells. Degas gently before each addition (nutrients + CO₂ can foam over).';
   }
+}
+
+// Priming-sugar calculator for bottle-conditioned sparkling mead.
+// Residual CO₂ already in solution depends on temperature (the standard brewing
+// polynomial, which takes °F). Sugar to add = (target − residual) volumes ×
+// volume × a per-sugar factor (g/L per volume of CO₂): dextrose ~4.0, sucrose
+// ~3.8, honey ~5.0 (≈80% fermentable), DME ~5.7.
+function calcCarbonation(){
+  var volEl=document.getElementById('cb-vol');
+  if(!volEl)return; // tools view not mounted
+  var vol=parseFloat(volEl.value);
+  var temp=parseFloat(document.getElementById('cb-temp').value);
+  var factor=parseFloat(document.getElementById('cb-sugar').value)||4.0;
+  var sugarLabel=document.getElementById('cb-sugar').selectedOptions[0].text;
+  var styleSel=document.getElementById('cb-style').value;
+  var customWrap=document.getElementById('cb-custom-wrap');
+  var target;
+  if(styleSel==='custom'){customWrap.style.display='';target=parseFloat(document.getElementById('cb-target').value);}
+  else{customWrap.style.display='none';target=parseFloat(styleSel);}
+  var outEl=document.getElementById('cb-sugar-out'),perEl=document.getElementById('cb-perL'),detEl=document.getElementById('cb-detail'),warnEl=document.getElementById('cb-warn');
+  if(!vol||vol<=0||isNaN(temp)||!target||target<=0){
+    outEl.textContent='—';perEl.textContent='—';detEl.textContent='Enter volume, mead temperature and a target carbonation level.';warnEl.innerHTML='';return;
+  }
+  var tF=temp*9/5+32;
+  var residual=3.0378-0.050062*tF+0.0002655*tF*tF;
+  if(residual<0)residual=0;
+  var add=target-residual;
+  if(add<=0){
+    outEl.textContent='0 g';perEl.textContent='0 g/L';
+    detEl.textContent='At '+temp+'°C the mead already holds ~'+residual.toFixed(2)+' volumes of CO₂, at or above your '+target.toFixed(1)+'-volume target — no priming sugar needed. (A warmer reading retains less CO₂ and would raise the dose.)';
+    warnEl.innerHTML='';return;
+  }
+  var grams=add*vol*factor;
+  outEl.textContent=Math.round(grams)+' g';
+  perEl.textContent=(grams/vol).toFixed(1)+' g/L';
+  detEl.innerHTML='Target '+target.toFixed(1)+' vol − ~'+residual.toFixed(2)+' vol already dissolved at '+temp+'°C = +'+add.toFixed(2)+' vol to add.<br>≈ <strong>'+Math.round(grams)+' g</strong> '+sugarLabel.toLowerCase()+' total — dissolve in a little warm water and gently mix into the batch at bottling. Per 750 ml bottle: ~'+(grams/vol*0.75).toFixed(1)+' g.';
+  var w='';
+  if(target>3.0){
+    w='<div class="stock-alert" style="margin:10px 0 0"><span class="icon">⚠</span><span><strong>'+target.toFixed(1)+' volumes is high pressure.</strong> Use champagne / Belgian bottles rated for it, with crown caps or corks held by a wire muselet. Never use still-wine bottles above ~2.5 vol — they can fail.</span></div>';
+  }else if(target>2.5){
+    w='<div class="stock-alert warn" style="margin:10px 0 0"><span class="icon">⚠</span><span>Above ~2.5 volumes, use heavy beer / Belgian bottles with crown caps. Standard wine bottles and swing-tops are borderline.</span></div>';
+  }
+  warnEl.innerHTML=w;
 }
 
 function calcBacksweet(){
@@ -13857,7 +13920,7 @@ function renderLabelWithABV(recipeId,abvText,opts){
   var recipe=(APP.recipes||[]).find(function(x){return x.id===recipeId;});
   var batch=opts.batch||null;
   var overlayMarkup=(typeof renderOverlayLayer==='function')
-    ?renderOverlayLayer(recipe,batch,abvText,{qr:opts.qr,overlays:opts.overlays})
+    ?renderOverlayLayer(recipe,batch,abvText,{qr:opts.qr,bestDrink:opts.bestDrink,overlays:opts.overlays})
     :'';
   return'<div class="label-display" style="position:relative;width:100%;max-width:'+(opts.maxWidth||'100%')+';display:block;line-height:0">'
     +'<img src="'+src+'" alt="Mead Label" style="display:block;width:100%;height:auto;border-radius:'+(opts.radius||'4px')+'" loading="lazy">'
@@ -14580,6 +14643,7 @@ function renderSupplies(){
   }).join('');
   return'<div class="page-title">Supplies</div><div class="page-subtitle">Inventory of yeast, chemicals, and consumables · '+items.length+' tracked · stored in the shared server database</div>'
     +renderShoppingListCard()
+    +renderBrewWhatYouHaveCard()
     +inventoryCard
     +sections;
 }
@@ -15873,6 +15937,55 @@ function computeShoppingNeeds(){
   pushLine('Crown caps','pcs',need.caps,'crowncap');
   var extrasList=Object.keys(extras).map(function(k){return extras[k];});
   return{lines:lines,extras:extrasList,currency:ccy,planCount:plans.length};
+}
+
+// Which recipes can you start RIGHT NOW from the honey + yeast on hand? Honey is
+// the gating ingredient: max volume = haveHoney / (honey needed per litre at the
+// recipe's OG). Needs at least one yeast packet too. Returns recipes you can make
+// at full volume first, then ones you can make at a reduced (scaled) volume.
+function computeBrewableRecipes(){
+  var supplies=APP.supplies||[];
+  var haveHoney=supplies.filter(function(s){return s.type==='honey';}).reduce(function(a,s){return a+(parseFloat(s.qty)||0);},0);
+  var yeastPackets=supplies.filter(function(s){return s.type==='yeast';}).reduce(function(a,s){return a+(parseFloat(s.qty)||0);},0);
+  var list=[];
+  if(haveHoney>0&&yeastPackets>0){
+    (APP.recipes||[]).forEach(function(r){
+      var vol=r.volume||5,og=r.ogTarget||1.095;
+      if(og<=1)return;
+      var honeyPerL=(og-1)*1000/292; // kg honey per litre of must
+      if(honeyPerL<=0)return;
+      var maxVol=haveHoney/honeyPerL;
+      if(maxVol<1)return; // not even a 1 L batch
+      var abv=r.abvTarget||Math.round((og-(r.fgTarget||1.010))*131.25*10)/10;
+      list.push({recipe:r,og:og,fullVol:vol,maxVol:maxVol,canFull:maxVol>=vol,abv:abv});
+    });
+    list.sort(function(a,b){if(a.canFull!==b.canFull)return a.canFull?-1:1;return b.maxVol-a.maxVol;});
+  }
+  return{haveHoney:haveHoney,yeastPackets:yeastPackets,list:list};
+}
+
+function renderBrewWhatYouHaveCard(){
+  var r=computeBrewableRecipes();
+  var fmtN=function(n){return(Math.abs(n-Math.round(n))<0.05)?String(Math.round(n)):n.toFixed(1);};
+  var head='<div class="card" style="margin-bottom:16px"><div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><div class="card-title">🍯 BREW WITH WHAT YOU HAVE</div>'
+    +(r.haveHoney>0||r.yeastPackets>0?'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+fmtWt(r.haveHoney)+' honey · '+fmtN(r.yeastPackets)+' yeast</span>':'')+'</div>';
+  if(r.haveHoney<=0||r.yeastPackets<=0){
+    return head+'<div style="font-size:13px;color:var(--text3);font-style:italic;line-height:1.6">Add '+(r.haveHoney<=0?'some honey':'a yeast packet')+' to your supplies and this will list the recipes you can start right now.</div></div>';
+  }
+  if(!r.list.length){
+    return head+'<div style="font-size:13px;color:var(--text3);font-style:italic">You have '+fmtWt(r.haveHoney)+' honey — not quite enough for a 1 L batch of any recipe yet.</div></div>';
+  }
+  var rows=r.list.slice(0,8).map(function(x){
+    var rec=x.recipe;
+    var planVol=x.canFull?x.fullVol:Math.floor(x.maxVol*10)/10;
+    var volNote=x.canFull?('full '+fmtVol(x.fullVol)+' batch'):('up to '+fmtVol(x.maxVol));
+    return'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="min-width:0"><div style="font-size:13px;color:var(--text)">'+escHtml(rec.name)+(x.canFull?'':' <span style="color:var(--gold2);font-size:9px;font-family:var(--font-mono);letter-spacing:1px">SCALED</span>')+'</div>'
+      +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3)">OG '+x.og.toFixed(3)+' · ~'+x.abv+'% · '+volNote+'</div></div>'
+      +'<button class="btn btn-secondary btn-sm" onclick="openPlanBatchModal(null,\''+rec.id+'\','+planVol+')" style="flex-shrink:0">🗓 Plan</button>'
+      +'</div>';
+  }).join('');
+  return head+'<div style="font-size:12px;color:var(--text3);margin-bottom:8px">Recipes you can start now from your honey + yeast on hand. Honey is the limiter — “scaled” entries are shrunk to fit what you have.</div>'+rows+'</div>';
 }
 
 function renderShoppingListCard(){
@@ -17365,6 +17478,14 @@ async function fetchTempHistory(batchId,hoursBack){
 
 function setBatchTempRange(batchId,hours){
   window._batchTempRange=hours;
+  // Move the active highlight (the range buttons aren't re-rendered on click).
+  var btns=document.querySelectorAll('.temp-range-btn');
+  for(var i=0;i<btns.length;i++){
+    var on=parseInt(btns[i].getAttribute('data-trange'),10)===hours;
+    btns[i].style.background=on?'rgba(232,196,106,0.18)':'';
+    btns[i].style.color=on?'var(--gold2)':'';
+    btns[i].style.borderColor=on?'var(--gold)':'';
+  }
   // Redraw the chart in place
   renderTempHistoryChart('batch-temp-history-chart',batchId);
 }
@@ -17375,12 +17496,20 @@ async function renderTempHistoryChart(canvasId,batchId){
   var loading=document.getElementById('batch-temp-loading');
   var summary=document.getElementById('batch-temp-summary');
   var hours=window._batchTempRange||168; // default 7 days
+  // Show the loading overlay while fetching; keep the canvas in the DOM (just
+  // hidden) so switching ranges always works — replacing the wrap's innerHTML
+  // would delete the canvas and silently kill every later button press.
+  if(loading){loading.textContent='Loading history…';loading.style.display='flex';}
+  canvas.style.display='none';
   var history=await fetchTempHistory(batchId,hours);
-  if(loading)loading.style.display='none';
   if(!history||history.length<2){
-    canvas.parentElement.innerHTML='<div style="text-align:center;color:var(--text3);font-style:italic;padding:20px;font-size:12px">No temperature history yet. HA recorder may still be collecting samples — try a longer range or wait a bit.</div>';
+    if(window._batchTempChart){try{window._batchTempChart.destroy();}catch(e){}window._batchTempChart=null;}
+    if(summary)summary.innerHTML='';
+    if(loading){loading.textContent='No temperature history for this range — try a longer one, or HA recorder may still be collecting samples.';loading.style.display='flex';}
     return;
   }
+  if(loading)loading.style.display='none';
+  canvas.style.display='';
   // Stats for summary line
   var values=history.map(function(p){return p.value;});
   var minV=Math.min.apply(null,values),maxV=Math.max.apply(null,values);
@@ -17575,7 +17704,7 @@ var TROUBLESHOOT_TOPICS=[
   },
   {
     id:'temp-too-high',
-    title:'Fermentation temperature too high (&gt;24°C)',
+    title:'Fermentation temperature too high (>24°C)',
     icon:'🔥',
     category:'Temperature',
     steps:[
@@ -17589,7 +17718,7 @@ var TROUBLESHOOT_TOPICS=[
   },
   {
     id:'temp-too-low',
-    title:'Fermentation temperature too low (&lt;16°C)',
+    title:'Fermentation temperature too low (<16°C)',
     icon:'❄',
     category:'Temperature',
     steps:[
@@ -18253,39 +18382,39 @@ function openTroubleshootTopic(id){
   document.body.insertAdjacentHTML('beforeend',html);
 }
 function renderTroubleshoot(){
-  // Group by category
+  // Group by category — each category becomes a large card, with its topics as
+  // button-cards inside that open the step-by-step detail modal.
   var categories={};
   TROUBLESHOOT_TOPICS.forEach(function(t){
     var cat=t.category||'Other';
     if(!categories[cat])categories[cat]=[];
     categories[cat].push(t);
   });
-  function renderTopic(t){
-    return'<div class="card" style="cursor:pointer;margin:0;padding:14px 16px" onclick="openTroubleshootTopic(\''+t.id+'\')">'
-      +'<div style="display:flex;align-items:center;gap:11px">'
-      +'<span style="font-size:20px;flex-shrink:0">'+t.icon+'</span>'
-      +'<div style="flex:1;min-width:0">'
-      +'<div style="font-size:13px;color:var(--text);line-height:1.35">'+escHtml(t.title)+'</div>'
-      +'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--gold2);letter-spacing:1px;margin-top:4px">'+t.steps.length+' STEP'+(t.steps.length===1?'':'S')+' →</div>'
-      +'</div></div></div>';
+  var CAT_ICONS={Fermentation:'🫧',Temperature:'🌡',"Off-Flavors":'👃',Clarity:'💧',Process:'🔧',Bottling:'🍾',Aging:'⏳',Sanitation:'🧼',Result:'🏁',Other:'🔧'};
+  function topicBtn(t){
+    return'<button class="ts-item" onclick="openTroubleshootTopic(\''+t.id+'\')">'
+      +'<span class="ts-ico">'+t.icon+'</span>'
+      +'<span style="flex:1;min-width:0"><span style="display:block;font-size:13px;line-height:1.35;color:var(--text)">'+escHtml(t.title)+'</span>'
+      +'<span class="ts-meta">'+t.steps.length+' STEP'+(t.steps.length===1?'':'S')+' →</span></span>'
+      +'</button>';
+  }
+  function catCard(cat,items,icon){
+    return'<div class="card" style="margin-bottom:16px">'
+      +'<div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><div class="card-title">'+(icon||CAT_ICONS[cat]||'🔧')+' '+escHtml(cat)+'</div>'
+      +'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+items.length+' topic'+(items.length===1?'':'s')+'</span></div>'
+      +'<div class="ts-grid">'+items.map(topicBtn).join('')+'</div></div>';
   }
   var categoryOrder=['Fermentation','Temperature','Off-Flavors','Clarity','Process','Bottling','Aging','Sanitation','Result'];
-  var brewingHtml=categoryOrder.map(function(cat){
-    if(!categories[cat])return'';
-    return'<div style="margin-bottom:18px">'
-      +'<h3 style="font-family:var(--font-display);font-size:13px;letter-spacing:3px;color:var(--gold2);margin:14px 0 8px;text-transform:uppercase">— '+cat+' —</h3>'
-      +'<div class="grid-3">'+categories[cat].map(renderTopic).join('')+'</div>'
-      +'</div>';
-  }).join('');
-  var appHtml='<div class="grid-3">'+APP_TROUBLESHOOT_TOPICS.map(renderTopic).join('')+'</div>';
+  var seen={};
+  var brewingHtml=categoryOrder.map(function(cat){if(!categories[cat])return'';seen[cat]=1;return catCard(cat,categories[cat]);}).join('');
+  // any categories not in the explicit order land at the end
+  brewingHtml+=Object.keys(categories).filter(function(c){return!seen[c];}).map(function(c){return catCard(c,categories[c]);}).join('');
+  var appCard=catCard('App & Sync Issues',APP_TROUBLESHOOT_TOPICS,'🖥');
   return'<div class="page-title">Troubleshooting</div><div class="page-subtitle">Brewing problems and process guidance</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><button class="btn btn-primary" onclick="openOffFlavorWizard()">🧭 Off-flavor diagnostic wizard</button></div>'
-    +'<div style="font-size:13px;color:var(--text2);margin-bottom:16px;font-style:italic">Select a topic to see step-by-step guidance, or use the diagnostic wizard above to work backward from observed flavors.</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:16px;font-style:italic">Pick a category, then tap a topic for step-by-step guidance — or use the diagnostic wizard above to work backward from observed flavors.</div>'
     +brewingHtml
-    +'<div style="margin-top:36px;padding-top:14px;border-top:1px solid var(--border)">'
-    +'<h3 style="font-family:var(--font-display);font-size:13px;letter-spacing:3px;color:var(--text3);margin:0 0 12px;text-transform:uppercase">— App &amp; Sync Issues —</h3>'
-    +appHtml
-    +'</div>';
+    +appCard;
 }
 
 // ==================== TASTING EVOLUTION CHART ====================
@@ -19929,6 +20058,35 @@ async function storeImageAsset(dataUrl){
   return dataUrl;
 }
 
+// Build a square, dark-background app icon from the brand logo and store it as
+// settings.appIcon. The OS masks the home-screen icon to a circle/squircle, so
+// compositing the (often round/transparent) logo onto a padded dark square keeps
+// it from being clipped. No image library needed — the browser canvas does it.
+// Falls back to leaving appIcon unset (server then uses the raw logo) if the
+// logo can't be drawn (e.g. a cross-origin source that taints the canvas).
+async function regenerateAppIcon(){
+  var prev=APP.settings&&APP.settings.appIcon;
+  try{
+    var brand=APP.settings&&APP.settings.brandLogo;
+    if(!brand){APP.settings.appIcon=null;}
+    else{
+      var src=(typeof getBrandLogoSrc==='function')?getBrandLogoSrc():brand;
+      var img=await new Promise(function(res,rej){var im=new Image();im.onload=function(){res(im);};im.onerror=function(){rej(new Error('load failed'));};im.src=src;});
+      var iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height;
+      if(!iw||!ih)throw new Error('no dimensions');
+      var S=512,box=Math.round(S*0.78); // content in the central ~78% (maskable safe zone)
+      var scale=Math.min(box/iw,box/ih),w=iw*scale,h=ih*scale;
+      var cv=document.createElement('canvas');cv.width=S;cv.height=S;
+      var ctx=cv.getContext('2d');
+      ctx.fillStyle='#0a0a0b';ctx.fillRect(0,0,S,S);
+      ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+      ctx.drawImage(img,(S-w)/2,(S-h)/2,w,h);
+      APP.settings.appIcon=await storeImageAsset(cv.toDataURL('image/png'));
+    }
+  }catch(e){APP.settings.appIcon=null;}
+  if(prev&&prev!==APP.settings.appIcon&&typeof deleteAssetIfUnused==='function')deleteAssetIfUnused(prev);
+}
+
 // Is a stored /labels/ asset URL still referenced ANYWHERE in app state?
 // Assets are content-addressed, so one file can back several references
 // (two batches photographed with the same image, a label reused as a logo…).
@@ -20301,6 +20459,8 @@ function pickBrandLogo(){
       if(classifyLabelRef(ref)==='media')getResolvedMediaUrl(ref);
       scheduleSave();
       if(prev&&prev!==ref&&typeof deleteAssetIfUnused==='function')deleteAssetIfUnused(prev);
+      // Rebuild the square dark-background PWA/app icon from the new logo.
+      regenerateAppIcon().then(function(){scheduleSave();});
       // Refresh the topbar logo immediately (renderMain doesn't touch it)
       var crest=document.getElementById('topbar-crest');
       if(crest){
@@ -20316,9 +20476,11 @@ function pickBrandLogo(){
 function clearBrandLogo(){
   if(!confirm('Restore the default brand logo?'))return;
   var prev=APP.settings.brandLogo;
+  var prevIcon=APP.settings.appIcon;
   APP.settings.brandLogo=null;
+  APP.settings.appIcon=null;  // revert PWA/app icon to the bundled default too
   scheduleSave();
-  if(typeof deleteAssetIfUnused==='function')deleteAssetIfUnused(prev);
+  if(typeof deleteAssetIfUnused==='function'){deleteAssetIfUnused(prev);if(prevIcon)deleteAssetIfUnused(prevIcon);}
   var crest=document.getElementById('topbar-crest');
   if(crest){
     crest.innerHTML='<img src="'+MEADOS_LOGO+'" alt="MeadOS">';
@@ -20793,7 +20955,7 @@ function renderPublicShareView(b){
 
   // Build the sections
   var agingHtml=renderShareAgingTimeline(ageDays,minDays,peakDays,maxDays);
-  var gravityHtml=renderShareGravityChart(chartData);
+  var gravityHtml=renderShareGravityChart(chartData,b.og);
   var tastingHtml=renderShareTastingNotes(lastTasting);
   var ingredientsHtml=renderShareIngredients(b,recipe);
   var allergensHtml=renderShareDietary(b,recipe,bot);
@@ -20904,8 +21066,12 @@ function renderPublicShareView(b){
     +'</header>'
     +'<section class="batch-card">'
     +(function(){
-      var li=(typeof getLabelImage==='function')?getLabelImage(b.recipeId):null;
-      return(li&&/^(data:|https?:|\/)/.test(li))?'<div class="label-frame"><img src="'+escHtml(li)+'" alt="Bottle label"></div>':'';
+      // Bottle label, rendered through the SAME path as the Label Maker (art +
+      // the recipe's overlay config) so it looks exactly as designed — just with
+      // the QR code and drinking-window box suppressed for the public page.
+      if(!window._shareLabelImage||typeof renderLabelWithABV!=='function')return'';
+      var abvText=(bot&&bot.abv!=null)?String(bot.abv):'';
+      return'<div class="label-frame">'+renderLabelWithABV(b.recipeId,abvText,{batch:b,qr:false,bestDrink:false})+'</div>';
     }())
     +'<div class="batch-name">'+escHtml(b.name||'')+'</div>'
     +'<div class="batch-style">'+escHtml(recipeName||'')+(recipe&&recipe.category&&recipe.category!==recipeName?' · '+escHtml(recipe.category):'')+'</div>'
@@ -20951,12 +21117,12 @@ function renderShareAgingTimeline(ageDays,minD,peakD,maxD){
     gradient='linear-gradient(90deg,#8a6a30,var(--gold))';
     statusColor='#c9a84c';
     var dr=minD-ageDays;
-    status='⏳ Still aging — '+dr+' more day'+(dr!==1?'s':'')+' until ready';
+    status='⏳ Still aging — about '+fmtDuration(dr)+' until ready';
   }else if(ageDays<peakD){
     gradient='linear-gradient(90deg,var(--gold),#7cc87c)';
     statusColor='#7cc87c';
     var dp=peakD-ageDays;
-    status='✓ In drinking window — '+dp+' day'+(dp!==1?'s':'')+' until estimated peak';
+    status='✓ In drinking window — about '+fmtDuration(dp)+' until estimated peak';
   }else if(ageDays<maxD){
     gradient='linear-gradient(90deg,var(--gold),#7cc87c,#e8a050)';
     statusColor='#e8a050';
@@ -20973,19 +21139,21 @@ function renderShareAgingTimeline(ageDays,minD,peakD,maxD){
     +'<div class="share-aging-marker" style="left:'+peakPct.toFixed(1)+'%;background:#e8c878;box-shadow:0 0 6px #e8c878"></div>'
     +'</div>'
     +'<div class="share-aging-labels">'
-    +'<span>0d</span>'
-    +'<span style="color:#7cc87c">Ready · '+minD+'d</span>'
-    +'<span style="color:#e8c878">Peak · '+peakD+'d</span>'
-    +'<span>Max · '+maxD+'d</span>'
+    +'<span>Now</span>'
+    +'<span style="color:#7cc87c">Ready · '+fmtDurationCompact(minD)+'</span>'
+    +'<span style="color:#e8c878">Peak · '+fmtDurationCompact(peakD)+'</span>'
+    +'<span>Max · '+fmtDurationCompact(maxD)+'</span>'
     +'</div>'
     +'<div class="share-aging-status" style="color:'+statusColor+'">'+escHtml(status)+'</div>'
     +'</div></section>';
 }
 
-// Compact SVG line chart of the gravity readings. Takes array of [days, gravity_float].
-function renderShareGravityChart(data){
+// Compact SVG line chart of the gravity readings, with the estimated ABV drawn
+// on a second (right) axis so the ABV rise as gravity falls is visible. Takes an
+// array of [days, gravity_float] and the original gravity (for the ABV scale).
+function renderShareGravityChart(data,og){
   if(!data||data.length<2)return'';
-  var w=420,h=200,padL=48,padR=12,padT=16,padB=28;
+  var w=440,h=210,padL=46,padR=44,padT=16,padB=28;
   var maxDay=Math.max.apply(null,data.map(function(p){return p[0];}));
   var grav=data.map(function(p){return p[1];});
   var minG=Math.min.apply(null,grav),maxG=Math.max.apply(null,grav);
@@ -20993,11 +21161,23 @@ function renderShareGravityChart(data){
   minG=Math.floor((minG-0.005)*1000)/1000;
   maxG=Math.ceil((maxG+0.005)*1000)/1000;
   if(maxG-minG<0.030)maxG=minG+0.030;
+  // ABV axis (right): 0 → ABV at the lowest gravity, using OG.
+  var ogVal=og||(data[0]&&data[0][0]===0?data[0][1]:null);
+  var showAbv=!!ogVal&&(ogVal-minG)>0;
+  var maxA=showAbv?Math.max(1,Math.ceil((ogVal-minG)*131.25)):0;
   var sx=function(d){return padL+(d/(maxDay||1))*(w-padL-padR);};
   var sy=function(g){return padT+((maxG-g)/(maxG-minG))*(h-padT-padB);};
+  var ay=function(a){return padT+((maxA-a)/(maxA||1))*(h-padT-padB);};
   var pathD=data.map(function(p,i){return(i===0?'M':'L')+' '+sx(p[0]).toFixed(1)+' '+sy(p[1]).toFixed(1);}).join(' ');
   var fillD=pathD+' L '+sx(maxDay).toFixed(1)+' '+(h-padB)+' L '+padL+' '+(h-padB)+' Z';
   var dots=data.map(function(p){return'<circle cx="'+sx(p[0]).toFixed(1)+'" cy="'+sy(p[1]).toFixed(1)+'" r="3.5" fill="#e8c878" stroke="#1f1408" stroke-width="1.5"/>';}).join('');
+  // ABV line + dots + right-axis %
+  var abvPath='',abvDots='',abvLabels='';
+  if(showAbv){
+    abvPath='<path d="'+data.map(function(p,i){var a=(ogVal-p[1])*131.25;return(i===0?'M':'L')+' '+sx(p[0]).toFixed(1)+' '+ay(a).toFixed(1);}).join(' ')+'" stroke="#7cc87c" stroke-width="2" fill="none" stroke-linejoin="round"/>';
+    abvDots=data.map(function(p){var a=(ogVal-p[1])*131.25;return'<circle cx="'+sx(p[0]).toFixed(1)+'" cy="'+ay(a).toFixed(1)+'" r="3" fill="#7cc87c" stroke="#1f1408" stroke-width="1.2"/>';}).join('');
+    for(var j=0;j<=3;j++){var av=(maxA*j)/3;var yy=ay(av);abvLabels+='<text x="'+(w-padR+6)+'" y="'+(yy+3.5).toFixed(1)+'" font-family="monospace" font-size="9" fill="#7ca87c" text-anchor="start">'+av.toFixed(0)+'%</text>';}
+  }
   var yLabels='';
   for(var i=0;i<=3;i++){
     var val=minG+((maxG-minG)*i)/3;
@@ -21016,12 +21196,13 @@ function renderShareGravityChart(data){
     // ON TOP OF the next section title. Belt-and-braces: explicit width/height
     // attributes + aspect-ratio CSS so the browser computes the right box.
     +'<svg viewBox="0 0 '+w+' '+h+'" width="'+w+'" height="'+h+'" style="width:100%;max-width:'+w+'px;height:auto;aspect-ratio:'+w+'/'+h+';display:block;margin:0 auto">'
-    +yLabels+xLabels
+    +yLabels+xLabels+abvLabels
     +'<path d="'+fillD+'" fill="rgba(201,168,76,0.08)"/>'
     +'<path d="'+pathD+'" stroke="#c9a84c" stroke-width="2" fill="none" stroke-linejoin="round"/>'
     +dots
+    +abvPath+abvDots
     +'</svg>'
-    +'<div style="text-align:center;font-size:10px;color:#8a7d68;letter-spacing:1.5px;margin-top:6px;font-family:Cinzel,serif">SPECIFIC GRAVITY OVER FERMENTATION DAYS</div>'
+    +'<div style="text-align:center;font-size:10px;color:#8a7d68;letter-spacing:1.5px;margin-top:6px;font-family:Cinzel,serif">'+(showAbv?'<span style="color:#c9a84c">●</span> GRAVITY &nbsp;·&nbsp; <span style="color:#7cc87c">●</span> ABV % &nbsp;·&nbsp; OVER FERMENTATION DAYS':'SPECIFIC GRAVITY OVER FERMENTATION DAYS')+'</div>'
     +'</div></section>';
 }
 
@@ -22969,6 +23150,11 @@ async function init(){
   // Learn whether the server holds an HA token (and when it expires) — the
   // token itself never comes to the browser. Drives haConfigured() & reminders.
   await loadHAConfig();
+  // Backfill the square dark-background PWA/app icon for a brand logo that was
+  // set before this feature existed — one-time, then it rides the shared blob.
+  if(APP.settings&&APP.settings.brandLogo&&!APP.settings.appIcon&&typeof regenerateAppIcon==='function'){
+    regenerateAppIcon().then(function(){scheduleSave();});
+  }
   // Prefetch any media-source IDs in custom labels / brand logo so cache is warm
   if(typeof prefetchAllMediaUrls==='function')prefetchAllMediaUrls();
   // Ensure fermenters exist on fresh installs (loadData may have been a no-op
@@ -23063,6 +23249,19 @@ async function initShareMode(token){
   if(payload.meadery){
     APP.settings.brewerName=payload.meadery.brewerName||APP.settings.brewerName;
     if(payload.meadery.brandLogo)APP.settings.brandLogo=payload.meadery.brandLogo;
+  }
+  // Bottle-label art + the recipe's Label-Maker overlay config, so the share
+  // page renders the label EXACTLY as configured (just with QR + drinking-window
+  // suppressed). Feeding customLabels/recipeOverlays lets getLabelImage and
+  // getRecipeOverlays resolve them via the normal label render path.
+  window._shareLabelImage=(typeof payload.labelImage==='string'&&/^(data:image\/|\/labels\/)/.test(payload.labelImage))?payload.labelImage:'';
+  if(window._shareLabelImage){
+    APP.settings.customLabels=APP.settings.customLabels||{};
+    APP.settings.customLabels[b.recipeId]=window._shareLabelImage;
+  }
+  if(payload.recipeOverlays&&typeof payload.recipeOverlays==='object'){
+    APP.settings.recipeOverlays=APP.settings.recipeOverlays||{};
+    APP.settings.recipeOverlays[b.recipeId]=payload.recipeOverlays;
   }
   renderPublicShareView(b);
   // Don't register hashchange — share view is static and we don't want any
