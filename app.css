@@ -213,11 +213,6 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .dashboard-hero-text{flex:1;min-width:240px}
 @media (max-width:560px){.dashboard-hero{gap:14px}.dashboard-hero-logo{width:90px}}
 
-/* Floating Action Button */
-.fab{position:fixed;bottom:calc(24px + env(safe-area-inset-bottom,0px));right:calc(24px + env(safe-area-inset-right,0px));width:56px;height:56px;border-radius:28px;background:linear-gradient(135deg,#c9a84c,#e8c46a);color:#0a0a0b;border:0;font-size:28px;font-weight:600;cursor:pointer;box-shadow:0 6px 20px rgba(201,168,76,.45),0 2px 8px rgba(0,0,0,.4);z-index:50;display:flex;align-items:center;justify-content:center;font-family:var(--font-display);line-height:1;padding-bottom:3px;transition:transform .15s,box-shadow .15s}
-.fab:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(201,168,76,.6),0 3px 10px rgba(0,0,0,.5)}
-.fab:active{transform:translateY(0) scale(.96)}
-@media (max-width:560px){.fab{bottom:calc(16px + env(safe-area-inset-bottom,0px));right:calc(16px + env(safe-area-inset-right,0px));width:50px;height:50px;font-size:24px}}
 
 /* Low-stock alert */
 .stock-alert{background:linear-gradient(90deg,#1a0808,#250d0d);border:1px solid var(--red);border-left:3px solid var(--red2);color:var(--red2);padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;font-size:13px;display:flex;align-items:center;gap:10px}
@@ -295,6 +290,15 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px}
 .chart-card-title{font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
 .chart-wrap{position:relative;height:200px}
+/* Troubleshoot: category cards with topic "buttons" inside */
+.ts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.ts-item{display:flex;align-items:center;gap:11px;text-align:left;width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;cursor:pointer;color:var(--text);font-family:inherit;transition:border-color .15s,background .15s,transform .1s}
+.ts-item:hover{border-color:var(--gold);background:var(--bg4);transform:translateY(-1px)}
+.ts-item:active{transform:translateY(0)}
+.ts-item .ts-ico{font-size:20px;flex-shrink:0;line-height:1}
+.ts-item .ts-meta{display:block;font-family:var(--font-mono);font-size:9.5px;color:var(--gold2);letter-spacing:1px;margin-top:4px}
+/* Brew-with-what-you-have: same recipe-card theming as the Recipes page */
+.bwyh-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:12px}
 /* keep chart canvases from poking past their container on narrow screens */
 #main canvas{max-width:100%}
 @media (max-width:900px){

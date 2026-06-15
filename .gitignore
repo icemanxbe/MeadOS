@@ -13,7 +13,10 @@ __pycache__/
 
 # local tooling
 .claude/
-labels/
 
-# generated per-install login-page logo (mirrored from the brand logo on save)
-login-logo.*
+# user-uploaded images (per-install content, not part of the repo).
+# assets/icons + assets/vendor ARE tracked (bundled app assets).
+labels/
+assets/labels/
+assets/photos/
+assets/brand/

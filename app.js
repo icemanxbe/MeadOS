@@ -1,4 +1,8 @@
 'use strict';
+/* MeadOS — © 2026 icemanxbe (https://github.com/icemanxbe/MeadOS)
+   Licensed under the PolyForm Noncommercial License 1.0.0 (see LICENSE): free to
+   use, modify and share for noncommercial purposes; selling is not permitted.
+   Required Notice: Copyright © 2026 icemanxbe (https://github.com/icemanxbe/MeadOS) */
 
 var MEADOS_LOGO="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAzMjAgMzIwIj48ZGVmcz48bGluZWFyR3JhZGllbnQgaWQ9ImciIHgxPSIwIiB5MT0iMCIgeDI9IjAiIHkyPSIxIj48c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiNlOGM5N2EiLz48c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNjOWE4NGMiLz48L2xpbmVhckdyYWRpZW50PjwvZGVmcz48cmVjdCB4PSIxMCIgeT0iMTAiIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIiByeD0iNjYiIGZpbGw9IiMxNDE0MTciIHN0cm9rZT0iIzJhMmEzNSIgc3Ryb2tlLXdpZHRoPSI0Ii8+PHBvbHlnb24gcG9pbnRzPSIxNjAsNDYgMjU0LDEwMCAyNTQsMjA4IDE2MCwyNjIgNjYsMjA4IDY2LDEwMCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSJ1cmwoI2cpIiBzdHJva2Utd2lkdGg9IjciIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cG9seWdvbiBwb2ludHM9IjE2MCw3MCAyMzMsMTEyIDIzMywxOTYgMTYwLDIzOCA4NywxOTYgODcsMTEyIiBmaWxsPSJub25lIiBzdHJva2U9IiNjOWE4NGMiIHN0cm9rZS13aWR0aD0iMiIgb3BhY2l0eT0iMC40NSIvPjxwYXRoIGQ9Ik0xNjAgOTYgQzE4OCAxMzggMjA2IDE2MiAyMDYgMTkwIGE0NiA0NiAwIDAgMSAtOTIgMCBDMTE0IDE2MiAxMzIgMTM4IDE2MCA5NiBaIiBmaWxsPSJ1cmwoI2cpIi8+PHBhdGggZD0iTTE0MSAxODQgYTIxIDI3IDAgMCAwIDE1IDMyIiBmaWxsPSJub25lIiBzdHJva2U9IiNmZmYzZDYiIHN0cm9rZS13aWR0aD0iNyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBvcGFjaXR5PSIwLjY1Ii8+PC9zdmc+";
 // Minimal QR code generator — public domain
@@ -189,10 +193,11 @@ ingredients:[
 {item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:''},
 {item:'Mead Yeast Nutrient',amount:'12 g',notes:'Staggered'},
 {item:'Cinnamon Sticks',amount:'2 sticks',notes:'Added at secondary'},
-{item:'Apple slices (optional)',amount:'1 apple',notes:'Adds depth in secondary'}
+{item:'Apple slices (optional)',amount:'1 apple',notes:'Adds depth in secondary'},
+{item:'Pectic Enzyme',amount:'2 g',notes:'Optional — apple juice is pectin-rich; prevents a lasting haze'}
 ],
 steps:[
-{day:0,title:'Brew Day',desc:'Clean (Chemipro OXI 4g/L or PBW), then sanitize (Chemipro SAN 2ml/L or Star San 1.5ml/L). Combine apple juice, water and honey — stir 10+ minutes until honey fully dissolves. Take OG. Pitch M05 by sprinkling on surface. Seal with airlock.'},
+{day:0,title:'Brew Day',desc:'Clean (Chemipro OXI 4g/L or PBW), then sanitize (Chemipro SAN 2ml/L or Star San 1.5ml/L). Combine apple juice, water and honey — stir 10+ minutes until honey fully dissolves. Add the pectic enzyme (amount in the ingredient list — it scales with the batch-size slider) and stir in. Take OG. Pitch M05 by sprinkling on surface. Seal with airlock.'},
 {day:1,title:'First Nutrient',desc:'Add 6g nutrient. You should see clear bubbling. Gentle swirl to mix and degas.'},
 {day:3,title:'Second Nutrient',desc:'Add remaining 6g. Log gravity — should be dropping steadily.'},
 {day:14,title:'Rack with Cinnamon',desc:'Rack to clean secondary. Add 2 cinnamon sticks (and optional sliced apple in a sanitized muslin bag). The slow infusion produces gentle warmth, not aggressive heat.'},
@@ -205,6 +210,9 @@ notes:'Crisp aromatic apples (like Jonagold) give beautiful character. Don\'t ov
 },
 {
 id:'r3',name:'Strawberry Mead',brandName:'Strawberry',style:'Melomel',difficulty:'Beginner',brandColor:'#c04858',
+category:'Melomel',additionStage:'primary',
+linked:[{id:'r36',label:'fruit in secondary'}],
+linkedNote:'Two ways to build strawberry mead. THIS one ferments the fruit in the PRIMARY — simplest, with a soft fermented-through strawberry note; the linked version adds the fruit in the SECONDARY for the freshest, most fragrant "just-picked" character (strawberry aroma is delicate and fades through a full ferment).',
 volume:5.0,ogTarget:1.094,fgTarget:1.008,abvTarget:11.5,fermentDays:35,ageDays:60,
 minAgeDays:30,peakAgeDays:90,maxAgeDays:300,
 tags:['Summer','Fruity','Pink'],
@@ -227,10 +235,44 @@ steps:[
 {day:49,title:'Bottle',desc:'Bottle in clear glass to showcase the pink color. Keep chilled — strawberry mead loses character with heat exposure.'},
 {day:75,title:'First Tasting',desc:'Best young and chilled — drink within 1 year for peak fruit character.'}
 ],
-notes:'Pink color can fade over time — that\'s normal. Frozen strawberries from late June/July harvest give best results. Avoid waterlogged supermarket berries.'
+notes:'Pink color can fade over time — that\'s normal. Frozen strawberries from late June/July harvest give best results. Avoid waterlogged supermarket berries. This is the PRIMARY-fruit version; see the linked secondary-fruit version for the freshest aroma.'
+},
+{
+id:'r36',name:'Strawberry Mead · Fruit in Secondary',brandName:'Strawberry',style:'Melomel',difficulty:'Intermediate',brandColor:'#d06070',useGenericLabel:true,
+category:'Melomel',additionStage:'secondary',
+linked:[{id:'r3',label:'fruit in primary'}],
+linkedNote:'Two ways to build strawberry mead. THIS one adds the fruit in the SECONDARY for the freshest, most fragrant "just-picked" character; the linked version ferments the fruit in the PRIMARY — simpler, with a softer fermented-through note.',
+volume:5.0,ogTarget:1.090,fgTarget:1.004,abvTarget:11.3,fermentDays:35,ageDays:60,
+minAgeDays:30,peakAgeDays:90,maxAgeDays:300,
+tags:['Summer','Fresh aroma','Pink','Secondary'],
+description:'Strawberry aroma is the most delicate of the berries — it fades fastest through a full ferment. This version keeps it bright by fermenting a clean traditional base first, then racking onto the strawberries in secondary. The freshest, most fragrant of the two strawberry meads, with a slightly paler pink.',
+ingredients:[
+{item:'Acacia or Wildflower Honey',amount:'1.45 kg',notes:''},
+{item:'Strawberries (frozen)',amount:'1.1 kg',notes:'Frozen breaks cell walls — added in SECONDARY, not on brew day'},
+{item:'Spring Water',amount:'4.5 L',notes:''},
+{item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:''},
+{item:'Mead Yeast Nutrient',amount:'12 g',notes:'Staggered through the first third'},
+{item:'Pectic Enzyme',amount:'2 g',notes:'Add with the fruit in secondary — keeps it clear'},
+{item:'Potassium Metabisulfite',amount:'0.3 g',notes:'Pair with sorbate only if you back-sweeten after the fruit'},
+{item:'Potassium Sorbate',amount:'1 g',notes:'Pair with metabisulfite to stabilise before any back-sweetening'}
+],
+steps:[
+{day:0,title:'Brew Day (clean traditional base)',desc:'No fruit yet. Clean and sanitise. Dissolve the honey fully, then top up with spring water to the 5 L mark. Take OG. Pitch M05. Seal with an airlock — the strawberries go in later.'},
+{day:1,title:'First Nutrient',desc:'Add ~6 g nutrient once fermentation is clearly underway. Gentle swirl to mix and degas.'},
+{day:3,title:'Second Nutrient',desc:'Add the remaining ~6 g before the 1/3 sugar break. Log gravity.'},
+{day:14,title:'Rack onto the fruit (when primary is DONE)',desc:'Only once fermentation has finished — a stable gravity across two readings 2–3 days apart, not a fixed day. Sanitise 1.1 kg thawed strawberries (no need to chop) in a mesh bag in a clean secondary, stir in the pectic enzyme (amount in the ingredient list — it scales with the slider), then rack the mead onto the fruit. A gentle secondary ferment usually restarts — keep an airlock on.'},
+{day:24,title:'Taste & pull the fruit',desc:'After ~10 days on the fruit, taste daily. Pull the fruit bag the moment the aroma is fresh and vivid — strawberry turns jammy fast if left too long.'},
+{day:35,title:'Stabilise & (optional) back-sweeten',desc:'For an off-dry finish that highlights the fruit, stabilise FIRST with potassium sorbate AND metabisulfite together — either alone will not reliably stop a restart on fresh fruit sugar — wait 24 h, then back-sweeten lightly with honey to taste.'},
+{day:49,title:'Bottle',desc:'Bottle in clear glass to showcase the pink. Keep chilled — strawberry mead loses character with heat.'},
+{day:75,title:'First Tasting',desc:'Brighter and more fragrant than the primary-fruit version. Best young and chilled — drink within a year for peak fruit.'}
+],
+notes:'Fruit in secondary = the freshest strawberry aroma, but it WILL try to re-ferment, so stabilise (sorbate + metabisulfite) before sweetening. Fruit in primary (the linked recipe) = simpler and a touch deeper in colour, with a softer note. Frozen late-June/July berries give the best result either way.'
 },
 {
 id:'r4',name:'Forest Fruits Mead',brandName:'Forest Fruits',style:'Melomel',difficulty:'Beginner',brandColor:'#5a3868',
+category:'Melomel',additionStage:'primary',
+linked:[{id:'r35',label:'fruit in secondary'}],
+linkedNote:'Two ways to build the same forest-fruit melomel. THIS one ferments the fruit in the PRIMARY for deeper colour and body; the linked version adds the fruit in the SECONDARY for a fresher, more aromatic result.',
 volume:5.0,ogTarget:1.098,fgTarget:1.008,abvTarget:11.8,fermentDays:42,ageDays:90,
 minAgeDays:60,peakAgeDays:240,maxAgeDays:900,
 tags:['Berries','Deep purple','Complex'],
@@ -255,10 +297,44 @@ steps:[
 {day:70,title:'Bottle',desc:'Bottle in clear or amber glass. The Forest Fruits label deserves the spotlight.'},
 {day:120,title:'First Tasting',desc:'Best after 4 months minimum. Improves dramatically for 1+ year. Pairs with dark chocolate, game, soft cheeses.'}
 ],
-notes:'Frozen supermarket forest-fruit blends are perfect. Avoid blends with strawberry — different fermentation profile. The blackcurrant brings the signature depth.'
+notes:'Frozen supermarket forest-fruit blends are perfect. Avoid blends with strawberry — different fermentation profile. The blackcurrant brings the signature depth. This is the PRIMARY-fruit version; see the linked secondary-fruit version for a fresher, more aromatic take.'
 },
 {
-id:'r5',name:'Blueberry Mead',brandName:'Blueberry',style:'Melomel',difficulty:'Beginner',brandColor:'#384068',
+id:'r35',name:'Forest Fruits Mead · Fruit in Secondary',brandName:'Forest Fruits',style:'Melomel',difficulty:'Intermediate',brandColor:'#7a4d88',useGenericLabel:true,
+category:'Melomel',additionStage:'secondary',
+linked:[{id:'r4',label:'fruit in primary'}],
+linkedNote:'Two ways to build the same forest-fruit melomel. THIS one adds the fruit in the SECONDARY for a fresher, more aromatic result; the linked version ferments the fruit in the PRIMARY for deeper colour and body.',
+volume:5.0,ogTarget:1.092,fgTarget:1.004,abvTarget:11.5,fermentDays:42,ageDays:90,
+minAgeDays:60,peakAgeDays:240,maxAgeDays:900,
+tags:['Berries','Fresh aroma','Secondary'],
+description:'The same forest-fruit melomel, but the berries go into the SECONDARY rather than the primary. You ferment a clean traditional base first, then rack onto the fruit — keeping the berry aroma bright and fresh instead of fermenting it out, at the cost of a little colour and body. The aroma-forward sibling of the primary-fruit recipe.',
+ingredients:[
+{item:'Wildflower Honey',amount:'1.5 kg',notes:'Robust honey holds up to berries'},
+{item:'Mixed Forest Fruits (frozen)',amount:'1.2 kg',notes:'Blackberry, raspberry, blueberry, blackcurrant — added in SECONDARY, not on brew day'},
+{item:'Spring Water',amount:'4.5 L',notes:''},
+{item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:''},
+{item:'Mead Yeast Nutrient',amount:'12 g',notes:'Staggered through the first third'},
+{item:'Pectic Enzyme',amount:'2 g',notes:'Add with the fruit in secondary — prevents pectin haze'},
+{item:'Potassium Metabisulfite',amount:'0.3 g',notes:'Pair with sorbate only if you back-sweeten after the fruit'},
+{item:'Potassium Sorbate',amount:'1 g',notes:'Pair with metabisulfite to stabilise before any back-sweetening'}
+],
+steps:[
+{day:0,title:'Brew Day (clean traditional base)',desc:'No fruit yet. Clean and sanitise. Dissolve the honey fully, then top up with spring water to the 5 L mark. Take OG. Pitch M05. Seal with an airlock — you are fermenting a plain base that the fruit goes into later.'},
+{day:1,title:'First Nutrient',desc:'Add ~6 g nutrient once fermentation is clearly underway. Gentle swirl to mix and degas.'},
+{day:3,title:'Second Nutrient',desc:'Add the remaining ~6 g before the 1/3 sugar break. Log gravity.'},
+{day:21,title:'Rack onto the fruit (when primary is DONE)',desc:'Only once fermentation has finished — a stable gravity across two readings 2–3 days apart, not a fixed day. Sanitise 1.2 kg thawed forest fruit in a mesh bag in a clean secondary, stir in the pectic enzyme (amount in the ingredient list — it scales with the batch-size slider), then rack the mead onto the fruit. A gentle secondary ferment usually restarts — keep an airlock on.'},
+{day:35,title:'Taste & pull the fruit',desc:'After ~2 weeks on the fruit, taste daily. Pull the fruit bag when the aroma is vivid but not jammy — you can leave it longer, but you can never take it back once it is over-extracted.'},
+{day:42,title:'Stabilise & (optional) back-sweeten',desc:'For an off-dry finish, stabilise FIRST with potassium sorbate AND metabisulfite together — either one alone will not reliably stop a restart on fresh fruit sugar — wait 24 h, then back-sweeten with honey to taste.'},
+{day:56,title:'Bottle',desc:'Bottle in clear or amber glass to show the bright berry colour.'},
+{day:120,title:'First Tasting',desc:'Fresher and more aromatic than the primary-fruit version, with a touch less body and colour. Best within a year while the aroma is at its peak.'}
+],
+notes:'Fruit in secondary = fresher aroma, less colour and body, and it WILL try to re-ferment, so stabilise (sorbate + metabisulfite) before sweetening. Fruit in primary (the linked recipe) = deeper colour and body but a quieter, fermented-through berry note. Same fruit, two different meads.'
+},
+{
+id:'r5',name:'Blueberry Mead',brandName:'Blueberry',style:'Melomel',difficulty:'Beginner',brandColor:'#6e84cc',
+category:'Melomel',additionStage:'primary',
+linked:[{id:'r38',label:'fruit in secondary'}],
+linkedNote:'Two ways to build blueberry mead. THIS one ferments the fruit in the PRIMARY for the deepest indigo colour and earthy depth; the linked version adds the fruit in the SECONDARY for a fresher, brighter blueberry note with a touch less colour.',
 volume:5.0,ogTarget:1.096,fgTarget:1.010,abvTarget:11.3,fermentDays:42,ageDays:120,
 minAgeDays:90,peakAgeDays:300,maxAgeDays:900,
 tags:['Single fruit','Indigo','Antioxidant'],
@@ -283,10 +359,41 @@ steps:[
 {day:70,title:'Clear & Bottle',desc:'Should be clear by now. Bottle in clear glass — the indigo color is the star.'},
 {day:150,title:'First Tasting',desc:'Blueberry mead benefits enormously from aging. Try at 5 months, then 8, then 12 — you\'ll see dramatic improvement.'}
 ],
-notes:'Wild blueberries give the deepest color. Frozen-then-thawed extraction is essential — fresh blueberry skins resist releasing their character.'
+notes:'Wild blueberries give the deepest color. Frozen-then-thawed extraction is essential — fresh blueberry skins resist releasing their character. This is the PRIMARY-fruit version; see the linked secondary-fruit version for a fresher, brighter take.'
 },
 {
-id:'r6',name:'Cherry Mead',brandName:'Cherry',style:'Melomel',difficulty:'Intermediate',brandColor:'#8a2030',
+id:'r38',name:'Blueberry Mead · Fruit in Secondary',brandName:'Blueberry',style:'Melomel',difficulty:'Intermediate',brandColor:'#8298d8',useGenericLabel:true,
+category:'Melomel',additionStage:'secondary',
+linked:[{id:'r5',label:'fruit in primary'}],
+linkedNote:'Two ways to build blueberry mead. THIS one adds the fruit in the SECONDARY for a fresher, brighter blueberry note; the linked version ferments the fruit in the PRIMARY for the deepest indigo colour and earthy depth.',
+volume:5.0,ogTarget:1.092,fgTarget:1.006,abvTarget:11.0,fermentDays:42,ageDays:120,
+minAgeDays:60,peakAgeDays:240,maxAgeDays:720,
+tags:['Single fruit','Fresh aroma','Indigo','Secondary'],
+description:'The brighter, fresher sibling of the primary-fruit blueberry mead. A clean traditional base ferments out first, then racks onto crushed blueberries in secondary — keeping a fresher fruit note and a touch more tartness, with slightly less of the deep earthy indigo you get from fermenting the fruit through.',
+ingredients:[
+{item:'Acacia or Wildflower Honey',amount:'1.55 kg',notes:''},
+{item:'Blueberries (frozen)',amount:'1.1 kg',notes:'Frozen essential — added in SECONDARY, not on brew day'},
+{item:'Spring Water',amount:'4.5 L',notes:''},
+{item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:''},
+{item:'Mead Yeast Nutrient',amount:'12 g',notes:'Staggered through the first third'},
+{item:'Pectic Enzyme',amount:'2 g',notes:'Add with the fruit in secondary — blueberries are pectin-rich'},
+{item:'Potassium Metabisulfite',amount:'0.3 g',notes:'Pair with sorbate only if you back-sweeten after the fruit'},
+{item:'Potassium Sorbate',amount:'1 g',notes:'Pair with metabisulfite to stabilise before any back-sweetening'}
+],
+steps:[
+{day:0,title:'Brew Day (clean traditional base)',desc:'No fruit yet. Clean and sanitise. Dissolve the honey fully, then top up with spring water to the 5 L mark. Take OG. Pitch M05. Seal with an airlock — the blueberries go in later.'},
+{day:1,title:'First Nutrient',desc:'Add ~6 g nutrient once fermentation is clearly underway. Gentle swirl to mix and degas.'},
+{day:3,title:'Second Nutrient',desc:'Add the remaining ~6 g before the 1/3 sugar break. Log gravity.'},
+{day:21,title:'Rack onto the fruit (when primary is DONE)',desc:'Only once fermentation has finished — a stable gravity across two readings 2–3 days apart, not a fixed day. Thaw 1.1 kg blueberries and lightly crush half (releases colour), sanitise into a mesh bag in a clean secondary, stir in the pectic enzyme (amount in the ingredient list — it scales with the slider), then rack the mead onto the fruit. Keep an airlock on for the gentle restart.'},
+{day:35,title:'Taste & pull the fruit',desc:'After ~2 weeks on the fruit, taste daily. Pull the bag when the blueberry note is fresh and clean — over-long contact turns it stewed.'},
+{day:42,title:'Stabilise & (optional) back-sweeten',desc:'For an off-dry finish, stabilise FIRST with potassium sorbate AND metabisulfite together — either alone will not reliably stop a restart on fresh fruit sugar — wait 24 h, then back-sweeten with honey to taste.'},
+{day:70,title:'Clear & Bottle',desc:'Should be clearing by now; cold-crash a week if hazy. Bottle in clear glass — the indigo is the star.'},
+{day:150,title:'First Tasting',desc:'Fresher and a touch tarter than the primary-fruit version. Still rewards aging — try at 5, 8 and 12 months.'}
+],
+notes:'Fruit in secondary = fresher, brighter blueberry and a little more tartness, but it WILL try to re-ferment, so stabilise (sorbate + metabisulfite) before sweetening. Fruit in primary (the linked recipe) = the deepest colour and earthy depth. Frozen-then-thawed berries are essential either way.'
+},
+{
+id:'r6',name:'Cherry Mead',brandName:'Cherry',style:'Melomel',difficulty:'Intermediate',brandColor:'#c8505f',
 volume:5.0,ogTarget:1.100,fgTarget:1.010,abvTarget:11.8,fermentDays:42,ageDays:150,
 minAgeDays:120,peakAgeDays:300,maxAgeDays:1095,
 tags:['Stone fruit','Ruby red','Long aging'],
@@ -431,7 +538,7 @@ notes:'AVOID juice with preservatives (sodium benzoate, potassium sorbate) — t
 },
 
 {
-id:'r11',name:'Pyment · Grape Mead',brandName:'Pyment',style:'Pyment',difficulty:'Intermediate',brandColor:'#7a2040',useGenericLabel:true,
+id:'r11',name:'Pyment · Grape Mead',brandName:'Pyment',style:'Pyment',difficulty:'Intermediate',brandColor:'#c06484',useGenericLabel:true,
 category:'Pyment',additionStage:'primary',
 volume:5.0,ogTarget:1.110,fgTarget:1.010,abvTarget:13.5,fermentDays:56,ageDays:180,
 minAgeDays:180,peakAgeDays:540,maxAgeDays:1825,
@@ -443,10 +550,11 @@ ingredients:[
 {item:'Spring Water',amount:'1.0 L',notes:''},
 {item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:'M05 ideal; alternatives: EC-1118 (drier), 71B (smoother)'},
 {item:'Mead Yeast Nutrient',amount:'12 g',notes:''},
-{item:'Wine Tannin Powder',amount:'1-2 g',notes:'Optional — for more wine-like grip'}
+{item:'Wine Tannin Powder',amount:'1-2 g',notes:'Optional — for more wine-like grip'},
+{item:'Pectic Enzyme',amount:'2 g',notes:'Grapes are pectin-rich; prevents a lasting haze'}
 ],
 steps:[
-{day:0,title:'Brew Day',desc:'PRIMARY ADDITION: Mix all liquids and honey. Add tannin powder if using. Pitch yeast.'},
+{day:0,title:'Brew Day',desc:'PRIMARY ADDITION: Mix all liquids and honey. Add tannin powder if using, plus the pectic enzyme (amount in the ingredient list — it scales with the batch-size slider). Pitch yeast.'},
 {day:1,title:'First Nutrient',desc:'6g.'},
 {day:3,title:'Second Nutrient',desc:'6g. Log gravity — rapid drop expected.'},
 {day:14,title:'Rack',desc:'Rack off heavy lees.'},
@@ -486,6 +594,8 @@ notes:'Boil the DME but not the honey — boiling honey drives off delicate arom
 {
 id:'r13',name:'Raspberry Melomel',brandName:'Raspberry',style:'Melomel',difficulty:'Beginner',brandColor:'#a02050',useGenericLabel:true,
 category:'Melomel',additionStage:'primary',
+linked:[{id:'r37',label:'fruit in secondary'}],
+linkedNote:'Two ways to build raspberry melomel. THIS one ferments the fruit in the PRIMARY — raspberry is robust enough to hold up, giving a reliable magenta melomel; the linked version adds the fruit in the SECONDARY for an even more intense, perfumed fresh-raspberry aroma.',
 volume:5.0,ogTarget:1.100,fgTarget:1.010,abvTarget:12.0,fermentDays:42,ageDays:60,
 minAgeDays:60,peakAgeDays:180,maxAgeDays:540,
 tags:['Berry','Tart','Vibrant','Primary'],
@@ -507,11 +617,41 @@ steps:[
 {day:42,title:'Bottle',desc:'Brilliant magenta. Bottle in clear glass to show the color.'},
 {day:90,title:'First Tasting',desc:'Vibrant raspberry. Best drunk young — color fades over 1+ years.'}
 ],
-notes:'Frozen raspberries work BETTER than fresh — ice crystals rupture cell walls. Same trick with strawberries, blueberries, blackberries. Don\'t blend the fruit — pulp causes nightmare clarity issues.'
+notes:'Frozen raspberries work BETTER than fresh — ice crystals rupture cell walls. Same trick with strawberries, blueberries, blackberries. Don\'t blend the fruit — pulp causes nightmare clarity issues. This is the PRIMARY-fruit version; see the linked secondary-fruit version for the most intense fresh-raspberry aroma.'
 },
-
 {
-id:'r14',name:'Blackcurrant Melomel',brandName:'Cassis',style:'Melomel',difficulty:'Intermediate',brandColor:'#3a1040',useGenericLabel:true,
+id:'r37',name:'Raspberry Melomel · Fruit in Secondary',brandName:'Raspberry',style:'Melomel',difficulty:'Intermediate',brandColor:'#c0406a',useGenericLabel:true,
+category:'Melomel',additionStage:'secondary',
+linked:[{id:'r13',label:'fruit in primary'}],
+linkedNote:'Two ways to build raspberry melomel. THIS one adds the fruit in the SECONDARY for an even more intense, perfumed fresh-raspberry aroma; the linked version ferments the fruit in the PRIMARY — raspberry is robust enough to hold up there, and it is the simpler route.',
+volume:5.0,ogTarget:1.096,fgTarget:1.004,abvTarget:11.8,fermentDays:42,ageDays:60,
+minAgeDays:45,peakAgeDays:150,maxAgeDays:480,
+tags:['Berry','Fresh aroma','Vibrant','Secondary'],
+description:'Raspberry already survives a primary ferment well — but adding the fruit in secondary pushes the aroma even further, giving an intense, almost perfumed fresh-raspberry nose and a vivid magenta. A clean base ferments out first, then racks onto the berries.',
+ingredients:[
+{item:'Wildflower Honey',amount:'1.7 kg',notes:''},
+{item:'Frozen Raspberries (then thawed)',amount:'1.0 kg',notes:'Freezing ruptures cell walls — added in SECONDARY, not on brew day'},
+{item:'Spring Water',amount:'4.5 L',notes:''},
+{item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:''},
+{item:'Mead Yeast Nutrient',amount:'12 g',notes:'Staggered through the first third'},
+{item:'Pectic Enzyme',amount:'2 g',notes:'Add with the fruit in secondary — prevents haze'},
+{item:'Potassium Metabisulfite',amount:'0.3 g',notes:'Pair with sorbate only if you back-sweeten after the fruit'},
+{item:'Potassium Sorbate',amount:'1 g',notes:'Pair with metabisulfite to stabilise before any back-sweetening'}
+],
+steps:[
+{day:0,title:'Brew Day (clean traditional base)',desc:'No fruit yet. Clean and sanitise. Dissolve the honey fully, then top up with spring water to the 5 L mark. Take OG. Pitch M05. Seal with an airlock — the raspberries go in later.'},
+{day:1,title:'First Nutrient',desc:'Add ~6 g nutrient once fermentation is clearly underway. Gentle swirl to mix and degas.'},
+{day:3,title:'Second Nutrient',desc:'Add the remaining ~6 g before the 1/3 sugar break. Log gravity.'},
+{day:21,title:'Rack onto the fruit (when primary is DONE)',desc:'Only once fermentation has finished — a stable gravity across two readings 2–3 days apart, not a fixed day. Thaw and gently crush 1.0 kg raspberries, sanitise into a mesh bag in a clean secondary, stir in the pectic enzyme (amount in the ingredient list — it scales with the slider), then rack the mead onto the fruit. Keep an airlock on for the gentle restart.'},
+{day:33,title:'Taste & pull the fruit',desc:'After ~12 days on the fruit, taste daily. Pull the bag when the aroma peaks — squeeze gently, never hard, or the seeds give bitterness.'},
+{day:42,title:'Stabilise & (optional) back-sweeten',desc:'For an off-dry finish, stabilise FIRST with potassium sorbate AND metabisulfite together — either alone will not reliably stop a restart on fresh fruit sugar — wait 24 h, then back-sweeten with honey to taste.'},
+{day:56,title:'Bottle',desc:'Brilliant magenta. Bottle in clear glass to show the colour.'},
+{day:90,title:'First Tasting',desc:'More perfumed and aromatic than the primary-fruit version. Best drunk young — the fresh aroma is the point, and colour fades over a year.'}
+],
+notes:'Fruit in secondary = the most intense fresh-raspberry aroma, but it WILL try to re-ferment, so stabilise (sorbate + metabisulfite) before sweetening. Fruit in primary (the linked recipe) = simpler and still excellent, since raspberry holds up to a primary ferment. Don\'t blend the fruit — pulp wrecks clarity.'
+},
+{
+id:'r14',name:'Blackcurrant Melomel',brandName:'Cassis',style:'Melomel',difficulty:'Intermediate',brandColor:'#9a63b8',useGenericLabel:true,
 category:'Melomel',additionStage:'primary',
 volume:5.0,ogTarget:1.110,fgTarget:1.012,abvTarget:13.0,fermentDays:42,ageDays:120,
 minAgeDays:120,peakAgeDays:365,maxAgeDays:1095,
@@ -727,7 +867,7 @@ notes:'START WITH ONE CHILI. Capsaicin is fat-soluble but extracts into alcohol 
 },
 
 {
-id:'r22',name:'Coffee Mead',brandName:'Café',style:'Specialty',difficulty:'Intermediate',brandColor:'#3a2820',useGenericLabel:true,
+id:'r22',name:'Coffee Mead',brandName:'Café',style:'Specialty',difficulty:'Intermediate',brandColor:'#b5835a',useGenericLabel:true,
 category:'Specialty',additionStage:'secondary',
 volume:5.0,ogTarget:1.095,fgTarget:1.010,abvTarget:11.5,fermentDays:35,ageDays:90,
 minAgeDays:90,peakAgeDays:180,maxAgeDays:540,
@@ -814,7 +954,7 @@ notes:'Use CEYLON cinnamon (true cinnamon) — cassia is harsher and dominates. 
 },
 
 {
-id:'r25',name:'Sack Mead · Port-Style (Ruby)',brandName:'Porto Robijn',style:'Sack',difficulty:'Advanced',brandColor:'#6a1428',useGenericLabel:true,
+id:'r25',name:'Sack Mead · Port-Style (Ruby)',brandName:'Porto Robijn',style:'Sack',difficulty:'Advanced',brandColor:'#b8485e',useGenericLabel:true,
 category:'Sack',additionStage:'primary',
 volume:5.0,ogTarget:1.140,fgTarget:1.028,abvTarget:14.5,fermentDays:60,ageDays:365,
 minAgeDays:240,peakAgeDays:540,maxAgeDays:1825,
@@ -979,6 +1119,141 @@ steps:[
 {day:540,title:'Peak Tasting (18 months)',desc:'When this style truly arrives. Caramel + maple + honey are one note. Sweetness is balanced by the slight oxidative depth long aging provides. Serve at 12-14°C — cold dulls the aromatics.'}
 ],
 notes:'BOCHET TECHNIQUE: The caramelization defines this mead. Aim for DEEP amber smelling of toffee/marshmallow. Color guide: maple syrup color = under-caramelized. Espresso color = burnt. Halfway between = perfect. If unsure, stop early — under-caramelized still tastes good; burnt is irrecoverable bitter charcoal.\n\nMAPLE TIMING: Add maple BEFORE pitching yeast (in primary). Adding maple in secondary creates a different style — fresher maple, less integrated. For this recipe the caramel + maple need time together.\n\nVESSEL HEADSPACE: Bochets foam more than traditional meads — caramelized sugars + maple + active yeast = vigorous primary. Use a 9 L primary fermenter and target ~6 L of must (≈67% fill); the extra headspace handles the krausen volcano cleanly.\n\nWHY WORTH THE EFFORT: This is one of the most rewarding meads to brew. Caramelization is the only "active" technique mead has — the rest is patience. The result is unlike anything else: bourbon-rich, dessert-sweet, dark and dramatic.\n\nDISTANT COUSIN: r26 (Aged Tawny Bochet) is the truly long-aged version of this style — 18 months MINIMUM, 3+ years to peak. This recipe (r29) is the "shorter" bochet — drinkable at 1 year, peak at 18 months. Brew both as a side-by-side comparison brew at 3-year intervals.'
+},
+{
+id:'r30',name:'Sparkling Traditional Mead',brandName:'Pétillant d\'Or',style:'Sparkling',difficulty:'Intermediate',brandColor:'#e0c878',useGenericLabel:true,
+category:'Sparkling',
+volume:5.0,ogTarget:1.090,fgTarget:1.000,abvTarget:11.8,fermentDays:35,ageDays:90,
+minAgeDays:60,peakAgeDays:240,maxAgeDays:730,
+tags:['Sparkling','Champagne-style','Dry','Carbonated','Celebration'],
+description:'A bone-dry, bottle-conditioned mead that drinks like a honey champagne — fine bubbles, crisp finish, the honey aromatics lifted by the carbonation. Fermented fully dry with a champagne yeast, then primed and conditioned in pressure-rated bottles. The classic celebration mead.',
+ingredients:[
+{item:'Wildflower Honey',amount:'1.5 kg',notes:'A light, floral honey (acacia, orange blossom, clover) shows best through bubbles'},
+{item:'Spring Water',amount:'to the 5 L mark',notes:'Add the honey first, then top up to 5 L — do NOT pour 5 L of water on top of the honey, it would overshoot the volume'},
+{item:'Lalvin EC-1118 Champagne Yeast',amount:'5 g (a part-pack covers 5 L — reseal & fridge the rest)',notes:'Ferments bone-dry and shrugs off bottle-conditioning pressure'},
+{item:'Mead Yeast Nutrient',amount:'~12 g (1 sachet — you won\'t need a second for 5 L)',notes:'Split into two staggered additions'},
+{item:'Corn sugar (dextrose) for priming',amount:'~33 g at bottling',notes:'≈2.5 volumes CO₂ in 5 L — use Brewing Tools → Carbonation for your exact target/temperature'}
+],
+steps:[
+{day:0,title:'Brew Day',desc:'Clean & sanitize. Dissolve 1.5 kg honey into ~3.5 L room-temp water, then top up to the 5 L mark (honey adds volume, so topping to the mark keeps you at 5 L). Stir vigorously to aerate. Take OG (~1.090). Rehydrate EC-1118 (GoFerm if you have it) and pitch. IMPORTANT: do NOT stabilize this batch at any point — sorbate/sulfite would kill the carbonation.'},
+{day:1,title:'First Nutrient (SNA 1/2)',desc:'Once airlock activity starts, add ~6 g nutrient (half the sachet). Stir gently. Save the other half for day 3 — one sachet is plenty for 5 L.'},
+{day:3,title:'Second Nutrient (SNA 2/2)',desc:'Add the remaining ~6 g. Degas by stirring. Log a gravity reading.'},
+{day:14,title:'Gravity Check',desc:'Fermentation slowing. Keep it warm enough (18–24°C) for EC-1118 to finish bone-dry toward 0.998–1.000 — leftover sugar plus priming would over-carbonate.'},
+{day:28,title:'Rack when fermentation is DONE (≈ now, but go by gravity)',desc:'Not a fixed day: rack only once two readings 2–3 days apart are identical and at/near 0.998–1.000. Rack off the lees into a clean vessel, leaving some yeast in suspension — you need live yeast to carbonate. Do NOT add sulfite/sorbate.'},
+{day:42,title:'Confirm dry & let it clear',desc:'Give it 2–4 weeks to clear and re-confirm a stable, fully-dry gravity before priming. The clearer and drier, the cleaner the sparkle.'},
+{day:56,title:'Prime & Bottle — EARLIEST point, later is fine',desc:'Treat this as the earliest sensible bottling day, not a deadline. Dissolve the priming sugar (Brewing Tools → Carbonation: ~33 g corn sugar for ~2.5 vol in 5 L) in a little warm water, gently mix it through the whole batch, then bottle in PRESSURE-RATED bottles (champagne/Belgian + crown caps or wired corks). Keep one clear PET tester bottle to feel the pressure build.'},
+{day:77,title:'Condition (2–3 weeks warm)',desc:'Leave the bottles at 18–22°C for 2–3 weeks so the yeast eats the priming sugar and carbonates. Squeeze the PET tester — firm = carbonated. Then chill to settle the yeast.'},
+{day:120,title:'First Tasting',desc:'Chill thoroughly and pour gently, leaving the last splash + yeast behind. Crisp, dry and sparkling. It keeps improving for months and the bubbles hold.'}
+],
+notes:'GOLDEN RULE: a sparkling mead must NOT be stabilized — sorbate/sulfite stop the yeast that makes the bubbles. Ferment fully dry, prime, bottle-condition. SAFETY: pressure-rated bottles only; ~2.5 vol is "sparkling", 3+ vol needs champagne bottles with wired closures. See Mead Guide → Sparkling & Carbonated Mead and Brewing Tools → Carbonation / Priming Sugar.'
+},
+{
+id:'r31',name:'Sparkling Cyser',brandName:'Cidre Pétillant',style:'Sparkling',difficulty:'Beginner',brandColor:'#a8c85a',useGenericLabel:true,
+category:'Cyser',
+volume:5.0,ogTarget:1.065,fgTarget:1.000,abvTarget:8.5,fermentDays:28,ageDays:60,
+minAgeDays:45,peakAgeDays:150,maxAgeDays:365,
+tags:['Sparkling','Cyser','Apple','Carbonated','Easy','Autumn'],
+description:'Apple juice + honey, fermented dry and bottle-conditioned into a crisp sparkling cyser — somewhere between a dry cider and a light mead. Approachable, fast, and a crowd-pleaser. Honey rounds the apple; the bubbles keep it lively.',
+ingredients:[
+{item:'Fresh apple juice (no preservatives)',amount:'to the 5 L mark (≈4 L)',notes:'Cloudy/pressed juice has more character. Must be preservative-free (no sorbate/benzoate) or it won\'t ferment — this is your liquid, added in place of most of the water'},
+{item:'Wildflower Honey',amount:'0.9 kg',notes:'Apple juice supplies a lot of the sugar, so less honey than a traditional'},
+{item:'Spring Water',amount:'only if needed to reach the 5 L mark',notes:'Usually the juice + honey already reach ~5 L — top up only if short'},
+{item:'Lalvin EC-1118 Champagne Yeast',amount:'5 g (part-pack; reseal the rest)',notes:'Clean, dry, sparkling-friendly. A cider yeast also works'},
+{item:'Mead Yeast Nutrient',amount:'~9 g (well under a sachet)',notes:'Apple juice already carries some nutrition; you won\'t need a full sachet'},
+{item:'Corn sugar (dextrose) for priming',amount:'~33 g at bottling',notes:'≈2.5 vol — see Brewing Tools → Carbonation'}
+],
+steps:[
+{day:0,title:'Brew Day',desc:'Sanitize everything. Warm ~1 L of the apple juice, dissolve 0.9 kg honey into it, then combine with the rest of the juice in the fermenter and top up to the 5 L mark with juice (or a splash of water if needed). Take OG (~1.065). Pitch EC-1118. Do NOT stabilize — this needs to carbonate later.'},
+{day:2,title:'Nutrient (single dose)',desc:'Add ~9 g nutrient once it\'s bubbling. That\'s all the nutrient this needs — keep the rest of the sachet for another batch.'},
+{day:10,title:'Gravity Check',desc:'Vigorous, fruity ferment. Heading for a dry 0.998–1.002. Keep at 16–22°C for clean apple character.'},
+{day:21,title:'Rack when fermentation is DONE (go by gravity, not the date)',desc:'Once two readings are stable and dry, rack off the lees, leaving some yeast in suspension for carbonation. No sulfite/sorbate.'},
+{day:35,title:'Prime & Bottle — earliest point, later is fine',desc:'Earliest sensible bottling, not a deadline. Mix in the priming sugar (~33 g corn sugar for ~2.5 vol in 5 L — Brewing Tools → Carbonation) and bottle in pressure-rated bottles. Swing-tops or heavy beer bottles are fine at this carbonation level.'},
+{day:56,title:'Condition (2–3 weeks warm), then chill',desc:'18–22°C for 2–3 weeks to carbonate, then refrigerate. Best young and fresh.'},
+{day:75,title:'Tasting',desc:'Serve cold. Dry, appley, lightly sparkling — like a honeyed dry cider. Drink within a year for the brightest fruit.'}
+],
+notes:'Preservative-free juice is essential — sorbate/benzoate in supermarket juice will stop fermentation. Like all sparkling meads, do NOT stabilize; ferment dry, prime, and bottle-condition in pressure-rated bottles (see Mead Guide → Sparkling & Carbonated Mead).'
+},
+{
+id:'r32',name:'Hydromel · Sparkling Session Mead',brandName:'Hydromel Léger',style:'Sparkling',difficulty:'Beginner',brandColor:'#d8c87a',useGenericLabel:true,
+category:'Hydromel',
+volume:5.0,ogTarget:1.045,fgTarget:0.998,abvTarget:6.2,fermentDays:21,ageDays:30,
+minAgeDays:21,peakAgeDays:90,maxAgeDays:240,
+tags:['Sparkling','Hydromel','Session','Low-ABV','Quick','Carbonated','Easy'],
+description:'A light, low-alcohol sparkling mead (≈6%) you can brew fast and drink young — think honey "spritz". Low gravity means a quick clean ferment; bottle-conditioned for a refreshing fizz. The gateway sparkling mead.',
+ingredients:[
+{item:'Wildflower Honey',amount:'0.75 kg',notes:'Light honey keeps it delicate and sessionable'},
+{item:'Spring Water',amount:'to the 5 L mark',notes:'Add the honey first, then top up to 5 L'},
+{item:'Lalvin EC-1118 Champagne Yeast',amount:'5 g (part-pack; reseal the rest)',notes:'Even a pinch ferments this low gravity; one part-pack is ample'},
+{item:'Mead Yeast Nutrient',amount:'~6 g (about half a sachet)',notes:'Low gravity needs little nutrient — save the rest'},
+{item:'Corn sugar (dextrose) for priming',amount:'~33 g at bottling',notes:'≈2.5 vol — Brewing Tools → Carbonation'}
+],
+steps:[
+{day:0,title:'Brew Day',desc:'Sanitize. Dissolve 0.75 kg honey into ~3.5 L water, top up to the 5 L mark. Stir to aerate. Take OG (~1.045). Pitch EC-1118. Do NOT stabilize.'},
+{day:2,title:'Nutrient (single dose)',desc:'Add ~6 g nutrient when fermentation starts — about half a sachet is plenty at this gravity.'},
+{day:10,title:'Gravity Check',desc:'This finishes fast. Aiming for a dry ~0.998. Ferment 16–20°C for a clean, crisp result.'},
+{day:14,title:'Rack when fermentation is DONE (gravity-gated)',desc:'When the reading is stable and dry, rack off the lees, leaving some yeast for carbonation. No stabilizers.'},
+{day:21,title:'Prime & Bottle — earliest point, later is fine',desc:'Earliest sensible bottling, not a deadline. Mix in ~33 g corn sugar (≈2.5 vol in 5 L — Brewing Tools → Carbonation) and bottle in pressure-rated bottles.'},
+{day:42,title:'Condition (2 weeks warm), then chill',desc:'18–22°C for ~2 weeks to carbonate, then refrigerate. Drink young — this is at its best fresh and fizzy.'},
+{day:60,title:'Tasting',desc:'Serve very cold. Light, dry, gently sparkling, low-alcohol — the perfect summer mead.'}
+],
+notes:'Low-ABV meads are less self-preserving, so keep sanitation tight and drink within ~6–12 months. Do NOT stabilize — ferment dry, prime, bottle-condition (Mead Guide → Sparkling & Carbonated Mead).'
+},
+{
+id:'r33',name:'Sparkling Berry Melomel',brandName:'Mousseux des Bois',style:'Sparkling',difficulty:'Intermediate',brandColor:'#b05a9a',useGenericLabel:true,
+category:'Melomel',additionStage:'secondary',
+volume:5.0,ogTarget:1.075,fgTarget:1.000,abvTarget:9.8,fermentDays:30,ageDays:75,
+minAgeDays:60,peakAgeDays:180,maxAgeDays:365,
+tags:['Sparkling','Melomel','Forest Fruits','Berry','Carbonated','Fruit'],
+description:'A dry sparkling melomel bursting with forest-fruit aroma — the fruit goes in secondary so the berry character survives bright and fresh, then it\'s bottle-conditioned to a pink, lively sparkle. Pectic enzyme keeps it from hazing.',
+ingredients:[
+{item:'Wildflower Honey',amount:'1.3 kg',notes:'A clean honey lets the berries lead'},
+{item:'Spring Water',amount:'to the 5 L mark',notes:'Add honey first, then top up to 5 L (the fruit added later raises volume slightly — that\'s fine, it settles)'},
+{item:'Frozen forest fruits (blackberry/blackcurrant/raspberry/blueberry)',amount:'1.0–1.2 kg',notes:'Frozen-then-thawed ruptures the cells for better extraction; added in SECONDARY'},
+{item:'Pectic enzyme',amount:'~2.5 g (≈0.5 g/L) with the fruit',notes:'Prevents pectin haze from the fruit. Scale with the recipe-size slider (~0.5 g per litre)'},
+{item:'Lalvin EC-1118 Champagne Yeast',amount:'5 g (part-pack; reseal the rest)',notes:'Dry, sparkling-friendly, lets the fruit shine'},
+{item:'Mead Yeast Nutrient',amount:'~12 g (1 sachet)',notes:'Staggered; one sachet covers 5 L'},
+{item:'Corn sugar (dextrose) for priming',amount:'~33 g at bottling',notes:'≈2.5 vol — Brewing Tools → Carbonation'}
+],
+steps:[
+{day:0,title:'Brew Day',desc:'Sanitize. Dissolve 1.3 kg honey into ~3.5 L water, top up to the 5 L mark. Take OG (~1.075). Pitch EC-1118. Do NOT stabilize at any point. (Fruit comes later — primary stays clean and fast.)'},
+{day:1,title:'First Nutrient (SNA 1/2)',desc:'Add ~6 g nutrient once fermenting. Half a sachet now, half on day 3.'},
+{day:3,title:'Second Nutrient (SNA 2/2)',desc:'Add the remaining ~6 g. Degas. One sachet total is enough for 5 L.'},
+{day:14,title:'Primary Gravity Check',desc:'Heading dry. Let primary finish before adding fruit so the berries aren\'t blown off by vigorous CO₂.'},
+{day:21,title:'Rack onto the fruit (when primary is DONE)',desc:'Once primary is stable and dry, sanitize 1.0–1.2 kg thawed forest fruit and add it to a clean secondary (in a mesh bag for easy removal). Stir in ~2.5 g pectic enzyme (≈0.5 g/L — scale with the volume slider). Rack the mead onto the fruit. A gentle secondary ferment will restart — keep an airlock on.'},
+{day:35,title:'Press/Pull the fruit',desc:'After ~1–2 weeks on the fruit, taste; when the berry character is vibrant (not jammy), pull the bag and let it gently squeeze-drain. Let the mead settle and clear. Do NOT stabilize.'},
+{day:50,title:'Confirm dry & clear',desc:'Re-confirm a stable, dry gravity and reasonable clarity. Leftover sugar + priming would over-carbonate.'},
+{day:60,title:'Prime & Bottle — earliest point, later is fine',desc:'Earliest sensible bottling, not a deadline. Mix in ~33 g corn sugar (≈2.5 vol in 5 L — Brewing Tools → Carbonation) and bottle in pressure-rated bottles, leaving the fruit sediment behind.'},
+{day:81,title:'Condition (2–3 weeks warm), then chill',desc:'18–22°C for 2–3 weeks to carbonate, then refrigerate. Pour gently — a little fruit/yeast sediment is normal.'},
+{day:120,title:'Tasting',desc:'Serve cold. Pink, dry, sparkling and berry-bright. Best within a year while the fruit aroma is fresh.'}
+],
+notes:'FRUIT TIMING: this version adds fruit in SECONDARY to preserve fresh berry aroma (vigorous primary CO₂ scrubs out a lot of fruit volatiles). PECTIC ENZYME: fruit brings pectin that hazes; ~0.5 g/L clears it — the dose scales with your batch size. Sparkling rule still applies: do NOT stabilize; ferment dry, prime, bottle-condition (Mead Guide → Sparkling & Carbonated Mead).'
+},
+{
+id:'r34',name:'Sparkling Ginger Mead',brandName:'Gingembre Mousseux',style:'Sparkling',difficulty:'Beginner',brandColor:'#d59a4a',useGenericLabel:true,
+category:'Metheglin',additionStage:'primary',
+volume:5.0,ogTarget:1.055,fgTarget:0.998,abvTarget:7.4,fermentDays:24,ageDays:45,
+minAgeDays:30,peakAgeDays:120,maxAgeDays:300,
+tags:['Sparkling','Metheglin','Ginger','Spiced','Carbonated','Easy','Refreshing'],
+description:'A zippy sparkling ginger mead — honey + fresh ginger fermented dry and bottle-conditioned into a grown-up ginger beer with backbone. Warming, dry, fizzy and dangerously drinkable. A perennial favourite.',
+ingredients:[
+{item:'Wildflower Honey',amount:'0.9 kg',notes:'A light honey lets the ginger lead'},
+{item:'Fresh ginger root',amount:'60–90 g, grated or thinly sliced',notes:'More = spicier. Add in primary for an integrated warmth; a little extra in secondary for a fresher bite'},
+{item:'Spring Water',amount:'to the 5 L mark',notes:'Add honey + ginger, then top up to 5 L'},
+{item:'Lemon (juice + a little zest)',amount:'1 lemon (optional)',notes:'Brightens the ginger; zest only, no pith'},
+{item:'Lalvin EC-1118 Champagne Yeast',amount:'5 g (part-pack; reseal the rest)',notes:'Clean and dry; ferments the ginger out crisp'},
+{item:'Mead Yeast Nutrient',amount:'~9 g (under a sachet)',notes:'Low-moderate gravity needs little — save the rest'},
+{item:'Corn sugar (dextrose) for priming',amount:'~33 g at bottling',notes:'≈2.5 vol — or push to ~3 vol (champagne bottles) for a ginger-beer fizz; Brewing Tools → Carbonation'}
+],
+steps:[
+{day:0,title:'Brew Day',desc:'Sanitize. Grate/slice 60–90 g ginger (in a mesh bag). Dissolve 0.9 kg honey into ~3.5 L warm water, add the ginger (and lemon if using), then top up to the 5 L mark. Take OG (~1.055). Pitch EC-1118. Do NOT stabilize.'},
+{day:2,title:'Nutrient (single dose)',desc:'Add ~9 g nutrient once bubbling — under a full sachet is plenty; keep the rest.'},
+{day:10,title:'Gravity Check & taste the ginger',desc:'Fermenting toward a dry ~0.998. Taste — if you want more punch, you\'ll add a little fresh ginger in secondary.'},
+{day:16,title:'Rack when fermentation is DONE (gravity-gated)',desc:'When stable and dry, pull the primary ginger bag and rack off the lees, leaving some yeast for carbonation. Optionally add a small fresh-ginger bag now for a brighter top-note; taste daily and pull when right. No stabilizers.'},
+{day:24,title:'Prime & Bottle — earliest point, later is fine',desc:'Earliest sensible bottling, not a deadline. Pull any secondary ginger, mix in ~33 g corn sugar (≈2.5 vol in 5 L; ~3 vol for a sharper fizz, champagne bottles — Brewing Tools → Carbonation) and bottle in pressure-rated bottles.'},
+{day:45,title:'Condition (2–3 weeks warm), then chill',desc:'18–22°C for 2–3 weeks to carbonate, then refrigerate. Drink young for the brightest ginger.'},
+{day:70,title:'Tasting',desc:'Serve ice-cold. Dry, warming, sparkling — a sophisticated ginger beer with a honey heart. Lovely with a squeeze of lime.'}
+],
+notes:'GINGER TIMING: primary ginger integrates into a smooth warmth; a small secondary ginger addition adds a fresher, sharper top-note — do both for depth + brightness. Sparkling rule: do NOT stabilize; ferment dry, prime, bottle-condition in pressure-rated bottles (Mead Guide → Sparkling & Carbonated Mead).'
 }
 ];}
 
@@ -993,7 +1268,8 @@ function GUIDE_SECTIONS(){return[
 {title:'Fermentation Stages',icon:'🔄',content:'Lag (0-24h): Yeast acclimatize. No visible activity is normal.\n\nPrimary (1-14 days): Vigorous bubbling, CO2 production, gravity drops 50-70%. Mead is cloudy. Vessel: 9 L primary.\n\nSecondary (weeks 2-6): Slow bubbling, gravity stabilizes, yeast flocculate, clarity improves. Rack from 9 L → 7.6 L or 5 L secondary.\n\nConditioning (1-3 months): Flavors integrate, harsh notes soften, dramatic clarity improvement. Often happens in the 5 L bulk aging vessel.\n\nAging (3-12+ months): True transformation. Where mead becomes excellent. Keep in 5 L bulk aging vessel with minimal headspace.'},
 {title:'Troubleshooting',icon:'🔧',content:'No fermentation after 48h: Check temperature, verify yeast wasn\'t cooked, add nutrient, swirl gently.\n\nRotten egg smell: Stressed yeast. Stir vigorously to degas, add nutrient, raise temp slightly.\n\nStuck fermentation: Warm to 22-24°C, add nutrient, repitch fresh M05 in rehydrated form.\n\nCloudy mead: Normal during fermentation. Cold crash (2 weeks at 2-4°C) drops most haze. Bentonite for stubborn cases.\n\nToo dry: Stabilize with sorbate + metabisulfite, wait 24h, then back-sweeten with honey to taste.\n\nOff-flavors persist past 3 months: Likely contamination. Document and start over with better sanitation.'},
 {title:'Headspace by Stage',icon:'📐',content:'Different stages want different headspace. The 3-vessel staged setup lets you match each phase.\n\n━━ Primary (9 L vessel) ━━\nFill to ~7 L (78% full). Leaves 2 L of headspace for foam, krausen, and CO₂ blow-off during vigorous primary fermentation. Wider headspace is forgiving — under-filling here is safer than over-filling.\n\n━━ Secondary (7.6 L or 5 L vessel) ━━\nFill: After racking from primary, you\'ll have ~6 L (with ~1 L lost to lees). A 7.6 L secondary at 80% fill is ideal during active secondary; or rack directly into a 5 L vessel (~95% fill) if secondary fermentation is nearly done.\n\n━━ Bulk aging (5 L vessel) ━━\nFill as close to 100% as possible. Top up with cooled boiled water if needed, or use sanitized glass marbles. Oxygen exposure during aging is the enemy of aromatics — minimal headspace is everything here.\n\nGENERAL RULES:\n• Primary NEEDS headspace (foam, CO₂, krausen).\n• Secondary WANTS less headspace (oxidation begins to matter).\n• Bulk aging DEMANDS minimal headspace (oxygen = enemy of aromatics).\n• Always rack gently under the surface — no splashing.\n• Add 0.5 g potassium metabisulfite at each racking stage to suppress oxidation.'},
-{title:'Bottling',icon:'🍾',content:'When to bottle: Two identical gravity readings 3-7 days apart at target FG. Clear, mature flavor.\n\nProcess: Clean bottles & caps with Chemipro OXI, then sanitize with your no-rinse sanitizer (Chemipro SAN 2 ml/L or Star San 1.5 ml/L). Siphon (don\'t pour) into bottles. Leave minimal headspace (~1.5cm). Cap immediately.\n\nUse the guided bottling workflow in the batch view — it walks you through pre-flight, gravity check, sanitize timer, fill, label preview, and final save.\n\nLabel each bottle: Batch name, date bottled, OG/FG, ABV, batch number. Use the bottle label download for printable labels.\n\nStorage: Upright 2 weeks (lets cork seat or cap settle), then horizontal for cork bottles, upright for cap bottles. Cool, dark, stable temperature. Print a storage label for each box — it shows batch identity, contents, drinking window, and a QR code linking back to this app.\n\nClear vs amber glass: Clear shows off color (good for melomels). Amber protects delicate aromatics (good for spiced/traditional).'}
+{title:'Bottling',icon:'🍾',content:'When to bottle: Two identical gravity readings 3-7 days apart at target FG. Clear, mature flavor.\n\nProcess: Clean bottles & caps with Chemipro OXI, then sanitize with your no-rinse sanitizer (Chemipro SAN 2 ml/L or Star San 1.5 ml/L). Siphon (don\'t pour) into bottles. Leave minimal headspace (~1.5cm). Cap immediately.\n\nUse the guided bottling workflow in the batch view — it walks you through pre-flight, gravity check, sanitize timer, fill, label preview, and final save.\n\nLabel each bottle: Batch name, date bottled, OG/FG, ABV, batch number. Use the bottle label download for printable labels.\n\nStorage: Upright 2 weeks (lets cork seat or cap settle), then horizontal for cork bottles, upright for cap bottles. Cool, dark, stable temperature. Print a storage label for each box — it shows batch identity, contents, drinking window, and a QR code linking back to this app.\n\nClear vs amber glass: Clear shows off color (good for melomels). Amber protects delicate aromatics (good for spiced/traditional).'},
+{title:'Sparkling & Carbonated Mead',icon:'🍾',content:'A sparkling mead carries dissolved CO₂ — from a gentle pétillant fizz to full champagne-style bubbles. There are two routes, and one rule that beats everything: you can only naturally carbonate a mead that can still referment.\n\n━━ THE GOLDEN RULE ━━\nBottle conditioning makes bubbles by feeding a small, measured dose of sugar to live yeast in a sealed bottle. So you must NOT have stabilized: potassium sorbate + sulfite stop yeast from reproducing, and a stabilized mead will never carbonate naturally. Decide on sparkling BEFORE you stabilize. If you already sorbated, your only route is forced carbonation in a keg.\n\n━━ FERMENT IT OUT FIRST ━━\nThe mead must be fully fermented to a stable final gravity (two identical readings several days apart) BEFORE priming. Leftover unfermented sugar + priming sugar + a sealed bottle = over-pressure and broken glass. Prime a finished mead with exactly the sugar the calculator specifies — never a rough scoop.\n\n━━ TARGET CARBONATION (CO₂ volumes) ━━\n• Still: under 0.5\n• Lightly sparkling / pétillant: ~1.5–2.0\n• Sparkling: ~2.5\n• Highly sparkling: ~3.0\n• Champagne-style: ~3.5–4.0\nHigher target = more pressure = stronger bottles required.\n\n━━ METHOD 1 · BOTTLE CONDITIONING (priming) ━━\n1. Confirm fermentation is finished and the mead is NOT stabilized.\n2. Use Brewing Tools → Carbonation / Priming Sugar for the exact dose from your volume, temperature and target.\n3. Dissolve the sugar in a little warm water, gently mix it into the whole batch (no splashing — avoid oxygen), then bottle.\n4. Cap in pressure-rated bottles and condition 2–3 weeks at 18–22°C so the yeast eats the priming sugar.\n5. Chill before serving — cold holds the CO₂ and settles the yeast.\n\n━━ METHOD 2 · FORCED CARBONATION (keg) ━━\nWith a corny keg you carbonate under CO₂ pressure instead of yeast: chill the mead, set the regulator to the pressure for your target volumes at that temperature, and wait a few days (or shake-carbonate faster). No live yeast needed — this is the only option for an already-stabilized mead.\n\n━━ BOTTLES & CLOSURES (safety) ━━\nStill-wine bottles are NOT pressure-rated — never use them for sparkling. Use:\n• Champagne / Belgian heavy bottles with crown caps, or corks held by a wire muselet/agrafe.\n• Swing-top (Grolsch) or heavy beer bottles for lower carbonation (up to ~2.5 vol).\nKeep one clear PET tester bottle — squeeze it to feel when the pressure has built. Condition the bottles inside a closed tub or box, just in case one fails.\n\n━━ CLEARING THE YEAST (optional) ━━\nBottle-conditioned mead leaves a fine yeast layer. Either pour gently and leave the last splash behind (pétillant naturel style), or — for crystal-clear champagne-style — riddle (tilt neck-down over days) and disgorge the frozen plug, then top up and re-cork. Most home meadmakers simply pour carefully.\n\nSee Brewing Tools → Carbonation / Priming Sugar for the exact sugar dose and a pressure-safety check.'}
 ];}
 
 // LABEL_IMAGES was previously a baked-in map of base64-encoded WebP images
@@ -3812,6 +4088,30 @@ function predictTastingProfile(batch){
 }
 
 // ==================== STUCK FERMENTATION GUIDE ====================
+// What nutrients has this batch ACTUALLY received? Reads both sources of truth:
+//   • manual entries in the additions log (APP.additions)
+//   • nutrient steps the user checked off in the brew coach (APP.tasksDone,
+//     keyed "<batchId>-step-<day>", matched against the batch's effective steps)
+// Returns {manual, done, expected, total} so the diagnosis can tell "never fed"
+// from "partway through the schedule" from "fully fed" — per the real batch.
+function getNutrientStatus(batch,recipe){
+  var nutRe=/nutrient|fermaid|dap|sna|tosna|go-?ferm|nutrivit/i;
+  var manual=0;
+  ((APP.additions&&APP.additions[batch.id])||[]).forEach(function(a){
+    if(nutRe.test((a.what||a.name||'')+''))manual++;
+  });
+  recipe=recipe||APP.recipes.find(function(r){return r.id===batch.recipeId;});
+  var expected=0,done=0;
+  if(recipe&&typeof getEffectiveSteps==='function'){
+    (getEffectiveSteps(batch,recipe)||[]).forEach(function(s){
+      if(!nutRe.test(s.title||''))return;
+      expected++;
+      if(typeof isTaskDone==='function'&&isTaskDone(batch.id+'-step-'+s.day))done++;
+    });
+  }
+  return{manual:manual,done:done,expected:expected,total:manual+done};
+}
+
 // Decision-tree based diagnostic. Returns step-by-step recommendations
 // given current batch state.
 function diagnoseStuckFermentation(batchId){
@@ -3848,12 +4148,20 @@ function diagnoseStuckFermentation(batchId){
     diagnoses.push({severity:'high',title:'Yeast at ABV ceiling',
       detail:'Current ABV is ~'+currentAbv.toFixed(1)+'% — at or near '+yeast.name.split('—')[0].trim()+'\'s '+yeast.abvMax+'% tolerance. The yeast has done what it can. Either accept current gravity, or pitch a higher-tolerance yeast (EC-1118: 18%, or fresh K1-V1116 starter for stuck ferments).'});
   }
-  // Test 5: Nutrient deficiency? Heuristic: if no additions logged and OG was high
-  var additions=(APP.additions&&APP.additions[b.id])||[];
-  var nutrientAdditions=additions.filter(function(a){return/nutrient|fermaid|dap|sna|tosna/i.test(a.what||'');});
-  if(b.og&&b.og>=1.090&&nutrientAdditions.length===0){
-    diagnoses.push({severity:'medium',title:'Possible nutrient deficiency',
-      detail:'OG '+b.og+' is high and no nutrient additions logged. Honey is nutrient-poor; high-OG meads NEED staggered nutrient additions. Add Fermaid-O or DAP (see Tools → TOSNA Scheduler) and degas vigorously before pitching to release CO₂.'});
+  // Test 5: Nutrient deficiency — based on what this batch ACTUALLY received,
+  // counting both logged additions and nutrient steps ticked off in the coach.
+  var nut=getNutrientStatus(b,recipe);
+  if(b.og&&b.og>=1.090){
+    if(nut.total===0){
+      diagnoses.push({severity:'medium',title:'Possible nutrient deficiency',
+        detail:'OG '+b.og+' is high and no nutrient additions are recorded for this batch — nothing in the additions log, and no nutrient steps checked off in the coach. Honey is nutrient-poor; high-OG meads NEED staggered nutrient additions. If you genuinely haven\'t fed it, add Fermaid-O or DAP (see Tools → TOSNA Scheduler) and degas vigorously to release CO₂. If you did feed it, tick the nutrient steps in the coach (or log the addition) so this clears.'});
+    }else if(nut.expected>0&&nut.done<nut.expected&&nut.manual===0){
+      diagnoses.push({severity:'low',title:'Nutrient schedule incomplete',
+        detail:'You\'ve completed '+nut.done+' of '+nut.expected+' planned nutrient doses for this batch. If the remaining doses are still before the 1/3 sugar break, add them now and tick them off; once past the break, extra nutrient won\'t help and can feed spoilage organisms.'});
+    }else{
+      diagnoses.push({severity:'info',title:'Nutrients accounted for',
+        detail:'This batch has '+nut.total+' nutrient addition'+(nut.total===1?'':'s')+' recorded'+(nut.expected?' ('+nut.done+'/'+nut.expected+' scheduled doses ticked off'+(nut.manual?' + '+nut.manual+' logged':'')+')':'')+', so a nitrogen deficiency is unlikely to be the cause. Look to temperature, ABV ceiling, or pH instead.'});
+    }
   }
   // Test 6: pH out of range? (no pH data — heuristic recommend testing)
   if(daysSinceStart>14&&attenuation<0.4){
@@ -3865,8 +4173,9 @@ function diagnoseStuckFermentation(batchId){
     diagnoses.push({severity:'low',title:'Slow start — may be light pitch',
       detail:'Only '+(attenuation*100).toFixed(0)+'% attenuation after '+daysSinceStart+' days. Could be normal lag (give it 3-5 more days at proper temp) OR insufficient yeast. Use Tools → Pitch Calculator to verify the right amount for your OG.'});
   }
-  // Test 8: Just give it more time
-  if(diagnoses.length===0&&attenuation<0.7&&daysSinceStart<35){
+  // Test 8: Just give it more time (only when nothing actionable was found —
+  // info-level notes like "nutrients accounted for" don't count as red flags)
+  if(!diagnoses.some(function(d){return d.severity!=='info';})&&attenuation<0.7&&daysSinceStart<35){
     diagnoses.push({severity:'info',title:'Likely just slow — give it time',
       detail:'No obvious red flags. Mead ferments take 2-6 weeks for full attenuation. As long as gravity is dropping (even slowly) and temp is in range, patience is the answer. Check again in a week.'});
   }
@@ -3875,7 +4184,7 @@ function diagnoseStuckFermentation(batchId){
   if(lastTemp!=null&&lastTemp<yeast.optimalTempLow){
     actions.push('Warm to '+(yeast.optimalTempLow+2)+'°C over 24h (don\'t shock the yeast).');
   }
-  if(daysSinceStart>10&&nutrientAdditions.length===0&&b.og>=1.090){
+  if(daysSinceStart>10&&nut.total===0&&b.og>=1.090){
     actions.push('Degas vigorously (stir 60+ sec) and add nutrient — '+(b.volume*1.5).toFixed(1)+'g DAP or Fermaid-O.');
   }
   if(currentAbv>=yeast.abvMax-1){
@@ -4511,45 +4820,39 @@ async function apiFetch(path,opts){
 //   • publish a small status summary entity for the companion Lovelace card
 // Leave the URL blank to run MeadOS fully standalone.
 
+// The HA token lives server-side now (see /api/ha proxy). APP._haTokenSet is
+// loaded from /api/ha-config at boot; we never hold the raw token in the app.
 function haConfigured(){
-  return!!(APP.settings.useHA&&(APP.settings.haUrl||APP.settings.haUrlExternal)&&APP.settings.token);
+  return!!(APP.settings.useHA&&(APP.settings.haUrl||APP.settings.haUrlExternal)&&APP._haTokenSet);
 }
 
-function getAuthToken(){
-  return APP.settings.token||null;
+// Fetch the {hasToken,tokenExp} status from the server (token itself stays put).
+async function loadHAConfig(){
+  try{
+    var r=await fetch('/api/ha-config');
+    if(!r.ok)return;
+    var j=await r.json();
+    APP._haTokenSet=!!(j&&j.hasToken);
+    APP._haTokenExp=(j&&j.tokenExp)||null;
+  }catch(e){}
 }
 
 // ---- Dual-URL resolution (internal + external) ----
-// Two base URLs can be configured: an internal/LAN one and an external one
-// (e.g. Nabu Casa or your reverse proxy). Calls try the URL that worked most
-// recently first, then fall back to the other — so the same MeadOS instance
-// works from home AND on the road without touching settings. The working URL
-// is remembered per device in localStorage (networks differ per device).
+// Two base URLs can be configured: internal/LAN and external (Nabu Casa or a
+// reverse proxy). REST calls are proxied server-side now; this only feeds the
+// media-browser WebSocket, which connects from the browser. Internal first.
 function haCandidateUrls(){
   var urls=[];
   [APP.settings.haUrl,APP.settings.haUrlExternal].forEach(function(u){
     if(u&&urls.indexOf(u)<0)urls.push(u);
   });
-  var last=window._haActiveUrl;
-  if(!last){try{last=localStorage.getItem('meadows_haActiveUrl');}catch(e){}}
-  if(last&&urls.indexOf(last)>0){
-    urls.splice(urls.indexOf(last),1);
-    urls.unshift(last);
-  }
   return urls;
 }
 
-// The HA base URL for non-fetch consumers (WebSocket, media URLs):
-// last-known-working first, then internal, then external.
+// The HA base URL for the media-browser WebSocket: internal, then external.
 function haBaseUrl(){
   var urls=haCandidateUrls();
   return urls.length?urls[0]:'';
-}
-
-function markHAActiveUrl(url){
-  if(window._haActiveUrl===url)return;
-  window._haActiveUrl=url;
-  try{localStorage.setItem('meadows_haActiveUrl',url);}catch(e){}
 }
 
 // fetch with a deadline — an unreachable LAN IP can otherwise hang for the
@@ -4564,64 +4867,37 @@ async function haFetchWithTimeout(url,opts,ms){
 }
 
 // ---- Token expiry inspection ----
-// JWTs encode an "exp" claim (unix seconds) in the payload. We don't validate
-// the signature here — we just decode the payload to know when the token will
-// stop working. Used by the settings panel to surface a rotation reminder.
-function decodeJWTExpiry(jwt){
-  if(!jwt||typeof jwt!=='string')return null;
-  var parts=jwt.split('.');
-  if(parts.length!==3)return null;
-  try{
-    // Base64URL → base64 → JSON
-    var payload=parts[1].replace(/-/g,'+').replace(/_/g,'/');
-    while(payload.length%4)payload+='=';
-    var decoded=atob(payload);
-    var obj=JSON.parse(decoded);
-    if(typeof obj.exp!=='number')return null;
-    return{exp:obj.exp,iat:obj.iat||null,iss:obj.iss||null};
-  }catch(e){return null;}
-}
-
-// Returns {daysLeft, expDate, status} for the configured HA token, or null
-// if no token / non-JWT token. `status` ∈ 'expired' | 'critical' (<30d) |
-// 'warning' (<90d) | 'ok'.
+// The server decodes the token's JWT exp claim (it holds the token now) and
+// reports it via /api/ha-config → APP._haTokenExp. Returns {daysLeft, expDate,
+// status} or null. `status` ∈ 'expired' | 'critical' (<30d) | 'warning' (<90d) | 'ok'.
 function getActiveTokenExpiry(){
-  var tok=getAuthToken();
-  if(!tok)return null;
-  var meta=decodeJWTExpiry(tok);
-  if(!meta)return null;
+  var exp=APP._haTokenExp;
+  if(!exp)return null;
   var nowSec=Math.floor(Date.now()/1000);
-  var secsLeft=meta.exp-nowSec;
+  var secsLeft=exp-nowSec;
   var daysLeft=Math.floor(secsLeft/86400);
   var status='ok';
   if(secsLeft<=0)status='expired';
   else if(daysLeft<30)status='critical';
   else if(daysLeft<90)status='warning';
-  return{
-    daysLeft:daysLeft,
-    expDate:new Date(meta.exp*1000),
-    status:status,
-    source:'manual'
-  };
+  return{daysLeft:daysLeft,expDate:new Date(exp*1000),status:status,source:'server'};
 }
 
-// Authenticated fetch against the configured Home Assistant instance.
-// Tries each configured base URL (last-working first) and remembers which
-// one answered. Returns null when HA is not configured or fully unreachable.
+// Authenticated HA call, proxied through our own server (POST /api/ha) so the
+// token never reaches the browser. The server forwards to the configured HA
+// URL and passes the response straight back, so callers keep using res.ok /
+// res.status / res.json(). Returns null when HA isn't configured or the proxy
+// itself is unreachable.
 async function haFetch(path,opts){
   if(!haConfigured())return null;
   opts=opts||{};
-  opts.headers=Object.assign({'Authorization':'Bearer '+APP.settings.token},opts.headers||{});
-  var urls=haCandidateUrls();
-  for(var i=0;i<urls.length;i++){
-    try{
-      var res=await haFetchWithTimeout(urls[i]+path,opts,8000);
-      // Any HTTP response — even 4xx — proves this base URL is reachable.
-      markHAActiveUrl(urls[i]);
-      return res;
-    }catch(e){/* unreachable or timed out — try the next candidate */}
-  }
-  return null;
+  try{
+    return await haFetchWithTimeout('/api/ha',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({path:path,method:opts.method||'GET',body:opts.body||null})
+    },14000);
+  }catch(e){return null;}
 }
 
 async function haWriteState(entityId,state,attributes){
@@ -4706,36 +4982,18 @@ async function haFetchHistory(entityId,hoursBack){
 }
 
 async function haTestConnection(){
+  // The MeadOS server reaches HA (not the browser), so this pings HA's root API
+  // through the proxy — no browser CORS / mixed-content concerns to report.
   if(!APP.settings.useHA)return{ok:false,msg:'Home Assistant integration is disabled'};
-  var targets=[];
-  if(APP.settings.haUrl)targets.push({label:'internal',url:APP.settings.haUrl});
-  if(APP.settings.haUrlExternal)targets.push({label:'external',url:APP.settings.haUrlExternal});
-  if(!targets.length)return{ok:false,msg:'No Home Assistant URL'};
-  if(!getAuthToken())return{ok:false,msg:'No token — paste a long-lived access token'};
-  var parts=[],anyOk=false,firstOk=null;
-  for(var i=0;i<targets.length;i++){
-    var t=targets[i],res=null;
-    try{res=await haFetchWithTimeout(t.url+'/api/',{headers:{'Authorization':'Bearer '+APP.settings.token}},8000);}catch(e){res=null;}
-    if(res&&res.ok){
-      anyOk=true;
-      if(!firstOk)firstOk=t.url;
-      parts.push('✓ '+t.label+' reachable');
-    }else if(res&&res.status===401){
-      parts.push('✗ '+t.label+': auth rejected — check the token');
-    }else if(res){
-      parts.push('✗ '+t.label+': HTTP '+res.status);
-    }else if(window.location.protocol==='https:'&&/^http:\/\//i.test(t.url)){
-      parts.push('✗ '+t.label+': blocked as mixed content — MeadOS is loaded over HTTPS, so HA must be HTTPS too');
-    }else{
-      parts.push('✗ '+t.label+': no response — wrong URL, unreachable from this network, or CORS not allowed');
-    }
-  }
-  if(firstOk)markHAActiveUrl(firstOk);
-  var msg=parts.join(' · ');
-  if(!anyOk){
-    msg+='. If the URL is right, the usual culprit is CORS: add '+window.location.origin+' to http: → cors_allowed_origins in HA\'s configuration.yaml and restart HA (see the note above the URL fields).';
-  }
-  return{ok:anyOk,msg:msg};
+  if(!(APP.settings.haUrl||APP.settings.haUrlExternal))return{ok:false,msg:'No Home Assistant URL'};
+  if(!APP._haTokenSet)return{ok:false,msg:'No token — paste a long-lived access token, then Save'};
+  var res=await haFetch('/api/');  // HA REST root — 200 with a valid token
+  if(res&&res.ok)return{ok:true,msg:'✓ Home Assistant reachable'};
+  if(res&&res.status===401)return{ok:false,msg:'✗ Auth rejected — the stored token is wrong or expired'};
+  // 502 is our proxy's "couldn't reach HA" code (the MeadOS server forwards).
+  if(res&&res.status===502)return{ok:false,msg:'✗ The MeadOS server can\'t reach the HA URL(s). Check the address and that HA is up.'};
+  if(res)return{ok:false,msg:'✗ Home Assistant returned HTTP '+res.status};
+  return{ok:false,msg:'✗ No response from the MeadOS server.'};
 }
 
 async function saveData(force){
@@ -6020,6 +6278,7 @@ function packageState(){
       recipeOverlays:(APP.settings&&APP.settings.recipeOverlays)||{},
       customLabels:(APP.settings&&APP.settings.customLabels)||{},
       brandLogo:(APP.settings&&APP.settings.brandLogo)||null,
+      appIcon:(APP.settings&&APP.settings.appIcon)||null,
       brewerName:(APP.settings&&APP.settings.brewerName)||'',
       externalUrl:(APP.settings&&APP.settings.externalUrl)||'',
       currency:(APP.settings&&APP.settings.currency)||'€',
@@ -6028,7 +6287,8 @@ function packageState(){
       sanitizer:(APP.settings&&APP.settings.sanitizer)||'chemipro_san',
       haUrl:(APP.settings&&APP.settings.haUrl)||'',
       haUrlExternal:(APP.settings&&APP.settings.haUrlExternal)||'',
-      haToken:(APP.settings&&APP.settings.token)||'',
+      // haToken is intentionally NOT synced — it lives server-side (config) and
+      // HA calls go through the /api/ha proxy. See saveHASettings / loadHAConfig.
       useHA:!(APP.settings&&APP.settings.useHA===false),
       haPublishSummary:!!(APP.settings&&APP.settings.haPublishSummary),
       tempSensorEntity:(APP.settings&&APP.settings.tempSensorEntity)||'',
@@ -6100,6 +6360,7 @@ function applyState(d){
     if(ss.recipeOverlays&&typeof ss.recipeOverlays==='object')APP.settings.recipeOverlays=ss.recipeOverlays;
     if(ss.customLabels&&typeof ss.customLabels==='object')APP.settings.customLabels=ss.customLabels;
     if('brandLogo' in ss)APP.settings.brandLogo=ss.brandLogo;
+    if('appIcon' in ss)APP.settings.appIcon=ss.appIcon;
     if(ss.brewerName)APP.settings.brewerName=ss.brewerName;
     if(typeof ss.externalUrl==='string')APP.settings.externalUrl=ss.externalUrl;
     if(ss.currency)APP.settings.currency=ss.currency;
@@ -6108,7 +6369,7 @@ function applyState(d){
     if(ss.sanitizer&&typeof SANITIZERS!=='undefined'&&SANITIZERS[ss.sanitizer])APP.settings.sanitizer=ss.sanitizer;
     if(ss.haUrl&&typeof ss.haUrl==='string')APP.settings.haUrl=ss.haUrl;
     if(ss.haUrlExternal&&typeof ss.haUrlExternal==='string')APP.settings.haUrlExternal=ss.haUrlExternal;
-    if(ss.haToken&&typeof ss.haToken==='string')APP.settings.token=ss.haToken;
+    // ss.haToken (legacy blobs) is ignored — the server strips it into config.
     if(typeof ss.useHA==='boolean')APP.settings.useHA=ss.useHA;
     if(typeof ss.haPublishSummary==='boolean')APP.settings.haPublishSummary=ss.haPublishSummary;
     if(ss.tempSensorEntity&&typeof ss.tempSensorEntity==='string')APP.settings.tempSensorEntity=ss.tempSensorEntity;
@@ -6397,22 +6658,73 @@ function findBatchByRef(ref){
   return APP.batches.find(function(b){return b.id===ref;})||null;
 }
 
+// Read the recent gravity trend to tell whether fermentation is still moving.
+// "stopped"  — last two readings (≥2 days apart, or three in a row) are flat
+// "maybe"    — flat but the readings are close in time / only two exist
+// "slowing"  — still dropping, but only a little
+// "active"   — dropping normally   ·   "unknown" — fewer than two readings
+function getFermentationActivity(b){
+  var logs=(APP.logs[b.id]||[]).filter(function(l){return l&&l.gravity!=null;})
+    .slice().sort(function(a,c){return (a.date||'').localeCompare(c.date||'');});
+  if(logs.length<2)return{state:'unknown',count:logs.length};
+  var last=logs[logs.length-1],prev=logs[logs.length-2];
+  var drop=prev.gravity-last.gravity; // >0 = still dropping
+  var daysApart=Math.abs(Math.round((new Date(last.date)-new Date(prev.date))/86400000));
+  var flat3=false;
+  if(logs.length>=3)flat3=Math.abs(logs[logs.length-3].gravity-last.gravity)<=0.003;
+  if(Math.abs(drop)<=0.002){
+    return{state:(daysApart>=2||flat3)?'stopped':'maybe',last:last.gravity,daysApart:daysApart};
+  }
+  if(drop>0&&drop<=0.005)return{state:'slowing',last:last.gravity,drop:drop};
+  return{state:'active',last:last.gravity,drop:drop};
+}
+
 function getBatchStatus(b){
   if(b.failed)return'failed';
   if(b.status)return b.status;
-  var d=daysSince(b.startDate);
   if(APP.bottling[b.id]){
     // Batch is 'complete' ONLY when bottled AND every bottle has been drunk/gifted
     // (i.e. on-hand count is 0 with an original count > 0). Until then it's 'bottled'.
     if(bottlesOnHand(APP.bottling[b.id])===0&&bottlesOriginal(APP.bottling[b.id])>0)return'complete';
     return'bottled';
   }
-  // Pre-bottling lifecycle stages. A batch NEVER auto-completes from age alone —
-  // some styles (sack, bochet, melomel) age for a year or more before bottling.
-  // Once past the "aging" threshold it just stays in 'aging' until the user bottles it.
-  if(d<14)return'fermenting';
-  if(d<42)return'conditioning';
-  return'aging';
+  var d=daysSince(b.startDate);
+  // Pre-bottling lifecycle follows what's ACTUALLY happened — completed brew-coach
+  // steps and the gravity trend — not just elapsed days. So a batch won't jump to
+  // the next stage on the calendar if you haven't racked / marked the steps.
+  var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+  var steps=(recipe&&typeof getEffectiveSteps==='function')?getEffectiveSteps(b,recipe):[];
+  var anyStepDone=false,rackDone=false,ageDone=false;
+  steps.forEach(function(s){
+    if(typeof isTaskDone!=='function'||!isTaskDone(b.id+'-step-'+s.day))return;
+    anyStepDone=true;
+    var t=s.title||'';
+    if(/rack|secondary|transfer/i.test(t))rackDone=true;
+    if(/aging|bulk|stabil|clarif|cold ?crash|oak|back-?sweet/i.test(t))ageDone=true;
+  });
+  var hasLogs=(APP.logs[b.id]||[]).some(function(l){return l&&l.gravity!=null;});
+  // No tracking data at all → fall back to the original calendar estimate so the
+  // stage isn't stuck at "fermenting" for someone who doesn't use the coach.
+  if(!anyStepDone&&!hasLogs){
+    if(d<14)return'fermenting';
+    if(d<42)return'conditioning';
+    return'aging';
+  }
+  if(ageDone)return'aging';
+  if(rackDone)return d>=42?'aging':'conditioning';
+  if(getFermentationActivity(b).state==='stopped')return'conditioning';
+  return'fermenting';
+}
+
+// Small at-a-glance pill for whether fermentation is still moving. Empty for
+// bottled/failed batches and for normal active fermentation (no need to shout).
+function fermentationBadge(b){
+  if(!b||b.failed||APP.bottling[b.id])return'';
+  var f=getFermentationActivity(b);
+  if(f.state==='stopped')return'<span class="badge" style="background:rgba(122,160,64,0.18);color:#a8d27a;border-color:rgba(122,160,64,0.45)" title="The last gravity readings are flat — fermentation looks finished. Confirm with one more reading, then rack or stabilize.">● fermentation stopped</span>';
+  if(f.state==='maybe')return'<span class="badge" style="background:rgba(200,160,32,0.16);color:var(--honey);border-color:var(--amber)" title="Recent readings barely moved. Take another reading 2–3 days apart to confirm it has truly stopped.">● maybe stopped</span>';
+  if(f.state==='slowing')return'<span class="badge" style="background:rgba(122,160,64,0.10);color:#9bbf6e;border-color:rgba(122,160,64,0.30)" title="Gravity is still dropping, but slowly — fermentation is winding down.">● slowing</span>';
+  return'';
 }
 
 function statusBadge(s){
@@ -6559,7 +6871,7 @@ function renderDashboard(){
         +'<div class="card-header" style="margin-bottom:12px">'
         +'<div><div class="card-title" style="color:'+color+'">'+escHtml(b.name)+'</div>'
         +'<div class="card-subtitle">'+fmtDuration(d)+' · '+fmtDate(b.startDate)+'</div></div>'
-        +statusBadge(status)+'</div>'
+        +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">'+statusBadge(status)+fermentationBadge(b)+'</div></div>'
         +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px">'
         +'<div style="text-align:center"><div style="font-family:var(--font-display);font-size:20px;color:var(--gold2)">'+(b.og||'—')+'</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-top:2px">OG</div></div>'
         +'<div style="text-align:center"><div style="font-family:var(--font-display);font-size:20px;color:var(--green2)">'+(lastG||'—')+'</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-top:2px">CURRENT</div></div>'
@@ -7205,10 +7517,7 @@ function renderBatchDetail(){
       +'<div class="form-group"><label class="form-label">Notes & Observations</label><textarea class="form-textarea" id="log-note" placeholder="Color, aroma, taste, clarity…"></textarea></div>'
       +'<button class="btn btn-primary" onclick="addLog(\''+b.id+'\')">Log Reading</button></div></div>'
       +'<div><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">FERMENTATION CHARTS</div></div>'
-      +'<div class="chart-grid">'
-      +'<div class="chart-card"><div class="chart-card-title">📉 Gravity (SG)  ·  <span style="color:var(--text3)">solid = readings, dashed = projection</span></div><div class="chart-wrap"><canvas id="batch-gravity-chart"></canvas></div></div>'
-      +'<div class="chart-card"><div class="chart-card-title">📈 Estimated ABV %</div><div class="chart-wrap"><canvas id="batch-abv-chart"></canvas></div></div>'
-      +'</div>'
+      +'<div class="chart-card"><div class="chart-card-title">📉 Gravity &amp; ABV  ·  <span style="color:var(--text3)">SG falls (left), ABV rises (right) · solid = readings, dashed = projection</span></div><div class="chart-wrap" style="height:240px"><canvas id="batch-gravity-chart"></canvas></div></div>'
       +(function(){
         // Resolve which sensor to graph: prefer the batch's fermenter binding,
         // fall back to the global fermentation sensor, then to nothing (only
@@ -7231,11 +7540,10 @@ function renderBatchDetail(){
             :sensorEntity?'from '+escHtml(sensorEntity)+' (global fallback)':'';
         }
         if(sensorEntity){
-          return'<div class="chart-card" style="margin-top:12px"><div class="chart-card-title">'+(tBottled?'🌡 Storage Temperature':'🌡 Temperature History')+'  ·  <span style="color:var(--text3);font-size:11px">'+sensorLabel+'</span>'
-            +'<div style="display:inline-flex;gap:4px;margin-left:auto;float:right">'
-            +'<button class="btn btn-secondary btn-sm" onclick="setBatchTempRange(\''+b.id+'\',24)" style="padding:2px 8px;font-size:10px">24h</button>'
-            +'<button class="btn btn-secondary btn-sm" onclick="setBatchTempRange(\''+b.id+'\',168)" style="padding:2px 8px;font-size:10px">7d</button>'
-            +'<button class="btn btn-secondary btn-sm" onclick="setBatchTempRange(\''+b.id+'\',720)" style="padding:2px 8px;font-size:10px">30d</button>'
+          return'<div class="chart-card" style="margin-top:12px"><div class="chart-card-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+            +'<span>'+(tBottled?'🌡 Storage Temperature':'🌡 Temperature History')+'  ·  <span style="color:var(--text3);font-size:11px">'+sensorLabel+'</span></span>'
+            +'<div style="display:inline-flex;gap:6px;margin-left:auto">'
+            +(function(){var tr=window._batchTempRange||168;return[[24,'24h'],[168,'7d'],[720,'30d']].map(function(o){var a=o[0]===tr;return'<button class="btn btn-secondary btn-sm temp-range-btn" data-trange="'+o[0]+'" onclick="setBatchTempRange(\''+b.id+'\','+o[0]+')" style="padding:6px 12px;font-size:12px;min-width:48px'+(a?';background:rgba(232,196,106,0.18);color:var(--gold2);border-color:var(--gold)':'')+'">'+o[1]+'</button>';}).join('');}())
             +'</div></div>'
             +'<div class="chart-wrap" style="height:220px;position:relative"><canvas id="batch-temp-history-chart"></canvas>'
             +'<div id="batch-temp-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px;font-style:italic">Loading history…</div>'
@@ -7272,8 +7580,8 @@ function renderBatchDetail(){
       +'<div>'
       +(todayTasks.length?todayTasks.map(function(td){
         var overdue=td.isOverdue;
-        var dayLabel=td.isDue?' (TODAY)':(overdue?' ('+fmtDuration(td.daysFromDue)+' overdue — DO NOW)':' (in '+fmtDuration(-td.daysFromDue)+')');
-        return'<div class="coach-box" style="margin-bottom:16px'+(overdue?';border-left:4px solid var(--red2);background:rgba(180,80,80,0.10)':'')+'"><div class="coach-title"'+(overdue?' style="color:var(--red2)"':'')+'>'+(overdue?'⚠':'⚗')+' ACTION DUE — DAY '+td.day+dayLabel+'</div>'
+        var dayLabel=td.isDue?' (TODAY)':(overdue?' ('+fmtDuration(td.daysFromDue)+' overdue — DO NOW)':td.done?' (done)':' (in '+fmtDuration(-td.daysFromDue)+')');
+        return'<div class="coach-box" style="margin-bottom:16px'+(overdue?';border-color:var(--red);border-left:4px solid var(--red2);background:linear-gradient(135deg,#251012,#180b0b)':'')+'"><div class="coach-title"'+(overdue?' style="color:var(--red2)"':'')+'>'+(overdue?'⚠':'⚗')+' ACTION DUE — DAY '+td.day+dayLabel+'</div>'
           +'<div style="font-family:var(--font-display);font-size:15px;color:'+(overdue?'var(--red2)':'var(--gold2)')+';margin-bottom:8px">'+escHtml(td.title)+'</div>'
           +'<div class="coach-text">'+escHtml(td.desc)+'</div>'
           +'<div class="coach-tasks" style="margin-top:12px"><div class="coach-task"><div class="task-cb '+(td.done?'checked':'')+'" onclick="toggleTask(\''+td.id+'\',this)">'+(td.done?'✓':'')+'</div><span style="font-size:13px">'+(td.done?'Done today — uncheck if not':'Mark as completed')+'</span></div></div></div>';
@@ -7394,6 +7702,7 @@ function renderBatchDetail(){
     +'<div class="page-title" style="margin-bottom:0;color:'+color+'">'+escHtml(b.name)+'</div>'
     +(b.serial?'<span title="Batch serial — unique per year. Stable from creation; safe to reference on labels and storage boxes." style="font-family:var(--font-mono);font-size:11px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:10px;letter-spacing:0.5px">#'+escHtml(b.serial)+'</span>':'')
     +statusBadge(status)
+    +fermentationBadge(b)
     +'<div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">'
     +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" onclick="printBatchCertificate(\''+b.id+'\')" title="Print a one-page certificate for this batch">📜 Certificate</button>':'')
     +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" onclick="openPermanentRecord(\''+b.id+'\')" title="Print or save the complete batch journal — every log, addition, tasting, cost, signed off with brewer name">📜 Complete Record</button>':'')
@@ -7450,7 +7759,10 @@ function initBatchCharts(){
     // Calibrate k from existing readings if possible, else default to fermentDays-based
     var projLabels=[],projGrav=[],projAbv=[];
     var startDate=new Date(b.startDate);
-    if(logs.length>=1){
+    // Only project while there's still sugar to ferment. Once the last reading
+    // is at/below the target FG the exponential model can't be calibrated from
+    // it (and would draw a bogus dashed spike), so we just show the readings.
+    if(logs.length>=1&&(logs[logs.length-1].gravity-fgTarget)>0.003){
       var lastG=logs[logs.length-1].gravity;
       var lastDay=Math.max(1,daysSince(logs[logs.length-1].date)+daysSince(b.startDate)-daysSince(logs[logs.length-1].date));
       // Estimate k from last reading: if (lastG - fgTarget) > 0 then k = ln((og-fg)/(lastG-fg))/day
@@ -7480,30 +7792,23 @@ function initBatchCharts(){
 
     var gctx=document.getElementById('batch-gravity-chart');
     if(gctx){
+      // Gravity (left axis) and estimated ABV (right axis) on one chart, so the
+      // ABV rise as gravity falls is visible at a glance. Both carry the dashed
+      // projection forward to expected finish.
       new Chart(gctx,{
         type:'line',
         data:{labels:allLabels,datasets:[
-          {label:'Gravity',data:gravFull,borderColor:color,backgroundColor:color+'22',tension:0.35,fill:true,pointRadius:5,pointBackgroundColor:color,pointBorderColor:'#fff',pointBorderWidth:1.5,spanGaps:false},
-          {label:'Projected',data:gravProjFull,borderColor:color+'88',borderDash:[5,4],tension:0.2,fill:false,pointRadius:0,spanGaps:true,borderWidth:1.5}
+          {label:'Gravity',data:gravFull,borderColor:color,backgroundColor:color+'22',tension:0.35,fill:true,pointRadius:4,pointBackgroundColor:color,pointBorderColor:'#fff',pointBorderWidth:1.5,spanGaps:false,yAxisID:'y'},
+          {label:'Gravity (proj.)',data:gravProjFull,borderColor:color+'88',borderDash:[5,4],tension:0.2,fill:false,pointRadius:0,spanGaps:true,borderWidth:1.5,yAxisID:'y'},
+          {label:'ABV %',data:abvFull,borderColor:'#6ab87a',backgroundColor:'transparent',tension:0.35,fill:false,pointRadius:4,pointBackgroundColor:'#6ab87a',pointBorderColor:'#fff',pointBorderWidth:1.5,spanGaps:false,yAxisID:'y1'},
+          {label:'ABV % (proj.)',data:abvProjFull,borderColor:'#6ab87a88',borderDash:[5,4],tension:0.2,fill:false,pointRadius:0,spanGaps:true,borderWidth:1.5,yAxisID:'y1'}
         ]},
-        options:{responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return(c.dataset.label||'')+': '+(c.parsed.y?c.parsed.y.toFixed(3):'—');}}}},
+        options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+          plugins:{legend:{display:true,labels:{color:'#8a7d66',font:{size:10},boxWidth:14,filter:function(it){return!/proj/.test(it.text);}}},
+            tooltip:{callbacks:{label:function(c){if(c.parsed.y==null)return null;return(c.dataset.label||'')+': '+(c.dataset.yAxisID==='y1'?c.parsed.y.toFixed(2)+'%':c.parsed.y.toFixed(3));}}}},
           scales:{x:{ticks:{color:'#6a5f50',font:{size:10},maxRotation:30,autoSkip:true},grid:{color:'#2a2a35'}},
-            y:{ticks:{color:'#6a5f50',font:{size:10},callback:function(v){return v.toFixed(3);}},grid:{color:'#2a2a35'}}}}
-      });
-    }
-    var actx=document.getElementById('batch-abv-chart');
-    if(actx){
-      new Chart(actx,{
-        type:'line',
-        data:{labels:allLabels,datasets:[
-          {label:'ABV %',data:abvFull,borderColor:'#6ab87a',backgroundColor:'#6ab87a22',tension:0.35,fill:true,pointRadius:5,pointBackgroundColor:'#6ab87a',pointBorderColor:'#fff',pointBorderWidth:1.5,spanGaps:false},
-          {label:'Projected',data:abvProjFull,borderColor:'#6ab87a88',borderDash:[5,4],tension:0.2,fill:false,pointRadius:0,spanGaps:true,borderWidth:1.5}
-        ]},
-        options:{responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return(c.dataset.label||'')+': '+(c.parsed.y?c.parsed.y.toFixed(2)+'%':'—');}}}},
-          scales:{x:{ticks:{color:'#6a5f50',font:{size:10},maxRotation:30,autoSkip:true},grid:{color:'#2a2a35'}},
-            y:{beginAtZero:true,ticks:{color:'#6a5f50',font:{size:10},callback:function(v){return v.toFixed(1)+'%';}},grid:{color:'#2a2a35'}}}}
+            y:{position:'left',title:{display:true,text:'Gravity (SG)',color:'#6a5f50',font:{size:9}},ticks:{color:'#6a5f50',font:{size:10},callback:function(v){return v.toFixed(3);}},grid:{color:'#2a2a35'}},
+            y1:{position:'right',beginAtZero:true,title:{display:true,text:'ABV %',color:'#6a9f70',font:{size:9}},ticks:{color:'#6a9f70',font:{size:10},callback:function(v){return v.toFixed(0)+'%';}},grid:{drawOnChartArea:false}}}}
       });
     }
     // ===== Temperature trace =====
@@ -7810,8 +8115,8 @@ function renderCoach(){
         +'<div class="info-box" style="margin:0 0 12px;border-left-color:'+color+'"><div style="font-size:13px;color:var(--text2)">'+statusMsg+'</div></div>'
         +(visibleTasks.length?visibleTasks.map(function(td){
           var overdueClass=td.isOverdue?' overdue':'';
-          var dayLabel=td.isDue?' (TODAY)':(td.isOverdue?' ('+fmtDuration(td.daysFromDue)+' overdue — DO NOW)':' (in '+fmtDuration(-td.daysFromDue)+')');
-          return'<div class="coach-box'+overdueClass+'" style="margin-bottom:12px'+(td.isOverdue?';border-left:4px solid var(--red2);background:rgba(180,80,80,0.10)':'')+'"><div class="coach-title"'+(td.isOverdue?' style="color:var(--red2)"':'')+'>'+(td.isOverdue?'⚠':'⚗')+' ACTION DUE — DAY '+td.day+dayLabel+'</div>'
+          var dayLabel=td.isDue?' (TODAY)':(td.isOverdue?' ('+fmtDuration(td.daysFromDue)+' overdue — DO NOW)':td.done?' (done)':' (in '+fmtDuration(-td.daysFromDue)+')');
+          return'<div class="coach-box'+overdueClass+'" style="margin-bottom:12px'+(td.isOverdue?';border-color:var(--red);border-left:4px solid var(--red2);background:linear-gradient(135deg,#251012,#180b0b)':'')+'"><div class="coach-title"'+(td.isOverdue?' style="color:var(--red2)"':'')+'>'+(td.isOverdue?'⚠':'⚗')+' ACTION DUE — DAY '+td.day+dayLabel+'</div>'
             +'<div style="font-family:var(--font-display);font-size:14px;color:'+(td.isOverdue?'var(--red2)':'var(--gold2)')+';margin-bottom:6px">'+escHtml(td.title)+'</div>'
             +'<div class="coach-text">'+escHtml(annotateNutrientDesc(td.desc))+'</div>'
             +'<div class="coach-tasks" style="margin-top:12px"><div class="coach-task"><div class="task-cb '+(td.done?'checked':'')+'" onclick="toggleTask(\''+td.id+'\',this)">'+(td.done?'✓':'')+'</div><span style="font-size:13px">'+(td.done?'Done today — uncheck if not':'Mark as done')+'</span></div></div></div>';
@@ -8143,13 +8448,31 @@ function annotateNutrientDesc(desc){
   if(!desc)return desc;
   var sachet=APP.settings.sachetSize||12;
   // Match patterns like "Add 6g nutrient", "add 12 g yeast nutrient", "6g of nutrient", etc.
-  return desc.replace(/(\d+(?:\.\d+)?)\s*g\s+(?:of\s+)?(?:yeast\s+)?nutrient/gi,function(m,g){
+  desc=desc.replace(/(\d+(?:\.\d+)?)\s*g\s+(?:of\s+)?(?:yeast\s+)?nutrient/gi,function(m,g){
     var grams=parseFloat(g);
     var n=Math.round(grams/sachet*10)/10;
     var nDisplay=Math.abs(n-Math.round(n))<0.05?Math.round(n):n;
     var lab=parseFloat(nDisplay)===1?'sachet':'sachets';
     return m+' (~'+nDisplay+' '+lab+')';
   });
+  // ---- Universal brewing-convention reminders, applied to every recipe's steps
+  // so the guidance is consistent everywhere they render (detail, coach, calendar).
+  var low=desc.toLowerCase();
+  // Stabilising with metabisulfite but NOT sorbate won't actually stop a restart.
+  if(/(metabisulf|metabisulph|campden|k-?meta|sodium\s+metabisul)/i.test(desc)
+      && !/sorbate/i.test(desc)
+      && /(stabili|back-?sweet|sweeten|restart|prevent)/i.test(low)){
+    desc+=' ⚠ To truly stabilise (e.g. before back-sweetening), add potassium sorbate (~1 g/4.5 L) ALONGSIDE the metabisulfite — metabisulfite alone will not stop the yeast restarting.';
+  }
+  // Racking should be gated on a finished fermentation, not a calendar day.
+  if(/\brack/i.test(desc) && !/(stable|finished|fermentation is done|two readings|done fermenting)/i.test(low)){
+    desc+=' (Rack only once fermentation is finished — a stable gravity across two readings — not on a fixed day.)';
+  }
+  // A "bottle" step is the EARLIEST sensible point, never a deadline.
+  if(/\bbottl(e|es|ed|ing)\b/i.test(desc) && !/earliest/i.test(low) && !/priming|carbonat|sparkling/i.test(low)){
+    desc+=' (This is the earliest sensible bottling point, not a deadline — longer bulk aging is generally safer and better.)';
+  }
+  return desc;
 }
 
 // Display-only: most recipe step lists describe brew-day "stir to aerate" but
@@ -8263,11 +8586,18 @@ function identifyNutrientFromText(itemText){
 // scales linearly as before.
 function scaleRecipeIngredients(r,scaleVol){
   var linearFactor=scaleVol/(r.volume||5);
+  var volStr=(Math.abs(scaleVol-Math.round(scaleVol))<0.05?String(Math.round(scaleVol)):scaleVol.toFixed(1));
   return r.ingredients.map(function(ing){
     var amt=ing.amount;
     var note=ing.notes;
     var item=ing.item||'';
-    var m=amt.match(/^([0-9]+(?:\.[0-9]+)?)\s*(kg|g|L|ml)\b/i);
+    // WATER: never a fixed volume to pour — you top up to the batch mark after
+    // the honey/fruit/etc. are in (they add their own volume). Show that instead.
+    if(/^spring water$/i.test(item.trim())||/^water$/i.test(item.trim())){
+      return Object.assign({},ing,{amount:'top up to the '+volStr+' L mark',
+        notes:note||'Add the honey and other ingredients first, then top up with water to the '+volStr+' L mark — do NOT pour this much water on top, it would overshoot the volume'});
+    }
+    var m=amt.match(/^~?\s*([0-9]+(?:\.[0-9]+)?)\s*(kg|g|L|ml)\b/i);
     if(!m)return Object.assign({},ing,{amount:amt,notes:note});
     var baseValue=parseFloat(m[1]);
     var unitLower=m[2].toLowerCase();
@@ -8305,7 +8635,12 @@ function scaleRecipeIngredients(r,scaleVol){
         var nSachets=Math.max(1,Math.ceil(scaleVol/product.sachetCoversL));
         amt+='  ·  '+nSachets+' '+(nSachets===1?'sachet':'sachets');
       }
-      // Bulk powders: no sachet annotation — user measures from a tub
+      // Bulk powders: no sachet annotation — user measures from a tub.
+      // Flag when you won't use a whole sachet so the rest can be saved.
+      var sachetSz=parseFloat(APP.settings&&APP.settings.sachetSize)||12;
+      if(grams>0&&grams<sachetSz-0.5){
+        note=(note?note+' · ':'')+'only ~'+Math.round(grams)+' g — under a full sachet, so save the rest for another batch';
+      }
     }else{
       // Everything else (honey, water, fruit, sulfite, sorbate, pectic):
       // straightforward linear scaling
@@ -8650,6 +8985,20 @@ function renderRecipeDetail(){
     +'<div class="brand-bar" style="background:'+r.brandColor+'"></div>'
     +'<div class="page-subtitle">'+r.style+' · '+r.difficulty+' · ~'+r.abvTarget+'% ABV · '+r.fermentDays+'-day fermentation</div>'
     +'<div class="info-box" style="border-left-color:'+r.brandColor+';margin-bottom:16px"><div style="font-size:14px;color:var(--text2);font-style:italic;line-height:1.6">'+escHtml(r.description)+'</div></div>'
+    +(function(){
+      // Cross-links between tied recipes (e.g. fruit-in-primary vs fruit-in-secondary).
+      if(!Array.isArray(r.linked)||!r.linked.length)return'';
+      var chips=r.linked.map(function(lk){
+        var lr=APP.recipes.find(function(x){return x.id===lk.id;});
+        if(!lr)return'';
+        return'<span onclick="currentRecipeId=\''+lr.id+'\';showView(\'recipe-detail\')" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;background:var(--bg3);border:1px solid '+lr.brandColor+'99;color:var(--text);padding:5px 11px;border-radius:14px">↔ '+escHtml(lr.name)+(lk.label?' · <span style="color:var(--text3)">'+escHtml(lk.label)+'</span>':'')+'</span>';
+      }).join('');
+      if(!chips)return'';
+      return'<div class="info-box" style="border-left-color:var(--gold);margin-bottom:16px">'
+        +'<div style="font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;color:var(--text3);margin-bottom:7px">RELATED VERSION'+(r.linked.length>1?'S':'')+'</div>'
+        +(r.linkedNote?'<div style="font-size:13px;color:var(--text2);line-height:1.55;margin-bottom:10px">'+escHtml(r.linkedNote)+'</div>':'')
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap">'+chips+'</div></div>';
+    }())
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px"><button class="btn btn-primary" id="scale-brew-btn" onclick="openNewBatchModal(\''+r.id+'\','+scaleVol+')">Brew This Recipe ('+scaleVol+'L) →</button>'
     +'<button class="btn btn-secondary" onclick="openPlanBatchModal(null,\''+r.id+'\',window.recipeScaleVol||'+scaleVol+')" title="Queue this recipe into the Brew Plan and shopping list at the current scale">🗓 Plan a Batch</button>'
     +'<button class="btn btn-secondary" onclick="openBrewSessionPlanner(\''+r.id+'\','+scaleVol+')" title="Print a pre-brew checklist for this recipe">📋 Brew Session Planner</button>'
@@ -9158,6 +9507,26 @@ function renderTools(){
     +'<div style="margin-top:10px;padding:10px;background:var(--bg4);border-radius:var(--radius);font-family:var(--font-mono);font-size:12px;color:var(--text2);line-height:1.7" id="bs-protocol">—</div>'
     +'<div style="margin-top:8px;font-size:11px;color:var(--text3);font-style:italic">Sorbate alone doesn\'t kill yeast — it blocks reproduction. Must be combined with K-meta (free SO₂) or refrigeration. Wait 48h after stabilizing before adding sweetener.</div>'
     +'</div>'
+    +'<div class="card"><div class="card-header"><div class="card-title">🍾 CARBONATION / PRIMING SUGAR</div></div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.55">Priming sugar to bottle-condition a sparkling mead. The mead must be <strong>fully fermented</strong> and <strong>not stabilized</strong> — sorbate/sulfite stop the refermentation that makes the bubbles. Enter the highest temperature the mead has reached since fermentation; that sets how much CO₂ is already dissolved.</div>'
+    +'<div class="form-row-3"><div class="form-group"><label class="form-label">Volume (L)</label><input class="form-input" id="cb-vol" type="number" value="5" step="0.1" oninput="calcCarbonation()"></div>'
+    +'<div class="form-group"><label class="form-label">Mead temp (°C)</label><input class="form-input" id="cb-temp" type="number" value="20" step="0.5" oninput="calcCarbonation()"></div>'
+    +'<div class="form-group"><label class="form-label">Priming sugar</label><select class="form-select" id="cb-sugar" onchange="calcCarbonation()"><option value="4.0">Corn sugar (dextrose)</option><option value="3.8">Table sugar (sucrose)</option><option value="5.0">Honey</option><option value="5.7">DME</option></select></div></div>'
+    +'<div class="form-group"><label class="form-label">Style / target carbonation</label><select class="form-select" id="cb-style" onchange="calcCarbonation()">'
+    +'<option value="2.0">Lightly sparkling / pétillant (~2.0 vol)</option>'
+    +'<option value="2.5" selected>Sparkling (~2.5 vol)</option>'
+    +'<option value="3.0">Highly sparkling (~3.0 vol)</option>'
+    +'<option value="3.5">Champagne-style (~3.5 vol)</option>'
+    +'<option value="custom">Custom…</option></select></div>'
+    +'<div class="form-group" id="cb-custom-wrap" style="display:none"><label class="form-label">Custom target CO₂ (volumes)</label><input class="form-input" id="cb-target" type="number" value="2.5" step="0.1" min="0" oninput="calcCarbonation()"></div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px">'
+    +'<div style="text-align:center;padding:14px 8px;background:var(--bg3);border-radius:var(--radius)"><div style="font-family:var(--font-display);font-size:22px;color:var(--gold2)" id="cb-sugar-out">—</div><div class="micro-label">PRIMING SUGAR</div></div>'
+    +'<div style="text-align:center;padding:14px 8px;background:var(--bg3);border-radius:var(--radius)"><div style="font-family:var(--font-display);font-size:22px;color:var(--gold2)" id="cb-perL">—</div><div class="micro-label">PER LITER</div></div>'
+    +'</div>'
+    +'<div style="margin-top:10px;padding:10px;background:var(--bg4);border-radius:var(--radius);font-family:var(--font-mono);font-size:12px;color:var(--text2);line-height:1.7" id="cb-detail">—</div>'
+    +'<div id="cb-warn"></div>'
+    +'<div style="margin-top:8px;font-size:11px;color:var(--text3);font-style:italic">Bottle-condition only a fully-fermented, un-stabilized mead in pressure-rated bottles (champagne/Belgian + crown caps or wired corks). Keep one PET tester bottle to feel the pressure. Condition 2–3 weeks at 18–22°C, then chill. See Mead Guide → Sparkling &amp; Carbonated Mead.</div>'
+    +'</div>'
     +'<div class="card"><div class="card-header"><div class="card-title">🧪 SO₂ / SULFITE CALCULATOR</div></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.55">Only the <em>molecular</em> fraction of free SO₂ is antimicrobial, and that fraction collapses as pH rises. Enter your pH to see the free SO₂ you must hold to reach the protective molecular target, and the K-meta dose to get there. <strong>Confirm with a free-SO₂ measurement</strong> — this estimates, it doesn\'t replace titration.</div>'
     +'<div class="form-row-3"><div class="form-group"><label class="form-label">Must / wine pH</label><input class="form-input" id="so2-ph" type="number" value="3.4" step="0.05" oninput="calcSO2()"></div>'
@@ -9192,6 +9561,7 @@ function initTools(){
   calcNutrient();
   calcTOSNA();
   calcBacksweet();
+  if(typeof calcCarbonation==='function')calcCarbonation();
   calcPitch();
   if(typeof calcSO2==='function')calcSO2();
   if(typeof calcAcid==='function')calcAcid();
@@ -9368,6 +9738,49 @@ function calcTOSNA(){
   if(breakEl){
     breakEl.innerHTML='<strong style="color:var(--text2)">What\'s the 1/3 sugar break?</strong> It\'s the moment about one-third of the sugar has fermented — at OG '+og.toFixed(3)+' that\'s roughly <strong>SG '+breakSG.toFixed(3)+'</strong> ('+ogPoints+' gravity points → stop adding nitrogen once ~'+Math.round(ogPoints/3)+' points are gone). Yeast take up nitrogen during their early growth phase, so all nutrients go in before this point; dosing later — especially DAP — feeds fusels instead of cells. Degas gently before each addition (nutrients + CO₂ can foam over).';
   }
+}
+
+// Priming-sugar calculator for bottle-conditioned sparkling mead.
+// Residual CO₂ already in solution depends on temperature (the standard brewing
+// polynomial, which takes °F). Sugar to add = (target − residual) volumes ×
+// volume × a per-sugar factor (g/L per volume of CO₂): dextrose ~4.0, sucrose
+// ~3.8, honey ~5.0 (≈80% fermentable), DME ~5.7.
+function calcCarbonation(){
+  var volEl=document.getElementById('cb-vol');
+  if(!volEl)return; // tools view not mounted
+  var vol=parseFloat(volEl.value);
+  var temp=parseFloat(document.getElementById('cb-temp').value);
+  var factor=parseFloat(document.getElementById('cb-sugar').value)||4.0;
+  var sugarLabel=document.getElementById('cb-sugar').selectedOptions[0].text;
+  var styleSel=document.getElementById('cb-style').value;
+  var customWrap=document.getElementById('cb-custom-wrap');
+  var target;
+  if(styleSel==='custom'){customWrap.style.display='';target=parseFloat(document.getElementById('cb-target').value);}
+  else{customWrap.style.display='none';target=parseFloat(styleSel);}
+  var outEl=document.getElementById('cb-sugar-out'),perEl=document.getElementById('cb-perL'),detEl=document.getElementById('cb-detail'),warnEl=document.getElementById('cb-warn');
+  if(!vol||vol<=0||isNaN(temp)||!target||target<=0){
+    outEl.textContent='—';perEl.textContent='—';detEl.textContent='Enter volume, mead temperature and a target carbonation level.';warnEl.innerHTML='';return;
+  }
+  var tF=temp*9/5+32;
+  var residual=3.0378-0.050062*tF+0.0002655*tF*tF;
+  if(residual<0)residual=0;
+  var add=target-residual;
+  if(add<=0){
+    outEl.textContent='0 g';perEl.textContent='0 g/L';
+    detEl.textContent='At '+temp+'°C the mead already holds ~'+residual.toFixed(2)+' volumes of CO₂, at or above your '+target.toFixed(1)+'-volume target — no priming sugar needed. (A warmer reading retains less CO₂ and would raise the dose.)';
+    warnEl.innerHTML='';return;
+  }
+  var grams=add*vol*factor;
+  outEl.textContent=Math.round(grams)+' g';
+  perEl.textContent=(grams/vol).toFixed(1)+' g/L';
+  detEl.innerHTML='Target '+target.toFixed(1)+' vol − ~'+residual.toFixed(2)+' vol already dissolved at '+temp+'°C = +'+add.toFixed(2)+' vol to add.<br>≈ <strong>'+Math.round(grams)+' g</strong> '+sugarLabel.toLowerCase()+' total — dissolve in a little warm water and gently mix into the batch at bottling. Per 750 ml bottle: ~'+(grams/vol*0.75).toFixed(1)+' g.';
+  var w='';
+  if(target>3.0){
+    w='<div class="stock-alert" style="margin:10px 0 0"><span class="icon">⚠</span><span><strong>'+target.toFixed(1)+' volumes is high pressure.</strong> Use champagne / Belgian bottles rated for it, with crown caps or corks held by a wire muselet. Never use still-wine bottles above ~2.5 vol — they can fail.</span></div>';
+  }else if(target>2.5){
+    w='<div class="stock-alert warn" style="margin:10px 0 0"><span class="icon">⚠</span><span>Above ~2.5 volumes, use heavy beer / Belgian bottles with crown caps. Standard wine bottles and swing-tops are borderline.</span></div>';
+  }
+  warnEl.innerHTML=w;
 }
 
 function calcBacksweet(){
@@ -11677,24 +12090,12 @@ function renderSettings(){
         +'<div><div style="font-weight:600;color:var(--text);margin-bottom:2px">'+escHtml(s.label)+'</div>'
         +'<div style="color:var(--text3);font-style:italic;line-height:1.5">'+s.sub+'</div></div></div>';
     }())
-    +(function(){
-      // CORS: MeadOS runs on its own origin now, so HA must whitelist it
-      // before the browser will let any API call through. Surface the exact
-      // YAML with the right origins so it's a copy-paste job.
-      var origins=[window.location.origin];
-      var ext=((APP.settings&&APP.settings.externalUrl)||'').trim();
-      if(ext){try{var o=new URL(ext).origin;if(origins.indexOf(o)<0)origins.push(o);}catch(e){}}
-      return'<details style="margin-bottom:14px"><summary style="cursor:pointer;font-size:13px;color:var(--gold2);padding:6px 0">⚠ Required once: allow MeadOS in Home Assistant (CORS)</summary>'
-        +'<div style="font-size:12.5px;color:var(--text2);margin-top:8px;line-height:1.6">MeadOS runs on its own server, and browsers only allow it to call the HA API when HA explicitly whitelists it. Without this, every connection attempt fails regardless of URL or token. Add to <code>configuration.yaml</code> and restart Home Assistant:</div>'
-        +'<pre style="background:var(--bg4);padding:10px;border-radius:var(--radius);font-family:var(--font-mono);font-size:11px;color:var(--text2);margin-top:8px;overflow-x:auto">http:\n  cors_allowed_origins:\n'+origins.map(function(o){return'    - '+escHtml(o);}).join('\n')+'</pre>'
-        +'<div style="font-size:11.5px;color:var(--text3);margin-top:6px;font-style:italic">These are the addresses MeadOS is served from (current address + Public URL). If you open MeadOS via other hostnames, list those too.</div>'
-        +'</details>';
-    }())
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:14px;line-height:1.6;padding:8px 12px;background:var(--bg);border-left:2px solid var(--green2);border-radius:var(--radius)">The <strong>MeadOS server</strong> talks to Home Assistant on your behalf, so there\'s no browser CORS setup and no mixed-content issue — just make sure the MeadOS server can reach the HA URL below.</div>'
     +'<div class="form-group"><label class="form-label">HA URL — internal / LAN</label><input class="form-input" id="set-url" type="text" placeholder="http://192.168.x.x:8123 (any port works)" value="'+escHtml(APP.settings.haUrl||'')+'"></div>'
     +'<div class="form-group"><label class="form-label">HA URL — external <span style="font-weight:400;color:var(--text3);font-size:11px;margin-left:6px">optional</span></label><input class="form-input" id="set-url-external" type="text" placeholder="https://xyz.ui.nabu.casa or https://ha.yourdomain.com" value="'+escHtml(APP.settings.haUrlExternal||'')+'">'
-    +'<div style="font-size:12px;color:var(--text3);margin-top:4px">MeadOS automatically uses whichever URL responds — internal at home, external on the road — and remembers the working one per device. Either field may be left blank.</div></div>'
-    +'<div class="form-group"><label class="form-label">Long-Lived Access Token</label><input class="form-input" id="set-token" type="password" placeholder="HA → Profile → Security → Long-Lived Access Tokens" value="'+escHtml(APP.settings.token||'')+'">'
-    +'<div style="font-size:12px;color:var(--text3);margin-top:4px">URLs and token are stored in the shared database — set them once and every browser/device picks them up automatically. Heads-up: anyone who can open this MeadOS server can therefore also read the token.</div></div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-top:4px">The MeadOS server tries the internal URL first, then the external one. Either field may be left blank.</div></div>'
+    +'<div class="form-group"><label class="form-label">Long-Lived Access Token</label><input class="form-input" id="set-token" type="password" autocomplete="off" placeholder="'+(APP._haTokenSet?'•••••••• stored — leave blank to keep it':'HA → Profile → Security → Long-Lived Access Tokens')+'" value="">'
+    +'<div style="font-size:12px;color:var(--text3);margin-top:4px">Stored on the MeadOS server only and used via a server-side proxy — it is never sent to other devices or saved in the synced data.'+(APP._haTokenSet?' <a href="#" onclick="clearHAToken();return false" style="color:var(--red2)">Clear stored token</a>':'')+'</div></div>'
     +'<div class="form-group"><label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text2);cursor:pointer"><input type="checkbox" id="set-useha" '+(APP.settings.useHA?'checked':'')+' style="cursor:pointer"> Enable Home Assistant integration</label></div>'
     +'<div class="form-group"><label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text2);cursor:pointer"><input type="checkbox" id="set-publish-summary" '+(APP.settings.haPublishSummary?'checked':'')+' style="cursor:pointer"> Publish status summary to <code style="font-size:12px">sensor.meadows_data</code> on every save</label></div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onclick="saveHASettings()">Save &amp; Test</button>'
@@ -11777,6 +12178,9 @@ function renderSettings(){
     +'<button class="btn btn-secondary" onclick="exportBatchesCSV()" title="One row per batch">⬇ Batches CSV</button>'
     +'<button class="btn btn-secondary" onclick="exportGravityCSV()" title="One row per gravity reading">⬇ Gravity logs CSV</button>'
     +'<input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)"></div></div>'
+    +'<div class="card"><div class="card-header"><div class="card-title">🧹 UNUSED IMAGES</div><button class="btn btn-secondary btn-sm" onclick="scanOrphanImages()">Scan</button></div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:8px;line-height:1.55">Uploaded label, brand, and photo images are stored as files on the server (under <code style="font-size:11px">assets/</code>). Over time some stop being referenced by any batch or recipe. Scan to find those orphans and free the space — version history is checked too, so nothing a restorable snapshot still needs is removed.</div>'
+    +'<div id="orphan-result" style="font-size:13px;color:var(--text3)">Click <strong>Scan</strong> to check for unused images.</div></div>'
     +'<div class="card"><div class="card-header"><div class="card-title">VERSION HISTORY</div><button class="btn btn-secondary btn-sm" onclick="loadHistoryPanel()">↻ Refresh</button></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px">The server keeps your recent saved snapshots. Restore one if something got messed up — restoring first saves the current state, so it\'s reversible.</div>'
     +'<div id="history-list" style="font-size:13px;color:var(--text3)">Click <strong>Refresh</strong> to load snapshots.</div></div>'
@@ -11805,7 +12209,8 @@ function renderSettings(){
     +'<div class="card"><div class="card-header"><div class="card-title">DANGER ZONE</div></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:16px">Permanently delete all batches, logs, and settings. Cannot be undone.</div>'
     +'<button class="btn btn-danger" onclick="resetAllData()">Reset All Data</button></div>'
-    +'</div></div>';
+    +'</div></div>'
+    +'<div style="text-align:center;font-size:11px;color:var(--text3);margin:26px 0 6px;line-height:1.8">MEADŌS · © 2026 <a href="https://github.com/icemanxbe/MeadOS" target="_blank" rel="noopener" style="color:var(--gold2);text-decoration:none">icemanxbe</a><br><a href="https://github.com/icemanxbe/MeadOS/blob/main/LICENSE" target="_blank" rel="noopener" style="color:var(--text3)">PolyForm Noncommercial License 1.0.0</a> — free to use &amp; modify, not to sell</div>';
 }
 
 // ==================== FERMENTERS MANAGEMENT (Settings card) ====================
@@ -13836,7 +14241,7 @@ function renderLabelWithABV(recipeId,abvText,opts){
   var recipe=(APP.recipes||[]).find(function(x){return x.id===recipeId;});
   var batch=opts.batch||null;
   var overlayMarkup=(typeof renderOverlayLayer==='function')
-    ?renderOverlayLayer(recipe,batch,abvText,{qr:opts.qr,overlays:opts.overlays})
+    ?renderOverlayLayer(recipe,batch,abvText,{qr:opts.qr,bestDrink:opts.bestDrink,overlays:opts.overlays})
     :'';
   return'<div class="label-display" style="position:relative;width:100%;max-width:'+(opts.maxWidth||'100%')+';display:block;line-height:0">'
     +'<img src="'+src+'" alt="Mead Label" style="display:block;width:100%;height:auto;border-radius:'+(opts.radius||'4px')+'" loading="lazy">'
@@ -14559,6 +14964,7 @@ function renderSupplies(){
   }).join('');
   return'<div class="page-title">Supplies</div><div class="page-subtitle">Inventory of yeast, chemicals, and consumables · '+items.length+' tracked · stored in the shared server database</div>'
     +renderShoppingListCard()
+    +renderBrewWhatYouHaveCard()
     +inventoryCard
     +sections;
 }
@@ -15200,73 +15606,8 @@ function renderTastingOverlayRadar(batches){
 }
 
 // ==================== QUICK GRAVITY LOG FAB ====================
-function openQuickLogModal(){
-  // Only show batches that are actively fermenting (not bottled, not complete)
-  var active=APP.batches.filter(function(b){var s=getBatchStatus(b);return s!=='complete'&&s!=='bottled'&&s!=='failed';});
-  closeModal();
-  if(!active.length){
-    document.body.insertAdjacentHTML('beforeend',
-      '<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:380px">'
-      +'<div class="modal-title">QUICK GRAVITY LOG</div>'
-      +'<div style="padding:14px 0;color:var(--text2);text-align:center;font-style:italic">No active batches to log against.</div>'
-      +'<div class="modal-actions"><button class="btn btn-primary" onclick="closeModal();openNewBatchModal()">＋ Start a Batch</button></div>'
-      +'</div></div>');
-    return;
-  }
-  // Preselect the currently-viewed batch if applicable, else the most recently started
-  var preselect=(currentView==='batch'&&active.find(function(b){return b.id===currentBatchId;}))?currentBatchId:active[active.length-1].id;
-  var opts=active.map(function(b){
-    var color=getBatchColor(b);
-    var d=daysSince(b.startDate);
-    return'<option value="'+b.id+'"'+(b.id===preselect?' selected':'')+'>'+escHtml(b.name)+' — Day '+d+'</option>';
-  }).join('');
-  var tempVal=currentTemp?currentTemp.value.toFixed(1):'';
-  document.body.insertAdjacentHTML('beforeend',
-    '<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:420px">'
-    +'<div class="modal-title">⚗ QUICK GRAVITY LOG</div>'
-    +'<div class="form-group"><label class="form-label">Batch</label><select class="form-select" id="ql-batch">'+opts+'</select></div>'
-    +'<div class="form-row"><div class="form-group"><label class="form-label">Gravity (SG)</label><input class="form-input" id="ql-grav" type="number" step="0.001" placeholder="1.020" autofocus></div>'
-    +'<div class="form-group"><label class="form-label">Temp (°C)</label><input class="form-input" id="ql-temp" type="number" step="0.5" value="'+tempVal+'"'+(currentTemp?'':' placeholder="20"')+'></div></div>'
-    +'<div class="form-group"><label class="form-label">Quick Note (optional)</label><input class="form-input" id="ql-note" type="text" placeholder="airlock slowing, smells great…"></div>'
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveQuickLog()">Save Reading</button></div>'
-    +'</div></div>');
-  setTimeout(function(){var g=document.getElementById('ql-grav');if(g)g.focus();},50);
-}
-
-function saveQuickLog(){
-  var bid=document.getElementById('ql-batch').value;
-  var rawG=parseFloat(document.getElementById('ql-grav').value);
-  if(!rawG||rawG<0.9||rawG>1.2){toast('⚠ Enter a valid gravity (0.990 – 1.200)');return;}
-  var temp=parseFloat(document.getElementById('ql-temp').value);
-  // Hydrometer temp correction — match addLog. Hydrometers calibrate at 20°C;
-  // approx 0.00013 SG points per °C above/below. Skip when temp is missing
-  // or essentially at calibration temp.
-  var grav=rawG;
-  if(!isNaN(temp)&&Math.abs(temp-20)>=1){
-    grav=Math.round((rawG+(temp-20)*0.00013)*1000)/1000;
-  }
-  var entry={
-    id:genId(),
-    date:today(),
-    gravity:grav,
-    gravityRaw:rawG,
-    temp:isNaN(temp)?null:temp,
-    airlock:'',
-    note:document.getElementById('ql-note').value.trim()
-  };
-  if(!APP.logs[bid])APP.logs[bid]=[];
-  APP.logs[bid].push(entry);
-  APP.logs[bid].sort(function(a,b){return a.date.localeCompare(b.date);});
-  closeModal();
-  scheduleSave();
-  var b=APP.batches.find(function(x){return x.id===bid;});
-  var abv=b&&b.og?calcABV(b.og,grav):null;
-  toast('✦ '+grav.toFixed(3)+' logged'+(abv?' · ~'+abv+'% ABV':''));
-  renderMain();
-}
-
-// Keyboard shortcut for quick-log was removed per user request — it interfered with
-// typing letters that contain 'g' inside batch name / recipe name input fields.
+// The quick-gravity FAB and its modal were removed per user request — log
+// readings from a batch's own gravity-log screen instead.
 
 // ==================== LOW-STOCK SUPPLY ALERT ====================
 function getLowSupplies(){
@@ -15484,7 +15825,7 @@ function renderProactiveAlerts(){
         ?'never tasted'
         :'last tasted '+p.daysSinceLastTasting+' days ago';
       items.push(
-        '<div class="stock-alert" style="cursor:pointer;border-left-color:var(--gold2);background:rgba(232,196,106,0.08)" onclick="showView(\'batch\',\''+p.batch.id+'\');setTimeout(function(){setBatchTab(\''+p.batch.id+'\',\'tasting\')},10)">'
+        '<div class="stock-alert warn" style="cursor:pointer" onclick="showView(\'batch\',\''+p.batch.id+'\');setTimeout(function(){setBatchTab(\''+p.batch.id+'\',\'tasting\')},10)">'
           +'<span class="icon">🍷</span>'
           +'<span><strong>Time for a tasting?</strong> '+escHtml(p.batch.name)+' is '+p.milestoneLabel+' aged · '+lastNote+'. <span style="text-decoration:underline">Log a fresh tasting →</span></span>'
         +'</div>'
@@ -15919,11 +16260,131 @@ function computeShoppingNeeds(){
   return{lines:lines,extras:extrasList,currency:ccy,planCount:plans.length};
 }
 
+// What chemical/adjunct supplies does a recipe call for? Scanned from its
+// ingredient list so brewability covers more than honey + yeast.
+function detectRecipeSupplyNeeds(r){
+  var hay=((r.ingredients||[]).map(function(i){return i.item||'';}).join(' ')).toLowerCase();
+  return {
+    pectic:/pectic|pectin/.test(hay),
+    sulfite:/metabisul|campden|sulfite|sulphite|k-?meta/.test(hay),
+    sorbate:/sorbate/.test(hay)
+  };
+}
+
+// Which recipes can you actually start from what's in supplies — checking honey,
+// yeast, nutrient AND the recipe-specific chemicals (pectic enzyme, metabisulfite,
+// sorbate). `scaleVol` is the batch size to evaluate (the block's scale slider).
+// Also cross-references planned batches: flags recipes whose ingredients are
+// already reserved for a scheduled batch (so you don't accidentally starve it).
+function computeBrewableRecipes(scaleVol){
+  var supplies=APP.supplies||[];
+  function haveType(t){return supplies.filter(function(s){return s.type===t;}).reduce(function(a,s){return a+(parseFloat(s.qty)||0);},0);}
+  var have={honey:haveType('honey'),yeast:haveType('yeast'),nutrient:haveType('nutrient'),pectic:haveType('pectic'),sulfite:haveType('sulfite'),sorbate:haveType('sorbate')};
+  // Supplies already committed to planned/scheduled batches.
+  var planned={honey:0,yeast:0,nutrient:0};
+  (APP.plannedBatches||[]).forEach(function(pb){
+    var r=(APP.recipes||[]).find(function(x){return x.id===pb.recipeId;});
+    if(!r)return;
+    var v=parseFloat(pb.volume)||r.volume||5,og=r.ogTarget||1.095;
+    if(og>1)planned.honey+=(og-1)*1000*v/292;
+    planned.yeast+=1;
+    planned.nutrient+=Math.max(1,Math.ceil(v/5));
+  });
+  var vol=parseFloat(scaleVol)||5;
+  var list=(APP.recipes||[]).map(function(r){
+    var og=r.ogTarget||1.095;
+    if(og<=1)return null;
+    var honeyPerL=(og-1)*1000/292;
+    if(honeyPerL<=0)return null;
+    var honeyNeed=honeyPerL*vol;
+    var nutrientNeed=Math.max(1,Math.ceil(vol/5));
+    var chem=detectRecipeSupplyNeeds(r);
+    var missing=[];
+    if(have.honey<honeyNeed-0.001)missing.push('honey');
+    if(have.yeast<1)missing.push('yeast');
+    if(have.nutrient<nutrientNeed)missing.push('nutrient');
+    if(chem.pectic&&have.pectic<=0)missing.push('pectic enzyme');
+    if(chem.sulfite&&have.sulfite<=0)missing.push('metabisulfite');
+    if(chem.sorbate&&have.sorbate<=0)missing.push('sorbate');
+    // Would brewing this now leave too little for the scheduled batches?
+    var starves=[];
+    if(planned.honey>0&&have.honey-honeyNeed<planned.honey-0.001)starves.push('honey');
+    if(planned.yeast>0&&have.yeast-1<planned.yeast)starves.push('yeast');
+    if(planned.nutrient>0&&have.nutrient-nutrientNeed<planned.nutrient)starves.push('nutrient');
+    var abv=r.abvTarget||Math.round((og-(r.fgTarget||1.010))*131.25*10)/10;
+    return{recipe:r,og:og,abv:abv,honeyNeed:honeyNeed,maxVol:have.honey/honeyPerL,missing:missing,starves:starves,makeable:missing.length===0};
+  }).filter(Boolean);
+  list.sort(function(a,b){if(a.makeable!==b.makeable)return a.makeable?-1:1;return b.maxVol-a.maxVol;});
+  return{have:have,planned:planned,hasPlanned:(APP.plannedBatches||[]).length>0,vol:vol,list:list};
+}
+
+function toggleBrewWhatYouHave(){
+  window._bwyhOpen=!window._bwyhOpen;
+  var card=document.getElementById('bwyh-card');
+  if(card)card.outerHTML=renderBrewWhatYouHaveCard();
+}
+function setBrewWhatYouHaveVol(v){
+  window._bwyhVol=parseFloat(v)||5;
+  var lbl=document.getElementById('bwyh-vol-label');
+  if(lbl)lbl.textContent=fmtVol(window._bwyhVol);
+  var list=document.getElementById('bwyh-list');
+  if(list)list.innerHTML=renderBwyhList();
+}
+function renderBwyhList(){
+  var r=computeBrewableRecipes(window._bwyhVol);
+  if(!r.list.length)return'<div style="font-size:13px;color:var(--text3);font-style:italic;padding:6px 0">No recipes to evaluate yet.</div>';
+  var makeable=r.list.filter(function(x){return x.makeable;});
+  var shown=(makeable.length?makeable:r.list).slice(0,12);
+  // Styled exactly like the Recipes page cards: colored top bar, name in the
+  // recipe's brand colour, mono stats line, and a tag-style brewability badge.
+  var cards=shown.map(function(x){
+    var rec=x.recipe,ok=x.makeable,color=rec.brandColor||'#c9a84c';
+    var badge;
+    if(ok&&x.starves.length)badge='<span class="recipe-tag" style="color:var(--gold2);border-color:var(--gold2)">⚠ '+escHtml(x.starves.join('/'))+' reserved</span>';
+    else if(ok)badge='<span class="recipe-tag" style="color:#a8d27a;border-color:rgba(122,160,64,0.5)">✓ Ready to brew</span>';
+    else badge='<span class="recipe-tag" style="color:var(--red2);border-color:var(--red2)">Needs '+escHtml(x.missing.join(', '))+'</span>';
+    return'<div class="recipe-card" style="cursor:pointer" onclick="openPlanBatchModal(null,\''+rec.id+'\','+window._bwyhVol+')" title="Plan a '+escHtml(fmtVol(window._bwyhVol))+' batch of '+escHtml(rec.name)+'">'
+      +'<div class="recipe-card-bar" style="background:'+color+'"></div>'
+      +'<div class="recipe-card-body" style="padding:13px 14px">'
+      +'<div class="recipe-name" style="color:'+color+'">'+escHtml(rec.name)+'</div>'
+      +'<div class="recipe-style">'+escHtml(rec.style||'')+(rec.category&&rec.category!==rec.style?' · '+escHtml(rec.category):'')+'</div>'
+      +'<div style="display:flex;gap:12px;font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-bottom:9px"><span>OG '+x.og.toFixed(3)+'</span><span>~'+x.abv+'% ABV</span></div>'
+      +'<div>'+badge+'</div>'
+      +'</div></div>';
+  }).join('');
+  var note=makeable.length?'':'<div style="font-size:12px;color:var(--text3);font-style:italic;margin-bottom:8px">Nothing fully makeable at '+escHtml(fmtVol(window._bwyhVol))+' — these are the closest; the badge shows what\'s missing.</div>';
+  return note+'<div class="bwyh-grid">'+cards+'</div>';
+}
+
+function renderBrewWhatYouHaveCard(){
+  if(window._bwyhVol==null)window._bwyhVol=5;
+  if(window._bwyhOpen==null)window._bwyhOpen=false;
+  var r=computeBrewableRecipes(window._bwyhVol);
+  var makeableCount=r.list.filter(function(x){return x.makeable;}).length;
+  var header='<div class="card" id="bwyh-card" style="margin-bottom:16px">'
+    +'<div onclick="toggleBrewWhatYouHave()" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none">'
+    +'<div class="card-title">🍯 BREW WITH WHAT YOU HAVE</div>'
+    +'<div style="display:flex;align-items:center;gap:10px"><span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:0.5px">'+makeableCount+' ready · '+fmtWt(r.have.honey)+' honey</span><span style="color:var(--gold2);font-size:13px">'+(window._bwyhOpen?'▾':'▸')+'</span></div>'
+    +'</div>';
+  if(!window._bwyhOpen)return header+'</div>';
+  var plannedNote=r.hasPlanned?'<div style="font-size:11.5px;color:var(--text3);margin-top:10px;font-style:italic">Cross-checked against your planned batches — a ⚠ badge means brewing it now would leave too little for a scheduled batch.</div>':'';
+  var body='<div style="font-size:12px;color:var(--text3);margin:10px 0 4px">Recipes you can start now from your supplies — honey, yeast, nutrient and the chemicals each recipe calls for (pectic enzyme, metabisulfite, sorbate).</div>'
+    +'<div style="display:flex;align-items:center;gap:12px;margin:8px 0 12px">'
+    +'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px;white-space:nowrap">BATCH SIZE</span>'
+    +'<input type="range" min="1" max="12" step="0.5" value="'+window._bwyhVol+'" oninput="setBrewWhatYouHaveVol(this.value)" style="flex:1">'
+    +'<span id="bwyh-vol-label" style="font-family:var(--font-display);font-size:16px;color:var(--gold2);min-width:70px;text-align:right">'+fmtVol(window._bwyhVol)+'</span>'
+    +'</div>'
+    +'<div id="bwyh-list">'+renderBwyhList()+'</div>'
+    +plannedNote;
+  return header+body+'</div>';
+}
+
 function renderShoppingListCard(){
   var s=computeShoppingNeeds();
   var fmtN=function(n){return (Math.abs(n-Math.round(n))<0.005)?String(Math.round(n)):n.toFixed(2);};
-  // Supplies at or below their restock threshold — always worth buying.
-  var low=(APP.supplies||[]).filter(function(x){var th=parseFloat(x.threshold)||0,q=parseFloat(x.qty)||0;return th>0&&q<=th;});
+  // Supplies worth restocking — same rule as the dashboard alert: below a set
+  // threshold, OR out of stock entirely (qty 0) even without a threshold.
+  var low=getLowSupplies();
   if(!s.planCount&&!low.length)return'';
   var ccy=s.currency;
   var planHtml='';
@@ -15951,9 +16412,11 @@ function renderShoppingListCard(){
   }
   var lowHtml='';
   if(low.length){
-    lowHtml='<div style="font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin:'+(s.planCount?'14px':'0')+' 0 6px">Running low (below threshold)</div>'
+    lowHtml='<div style="font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin:'+(s.planCount?'14px':'0')+' 0 6px">Running low / out of stock</div>'
       +low.map(function(x){
-        return'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)"><div><span style="font-size:13px;color:var(--text)">'+escHtml(x.name)+'</span>'+(x.brand?'<span style="color:var(--text3);font-size:11px;font-style:italic"> · '+escHtml(x.brand)+'</span>':'')+'</div><span style="font-family:var(--font-mono);font-size:11px;color:var(--red2)">'+fmtN(parseFloat(x.qty)||0)+' '+escHtml(x.unit||'')+' left · ⚠ ≤'+fmtN(parseFloat(x.threshold)||0)+'</span></div>';
+        var q=parseFloat(x.qty)||0,th=parseFloat(x.threshold)||0;
+        var badge=q<=0?'out of stock'+(th>0?' · ⚠ ≤'+fmtN(th)+' '+escHtml(x.unit||''):''):(fmtN(q)+' '+escHtml(x.unit||'')+' left'+(th>0?' · ⚠ ≤'+fmtN(th):''));
+        return'<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)"><div><span style="font-size:13px;color:var(--text)">'+escHtml(x.name)+'</span>'+(x.brand?'<span style="color:var(--text3);font-size:11px;font-style:italic"> · '+escHtml(x.brand)+'</span>':'')+'</div><span style="font-family:var(--font-mono);font-size:11px;color:var(--red2)">'+badge+'</span></div>';
       }).join('');
   }
   return'<div class="card" style="margin-top:16px"><div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><div class="card-title">🛒 SHOPPING LIST</div>'
@@ -15970,10 +16433,10 @@ function copyShoppingList(){
     s.lines.forEach(function(l){if(l.buy>0)lines.push('• '+l.label+': buy '+fmtN(l.buy)+' '+l.unit);});
     if(s.extras.length){lines.push('Also gather:');s.extras.forEach(function(e){lines.push('• '+e.item+(e.amounts.filter(Boolean).length?' ('+e.amounts.filter(Boolean).join(' + ')+')':''));});}
   }
-  var low=(APP.supplies||[]).filter(function(x){var th=parseFloat(x.threshold)||0,q=parseFloat(x.qty)||0;return th>0&&q<=th;});
+  var low=getLowSupplies();
   if(low.length){
-    lines.push('— Running low —');
-    low.forEach(function(x){lines.push('• '+x.name+(x.brand?' ('+x.brand+')':'')+': '+fmtN(parseFloat(x.qty)||0)+' '+(x.unit||'')+' left, restock at '+fmtN(parseFloat(x.threshold)||0));});
+    lines.push('— Running low / out of stock —');
+    low.forEach(function(x){var q=parseFloat(x.qty)||0,th=parseFloat(x.threshold)||0;lines.push('• '+x.name+(x.brand?' ('+x.brand+')':'')+': '+(q<=0?'out of stock':fmtN(q)+' '+(x.unit||'')+' left')+(th>0?', restock at '+fmtN(th):''));});
   }
   var txt=lines.join('\n');
   // ponytail: execCommand is deprecated but it's the only copy path on plain-http
@@ -17406,6 +17869,14 @@ async function fetchTempHistory(batchId,hoursBack){
 
 function setBatchTempRange(batchId,hours){
   window._batchTempRange=hours;
+  // Move the active highlight (the range buttons aren't re-rendered on click).
+  var btns=document.querySelectorAll('.temp-range-btn');
+  for(var i=0;i<btns.length;i++){
+    var on=parseInt(btns[i].getAttribute('data-trange'),10)===hours;
+    btns[i].style.background=on?'rgba(232,196,106,0.18)':'';
+    btns[i].style.color=on?'var(--gold2)':'';
+    btns[i].style.borderColor=on?'var(--gold)':'';
+  }
   // Redraw the chart in place
   renderTempHistoryChart('batch-temp-history-chart',batchId);
 }
@@ -17416,12 +17887,20 @@ async function renderTempHistoryChart(canvasId,batchId){
   var loading=document.getElementById('batch-temp-loading');
   var summary=document.getElementById('batch-temp-summary');
   var hours=window._batchTempRange||168; // default 7 days
+  // Show the loading overlay while fetching; keep the canvas in the DOM (just
+  // hidden) so switching ranges always works — replacing the wrap's innerHTML
+  // would delete the canvas and silently kill every later button press.
+  if(loading){loading.textContent='Loading history…';loading.style.display='flex';}
+  canvas.style.display='none';
   var history=await fetchTempHistory(batchId,hours);
-  if(loading)loading.style.display='none';
   if(!history||history.length<2){
-    canvas.parentElement.innerHTML='<div style="text-align:center;color:var(--text3);font-style:italic;padding:20px;font-size:12px">No temperature history yet. HA recorder may still be collecting samples — try a longer range or wait a bit.</div>';
+    if(window._batchTempChart){try{window._batchTempChart.destroy();}catch(e){}window._batchTempChart=null;}
+    if(summary)summary.innerHTML='';
+    if(loading){loading.textContent='No temperature history for this range — try a longer one, or HA recorder may still be collecting samples.';loading.style.display='flex';}
     return;
   }
+  if(loading)loading.style.display='none';
+  canvas.style.display='';
   // Stats for summary line
   var values=history.map(function(p){return p.value;});
   var minV=Math.min.apply(null,values),maxV=Math.max.apply(null,values);
@@ -17616,7 +18095,7 @@ var TROUBLESHOOT_TOPICS=[
   },
   {
     id:'temp-too-high',
-    title:'Fermentation temperature too high (&gt;24°C)',
+    title:'Fermentation temperature too high (>24°C)',
     icon:'🔥',
     category:'Temperature',
     steps:[
@@ -17630,7 +18109,7 @@ var TROUBLESHOOT_TOPICS=[
   },
   {
     id:'temp-too-low',
-    title:'Fermentation temperature too low (&lt;16°C)',
+    title:'Fermentation temperature too low (<16°C)',
     icon:'❄',
     category:'Temperature',
     steps:[
@@ -18294,39 +18773,39 @@ function openTroubleshootTopic(id){
   document.body.insertAdjacentHTML('beforeend',html);
 }
 function renderTroubleshoot(){
-  // Group by category
+  // Group by category — each category becomes a large card, with its topics as
+  // button-cards inside that open the step-by-step detail modal.
   var categories={};
   TROUBLESHOOT_TOPICS.forEach(function(t){
     var cat=t.category||'Other';
     if(!categories[cat])categories[cat]=[];
     categories[cat].push(t);
   });
-  function renderTopic(t){
-    return'<div class="card" style="cursor:pointer;margin:0;padding:14px 16px" onclick="openTroubleshootTopic(\''+t.id+'\')">'
-      +'<div style="display:flex;align-items:center;gap:11px">'
-      +'<span style="font-size:20px;flex-shrink:0">'+t.icon+'</span>'
-      +'<div style="flex:1;min-width:0">'
-      +'<div style="font-size:13px;color:var(--text);line-height:1.35">'+escHtml(t.title)+'</div>'
-      +'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--gold2);letter-spacing:1px;margin-top:4px">'+t.steps.length+' STEP'+(t.steps.length===1?'':'S')+' →</div>'
-      +'</div></div></div>';
+  var CAT_ICONS={Fermentation:'🫧',Temperature:'🌡',"Off-Flavors":'👃',Clarity:'💧',Process:'🔧',Bottling:'🍾',Aging:'⏳',Sanitation:'🧼',Result:'🏁',Other:'🔧'};
+  function topicBtn(t){
+    return'<button class="ts-item" onclick="openTroubleshootTopic(\''+t.id+'\')">'
+      +'<span class="ts-ico">'+t.icon+'</span>'
+      +'<span style="flex:1;min-width:0"><span style="display:block;font-size:13px;line-height:1.35;color:var(--text)">'+escHtml(t.title)+'</span>'
+      +'<span class="ts-meta">'+t.steps.length+' STEP'+(t.steps.length===1?'':'S')+' →</span></span>'
+      +'</button>';
+  }
+  function catCard(cat,items,icon){
+    return'<div class="card" style="margin-bottom:16px">'
+      +'<div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><div class="card-title">'+(icon||CAT_ICONS[cat]||'🔧')+' '+escHtml(cat)+'</div>'
+      +'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+items.length+' topic'+(items.length===1?'':'s')+'</span></div>'
+      +'<div class="ts-grid">'+items.map(topicBtn).join('')+'</div></div>';
   }
   var categoryOrder=['Fermentation','Temperature','Off-Flavors','Clarity','Process','Bottling','Aging','Sanitation','Result'];
-  var brewingHtml=categoryOrder.map(function(cat){
-    if(!categories[cat])return'';
-    return'<div style="margin-bottom:18px">'
-      +'<h3 style="font-family:var(--font-display);font-size:13px;letter-spacing:3px;color:var(--gold2);margin:14px 0 8px;text-transform:uppercase">— '+cat+' —</h3>'
-      +'<div class="grid-3">'+categories[cat].map(renderTopic).join('')+'</div>'
-      +'</div>';
-  }).join('');
-  var appHtml='<div class="grid-3">'+APP_TROUBLESHOOT_TOPICS.map(renderTopic).join('')+'</div>';
+  var seen={};
+  var brewingHtml=categoryOrder.map(function(cat){if(!categories[cat])return'';seen[cat]=1;return catCard(cat,categories[cat]);}).join('');
+  // any categories not in the explicit order land at the end
+  brewingHtml+=Object.keys(categories).filter(function(c){return!seen[c];}).map(function(c){return catCard(c,categories[c]);}).join('');
+  var appCard=catCard('App & Sync Issues',APP_TROUBLESHOOT_TOPICS,'🖥');
   return'<div class="page-title">Troubleshooting</div><div class="page-subtitle">Brewing problems and process guidance</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><button class="btn btn-primary" onclick="openOffFlavorWizard()">🧭 Off-flavor diagnostic wizard</button></div>'
-    +'<div style="font-size:13px;color:var(--text2);margin-bottom:16px;font-style:italic">Select a topic to see step-by-step guidance, or use the diagnostic wizard above to work backward from observed flavors.</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:16px;font-style:italic">Pick a category, then tap a topic for step-by-step guidance — or use the diagnostic wizard above to work backward from observed flavors.</div>'
     +brewingHtml
-    +'<div style="margin-top:36px;padding-top:14px;border-top:1px solid var(--border)">'
-    +'<h3 style="font-family:var(--font-display);font-size:13px;letter-spacing:3px;color:var(--text3);margin:0 0 12px;text-transform:uppercase">— App &amp; Sync Issues —</h3>'
-    +appHtml
-    +'</div>';
+    +appCard;
 }
 
 // ==================== TASTING EVOLUTION CHART ====================
@@ -19826,17 +20305,25 @@ if(typeof window._haWSReady==='undefined')window._haWSReady=null;
 if(typeof window._haWSPending==='undefined')window._haWSPending={};
 if(typeof window._haWSId==='undefined')window._haWSId=0;
 
+// The media-browser WebSocket needs the raw token (it can't go through the
+// HTTP proxy). Fetch it on demand from the server — it isn't kept in app state.
+function fetchHAToken(){
+  return fetch('/api/ha-token')
+    .then(function(r){return r.ok?r.json():null;})
+    .then(function(j){return(j&&j.token)||null;})
+    .catch(function(){return null;});
+}
+
 function ensureHAWebSocket(){
   if(window._haWSReady)return window._haWSReady;
-  window._haWSReady=new Promise(function(resolve,reject){
+  window._haWSReady=fetchHAToken().then(function(token){return new Promise(function(resolve,reject){
+    if(!token){reject(new Error('No HA token'));return;}
     var base=(typeof haBaseUrl==='function'?haBaseUrl():'')||'';
     if(!base){reject(new Error('No HA URL configured'));return;}
     // http→ws, https→wss
     base=base.replace(/^http/,'ws');
     if(base.slice(-1)==='/')base=base.slice(0,-1);
     var url=base+'/api/websocket';
-    var token=(typeof getAuthToken==='function')?getAuthToken():APP.settings.token;
-    if(!token){reject(new Error('No HA token'));return;}
     console.log('[MeadOS] HA WebSocket connecting to',url);
     var ws;
     try{ws=new WebSocket(url);}catch(e){reject(e);return;}
@@ -19884,7 +20371,7 @@ function ensureHAWebSocket(){
     setTimeout(function(){
       if(!settled){settled=true;window._haWSReady=null;try{ws.close();}catch(e){}reject(new Error('WebSocket connect timeout'));}
     },8000);
-  });
+  });});
   return window._haWSReady;
 }
 
@@ -19951,15 +20438,44 @@ function prefetchAllMediaUrls(){
 // URL. Keeping URLs instead of megabytes of base64 in the state blob is what
 // keeps page loads fast. Falls back to the data URL when the server can't
 // store it (offline, etc.) — heavier but functional.
-async function storeImageAsset(dataUrl){
+async function storeImageAsset(dataUrl,kind){
   try{
-    var res=await apiFetch('/api/asset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:dataUrl})});
+    var res=await apiFetch('/api/asset',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({data:dataUrl,kind:kind||'labels'})});
     if(res&&res.ok){
       var j=await res.json();
       if(j&&j.url)return j.url;
     }
   }catch(e){}
   return dataUrl;
+}
+
+// Build a square, dark-background app icon from the brand logo and store it as
+// settings.appIcon. The OS masks the home-screen icon to a circle/squircle, so
+// compositing the (often round/transparent) logo onto a padded dark square keeps
+// it from being clipped. No image library needed — the browser canvas does it.
+// Falls back to leaving appIcon unset (server then uses the raw logo) if the
+// logo can't be drawn (e.g. a cross-origin source that taints the canvas).
+async function regenerateAppIcon(){
+  var prev=APP.settings&&APP.settings.appIcon;
+  try{
+    var brand=APP.settings&&APP.settings.brandLogo;
+    if(!brand){APP.settings.appIcon=null;}
+    else{
+      var src=(typeof getBrandLogoSrc==='function')?getBrandLogoSrc():brand;
+      var img=await new Promise(function(res,rej){var im=new Image();im.onload=function(){res(im);};im.onerror=function(){rej(new Error('load failed'));};im.src=src;});
+      var iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height;
+      if(!iw||!ih)throw new Error('no dimensions');
+      var S=512,box=Math.round(S*0.78); // content in the central ~78% (maskable safe zone)
+      var scale=Math.min(box/iw,box/ih),w=iw*scale,h=ih*scale;
+      var cv=document.createElement('canvas');cv.width=S;cv.height=S;
+      var ctx=cv.getContext('2d');
+      ctx.fillStyle='#0a0a0b';ctx.fillRect(0,0,S,S);
+      ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+      ctx.drawImage(img,(S-w)/2,(S-h)/2,w,h);
+      APP.settings.appIcon=await storeImageAsset(cv.toDataURL('image/png'),'brand');
+    }
+  }catch(e){APP.settings.appIcon=null;}
+  if(prev&&prev!==APP.settings.appIcon&&typeof deleteAssetIfUnused==='function')deleteAssetIfUnused(prev);
 }
 
 // Is a stored /labels/ asset URL still referenced ANYWHERE in app state?
@@ -19978,6 +20494,7 @@ function assetUrlReferenced(url){
   var labels=(APP.settings&&APP.settings.customLabels)||{};
   for(var k in labels){if(labels[k]===url)return true;}
   if(APP.settings&&APP.settings.brandLogo===url)return true;
+  if(APP.settings&&APP.settings.appIcon===url)return true;
   return false;
 }
 
@@ -19987,7 +20504,7 @@ function assetUrlReferenced(url){
 // guarantee, but no user-facing error either).
 async function deleteAssetIfUnused(url){
   if(classifyLabelRef(url)!=='url')return;       // only our own stored URLs
-  if(url.indexOf('/labels/')!==0)return;          // not an uploaded asset
+  if(url.indexOf('/labels/')!==0&&url.indexOf('/assets/')!==0)return; // not an uploaded asset
   if(assetUrlReferenced(url))return;              // still in use elsewhere
   try{
     await apiFetch('/api/asset/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({url:url})});
@@ -20009,7 +20526,7 @@ async function migrateInlineImagesToAssets(){
   if(!jobs.length)return;
   var moved=0;
   for(var i=0;i<jobs.length;i++){
-    var ref=await storeImageAsset(jobs[i].data);
+    var ref=await storeImageAsset(jobs[i].data,jobs[i].kind==='label'?'labels':'brand');
     if(ref!==jobs[i].data){
       if(jobs[i].kind==='label')APP.settings.customLabels[jobs[i].key]=ref;
       else APP.settings.brandLogo=ref;
@@ -20073,6 +20590,7 @@ function openImagePicker(opts){
   window._pickerState={
     title:title,
     callback:callback,
+    kind:opts.kind||'labels',  // assets/<kind>/ subdir for uploads
     maxDim:maxDim,
     preferPng:preferPng,
     folder:folder,
@@ -20156,7 +20674,7 @@ function handlePickerUpload(input){
       status.textContent='✓ Loaded '+info.w+'×'+info.h+' · '+(info.bytes/1024).toFixed(0)+'KB';
     }
     if(status)status.textContent='✓ Loaded '+info.w+'×'+info.h+' · storing on server…';
-    storeImageAsset(dataUrl).then(function(ref){
+    storeImageAsset(dataUrl,s.kind||'labels').then(function(ref){
       var cb=s.callback;closeImagePicker();cb(ref);
     });
   });
@@ -20326,6 +20844,7 @@ function clearDesignerBackground(){
 function pickBrandLogo(){
   openImagePicker({
     title:'Pick brand logo',
+    kind:'brand',
     maxDim:900,
     preferPng:true,
     onPick:function(ref){
@@ -20334,6 +20853,8 @@ function pickBrandLogo(){
       if(classifyLabelRef(ref)==='media')getResolvedMediaUrl(ref);
       scheduleSave();
       if(prev&&prev!==ref&&typeof deleteAssetIfUnused==='function')deleteAssetIfUnused(prev);
+      // Rebuild the square dark-background PWA/app icon from the new logo.
+      regenerateAppIcon().then(function(){scheduleSave();});
       // Refresh the topbar logo immediately (renderMain doesn't touch it)
       var crest=document.getElementById('topbar-crest');
       if(crest){
@@ -20349,9 +20870,11 @@ function pickBrandLogo(){
 function clearBrandLogo(){
   if(!confirm('Restore the default brand logo?'))return;
   var prev=APP.settings.brandLogo;
+  var prevIcon=APP.settings.appIcon;
   APP.settings.brandLogo=null;
+  APP.settings.appIcon=null;  // revert PWA/app icon to the bundled default too
   scheduleSave();
-  if(typeof deleteAssetIfUnused==='function')deleteAssetIfUnused(prev);
+  if(typeof deleteAssetIfUnused==='function'){deleteAssetIfUnused(prev);if(prevIcon)deleteAssetIfUnused(prevIcon);}
   var crest=document.getElementById('topbar-crest');
   if(crest){
     crest.innerHTML='<img src="'+MEADOS_LOGO+'" alt="MeadOS">';
@@ -20826,7 +21349,7 @@ function renderPublicShareView(b){
 
   // Build the sections
   var agingHtml=renderShareAgingTimeline(ageDays,minDays,peakDays,maxDays);
-  var gravityHtml=renderShareGravityChart(chartData);
+  var gravityHtml=renderShareGravityChart(chartData,b.og);
   var tastingHtml=renderShareTastingNotes(lastTasting);
   var ingredientsHtml=renderShareIngredients(b,recipe);
   var allergensHtml=renderShareDietary(b,recipe,bot);
@@ -20937,8 +21460,12 @@ function renderPublicShareView(b){
     +'</header>'
     +'<section class="batch-card">'
     +(function(){
-      var li=(typeof getLabelImage==='function')?getLabelImage(b.recipeId):null;
-      return(li&&/^(data:|https?:|\/)/.test(li))?'<div class="label-frame"><img src="'+escHtml(li)+'" alt="Bottle label"></div>':'';
+      // Bottle label, rendered through the SAME path as the Label Maker (art +
+      // the recipe's overlay config) so it looks exactly as designed — just with
+      // the QR code and drinking-window box suppressed for the public page.
+      if(!window._shareLabelImage||typeof renderLabelWithABV!=='function')return'';
+      var abvText=(bot&&bot.abv!=null)?String(bot.abv):'';
+      return'<div class="label-frame">'+renderLabelWithABV(b.recipeId,abvText,{batch:b,qr:false,bestDrink:false})+'</div>';
     }())
     +'<div class="batch-name">'+escHtml(b.name||'')+'</div>'
     +'<div class="batch-style">'+escHtml(recipeName||'')+(recipe&&recipe.category&&recipe.category!==recipeName?' · '+escHtml(recipe.category):'')+'</div>'
@@ -20984,12 +21511,12 @@ function renderShareAgingTimeline(ageDays,minD,peakD,maxD){
     gradient='linear-gradient(90deg,#8a6a30,var(--gold))';
     statusColor='#c9a84c';
     var dr=minD-ageDays;
-    status='⏳ Still aging — '+dr+' more day'+(dr!==1?'s':'')+' until ready';
+    status='⏳ Still aging — about '+fmtDuration(dr)+' until ready';
   }else if(ageDays<peakD){
     gradient='linear-gradient(90deg,var(--gold),#7cc87c)';
     statusColor='#7cc87c';
     var dp=peakD-ageDays;
-    status='✓ In drinking window — '+dp+' day'+(dp!==1?'s':'')+' until estimated peak';
+    status='✓ In drinking window — about '+fmtDuration(dp)+' until estimated peak';
   }else if(ageDays<maxD){
     gradient='linear-gradient(90deg,var(--gold),#7cc87c,#e8a050)';
     statusColor='#e8a050';
@@ -21006,19 +21533,21 @@ function renderShareAgingTimeline(ageDays,minD,peakD,maxD){
     +'<div class="share-aging-marker" style="left:'+peakPct.toFixed(1)+'%;background:#e8c878;box-shadow:0 0 6px #e8c878"></div>'
     +'</div>'
     +'<div class="share-aging-labels">'
-    +'<span>0d</span>'
-    +'<span style="color:#7cc87c">Ready · '+minD+'d</span>'
-    +'<span style="color:#e8c878">Peak · '+peakD+'d</span>'
-    +'<span>Max · '+maxD+'d</span>'
+    +'<span>Now</span>'
+    +'<span style="color:#7cc87c">Ready · '+fmtDurationCompact(minD)+'</span>'
+    +'<span style="color:#e8c878">Peak · '+fmtDurationCompact(peakD)+'</span>'
+    +'<span>Max · '+fmtDurationCompact(maxD)+'</span>'
     +'</div>'
     +'<div class="share-aging-status" style="color:'+statusColor+'">'+escHtml(status)+'</div>'
     +'</div></section>';
 }
 
-// Compact SVG line chart of the gravity readings. Takes array of [days, gravity_float].
-function renderShareGravityChart(data){
+// Compact SVG line chart of the gravity readings, with the estimated ABV drawn
+// on a second (right) axis so the ABV rise as gravity falls is visible. Takes an
+// array of [days, gravity_float] and the original gravity (for the ABV scale).
+function renderShareGravityChart(data,og){
   if(!data||data.length<2)return'';
-  var w=420,h=200,padL=48,padR=12,padT=16,padB=28;
+  var w=440,h=210,padL=46,padR=44,padT=16,padB=28;
   var maxDay=Math.max.apply(null,data.map(function(p){return p[0];}));
   var grav=data.map(function(p){return p[1];});
   var minG=Math.min.apply(null,grav),maxG=Math.max.apply(null,grav);
@@ -21026,11 +21555,23 @@ function renderShareGravityChart(data){
   minG=Math.floor((minG-0.005)*1000)/1000;
   maxG=Math.ceil((maxG+0.005)*1000)/1000;
   if(maxG-minG<0.030)maxG=minG+0.030;
+  // ABV axis (right): 0 → ABV at the lowest gravity, using OG.
+  var ogVal=og||(data[0]&&data[0][0]===0?data[0][1]:null);
+  var showAbv=!!ogVal&&(ogVal-minG)>0;
+  var maxA=showAbv?Math.max(1,Math.ceil((ogVal-minG)*131.25)):0;
   var sx=function(d){return padL+(d/(maxDay||1))*(w-padL-padR);};
   var sy=function(g){return padT+((maxG-g)/(maxG-minG))*(h-padT-padB);};
+  var ay=function(a){return padT+((maxA-a)/(maxA||1))*(h-padT-padB);};
   var pathD=data.map(function(p,i){return(i===0?'M':'L')+' '+sx(p[0]).toFixed(1)+' '+sy(p[1]).toFixed(1);}).join(' ');
   var fillD=pathD+' L '+sx(maxDay).toFixed(1)+' '+(h-padB)+' L '+padL+' '+(h-padB)+' Z';
   var dots=data.map(function(p){return'<circle cx="'+sx(p[0]).toFixed(1)+'" cy="'+sy(p[1]).toFixed(1)+'" r="3.5" fill="#e8c878" stroke="#1f1408" stroke-width="1.5"/>';}).join('');
+  // ABV line + dots + right-axis %
+  var abvPath='',abvDots='',abvLabels='';
+  if(showAbv){
+    abvPath='<path d="'+data.map(function(p,i){var a=(ogVal-p[1])*131.25;return(i===0?'M':'L')+' '+sx(p[0]).toFixed(1)+' '+ay(a).toFixed(1);}).join(' ')+'" stroke="#7cc87c" stroke-width="2" fill="none" stroke-linejoin="round"/>';
+    abvDots=data.map(function(p){var a=(ogVal-p[1])*131.25;return'<circle cx="'+sx(p[0]).toFixed(1)+'" cy="'+ay(a).toFixed(1)+'" r="3" fill="#7cc87c" stroke="#1f1408" stroke-width="1.2"/>';}).join('');
+    for(var j=0;j<=3;j++){var av=(maxA*j)/3;var yy=ay(av);abvLabels+='<text x="'+(w-padR+6)+'" y="'+(yy+3.5).toFixed(1)+'" font-family="monospace" font-size="9" fill="#7ca87c" text-anchor="start">'+av.toFixed(0)+'%</text>';}
+  }
   var yLabels='';
   for(var i=0;i<=3;i++){
     var val=minG+((maxG-minG)*i)/3;
@@ -21049,12 +21590,13 @@ function renderShareGravityChart(data){
     // ON TOP OF the next section title. Belt-and-braces: explicit width/height
     // attributes + aspect-ratio CSS so the browser computes the right box.
     +'<svg viewBox="0 0 '+w+' '+h+'" width="'+w+'" height="'+h+'" style="width:100%;max-width:'+w+'px;height:auto;aspect-ratio:'+w+'/'+h+';display:block;margin:0 auto">'
-    +yLabels+xLabels
+    +yLabels+xLabels+abvLabels
     +'<path d="'+fillD+'" fill="rgba(201,168,76,0.08)"/>'
     +'<path d="'+pathD+'" stroke="#c9a84c" stroke-width="2" fill="none" stroke-linejoin="round"/>'
     +dots
+    +abvPath+abvDots
     +'</svg>'
-    +'<div style="text-align:center;font-size:10px;color:#8a7d68;letter-spacing:1.5px;margin-top:6px;font-family:Cinzel,serif">SPECIFIC GRAVITY OVER FERMENTATION DAYS</div>'
+    +'<div style="text-align:center;font-size:10px;color:#8a7d68;letter-spacing:1.5px;margin-top:6px;font-family:Cinzel,serif">'+(showAbv?'<span style="color:#c9a84c">●</span> GRAVITY &nbsp;·&nbsp; <span style="color:#7cc87c">●</span> ABV % &nbsp;·&nbsp; OVER FERMENTATION DAYS':'SPECIFIC GRAVITY OVER FERMENTATION DAYS')+'</div>'
     +'</div></section>';
 }
 
@@ -22379,7 +22921,7 @@ function addBatchPhoto(batchId){
     toast('⏳ Processing photo…');
     readImageAsDataUrl(file,{maxDim:1400},function(err,dataUrl){
       if(err){toast('⚠ '+err.message);return;}
-      storeImageAsset(dataUrl).then(function(url){
+      storeImageAsset(dataUrl,'photos').then(function(url){
         openPhotoMetaModal(batchId,url);
       });
     });
@@ -22710,11 +23252,10 @@ function saveHASettings(){
   if(urlEl)APP.settings.haUrl=normUrl(urlEl.value);
   var extUrlEl=document.getElementById('set-url-external');
   if(extUrlEl)APP.settings.haUrlExternal=normUrl(extUrlEl.value);
-  // URLs changed — forget which one worked last so the next call re-probes.
-  window._haActiveUrl=null;
-  try{localStorage.removeItem('meadows_haActiveUrl');}catch(e){}
+  // The token is write-only: only a freshly-typed value is sent to the server;
+  // a blank field keeps whatever token is already stored there.
   var tokEl=document.getElementById('set-token');
-  if(tokEl)APP.settings.token=tokEl.value.trim();
+  var typedToken=tokEl?tokEl.value.trim():'';
   var brewerEl=document.getElementById('set-brewer');
   if(brewerEl)APP.settings.brewerName=brewerEl.value.trim();
   var extEl=document.getElementById('set-external-url');
@@ -22739,9 +23280,35 @@ function saveHASettings(){
   if(ccyEl)APP.settings.currency=ccyEl.value;
   saveSettings();
   scheduleSave(); // brewer name rides the shared blob — sync it too
-  toast('Settings saved');
-  startTempPolling();
-  if(typeof haConfigured==='function'&&haConfigured())testConnection();
+  // Push the HA connection to the server: URLs + (only if typed) the token.
+  // The token is stored server-side and proxied — never in the synced blob.
+  var cfg={url:APP.settings.haUrl,urlExternal:APP.settings.haUrlExternal};
+  if(typedToken)cfg.token=typedToken;
+  fetch('/api/ha-config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)})
+    .then(function(r){return r.json();})
+    .then(function(j){
+      APP._haTokenSet=!!(j&&j.hasToken);
+      APP._haTokenExp=(j&&j.tokenExp)||null;
+      if(tokEl)tokEl.value='';  // clear the field; status now reads "stored"
+      toast('Settings saved');
+      startTempPolling();
+      if(haConfigured())testConnection();
+    })
+    .catch(function(){toast('Settings saved — but HA config sync failed');});
+}
+
+// Clear the server-side HA token (e.g. on rotation or disconnect).
+function clearHAToken(){
+  if(!confirm('Remove the stored Home Assistant token from the server?'))return;
+  fetch('/api/ha-config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({clearToken:true})})
+    .then(function(r){return r.json();})
+    .then(function(j){
+      APP._haTokenSet=!!(j&&j.hasToken);
+      APP._haTokenExp=(j&&j.tokenExp)||null;
+      toast('HA token cleared');
+      if(typeof showView==='function')showView('settings');
+    })
+    .catch(function(){toast('Could not clear token');});
 }
 
 // Auto-save handler for the Costs & Supplies card. Wired to each input's
@@ -22790,6 +23357,41 @@ async function pullFromServer(){
   toast('✓ '+APP.batches.length+' batch'+(APP.batches.length!==1?'es':'')+' loaded');
 }
 var pullFromHA=pullFromServer; // legacy name
+
+// Scan the server for orphaned uploaded images (not referenced by any batch,
+// recipe, or restorable snapshot) and offer to delete them.
+async function scanOrphanImages(){
+  var el=document.getElementById('orphan-result');
+  if(el)el.innerHTML='Scanning…';
+  try{
+    var res=await apiFetch('/api/assets/orphans');
+    var j=res&&res.ok?await res.json():null;
+    if(!j||!j.ok){if(el)el.innerHTML='<span style="color:var(--red2)">Scan failed.</span>';return;}
+    var n=(j.orphans||[]).length;
+    if(!n){if(el)el.innerHTML='<span style="color:var(--green2)">✓ No unused images — everything on disk is in use.</span>';return;}
+    window._orphanNames=j.orphans.map(function(o){return o.name;});
+    if(el)el.innerHTML='<div style="margin-bottom:10px"><strong style="color:var(--gold2)">'+n+'</strong> unused image'+(n===1?'':'s')+' · '+fmtBytes(j.totalBytes||0)+' reclaimable.</div>'
+      +'<button class="btn btn-danger btn-sm" onclick="deleteOrphanImages()">🗑 Delete '+n+' unused image'+(n===1?'':'s')+'</button>';
+  }catch(e){if(el)el.innerHTML='<span style="color:var(--red2)">Scan failed.</span>';}
+}
+async function deleteOrphanImages(){
+  if(!window._orphanNames||!window._orphanNames.length)return;
+  if(!confirm('Permanently delete '+window._orphanNames.length+' unused image file'+(window._orphanNames.length===1?'':'s')+' from the server? Images still referenced anywhere (including version history) are kept automatically.'))return;
+  var el=document.getElementById('orphan-result');
+  if(el)el.innerHTML='Deleting…';
+  try{
+    var res=await apiFetch('/api/assets/cleanup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({names:window._orphanNames})});
+    var j=res&&res.ok?await res.json():null;
+    if(j&&j.ok){
+      window._orphanNames=null;
+      if(el)el.innerHTML='<span style="color:var(--green2)">✓ Deleted '+j.deleted+' image'+(j.deleted===1?'':'s')+' · freed '+fmtBytes(j.freedBytes||0)+'.</span>';
+    }else if(res&&res.status===403){
+      if(el)el.innerHTML='<span style="color:var(--red2)">Cleanup is only allowed from inside your LAN.</span>';
+    }else{
+      if(el)el.innerHTML='<span style="color:var(--red2)">Cleanup failed.</span>';
+    }
+  }catch(e){if(el)el.innerHTML='<span style="color:var(--red2)">Cleanup failed.</span>';}
+}
 
 function exportData(){
   // Full snapshot — every persisted bucket. Versioned with CURRENT_SCHEMA_VERSION
@@ -22974,6 +23576,14 @@ async function init(){
   }
   updateTopbarDate();
   await loadData();
+  // Learn whether the server holds an HA token (and when it expires) — the
+  // token itself never comes to the browser. Drives haConfigured() & reminders.
+  await loadHAConfig();
+  // Backfill the square dark-background PWA/app icon for a brand logo that was
+  // set before this feature existed — one-time, then it rides the shared blob.
+  if(APP.settings&&APP.settings.brandLogo&&!APP.settings.appIcon&&typeof regenerateAppIcon==='function'){
+    regenerateAppIcon().then(function(){scheduleSave();});
+  }
   // Prefetch any media-source IDs in custom labels / brand logo so cache is warm
   if(typeof prefetchAllMediaUrls==='function')prefetchAllMediaUrls();
   // Ensure fermenters exist on fresh installs (loadData may have been a no-op
@@ -23068,6 +23678,19 @@ async function initShareMode(token){
   if(payload.meadery){
     APP.settings.brewerName=payload.meadery.brewerName||APP.settings.brewerName;
     if(payload.meadery.brandLogo)APP.settings.brandLogo=payload.meadery.brandLogo;
+  }
+  // Bottle-label art + the recipe's Label-Maker overlay config, so the share
+  // page renders the label EXACTLY as configured (just with QR + drinking-window
+  // suppressed). Feeding customLabels/recipeOverlays lets getLabelImage and
+  // getRecipeOverlays resolve them via the normal label render path.
+  window._shareLabelImage=(typeof payload.labelImage==='string'&&/^(data:image\/|\/labels\/|\/assets\/)/.test(payload.labelImage))?payload.labelImage:'';
+  if(window._shareLabelImage){
+    APP.settings.customLabels=APP.settings.customLabels||{};
+    APP.settings.customLabels[b.recipeId]=window._shareLabelImage;
+  }
+  if(payload.recipeOverlays&&typeof payload.recipeOverlays==='object'){
+    APP.settings.recipeOverlays=APP.settings.recipeOverlays||{};
+    APP.settings.recipeOverlays[b.recipeId]=payload.recipeOverlays;
   }
   renderPublicShareView(b);
   // Don't register hashchange — share view is static and we don't want any
