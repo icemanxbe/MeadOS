@@ -290,6 +290,13 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .chart-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius2);padding:16px}
 .chart-card-title{font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
 .chart-wrap{position:relative;height:200px}
+/* Troubleshoot: category cards with topic "buttons" inside */
+.ts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.ts-item{display:flex;align-items:center;gap:11px;text-align:left;width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;cursor:pointer;color:var(--text);font-family:inherit;transition:border-color .15s,background .15s,transform .1s}
+.ts-item:hover{border-color:var(--gold);background:var(--bg4);transform:translateY(-1px)}
+.ts-item:active{transform:translateY(0)}
+.ts-item .ts-ico{font-size:20px;flex-shrink:0;line-height:1}
+.ts-item .ts-meta{display:block;font-family:var(--font-mono);font-size:9.5px;color:var(--gold2);letter-spacing:1px;margin-top:4px}
 /* keep chart canvases from poking past their container on narrow screens */
 #main canvas{max-width:100%}
 @media (max-width:900px){

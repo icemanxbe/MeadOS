@@ -80,7 +80,6 @@ STATIC_ASSETS = {
     "/test.html": "text/html; charset=utf-8",  # zero-dep unit checks (dev tool)
     # PWA assets — all public (the install/offline shell isn't sensitive).
     "/sw.js": "text/javascript; charset=utf-8",
-    "/manifest.webmanifest": "application/manifest+json; charset=utf-8",
     "/icon.svg": "image/svg+xml",
     "/icon-192.png": "image/png",
     "/icon-512.png": "image/png",
@@ -413,6 +412,29 @@ def login_logo_src():
     return "/icon.svg"
 
 
+def app_icon_src():
+    # Icon for PWA/favicon use. Prefer the purpose-built square dark-background
+    # app icon (settings.appIcon, generated client-side) so the home-screen icon
+    # isn't clipped; fall back to the raw brand logo, then the default crest.
+    row = db_get_state()
+    if row:
+        try:
+            st = json.loads(row[0])
+            for container in (st.get("sharedSettings"), st.get("settings")):
+                if isinstance(container, dict) and container.get("appIcon"):
+                    ic = container["appIcon"]
+                    if isinstance(ic, str) and ic:
+                        if ic.startswith("data:image/"):
+                            return ic
+                        if re.match(r"^/labels/[0-9a-f]{24}\.(png|jpg|jpeg|webp|svg|gif)$", ic) \
+                                and os.path.isfile(os.path.join(LABELS_DIR, ic[len("/labels/"):])):
+                            return ic
+                    break
+        except ValueError:
+            pass
+    return login_logo_src()  # brand logo, or /icon.svg when nothing is set
+
+
 def login_page_html():
     # Self-contained styled login page (matches the app's dark/gold theme).
     return ("""<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
@@ -536,6 +558,23 @@ def build_share_payload(state, token):
         "brandLogo": ss.get("brandLogo") or None,
     }
 
+    # The batch's bottle-label art, so the share page can show the label. Only a
+    # public /labels/ asset or a self-contained data: URL is shippable (a guest
+    # can't resolve a media-source:// ref); anything else is omitted.
+    label_image = None
+    custom_labels = ss.get("customLabels") if isinstance(ss.get("customLabels"), dict) else {}
+    lref = custom_labels.get(rid) if rid else None
+    if isinstance(lref, str) and (lref.startswith("/labels/") or lref.startswith("data:image/")):
+        label_image = lref
+
+    # The recipe's Label-Maker overlay config (text positions/colours), so the
+    # share page renders the label exactly as configured. Just layout data — no
+    # secrets — and the client suppresses QR + drinking-window itself.
+    recipe_overlays = None
+    overlays_map = ss.get("recipeOverlays") if isinstance(ss.get("recipeOverlays"), dict) else {}
+    if rid and isinstance(overlays_map.get(rid), dict):
+        recipe_overlays = overlays_map.get(rid)
+
     return {
         "ok": True,
         "batch": _pick(batch, SHARE_BATCH_FIELDS),
@@ -545,6 +584,8 @@ def build_share_payload(state, token):
         "bottling": _pick(bottling, SHARE_BOTTLING_FIELDS),
         "recipe": recipe,
         "meadery": meadery,
+        "labelImage": label_image,
+        "recipeOverlays": recipe_overlays,
     }
 
 
@@ -890,6 +931,73 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/logout":
             self._send(200, {"ok": True}, extra_headers={
                 "Set-Cookie": "meados_session=; HttpOnly; SameSite=Lax; Path=/; Max-Age=0"})
+            return
+        if path == "/manifest.webmanifest":
+            # Dynamic so the install icon follows the configured brand logo. The
+            # "any" icons point at /brand-icon (brand or default); the maskable
+            # launcher icon stays the bundled one so a circular/transparent brand
+            # logo doesn't get clipped by the OS square mask.
+            # When a brand logo is set, use it for the home-screen (maskable)
+            # icon too — the user opted into the brand logo everywhere, clipping
+            # by the OS mask and all. With no brand logo, fall back to the
+            # bundled maskable icon (which has the proper safe-zone padding).
+            brand_set = app_icon_src() != "/icon.svg"
+            mask_icon = ({"src": "/brand-icon", "sizes": "512x512", "purpose": "maskable"}
+                         if brand_set else
+                         {"src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"})
+            man = {
+                "name": "MeadOS · Mead Brewing Companion",
+                "short_name": "MeadOS",
+                "description": "Track mead batches, fermentation, the cellar, recipes and brewing tools.",
+                "start_url": "/index.html", "scope": "/", "display": "standalone",
+                "orientation": "any", "background_color": "#0a0a0b", "theme_color": "#0a0a0b",
+                "icons": [
+                    {"src": "/brand-icon", "sizes": "192x192", "purpose": "any"},
+                    {"src": "/brand-icon", "sizes": "512x512", "purpose": "any"},
+                    mask_icon,
+                    {"src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"},
+                ],
+            }
+            self._send(200, json.dumps(man), "application/manifest+json; charset=utf-8")
+            return
+        if path == "/brand-icon":
+            # The configured brand logo if one is set, else the bundled default
+            # icon. Backs the PWA manifest icons and the browser-tab favicon.
+            src = app_icon_src()  # squared app icon, brand logo, or /icon.svg
+            data = None
+            mime = "image/png"
+            if src.startswith("/labels/"):
+                fp = os.path.join(LABELS_DIR, src[len("/labels/"):])
+                ext = os.path.splitext(fp)[1].lower()
+                mime = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+                        ".webp": "image/webp", ".svg": "image/svg+xml", ".gif": "image/gif"}.get(ext, "image/png")
+                try:
+                    with open(fp, "rb") as f:
+                        data = f.read()
+                except OSError:
+                    data = None
+            elif src.startswith("data:image/"):
+                try:
+                    head, b64 = src.split(",", 1)
+                    mime = head[5:].split(";")[0] or "image/png"
+                    data = base64.b64decode(b64)
+                except Exception:
+                    data = None
+            if data is None:  # no/unreadable brand logo → bundled default
+                try:
+                    with open(os.path.join(BASE_DIR, "icon-512.png"), "rb") as f:
+                        data = f.read()
+                    mime = "image/png"
+                except OSError:
+                    self._send(404, {"ok": False, "error": "no icon"})
+                    return
+            self.send_response(200)
+            self.send_header("Content-Type", mime)
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("X-Content-Type-Options", "nosniff")
+            self.end_headers()
+            self.wfile.write(data)
             return
         if path in STATIC_ASSETS:
             # Public so share-page guests (who may be behind the external
