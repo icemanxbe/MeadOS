@@ -2313,6 +2313,69 @@ var RECIPE_HONEY_ALTERNATIVES={
     {honey:'Pine Honeydew',shift:'Caramel-on-caramel — be careful with depth. Caramelize lightly, not deeply, to avoid muddy stacking.'},
     {honey:'Forest',shift:'Adds woodland resin to caramelized maple — northern European forest-bochet character.'},
     {honey:'Heather',shift:'Smoky maple bochet — like a maple-syrup-glazed peated dish. Unusual and memorable.'}
+  ],
+  r30:[
+    {honey:'Linden',shift:'Faint mint and herbal-tea notes over the dry finish — more interesting backbone, cooling on the palate. The pick when acacia feels too plain.'},
+    {honey:'Lavender',shift:'Soft floral edge through the bubbles — an elegant, Provençal champagne character. Use a light hand so it stays crisp.'},
+    {honey:'Lemon Blossom',shift:'Bright lemon-citrus lift — the most aperitif-like sparkler, zippy and fresh. Drink young to hold the aroma.'},
+    {honey:'Coriander',shift:'A built-in warm-spice whisper even without additions — gives the dry fizz a subtle citrus-coriander complexity.'},
+    {honey:'Buckwheat',shift:'Not recommended here — its molasses depth muddies the crisp finish and fights fine bubbles. Save it for a still mead.'}
+  ],
+  r31:[
+    {honey:'Orange Blossom',shift:'Citrus lifts the apple — a sparkling apple-mimosa. The brightest, most festive version.'},
+    {honey:'Acacia',shift:'Cleanest and driest — the apple leads and the honey just supports. Most cider-like of the options.'},
+    {honey:'Clover',shift:'Soft vanilla rounds the apple — gentler, more approachable fizz.'},
+    {honey:'Sunflower',shift:'Buttery baked-apple character with a rounder body. Crystallises fast, so warm gently when dissolving.'},
+    {honey:'Buckwheat',shift:'Avoid — the dark molasses note clashes with fresh apple and dulls the sparkle.'}
+  ],
+  r32:[
+    {honey:'Acacia',shift:'Keeps it the most delicate — a barely-there honey note and a clean, crisp spritz. Best fit for a sessionable mead.'},
+    {honey:'Orange Blossom',shift:'Citrus-floral pop — a low-ABV honey aperitif, bright and easy.'},
+    {honey:'Linden',shift:'Herbal-tea lift makes a more interesting light sipper without adding weight.'},
+    {honey:'Lavender',shift:'Gentle floral edge — a honey-spritz with a Provençal accent. Use a light hand so it stays sessionable.'},
+    {honey:'Buckwheat',shift:'Too much for this style — dark honeys overwhelm a delicate ~6% base.'}
+  ],
+  r33:[
+    {honey:'Acacia',shift:'Cleanest berry expression through the bubbles — fruit-forward and bright, exactly what a sparkling melomel wants.'},
+    {honey:'Orange Blossom',shift:'Citrus over the berries — a sparkling berry-citrus cooler, vivid and aromatic.'},
+    {honey:'Lavender',shift:'Berry-lavender florals — a rosé-sparkler character, elegant and summery.'},
+    {honey:'Buckwheat',shift:'Adds a dark-jam depth beneath the fizz — richer and more autumnal, less champagne-crisp. Use 10–15% less honey if you try it.'},
+    {honey:'Lemon Blossom',shift:'Citrus-berry sorbet character — bright and zippy, the freshest-tasting of the sparkling-berry options.'}
+  ],
+  r34:[
+    {honey:'Orange Blossom',shift:'Citrus + ginger — a sparkling ginger-orange, exceptionally refreshing.'},
+    {honey:'Lemon Blossom',shift:'Lemon-ginger zing — the sharpest, most ginger-beer-like version. Drink young for peak brightness.'},
+    {honey:'Clover',shift:'Softens the ginger heat — rounder and friendlier, less of a bite.'},
+    {honey:'Acacia',shift:'Cleanest backdrop — the ginger sits fully in front, dry and zippy.'},
+    {honey:'Buckwheat',shift:'A small amount gives a dark gingerbread depth — warmer and wintry, but less crisp. Easy to overdo.'}
+  ],
+  r35:[
+    {honey:'Acacia',shift:'Cleanest, brightest berry — the best match for this version\'s fresh-aroma goal. The fruit leads, the honey steps back.'},
+    {honey:'Orange Blossom',shift:'Citrus lifts the fresh berry aroma even further — vivid and aromatic.'},
+    {honey:'Buckwheat',shift:'Works against the fresh angle but gives a rich, dark-compote body if you want depth over brightness. Use 10–15% less honey.'},
+    {honey:'Heather',shift:'Smoky berry character — striking and unusual; pairs with peated whisky.'},
+    {honey:'Coriander',shift:'Built-in warm Christmas-spice depth even without spices — mulled-berry territory.'}
+  ],
+  r36:[
+    {honey:'Orange Blossom',shift:'Strawberry-orange brightness — amplifies the just-picked aroma this version is built around.'},
+    {honey:'Lavender',shift:'Strawberry-lavender, a Provençal rosé character — softly floral and elegant.'},
+    {honey:'Lemon Blossom',shift:'Lemon-strawberry sorbet — keep it young and chilled to hold the bright citrus aroma.'},
+    {honey:'Clover',shift:'Soft vanilla-floral warmth — rounds the strawberry, a gentler take.'},
+    {honey:'Sunflower',shift:'Buttery, soft base — like strawberry shortcake; the fruit feels rounder and more dessert-like. Crystallises fast, so warm gently when dissolving.'}
+  ],
+  r37:[
+    {honey:'Acacia',shift:'Cleanest, brightest raspberry — the ideal partner for this perfumed, aroma-forward version.'},
+    {honey:'Lavender',shift:'Raspberry-lavender — a Provençal sorbet character, floral and summery.'},
+    {honey:'Orange Blossom',shift:'Citrus-raspberry lift — festive and vibrant, the aroma pushed even higher.'},
+    {honey:'Lemon Blossom',shift:'Lemon-raspberry — the sharpest and most aromatic; drink young.'},
+    {honey:'Clover',shift:'Soft vanilla-floral warmth rounds the tart raspberry — a gentler, friendlier version.'}
+  ],
+  r38:[
+    {honey:'Lavender',shift:'Blueberry-lavender — a classic culinary pairing that adds floral lift to the fresh fruit.'},
+    {honey:'Buckwheat',shift:'Deeper, brooding blueberry-compote — trades the fresh angle for molasses depth. Give it 12+ months.'},
+    {honey:'Forest',shift:'Earthy, mineral undertone — a Scandinavian wild-berry character beneath the bright fruit.'},
+    {honey:'Heather',shift:'Smoky blueberry — divisive and memorable, like a Highland breakfast jam.'},
+    {honey:'Orange Blossom',shift:'Citrus brightens the fresh blueberry even more — a lighter, zippier take.'}
   ]
 };
 
@@ -8645,7 +8708,15 @@ function scaleRecipeIngredients(r,scaleVol){
       // Everything else (honey, water, fruit, sulfite, sorbate, pectic):
       // straightforward linear scaling
       var v=baseValue*linearFactor;
-      var formatted=unitLower==='g'?v.toFixed(0):v.toFixed(2).replace(/\.?0+$/,'');
+      // Whole grams read cleanest at scale, but sub-gram additions (pectic
+      // enzyme, metabisulfite, sorbate) would round to "0 g" — keep up to 2
+      // decimals under 10 g so a 0.3 g or 0.4 g dose still shows.
+      var formatted;
+      if(unitLower==='g'){
+        formatted=v>=10?v.toFixed(0):String(Math.round(v*100)/100);
+      }else{
+        formatted=v.toFixed(2).replace(/\.?0+$/,'');
+      }
       amt=amt.replace(m[0],formatted+' '+m[2]);
     }
     return Object.assign({},ing,{amount:amt,notes:note});
