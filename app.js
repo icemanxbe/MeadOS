@@ -2406,6 +2406,96 @@ function recipesAlternativeForHoney(honeyName){
 }
 
 
+// ==================== HONEY ↔ RECIPE FIT ====================
+// Every honey in the library, rated for how well it suits a given recipe, so a
+// brewer can tell at a glance whether the jar on their shelf is a great fit, a
+// workable swap, or a clash — and what it would do to the result. Intensity is
+// the main lever: a delicate recipe wants a light honey, a sack/bochet wants a
+// bold one. Curated character notes (RECIPE_HONEY_ALTERNATIVES) override the
+// derived note where they exist.
+var HONEY_INTENSITY_RANK={'very light':0,'light':1,'medium':2,'bold':3,'very bold':4};
+
+// The ideal honey weight (intensity rank 0–4) for a recipe, from its style/strength.
+function recipeHoneyIdeal(r){
+  var hay=((r.style||'')+' '+(r.category||'')+' '+((r.tags||[]).join(' '))+' '+(r.name||'')).toLowerCase();
+  var og=parseFloat(r.ogTarget)||1.09;
+  if(/sack|bochet|port|braggot/.test(hay)||og>=1.115)return{center:3,label:'a bold, robust honey'};
+  if(/sparkling|hydromel|session|show mead/.test(hay)||/vanilla/.test(hay))return{center:1,label:'a light, delicate honey'};
+  if(/strawberr|raspberr|peach|blueberr/.test(hay))return{center:1,label:'a light honey that lets the fruit lead'};
+  if(/blackcurrant|cassis|forest|cherry/.test(hay))return{center:2,label:'a medium honey (bold honeys also work)'};
+  return{center:2,label:'a medium-bodied honey'};
+}
+
+// Is this honey variety on the shelf? Honey-type supplies with stock left,
+// matched substring either way ("Wildflower" ⊂ "Wildflower Honey").
+function honeyVarietyInStock(honeyName){
+  if(!honeyName||!APP.supplies)return false;
+  var needle=String(honeyName).toLowerCase();
+  return APP.supplies.some(function(s){
+    if(s.type!=='honey'||(parseFloat(s.qty)||0)<=0)return false;
+    var name=String(s.name||'').toLowerCase();
+    return name.indexOf(needle)!==-1||needle.indexOf(name)!==-1;
+  });
+}
+
+// First sentence of a honey's profile blurb — the "what it brings" gist.
+function honeyGist(honeyName){
+  var p=HONEY_PROFILES[honeyName];
+  if(!p||!p.profile)return'';
+  var first=String(p.profile).split('. ')[0].trim();
+  return first?(/[.!?]$/.test(first)?first:first+'.'):'';
+}
+
+// Rate one honey for one recipe. Returns {tier, order, badge, color, note, inStock}.
+function honeyFitForRecipe(r,honeyName,ctx){
+  ctx=ctx||{};
+  var primarySet=ctx.primarySet||{}, curated=ctx.curated||{}, ideal=ctx.ideal||recipeHoneyIdeal(r);
+  var p=HONEY_PROFILES[honeyName];
+  var rank=p?HONEY_INTENSITY_RANK[p.intensity]:null;
+  var gist=honeyGist(honeyName), inStock=honeyVarietyInStock(honeyName);
+  if(primarySet[honeyName])
+    return{tier:'primary',order:0,badge:'PRIMARY',color:'var(--gold2)',inStock:inStock,
+      note:(gist?gist+' — ':'')+'the honey this recipe is built around.'};
+  if(curated[honeyName])
+    return{tier:'recommended',order:1,badge:'✓ RECOMMENDED',color:'var(--green2)',inStock:inStock,note:curated[honeyName]};
+  if(rank==null)
+    return{tier:'varies',order:6,badge:'~ varies',color:'var(--text3)',inStock:inStock,
+      note:(gist||'Character varies by source.')+' Judge by taste.'};
+  var d=Math.abs(rank-ideal.center), heavier=rank>ideal.center, tier,order,badge,color,fit;
+  if(d===0){tier='great';order=2;badge='✓ GREAT FIT';color='var(--green2)';fit='an ideal weight for this recipe.';}
+  else if(d===1){tier='good';order=3;badge='✓ GOOD FIT';color='var(--green2)';fit=heavier?'a touch bolder than ideal, but it sits well here.':'a touch lighter than ideal, but clean and pleasant here.';}
+  else if(d===2){tier='workable';order=4;badge='~ WORKABLE';color='var(--gold)';fit=heavier?'bolder than this recipe wants — it leads more than intended, so use a lighter hand.':'lighter than ideal — clean, but its own character can get lost.';}
+  else{tier='poor';order=5;badge='✗ NOT IDEAL';color='var(--red2)';fit=heavier?'too dominant — it would bury this recipe.':'too delicate to stand up in this recipe.';}
+  return{tier:tier,order:order,badge:badge,color:color,inStock:inStock,note:(gist?gist+' — ':'')+fit};
+}
+
+// The whole library rated for a recipe, best-fit first; in-stock honeys float to
+// the top of their tier so a brewer spots what they already own.
+function honeyFitListForRecipe(r){
+  if(!r)return[];
+  var types=(typeof honeyTypesInRecipe==='function')?honeyTypesInRecipe(r):[];
+  var primarySet={};types.forEach(function(t){primarySet[t]=true;});
+  var curated={};
+  (alternativesForRecipe(r.id)||[]).forEach(function(a){if(a.shift)curated[a.honey]=a.shift;});
+  var ctx={primarySet:primarySet,curated:curated,ideal:recipeHoneyIdeal(r)};
+  // Always include the recipe's own primary honeys even if some lack a profile.
+  var names=HONEY_TYPES.filter(function(h){return h!=='Mixed'&&h!=='Other'&&HONEY_PROFILES[h];});
+  types.forEach(function(t){if(names.indexOf(t)===-1)names.push(t);});
+  var list=names.map(function(h){
+    var fit=honeyFitForRecipe(r,h,ctx);
+    fit.honey=h;
+    fit.color2=(HONEY_PROFILES[h]&&HONEY_PROFILES[h].color)||'var(--text2)';
+    return fit;
+  });
+  list.sort(function(a,b){
+    if(a.order!==b.order)return a.order-b.order;
+    if(a.inStock!==b.inStock)return a.inStock?-1:1;
+    return a.honey.localeCompare(b.honey);
+  });
+  return list;
+}
+
+
 // ==================== YEAST STRAINS ====================
 // Comprehensive strain library. Each entry contains:
 //   Physical: sachetSize (g), sachetCoversL, unit, manufacturer
@@ -9115,43 +9205,47 @@ function renderRecipeDetail(){
           +'</div></div>';
       }).filter(function(x){return x;});
 
-      // Alternatives section — for each recipe, show honey types that work as
-      // substitutes for the primary honey, with notes on how the character
-      // shifts. Encourages experimenting with under-used varieties.
-      var alts=(typeof alternativesForRecipe==='function')?alternativesForRecipe(r.id):[];
-      // Filter out the recipe's existing primary honey types (already covered
-      // by the suppliers section) and any placeholder/empty-shift entries.
-      var primarySet={};
-      types.forEach(function(t){primarySet[t]=true;});
-      var altRows=alts.filter(function(a){
-        return a.shift&&!primarySet[a.honey];
-      }).map(function(a){
-        var prof=HONEY_PROFILES[a.honey];
-        var color=prof?prof.color:'var(--text2)';
-        var hasSupplier=(typeof suppliersForHoney==='function')&&suppliersForHoney(a.honey).length>0;
-        return'<div style="padding:10px 12px;background:rgba(0,0,0,0.18);border-radius:var(--radius);border-left:2px dashed '+color+'">'
-          +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px;flex-wrap:wrap">'
-          +'<div style="font-family:var(--font-display);font-size:13px;color:'+color+';cursor:pointer" onclick="currentHoneyName=\''+a.honey+'\';showView(\'honey-detail\')">'+escHtml(a.honey)+' →</div>'
-          +(hasSupplier?'<span style="font-family:var(--font-mono);font-size:9px;color:var(--green2);letter-spacing:1px;background:rgba(122,160,64,0.15);padding:2px 6px;border-radius:8px">YOUR SUPPLIER</span>':'<span style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1px">specialty source</span>')
-          +'</div>'
-          +'<div style="font-size:12px;color:var(--text2);line-height:1.55;font-style:italic">'+escHtml(a.shift)+'</div>'
-          +'</div>';
-      }).join('');
-
-      // Render nothing if BOTH supplier blocks AND alt rows are empty.
-      if(!blocks.length&&!altRows)return'';
+      // Honey-fit guide — EVERY library honey rated for this recipe, so the
+      // brewer can tell at a glance whether the jar they own is a great fit, a
+      // workable swap, or a clash, and what it would do to the result.
+      var ideal=recipeHoneyIdeal(r);
+      var fitList=honeyFitListForRecipe(r);
+      // Render nothing only if there's truly nothing to show.
+      if(!blocks.length&&!fitList.length)return'';
       var supplierSection=blocks.length
         ?'<div style="font-size:12.5px;color:var(--text3);margin-bottom:10px;font-family:var(--font-mono);letter-spacing:1px">PRIMARY HONEYS · WHERE TO SOURCE</div>'
           +'<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px">'+blocks.join('')+'</div>'
         :'';
-      var altSection=altRows
-        ?'<div style="font-size:12.5px;color:var(--text3);margin-bottom:10px;font-family:var(--font-mono);letter-spacing:1px">ALTERNATIVE HONEYS · CHARACTER SHIFTS</div>'
-          +'<div style="font-size:11.5px;color:var(--text3);font-style:italic;margin-bottom:8px;line-height:1.5">Each suggestion changes the mead\'s profile — useful when your primary honey is out of stock, or when you want to push the recipe somewhere new.</div>'
-          +'<div style="display:flex;flex-direction:column;gap:8px">'+altRows+'</div>'
+      var bucketLabels={primary:'THE RECIPE’S HONEY',recommended:'RECOMMENDED SWAPS',great:'GOOD FITS',good:'GOOD FITS',workable:'WORKABLE — EXPECT A SHIFT',poor:'FIGHTS THE STYLE',varies:'VARIES BY SOURCE'};
+      var lastBucket='';
+      var fitRows=fitList.map(function(f){
+        var bl=bucketLabels[f.tier]||'';
+        var header='';
+        if(bl!==lastBucket){lastBucket=bl;
+          header='<div style="font-size:10px;color:var(--text3);letter-spacing:1.5px;font-family:var(--font-mono);margin:12px 0 6px">'+bl+'</div>';
+        }
+        var stock=f.inStock
+          ?'<span style="font-family:var(--font-mono);font-size:9px;color:var(--bg);background:var(--green2);letter-spacing:0.5px;padding:2px 7px;border-radius:8px;font-weight:600">IN STOCK</span>':'';
+        var rowBg=f.inStock?'rgba(122,160,64,0.10)':'rgba(0,0,0,0.18)';
+        var rowBorder=f.inStock?'var(--green2)':f.color2;
+        return header
+          +'<div style="padding:9px 11px;background:'+rowBg+';border-radius:var(--radius);border-left:3px solid '+rowBorder+';margin-bottom:7px">'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;flex-wrap:wrap">'
+          +'<div style="font-family:var(--font-display);font-size:13px;color:'+f.color2+';cursor:pointer" onclick="currentHoneyName=\''+f.honey+'\';showView(\'honey-detail\')">'+escHtml(f.honey)+' →</div>'
+          +'<div style="display:flex;align-items:center;gap:6px">'+stock
+          +'<span style="font-family:var(--font-mono);font-size:9px;color:'+f.color+';letter-spacing:0.5px">'+escHtml(f.badge)+'</span></div>'
+          +'</div>'
+          +'<div style="font-size:12px;color:var(--text2);line-height:1.5;font-style:italic">'+escHtml(f.note)+'</div>'
+          +'</div>';
+      }).join('');
+      var fitSection=fitList.length
+        ?'<div style="font-size:12.5px;color:var(--text3);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:1px">EVERY HONEY · HOW EACH ONE FITS</div>'
+          +'<div style="font-size:11.5px;color:var(--text3);font-style:italic;margin-bottom:4px;line-height:1.5">This recipe wants '+escHtml(ideal.label)+'. Each honey in the library is rated for it — <span style="color:var(--green2)">green</span> fits, <span style="color:var(--gold)">amber</span> works with a shift, <span style="color:var(--red2)">red</span> fights the style. Honeys you have in stock are highlighted and pinned to the top of their tier.</div>'
+          +'<div>'+fitRows+'</div>'
         :'';
       return'<div class="card" style="margin-bottom:16px;border-left:3px solid var(--gold)"><div class="card-header"><div class="card-title">🛒 SOURCE YOUR HONEY</div></div>'
         +supplierSection
-        +altSection
+        +fitSection
         +'</div>';
     }())
     +renderRecipeYeastBlock(r)
