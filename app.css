@@ -67,6 +67,33 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .tools-masonry{column-count:2;column-gap:16px}
 .tools-masonry>.card{break-inside:avoid;-webkit-column-break-inside:avoid;margin:0 0 16px}
 @media(max-width:900px){.tools-masonry{column-count:1}}
+/* Recipe detail layout. grid-template-areas drives BOTH the mobile and desktop
+   orders, so they can differ. Mobile (narrow): a single reading column. Desktop
+   (≥1024px): two left tracks (hero cards span both; yeast/nutrient and fruit/dial
+   pair up) and a wider right track for targets, cost and the step timeline. A real
+   grid (not multicol) — so the nested honey grid can't overlap-glitch. */
+.recipe-layout{display:grid;grid-template-columns:1fr;column-gap:16px;row-gap:0;align-items:start;
+  grid-template-areas:"scale" "targets" "ingredients" "cost" "steps" "honey" "yeast" "nutrient" "fruit" "dial" "extra";}
+@media(min-width:1024px){
+  .recipe-layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.5fr);
+    grid-template-areas:
+      "scale       scale       targets"
+      "ingredients ingredients cost"
+      "honey       honey       steps"
+      "yeast       nutrient    steps"
+      "fruit       dial        steps"
+      "extra       extra       steps";}
+}
+.ra-scale{grid-area:scale;min-width:0}.ra-targets{grid-area:targets;min-width:0}
+.ra-ingredients{grid-area:ingredients;min-width:0}.ra-cost{grid-area:cost;min-width:0}
+.ra-steps{grid-area:steps;min-width:0}.ra-honey{grid-area:honey;min-width:0}
+.ra-yeast{grid-area:yeast;min-width:0}.ra-nutrient{grid-area:nutrient;min-width:0}
+.ra-fruit{grid-area:fruit;min-width:0}.ra-dial{grid-area:dial;min-width:0}.ra-extra{grid-area:extra;min-width:0}
+/* Honey fit list: two columns on desktop, one on mobile (full-width rows read
+   better on a phone). Bucket headers span both columns. */
+.honey-fit-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;align-content:start}
+.honey-fit-grid>.hf-head{grid-column:1/-1}
+@media(max-width:900px){.honey-fit-grid{grid-template-columns:1fr}}
 .page-title{font-family:var(--font-display);font-size:22px;color:var(--gold2);letter-spacing:3px;font-weight:500;margin-bottom:4px}
 .page-subtitle{font-size:14px;color:var(--text3);margin-bottom:24px;font-style:italic}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
