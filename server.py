@@ -46,6 +46,7 @@ import json
 import os
 import sqlite3
 import sys
+import threading
 import urllib.parse
 import urllib.request
 import urllib.error
@@ -244,7 +245,7 @@ LABEL_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+\.(png|jpe?g|webp|svg|gif)$", re.I)
 STATIC_ASSETS = {
     "/app.js": "text/javascript; charset=utf-8",
     "/app.css": "text/css; charset=utf-8",
-    "/test.html": "text/html; charset=utf-8",  # zero-dep unit checks (dev tool)
+    # /test.html (zero-dep dev unit page) is served LAN-only — see do_GET.
     # PWA assets — all public (the install/offline shell isn't sensitive).
     "/sw.js": "text/javascript; charset=utf-8",
     "/icon.svg": "image/svg+xml",
@@ -474,6 +475,25 @@ def ha_proxy_urls():
     return [u for u in (get_config("ha_url"), get_config("ha_url_external")) if u]
 
 
+# Exactly the Home Assistant REST surface the MeadOS client actually uses. The
+# /api/ha proxy rejects everything else — HA config/admin, templates, supervisor,
+# service restarts, service domains other than `notify`, and any verb that isn't
+# GET/POST — so a compromised or hostile client can't drive the whole HA API
+# with our long-lived token. (allowed-methods, path-regex); query string ignored.
+HA_ALLOW = (
+    (("GET",),        re.compile(r"/api/?$")),                 # REST root ping
+    (("GET",),        re.compile(r"/api/states/?$")),          # list states
+    (("GET", "POST"), re.compile(r"/api/states/[^/]+$")),      # read / write one entity
+    (("GET",),        re.compile(r"/api/history/period/[^/]*$")),  # sensor history
+    (("POST",),       re.compile(r"/api/services/notify/[^/]+$")),  # push notifications only
+)
+
+
+def ha_path_allowed(method, path_no_query):
+    return any(method in methods and rx.match(path_no_query)
+               for methods, rx in HA_ALLOW)
+
+
 def lan_requires_password():
     # When on, LAN devices must also log in (no automatic LAN bypass). Only
     # meaningful when an external password is set.
@@ -552,6 +572,63 @@ def verify_session_token(tok):
         return int(payload) > _now_epoch()
     except ValueError:
         return False
+
+
+# ---- login brute-force throttle (in-memory, per client IP) -------------------
+# A self-host runs one process, so a lock-guarded dict is plenty: count failures
+# per IP inside a rolling window and trip a timed lockout once they pile up.
+# Cleared on a successful login and on restart.
+# ponytail: dict is unbounded in theory; pruned opportunistically below, and a
+# single box behind Cloudflare won't see enough distinct IPs to matter.
+LOGIN_MAX_FAILS = 8
+LOGIN_WINDOW = 300        # seconds to accumulate failures before the count resets
+LOGIN_LOCKOUT = 900       # seconds locked out once the threshold trips
+_login_fails = {}         # ip -> {"n": int, "first": epoch, "until": epoch}
+_login_lock = threading.Lock()
+
+
+def login_locked_for(ip):
+    """Seconds left on a lockout for this IP, or 0 if it may attempt a login."""
+    now = _now_epoch()
+    with _login_lock:
+        rec = _login_fails.get(ip)
+        if rec and rec["until"] > now:
+            return rec["until"] - now
+    return 0
+
+
+def login_note_failure(ip):
+    """Record a failed attempt; return True if this one trips a fresh lockout."""
+    now = _now_epoch()
+    with _login_lock:
+        if len(_login_fails) > 2048:  # prune expired entries before growing further
+            for k in [k for k, v in _login_fails.items()
+                      if v["until"] < now and now - v["first"] > LOGIN_WINDOW]:
+                _login_fails.pop(k, None)
+        rec = _login_fails.get(ip)
+        if not rec or now - rec["first"] > LOGIN_WINDOW:
+            rec = {"n": 0, "first": now, "until": 0}
+        rec["n"] += 1
+        tripped = rec["n"] >= LOGIN_MAX_FAILS
+        if tripped:
+            rec.update(n=0, first=now, until=now + LOGIN_LOCKOUT)
+        _login_fails[ip] = rec
+        return tripped
+
+
+def login_note_success(ip):
+    with _login_lock:
+        _login_fails.pop(ip, None)
+
+
+def audit(event, ip, **fields):
+    """One structured security line to stderr (captured by launchd). Records
+    auth and security-config events. Never logs passwords, tokens or cookies."""
+    parts = ["AUDIT", event, "ip=" + str(ip)]
+    parts += ["%s=%s" % (k, v) for k, v in fields.items()]
+    sys.stderr.write("[%s] %s\n" % (
+        datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"), " ".join(parts)))
+    sys.stderr.flush()
 
 
 def login_logo_src():
@@ -879,6 +956,11 @@ class Handler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     server_version = "MeadOS"
 
+    def version_string(self):
+        # Default would append "Python/3.x.y" to the Server header — don't
+        # advertise the interpreter version.
+        return self.server_version
+
     # ---- security headers on every response ----
     # We track which headers a route already set so per-route policies win — the
     # /labels/ route sets a stricter `Content-Security-Policy: sandbox` for
@@ -951,6 +1033,23 @@ class Handler(BaseHTTPRequestHandler):
         if ip_is_lan(ip):
             return True
         return any(ip in net for net in trusted_networks())
+
+    def _origin_ok(self):
+        """Reject cross-site state-changing requests. When the browser sends an
+        Origin (or Referer) header its host must match the Host we were addressed
+        by. Absent on same-origin programmatic clients (curl/Basic) → allowed;
+        the session cookie is SameSite=Lax so browsers won't attach it
+        cross-site anyway. This is the lightweight half of CSRF defence."""
+        src = self.headers.get("Origin") or self.headers.get("Referer") or ""
+        if not src:
+            return True
+        try:
+            oh = urllib.parse.urlsplit(src).netloc.lower()
+        except ValueError:
+            return False
+        host = (self.headers.get("Host") or "").lower()
+        # Match on hostname, tolerating a port difference between the two.
+        return bool(oh) and oh.split(":")[0] == host.split(":")[0]
 
     def _session_cookie(self):
         raw = self.headers.get("Cookie", "")
@@ -1169,6 +1268,19 @@ class Handler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(data)
             return
+        if path == "/test.html":
+            # Zero-dependency dev unit page — LAN clients only, never exposed to
+            # external visitors (it's a developer tool, not part of the app).
+            if not self._is_lan():
+                self._send(404, {"ok": False, "error": "not found"})
+                return
+            fpath = os.path.join(BASE_DIR, "test.html")
+            if not os.path.isfile(fpath):
+                self._send(404, {"ok": False, "error": "not found"})
+                return
+            with open(fpath, "rb") as f:
+                self._send(200, f.read(), "text/html; charset=utf-8")
+            return
         if path in STATIC_ASSETS:
             # Public so share-page guests (who may be behind the external
             # password) can load the app shell's JS/CSS. These contain no
@@ -1308,9 +1420,28 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split("?", 1)[0]
+        # CSRF: every POST changes state or authenticates — block any that a
+        # browser fires from another origin (the cookie is SameSite=Lax, this is
+        # the belt to that suspenders). Same-origin and header-less programmatic
+        # clients pass through.
+        if not self._origin_ok():
+            self.close_connection = True
+            audit("csrf_block", self._client_ip(), path=path,
+                  origin=self.headers.get("Origin") or self.headers.get("Referer") or "-")
+            self._send(403, {"ok": False, "error": "cross-origin request blocked"})
+            return
         if path == "/login":
             # Public: this IS the authentication step. Verify the password and,
-            # on success, hand back a signed session cookie.
+            # on success, hand back a signed session cookie. Throttled per IP so
+            # the password can't be brute-forced from the open internet.
+            ip = self._client_ip()
+            locked = login_locked_for(ip)
+            if locked:
+                self.close_connection = True  # body left unread
+                audit("login_locked", ip, retry=locked)
+                self._send(429, {"ok": False, "error": "too many attempts — wait a bit and try again"},
+                           extra_headers={"Retry-After": str(locked)})
+                return
             stored = get_config("external_password")
             try:
                 length = int(self.headers.get("Content-Length", 0))
@@ -1330,8 +1461,12 @@ class Handler(BaseHTTPRequestHandler):
             if not stored:
                 self._send(400, {"ok": False, "error": "no password is set on this server"})
             elif verify_password(pw, stored):
+                login_note_success(ip)
+                audit("login_ok", ip)
                 self._send(200, {"ok": True}, extra_headers={"Set-Cookie": self._set_cookie_header()})
             else:
+                tripped = login_note_failure(ip)
+                audit("login_fail", ip, locked=tripped)
                 self._send(401, {"ok": False, "error": "Incorrect password"})
             return
         # /api/security is exempt from the auth gate (it has its own LAN-only
@@ -1382,6 +1517,9 @@ class Handler(BaseHTTPRequestHandler):
                 set_config("trusted_nets", json.dumps(clean) if clean else None)
             if "trustCf" in body:
                 set_config("trust_cf", "1" if body.get("trustCf") else None)
+            audit("security_change", self._client_ip(),
+                  fields="+".join(k for k in ("password", "lanRequiresPassword",
+                                              "trustedNets", "trustCf") if k in body) or "none")
             self._send(200, {
                 "ok": True,
                 "protected": bool(get_config("external_password")),
@@ -1399,8 +1537,10 @@ class Handler(BaseHTTPRequestHandler):
                 return
             if body.get("clearToken"):
                 set_config("ha_token", None)
+                audit("ha_token_change", self._client_ip(), action="clear")
             elif body.get("token"):
                 set_config("ha_token", str(body["token"]).strip())
+                audit("ha_token_change", self._client_ip(), action="set")
             if "url" in body:
                 set_config("ha_url", (str(body["url"]).strip() or None))
             if "urlExternal" in body:
@@ -1423,12 +1563,20 @@ class Handler(BaseHTTPRequestHandler):
             if not ha_path.startswith("/api/") or ".." in ha_path or "://" in ha_path:
                 self._send(400, {"ok": False, "error": "bad HA path"})
                 return
+            method = str(req.get("method") or "GET").upper()
+            # Allowlist: only the narrow HA surface the client uses. Blocks HA
+            # config/admin, templates, supervisor, restarts, non-notify services
+            # and any non GET/POST verb — our token can't drive the whole API.
+            if not ha_path_allowed(method, ha_path.split("?", 1)[0]):
+                audit("ha_denied", self._client_ip(), method=method,
+                      ha_path=ha_path.split("?", 1)[0])
+                self._send(403, {"ok": False, "error": "HA endpoint not permitted"})
+                return
             token = get_config("ha_token")
             urls = ha_proxy_urls()
             if not token or not urls:
                 self._send(502, {"ok": False, "error": "Home Assistant not configured"})
                 return
-            method = str(req.get("method") or "GET").upper()
             payload = req.get("body")
             data = payload.encode("utf-8") if isinstance(payload, str) and payload else None
             headers = {"Authorization": "Bearer " + token}
@@ -1547,6 +1695,7 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(404, {"ok": False, "error": "snapshot not found"})
                 return
             updated = db_put_state(data)  # becomes current + a fresh history entry
+            audit("history_restore", self._client_ip(), snapshot=hid, bytes=len(data))
             self._send(200, {"ok": True, "updatedAt": updated, "bytes": len(data)})
             return
         if path != "/api/data":
