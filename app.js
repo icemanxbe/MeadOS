@@ -3489,6 +3489,146 @@ var RECIPE_YEAST_PAIRINGS={
       us05:'Cannot carry a rich, strong bochet.',
       w15:'Stalls sweet on top of caramel — over-rich.'
     }
+  },
+  r30:{ // Sparkling Traditional Mead
+    recommended:['ec1118','k1v','qa23'],
+    acceptable:['m05','71b'],
+    discouraged:['d47','w15','us05'],
+    notes:'A bottle-conditioned sparkler needs a yeast that ferments bone-dry, tolerates pressure, and restarts reliably for the in-bottle carbonation. Do NOT stabilise — that would kill the bubbles.',
+    effects:{
+      ec1118:'THE champagne strain — ferments dry and fast, high alcohol/pressure tolerance, restarts eagerly on priming sugar. The default for any sparkling mead.',
+      k1v:'Vigorous and dry-finishing with a little more aromatic lift than EC-1118 — a fine sparkling base if you want some honey character to survive.',
+      qa23:'Crisp, citrusy and clean — a bright, aperitif-style sparkler; finishes dry and bottle-conditions well.',
+      m05:'Clean and dry enough to sparkle, with a rounder honey note — fine, just less bombproof on the bottle re-ferment than EC-1118.',
+      '71b':'Works, but its softer, fuller finish is a touch at odds with the crisp dryness a sparkler wants.',
+      d47:'Wrong tool — built for body and a ~14% ceiling; you want lean and dry here, not round.',
+      w15:'Designed to stop sweet — it would fight both the bone-dry base AND the bottle carbonation. Avoid.',
+      us05:'Ale yeast — won\'t give the clean, high-pressure-tolerant dry finish a sparkling mead needs.'
+    }
+  },
+  r31:{ // Sparkling Cyser
+    recommended:['ec1118','k1v','71b'],
+    acceptable:['m05'],
+    discouraged:['d47','w15','us05'],
+    notes:'A dry sparkling cyser wants apple-bright crispness and a clean bottle re-ferment. Do NOT stabilise — it has to carbonate.',
+    effects:{
+      ec1118:'Crisp, scrumpy-dry and bulletproof for the bottle re-ferment — the classic sparkling-cider choice.',
+      k1v:'Dry and vigorous, lifts the fresh-apple aroma; an excellent cyser sparkler.',
+      '71b':'Trims the apple\'s malic acid for a smoother, less sharp sparkler — best if your juice is very tart.',
+      m05:'Clean and a little more honey-forward; carbonates fine, just less razor-dry than EC-1118.',
+      d47:'Too body-focused and low-tolerance for a crisp dry sparkler.',
+      w15:'Sweet-finishing by design — fights both the dry profile and the carbonation.',
+      us05:'Flattens the apple and won\'t give a clean, pressure-tolerant finish.'
+    }
+  },
+  r32:{ // Hydromel · Sparkling Session Mead
+    recommended:['ec1118','qa23','k1v'],
+    acceptable:['m05'],
+    discouraged:['d47','w15','us05'],
+    notes:'A low-gravity (~6%) sparkler — easy, fast and clean. Pick a crisp dry strain that restarts well in the bottle. Do NOT stabilise.',
+    effects:{
+      ec1118:'Effortless at low gravity, bone-dry and a sure bottle re-ferment — the safe default.',
+      qa23:'Bright and citrusy — perfect for a light, refreshing session sparkler; finishes dry.',
+      k1v:'Clean, dry and aromatic; a touch more lift than EC-1118 for such a delicate base.',
+      m05:'Clean and reliable, rounder honey note; still carbonates well.',
+      d47:'Overkill on body for a light spritz, and its ABV tolerance is wasted here.',
+      w15:'Stops sweet — wrong for a crisp, dry, fizzy session mead.',
+      us05:'Ale character muddies a delicate hydromel.'
+    }
+  },
+  r33:{ // Sparkling Berry Melomel (fruit in secondary)
+    recommended:['ec1118','k1v'],
+    acceptable:['71b','m05'],
+    discouraged:['d47','w15','us05'],
+    notes:'A clean dry base ferments first, then berries go in secondary and the whole thing bottle-conditions. The strain must restart reliably on both the secondary fruit and the priming sugar — do NOT stabilise.',
+    effects:{
+      ec1118:'Dry, high-tolerance and restarts eagerly on the secondary fruit and priming sugar — the dependable sparkling-melomel base.',
+      k1v:'Vigorous and dry while letting more berry aroma through — a great choice for a fruit-forward sparkler.',
+      '71b':'Softens fruit tartness nicely, but watch the lower alcohol/pressure tolerance across two ferments plus carbonation.',
+      m05:'Clean and a touch rounder; fine, just less bombproof on the repeated restarts.',
+      d47:'Body-focused and low-tolerance — not built for a dry, multi-restart sparkler.',
+      w15:'Sweet-finishing — fights the dryness and the carbonation.',
+      us05:'Won\'t carry the clean, pressure-tolerant dry finish.'
+    }
+  },
+  r34:{ // Sparkling Ginger Mead
+    recommended:['ec1118','qa23','k1v'],
+    acceptable:['m05'],
+    discouraged:['d47','w15','us05'],
+    notes:'A dry, zippy ginger sparkler — pick a crisp strain that finishes dry and restarts for the bottle fizz. Ginger character comes from the root, not the yeast. Do NOT stabilise.',
+    effects:{
+      ec1118:'Bone-dry and bulletproof — lets the ginger heat lead over a crisp, fizzy base. The default.',
+      qa23:'Bright and citrus-crisp — amplifies the fresh, sharp ginger-beer character.',
+      k1v:'Dry and vigorous with a little aromatic lift; a clean ginger sparkler.',
+      m05:'Clean and reliable, rounder honey note under the ginger; carbonates fine.',
+      d47:'Too round and low-tolerance for this lean, spicy spritz.',
+      w15:'Stops sweet — wrong for a dry ginger fizz.',
+      us05:'Ale character clashes with the clean ginger bite.'
+    }
+  },
+  r35:{ // Forest Fruits Mead · Fruit in Secondary
+    recommended:['m05','71b','d47'],
+    acceptable:['k1v','qa23'],
+    discouraged:['ec1118','us05','w15'],
+    notes:'A clean traditional base ferments first, then racks onto the berries in secondary. The base strain should finish clean and let the fresh fruit aroma — added later — stay bright.',
+    effects:{
+      m05:'Clean, dry and neutral — the ideal blank base to carry fresh secondary berries without competing. Default.',
+      '71b':'Softens berry tartness and adds a little roundness; lovely with a mixed-berry secondary.',
+      d47:'Builds body that frames the fruit; keep ≤20°C. A fuller, more dessert-leaning berry mead.',
+      k1v:'Dry and aromatic — lifts the berry top notes; a touch more vigorous than a clean base needs.',
+      qa23:'Crisp and bright — gives a fresher, leaner berry result.',
+      ec1118:'Over-strips — its bone-dry neutrality wastes the aromatic fruit you add in secondary. Only if you want it bone-dry.',
+      us05:'Ale blandness; can\'t showcase fresh fruit.',
+      w15:'Sweet by design — muddies the bright berry character.'
+    }
+  },
+  r36:{ // Strawberry Mead · Fruit in Secondary
+    recommended:['71b','d47','k1v'],
+    acceptable:['m05','qa23'],
+    discouraged:['ec1118','us05','w15'],
+    notes:'Strawberry is the most fragile fruit and here it goes in secondary, so the base strain just needs to finish clean and cool — then protect the fresh aroma you add later.',
+    effects:{
+      '71b':'THE strawberry yeast — preserves the fragile aroma and trims tartness; perfect for the clean base ahead of a strawberry secondary.',
+      d47:'Adds body that carries the fruit longer; keep ≤20°C to protect the delicate aroma.',
+      k1v:'Dry and aromatic — lifts the strawberry top note; ferment cool.',
+      m05:'Clean and neutral base; fine, just slightly less fruit-friendly than 71B.',
+      qa23:'Crisp and bright — a leaner, more sorbet-like strawberry.',
+      ec1118:'Strips the delicate aroma you worked to preserve. Avoid unless going bone-dry.',
+      us05:'Bland ale character buries the fruit.',
+      w15:'Sweet-finishing — turns it cloying and muddies the strawberry.'
+    }
+  },
+  r37:{ // Raspberry Melomel · Fruit in Secondary
+    recommended:['71b','d47','k1v'],
+    acceptable:['m05','qa23'],
+    discouraged:['ec1118','us05','w15'],
+    notes:'Raspberry is robust but here it goes in secondary for maximum aroma — the base strain should finish clean and cool so the perfumed fruit you add later leads.',
+    effects:{
+      '71b':'Softens raspberry tartness and keeps the perfume; an ideal clean base for an aroma-forward secondary.',
+      d47:'Body to frame the vivid fruit; hold ≤20°C.',
+      k1v:'Dry and aromatic — pushes the raspberry top note even higher.',
+      m05:'Clean, neutral base; reliable and fruit-friendly.',
+      qa23:'Crisp and bright — a leaner, sharper raspberry.',
+      ec1118:'Over-dry and aroma-stripping — wastes the perfumed secondary fruit.',
+      us05:'Ale blandness; wrong for a vibrant melomel.',
+      w15:'Sweet by design — clashes with raspberry\'s bright tartness.'
+    }
+  },
+  r38:{ // Blueberry Mead · Fruit in Secondary
+    recommended:['m05','71b','d47'],
+    acceptable:['k1v','qa23'],
+    discouraged:['ec1118','us05','w15'],
+    notes:'A clean base ferments first, then racks onto crushed blueberries in secondary for a fresher, brighter fruit note. The base strain should finish clean and let that fruit lead.',
+    effects:{
+      m05:'Clean, dry and neutral — the right blank base for fresh secondary blueberries. Default.',
+      '71b':'Softens the slight tartness and rounds the fruit; a friendly blueberry result.',
+      d47:'Adds body and depth that suits blueberry; keep ≤20°C.',
+      k1v:'Dry and aromatic — keeps the fresh blueberry lift.',
+      qa23:'Crisp and bright — a leaner, tarter blueberry.',
+      ec1118:'Too aroma-stripping for fruit added late; avoid unless bone-dry.',
+      us05:'Bland; can\'t carry the fruit.',
+      w15:'Sweet-finishing — muddies the fresh berry character.'
+    }
   }
 };
 
@@ -3773,6 +3913,89 @@ var RECIPE_NUTRIENT_PAIRINGS={
       'mj-mead':'Workable only if dosed up generously.',
       'vinoferm-nutrivit':'EU nitrogen boost for the demand; early doses.',
       'goferm':'Essential — the caramelized, high-OG must needs every advantage at rehydration.'
+    }
+  },
+  r30:{ protocol:'sna', load:'standard', recommended:['fermaid-o','fermaid-k'], acceptable:['mj-mead','vinoferm-nutrivit'],
+    notes:'A bone-dry champagne-style base needs a clean, COMPLETE ferment so EC-1118 finishes dry and stays healthy enough to bottle-condition. Standard YAN; all doses before the 1/3 break. Do NOT stabilise.',
+    effects:{
+      'fermaid-o':'Cleanest finish — keeps the delicate honey aromatics the bubbles will carry. First choice.',
+      'fermaid-k':'A little DAP vigour insures a complete, dry finish for a healthy bottle re-ferment — fine here, dosed early.',
+      'mj-mead':'Simple all-in-one; carbonates fine, just keep doses early.',
+      'vinoferm-nutrivit':'Accessible EU SNA; DAP-based, dose early.',
+      'goferm':'Rehydration primer — gives EC-1118 the sterols it needs for a clean, restartable ferment.'
+    }
+  },
+  r31:{ protocol:'tosna', load:'reduced', recommended:['fermaid-o','mj-mead'], acceptable:['fermaid-k'],
+    notes:'Apple juice already supplies YAN, so dose ~25% lighter. Clean organic feed keeps the apple bright; the ferment still needs to finish dry and healthy to carbonate. Do NOT stabilise.',
+    effects:{
+      'fermaid-o':'Clean feed protects apple aroma; reduce total ~25% for the juice\'s nitrogen.',
+      'mj-mead':'Easy and clean — about 2 doses given the juice.',
+      'fermaid-k':'Works dosed early and light; DAP vigour can blow off apple volatiles.',
+      'goferm':'Day-0 rehydration for a healthy, restartable ferment.'
+    }
+  },
+  r32:{ protocol:'tosna', load:'reduced', recommended:['fermaid-o','mj-mead'], acceptable:['fermaid-k'],
+    notes:'Low gravity (~1.045) means a small nitrogen demand — dose light. The ferment is quick; keep it clean so it carbonates reliably. Do NOT stabilise.',
+    effects:{
+      'fermaid-o':'A light organic dose is all this low-OG must needs — clean and fuss-free.',
+      'mj-mead':'One small dose or two; very easy at this gravity.',
+      'fermaid-k':'Barely needed — a pinch early if at all.',
+      'goferm':'Still worth it at rehydration for a healthy, restartable yeast.'
+    }
+  },
+  r33:{ protocol:'sna', load:'standard', recommended:['fermaid-o','fermaid-k'], acceptable:['mj-mead'],
+    notes:'Feed the clean PRIMARY base on a standard schedule (all doses before the 1/3 break). The secondary fruit needs no nutrient; keep the yeast healthy for the secondary and bottle restarts. Do NOT stabilise.',
+    effects:{
+      'fermaid-o':'Clean base ferment that won\'t leave fusels to clash with the fresh berries added later. Best choice.',
+      'fermaid-k':'DAP vigour ensures a complete base ferment and a strong yeast for the restarts; dose early.',
+      'mj-mead':'Simple all-in-one for the base; keep doses early.',
+      'goferm':'Rehydration primer — important with two restarts ahead.'
+    }
+  },
+  r34:{ protocol:'tosna', load:'reduced', recommended:['fermaid-o','mj-mead'], acceptable:['fermaid-k'],
+    notes:'A light honey base with ginger adding no nitrogen — dose modestly. Keep it clean and complete so it carbonates. Do NOT stabilise.',
+    effects:{
+      'fermaid-o':'Clean, light organic feed; lets the ginger lead over a crisp base.',
+      'mj-mead':'Easy and clean; ~2 doses.',
+      'fermaid-k':'Fine dosed early and light; not much demand here.',
+      'goferm':'Day-0 rehydration for a healthy, restartable ferment.'
+    }
+  },
+  r35:{ protocol:'tosna', load:'standard', recommended:['fermaid-o','mj-mead'], acceptable:['fermaid-k','vinoferm-nutrivit'],
+    notes:'Feed the clean traditional base on a standard organic schedule (all doses before the 1/3 break). The fruit goes in secondary and needs no nutrient — a clean base keeps the fresh berries bright.',
+    effects:{
+      'fermaid-o':'Clean base with no fusels to fight the fresh secondary fruit. Best choice.',
+      'mj-mead':'Beginner-clean base; 2-3 doses.',
+      'fermaid-k':'Acceptable timed early; slight risk of a coarse edge that would clash with delicate fruit.',
+      'vinoferm-nutrivit':'EU SNA option; DAP-based, dose early.',
+      'goferm':'Day-0 rehydration primer.'
+    }
+  },
+  r36:{ protocol:'tosna', load:'standard', recommended:['fermaid-o','mj-mead'], acceptable:['fermaid-k'],
+    notes:'Feed the clean base on a gentle organic schedule. The strawberries go in secondary — a fusel-free base is essential to protect their fragile aroma later.',
+    effects:{
+      'fermaid-o':'Gentle, low-heat feed for the cleanest base ahead of a delicate strawberry secondary. Best choice.',
+      'mj-mead':'Clean and easy; 2-3 doses.',
+      'fermaid-k':'Only if organic is unavailable — the DAP edge risks a base that competes with the fruit; dose early.',
+      'goferm':'Rehydration primer for a clean, healthy start.'
+    }
+  },
+  r37:{ protocol:'tosna', load:'standard', recommended:['fermaid-o','mj-mead'], acceptable:['fermaid-k'],
+    notes:'Feed the clean base organically (all doses before the 1/3 break). Raspberries go in secondary for aroma — keep the base clean so nothing competes with the perfume.',
+    effects:{
+      'fermaid-o':'Cleanest base, no fusels to muddy the perfumed secondary raspberry. Best choice.',
+      'mj-mead':'Simple and clean; 2-3 doses.',
+      'fermaid-k':'Workable dosed early; slight coarse-edge risk against delicate fruit.',
+      'goferm':'Day-0 rehydration primer.'
+    }
+  },
+  r38:{ protocol:'tosna', load:'standard', recommended:['fermaid-o','mj-mead'], acceptable:['fermaid-k'],
+    notes:'Feed the clean base on a standard organic schedule. Blueberries go in secondary — a clean base keeps the fresh, brighter fruit note the variant is built around.',
+    effects:{
+      'fermaid-o':'Clean base that lets fresh secondary blueberries lead. Best choice.',
+      'mj-mead':'Beginner-clean; 2-3 doses.',
+      'fermaid-k':'Acceptable timed early; keep it modest to protect the fruit.',
+      'goferm':'Day-0 rehydration primer.'
     }
   }
 };
@@ -8465,7 +8688,7 @@ function renderRecipes(){
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1px;margin-right:4px">ADDITIONS:</span>'+stageChips+'</div>'
     +'</div></div>'
     +'<div id="recipe-list-results">'+(filtered.length?'<div class="grid-2">'+cards+'</div>':'<div class="empty-state"><p>No recipes match the filters.</p></div>')+'</div>'
-    +'<div class="info-box blue" style="margin-top:16px"><div style="font-size:13px;color:var(--blue2)">💡 Recipes target 5 L final volume — sized for the staged vessel setup: <strong>9 L primary</strong> (vigorous fermentation, good headspace) → <strong>7.6 L or 5 L secondary</strong> (settling, clarification) → <strong>5 L bulk aging</strong> before bottling (minimal headspace, oxidation-protected). Yeast: Mangrove Jack\'s M05 by default. <strong>Primary additions</strong> (fruit, ginger, etc.) survive CO₂ scrubbing; <strong>secondary additions</strong> (delicate spices, vanilla, hops) preserve aromatics.</div></div>';
+    +'<div class="info-box blue" style="margin-top:16px"><div style="font-size:13px;color:var(--blue2)">💡 Recipes target 5 L final volume — sized for the staged vessel setup: <strong>9 L primary</strong> (vigorous fermentation, good headspace) → <strong>7.6 L or 5 L secondary</strong> (settling, clarification) → <strong>5 L bulk aging</strong> before bottling (minimal headspace, oxidation-protected). <strong>Primary additions</strong> (fruit, ginger, etc.) survive CO₂ scrubbing; <strong>secondary additions</strong> (delicate spices, vanilla, hops) preserve aromatics.</div></div>';
 }
 
 // Update only the recipe results so the search input doesn't lose focus
@@ -9166,18 +9389,17 @@ function renderRecipeDetail(){
     +'<button class="btn btn-secondary" onclick="exportRecipeBeerXML(\''+r.id+'\')" title="Export as BeerXML">⬆ BeerXML</button>'
     +'<button class="btn btn-secondary" onclick="exportRecipePDF(\''+r.id+'\')" title="Export this recipe as a print-ready PDF">📄 Export PDF</button>'
     +'</div>'
-    +'<div class="grid-2">'
-    +'<div>'
-    +'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">SCALE</div></div>'
+    +'<div class="recipe-layout">'
+    +'<div class="ra-scale"><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">SCALE</div></div>'
     +'<div style="font-size:13px;color:var(--text3);margin-bottom:10px">'+scaleHelp+'</div>'
     +'<div class="scale-slider"><input type="range" id="scale-slider" min="1" max="20" step="0.5" value="'+scaleVol+'" oninput="updateRecipeScale(\''+r.id+'\',this.value)"><span class="scale-val" id="scale-slider-val">'+fmtRecipeScale(scaleVol)+'</span></div>'
     +'<div style="display:flex;gap:6px;margin-top:8px">'+scaleUnitBtns+'</div>'
     +'<div id="scale-warning">'+initialWarning+'</div>'
-    +'</div>'
-    +'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">INGREDIENTS</div></div><table class="data-table" id="scale-ingredients-table">'
+    +'</div></div>'
+    +'<div class="ra-ingredients"><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">INGREDIENTS</div></div><table class="data-table" id="scale-ingredients-table">'
     +scaledIngredients.map(function(ing){return'<tr><td style="color:var(--text)">'+escHtml(ing.item)+'</td><td style="font-family:var(--font-mono);font-size:12px;color:'+r.brandColor+'">'+escHtml(ing.amount)+'</td><td style="color:var(--text3);font-style:italic;font-size:12px">'+escHtml(ing.notes)+'</td></tr>';}).join('')
-    +'</table></div>'
-    +(function(){
+    +'</table></div></div>'
+    +'<div class="ra-honey">'+(function(){
       // Auto-detect honey types in this recipe and surface suppliers from
       // the user's own rolodex (Suppliers view) tagged with those types.
       if(typeof honeyTypesInRecipe!=='function'||typeof suppliersForHoney!=='function')return'';
@@ -9222,7 +9444,7 @@ function renderRecipeDetail(){
         var bl=bucketLabels[f.tier]||'';
         var header='';
         if(bl!==lastBucket){lastBucket=bl;
-          header='<div style="font-size:10px;color:var(--text3);letter-spacing:1.5px;font-family:var(--font-mono);margin:12px 0 6px">'+bl+'</div>';
+          header='<div class="hf-head" style="font-size:10px;color:var(--text3);letter-spacing:1.5px;font-family:var(--font-mono);margin:12px 0 6px">'+bl+'</div>';
         }
         var stock=f.inStock
           ?'<span style="font-family:var(--font-mono);font-size:9px;color:var(--bg);background:var(--green2);letter-spacing:0.5px;padding:2px 7px;border-radius:8px;font-weight:600">IN STOCK</span>':'';
@@ -9241,29 +9463,29 @@ function renderRecipeDetail(){
       var fitSection=fitList.length
         ?'<div style="font-size:12.5px;color:var(--text3);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:1px">EVERY HONEY · HOW EACH ONE FITS</div>'
           +'<div style="font-size:11.5px;color:var(--text3);font-style:italic;margin-bottom:4px;line-height:1.5">This recipe wants '+escHtml(ideal.label)+'. Each honey in the library is rated for it — <span style="color:var(--green2)">green</span> fits, <span style="color:var(--gold)">amber</span> works with a shift, <span style="color:var(--red2)">red</span> fights the style. Honeys you have in stock are highlighted and pinned to the top of their tier.</div>'
-          +'<div>'+fitRows+'</div>'
+          +'<div class="honey-fit-grid">'+fitRows+'</div>'
         :'';
       return'<div class="card" style="margin-bottom:16px;border-left:3px solid var(--gold)"><div class="card-header"><div class="card-title">🛒 SOURCE YOUR HONEY</div></div>'
         +supplierSection
         +fitSection
         +'</div>';
-    }())
-    +renderRecipeYeastBlock(r)
-      +renderRecipeNutrientBlock(r)
-      +renderRecipeComboBlock(r)
-      +renderRecipeAdjunctBlock(r)
-    +'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">TARGETS</div></div>'
+    }())+'</div>'
+    +'<div class="ra-yeast">'+renderRecipeYeastBlock(r)+'</div>'
+    +'<div class="ra-nutrient">'+renderRecipeNutrientBlock(r)+'</div>'
+    +'<div class="ra-dial">'+renderRecipeComboBlock(r)+'</div>'
+    +'<div class="ra-fruit">'+renderRecipeAdjunctBlock(r)+'</div>'
+    +'<div class="ra-extra">'+renderRecipeSuccessTracker(r)
+    +(r.notes?'<div class="info-box" style="border-left-color:'+r.brandColor+'"><div style="font-size:13px;color:var(--text2);font-style:italic">'+escHtml(r.notes)+'</div></div>':'')
+    +'</div>'
+    +'<div class="ra-targets"><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">TARGETS</div></div>'
     +'<div class="grid-3"><div class="stat-card"><div class="stat-val" style="font-size:18px">'+r.ogTarget+'</div><div class="stat-label">OG</div></div>'
     +'<div class="stat-card"><div class="stat-val" style="font-size:18px">'+r.fgTarget+'</div><div class="stat-label">FG</div></div>'
     +'<div class="stat-card"><div class="stat-val" style="font-size:18px">'+r.abvTarget+'%</div><div class="stat-label">ABV</div></div></div>'
     +'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'
     +r.tags.map(function(t){return'<span class="recipe-tag">'+escHtml(t)+'</span>';}).join('')
-    +'</div></div>'
-    +renderRecipeCostEstimate(r,scaleVol)
-    +renderRecipeSuccessTracker(r)
-    +(r.notes?'<div class="info-box" style="border-left-color:'+r.brandColor+'"><div style="font-size:13px;color:var(--text2);font-style:italic">'+escHtml(r.notes)+'</div></div>':'')
-    +'</div>'
-    +'<div><div class="card"><div class="card-header"><div class="card-title">STEP BY STEP</div></div>'
+    +'</div></div></div>'
+    +'<div class="ra-cost">'+renderRecipeCostEstimate(r,scaleVol)+'</div>'
+    +'<div class="ra-steps"><div class="card"><div class="card-header"><div class="card-title">STEP BY STEP</div></div>'
     +'<div class="timeline">'
     +(function(){
       var dsteps=injectCareSteps(r.steps);
