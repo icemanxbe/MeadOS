@@ -2,7 +2,7 @@
 
 **A self-hosted brewing companion for mead makers** — batch tracker, recipe compendium, cellar manager, inventory, brewing calculators, label designer and daily brew coach, all in a single page backed by a shared server-side SQLite database.
 
-![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue) ![Dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen) ![Storage: SQLite](https://img.shields.io/badge/storage-SQLite-lightgrey) ![Single file app](https://img.shields.io/badge/frontend-single%20HTML%20file-orange)
+![Python 3.8+](https://img.shields.io/badge/python-3.8%2B-blue) ![Dependencies: none](https://img.shields.io/badge/dependencies-none-brightgreen) ![Storage: SQLite](https://img.shields.io/badge/storage-SQLite-lightgrey) ![Vanilla JS, no build step](https://img.shields.io/badge/frontend-vanilla%20JS%2C%20no%20build%20step-orange)
 
 ![Dashboard](docs/screenshots/dashboard.png)
 
@@ -91,8 +91,8 @@ python3 server.py --host 127.0.0.1       # local-only, don't expose on the LAN
 └────────────┘                        └─────────────┘      └─ history  (last 50 saves)
 ```
 
-- **`index.html`** is a small shell that loads **`app.js`** (all the UI, logic, recipes and libraries) and **`app.css`** (styles). They're served as ETag-cached static assets, so the ~1.4 MB of app code only transfers when it actually changes.
-- **`server.py`** (Python standard library only) serves the app and stores the full application state in SQLite. It also serves the PWA assets (`manifest.webmanifest`, `sw.js`, icons), the tokenised share page, and the calendar feed, and adds baseline security headers (CSP, X-Frame-Options, etc.) to every response.
+- **`index.html`** is a small shell that loads **`app.js`** (all the UI, logic, recipes and libraries) and **`app.css`** (styles). They're served as ETag-cached static assets, so the ~2.1 MB of app code only transfers when it actually changes.
+- **`server.py`** (Python standard library only) serves the app and stores the full application state in SQLite. It also serves the PWA assets (`manifest.webmanifest`, `sw.js`, icons), the tokenised share page, and the calendar feed, and adds security headers (CSP, X-Frame-Options, etc.) plus request hardening — login throttling, origin/CSRF checks, an audit log (see [Deployment notes](#deployment-notes)) — to every response.
 - Every browser that opens the page reads and writes the **same shared data**. Saves are debounced and pushed automatically; edits made while the server is unreachable are cached in localStorage and re-synced when it comes back.
 - Every save is also appended to a **history table** (last 50 kept), so an accidental overwrite is recoverable:
 
