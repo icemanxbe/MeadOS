@@ -452,7 +452,7 @@ notes:'CLOVES are nuclear. 4 max in 4.5L. Better to under-spice and add an infus
 },
 {
 id:'r8',name:'Heavy Dessert Mead (Sack)',brandName:'Reserve',style:'Sack Mead',difficulty:'Advanced',brandColor:'#7a5818',
-volume:5.0,ogTarget:1.140,fgTarget:1.035,abvTarget:14.0,fermentDays:90,ageDays:365,
+volume:5.0,ogTarget:1.190,fgTarget:1.055,abvTarget:17.7,fermentDays:90,ageDays:365,
 minAgeDays:365,peakAgeDays:730,maxAgeDays:3650,
 tags:['Sweet','High ABV','Long aging','Special occasion'],
 description:'The most patient of meads. High honey content, high alcohol, finishes sweet. Liquid gold for special occasions — anniversaries, milestones. Demands at least a year of aging.',
@@ -465,7 +465,7 @@ ingredients:[
 {item:'Potassium Sorbate',amount:'1 g',notes:'Stabilization before back-sweeten'}
 ],
 steps:[
-{day:0,title:'Brew Day',desc:'High-gravity warning: this is a marathon, not a sprint. Mix 3kg honey thoroughly with 4L water — will take 15+ minutes of stirring. Take OG (should be 1.140+). Sprinkle BOTH yeast packets on surface for high-gravity start. Seal.'},
+{day:0,title:'Brew Day',desc:'High-gravity warning: this is a marathon, not a sprint. Dissolve all 3.3 kg honey, then top up with water to the 5 L mark — will take 15+ minutes of stirring. Take OG (should be ~1.190). Sprinkle BOTH yeast packets on surface for high-gravity start. Seal.'},
 {day:1,title:'Heavy Nutrient (1/3)',desc:'Add 8g nutrient (1/3 of total). Stir gently. Vigorous fermentation expected.'},
 {day:3,title:'Heavy Nutrient (2/3)',desc:'Add another 8g nutrient. Log gravity — should be dropping rapidly.'},
 {day:7,title:'Final Nutrient (3/3)',desc:'Add remaining 8g nutrient. This high-gravity batch needs the full SNA support.'},
@@ -1029,7 +1029,7 @@ notes:'THE PATIENCE TAX: This recipe takes 18 months MINIMUM and rewards 3+ year
 {
 id:'r27',name:'Sack Lavender · Long-Aged Sweet Metheglin',brandName:'Lavande Royale',style:'Sack',difficulty:'Advanced',brandColor:'#7a4ec0',useGenericLabel:true,
 category:'Sack',additionStage:'secondary',
-volume:5.0,ogTarget:1.135,fgTarget:1.030,abvTarget:14.0,fermentDays:90,ageDays:540,
+volume:5.0,ogTarget:1.165,fgTarget:1.030,abvTarget:17.7,fermentDays:90,ageDays:540,
 minAgeDays:365,peakAgeDays:910,maxAgeDays:2555,
 tags:['Lavender','Floral','Sack','Sweet','Long-Aging','Provence','Dessert','Cellar'],
 description:'A dessert-style sack mead with lavender added late — high honey load, restrained fermentation, lush sweetness carrying perfumed Provençal florals. Drinks like a digestif: thick, honeyed, with the lavender developing from sharp to integrated over years. A 7-bottle batch you bring out at anniversaries.',
@@ -1047,7 +1047,7 @@ steps:[
 {day:3,title:'Second Nutrient (SNA 2/3)',desc:'Add 8 g nutrient. Continue daily degassing for first week — high gravity means stressed yeast → hydrogen sulfide risk.'},
 {day:7,title:'Third Nutrient (SNA 3/3)',desc:'Add remaining 8 g nutrient. Gravity should be dropping steadily. Expect dramatic foam if shaken.'},
 {day:21,title:'Primary Check',desc:'Gravity should be around 1.060-1.080. Still actively fermenting. DO NOT add lavender yet — the perfume would be scrubbed by active CO2 and you\'d waste it.'},
-{day:60,title:'Verify Primary Complete',desc:'Two stable readings 3 days apart. Target FG 1.028-1.032. M05 has hit its alcohol ceiling — expected ~14% ABV with substantial residual sweetness. If gravity is below 1.025, the mead will be too dry for this style — back-sweeten later.'},
+{day:60,title:'Verify Primary Complete',desc:'Two stable readings 3 days apart. Target FG 1.028-1.032. M05 has hit its alcohol ceiling — expected ~17-18% ABV with substantial residual sweetness. If gravity is below 1.025, the mead will be too dry for this style — back-sweeten later.'},
 {day:65,title:'Rack to Secondary',desc:'Critical step. Gently siphon off the lees (large yeast cake from sack fermentation). Top up to minimize headspace — oxygen is the enemy from here. Add 0.5 g potassium metabisulfite at racking.'},
 {day:70,title:'Add Lavender (SECONDARY)',desc:'SECONDARY: 10 g for restrained, 14 g maximum. Place in pre-sanitized muslin bag — buds float and need containment. Drop into secondary vessel. Mark the calendar for the taste test — at sack ABV the alcohol extracts FAST.'},
 {day:73,title:'TASTE TEST — Day 3',desc:'CRITICAL: Pull a small sample. Alcohol at this level extracts lavender extremely fast — assess for floral presence vs perfume/soap territory. Sweet meads tolerate slightly more lavender than dry; the sweetness rounds the perfume edges. If forward but pleasant, pull NOW.'},
@@ -1058,7 +1058,7 @@ steps:[
 {day:540,title:'First Tasting (18 months)',desc:'18 months in. Pour 30 mL. The lavender should be elegantly integrated — neither soap nor afterthought. Honey is honeyed but not cloying. Sweetness coats but doesn\'t flatten. If still harsh, return to cellar — this recipe rewards 2-3 years.'},
 {day:910,title:'Peak Tasting (2.5 years)',desc:'Roughly when this style hits its stride. Lavender, honey, and the slight oxidative depth of long aging form one note. Pair with crème brûlée, lavender shortbread, fresh chèvre, or sip alone after dinner.'}
 ],
-notes:'WHY 14% AND SWEET: Sack meads were medieval Europe\'s answer to dessert wine — high alcohol stabilizes naturally, sweetness preserves and softens. M05\'s alcohol ceiling around 18% means it stops well before the 1.135 OG is fully attenuated, leaving lovely residual honey character.\n\nLAVENDER TIMING: Adding lavender to a sack mead is a known trap. In dry meads, lavender turns soapy past a threshold. In sack meads, the sweetness MASKS that soap edge to a degree — meaning you can be slightly more generous (14 g vs 12 g). But don\'t push past 14 g/5L — the perfume becomes inescapable.\n\nVESSEL CHOICE: This recipe ages for years. Use the smallest possible secondary vessel — minimize headspace, minimize oxidation. A 5 L demijohn is the sweet spot. If you have to leave significant headspace, top with glass marbles (sanitized) or use a smaller vessel for the final 6 months.\n\nGIFT-WORTHY: This is the batch you save for anniversaries, weddings, milestone birthdays. 7 bottles, 14 years of potential cellar life. Plan accordingly.\n\nCOMPLEMENTS: A perfect pairing companion to r23 (the metheglin version) — brew both, age both, compare them side-by-side at 18 months. The young one shows lavender; the sack shows lavender + time.'
+notes:'WHY ~18% AND SWEET: Sack meads were medieval Europe\'s answer to dessert wine — high alcohol stabilizes naturally, sweetness preserves and softens. M05\'s alcohol ceiling around 18% means it stops well before the 1.165 OG is fully attenuated, leaving lovely residual honey character.\n\nLAVENDER TIMING: Adding lavender to a sack mead is a known trap. In dry meads, lavender turns soapy past a threshold. In sack meads, the sweetness MASKS that soap edge to a degree — meaning you can be slightly more generous (14 g vs 12 g). But don\'t push past 14 g/5L — the perfume becomes inescapable.\n\nVESSEL CHOICE: This recipe ages for years. Use the smallest possible secondary vessel — minimize headspace, minimize oxidation. A 5 L demijohn is the sweet spot. If you have to leave significant headspace, top with glass marbles (sanitized) or use a smaller vessel for the final 6 months.\n\nGIFT-WORTHY: This is the batch you save for anniversaries, weddings, milestone birthdays. 7 bottles, 14 years of potential cellar life. Plan accordingly.\n\nCOMPLEMENTS: A perfect pairing companion to r23 (the metheglin version) — brew both, age both, compare them side-by-side at 18 months. The young one shows lavender; the sack shows lavender + time.'
 },
 
 {
