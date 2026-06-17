@@ -65,6 +65,10 @@
 <div id="main"></div>
 </div>
 <div id="toast"></div>
+<!-- Data split out of app.js for easier editing; plain scripts (shared global
+     scope) loaded BEFORE app.js, so app.js sees BUILTIN_RECIPES, HONEY_PROFILES, etc. -->
+<script src="/data-libraries.js"></script>
+<script src="/data-recipes.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>
