@@ -10897,11 +10897,13 @@ function calcBacksweet(){
     return;
   }
   var deltaPoints=Math.round((target-fg)*1000);
-  // grams/L per gravity point for each sweetener
-  // Honey ≈ 35 PPG/lb/gal = ~0.84 SG points per kg per L ≈ ~3.0 g/L per gravity point (accounting for ~80% sugar content)
-  // Sucrose: ~2.6 g/L per gravity point (100% sugar)
-  // DME: ~2.9 g/L per gravity point (~85% fermentable)
-  var perPoint={honey:3.0,sugar:2.6,dme:2.9}[type];
+  // grams/L per gravity point for each sweetener — kept consistent with the
+  // app's honey constant (292 SG-points per kg per L, used by the OG/honey and
+  // cost tools): 1 point/L ÷ 292 = 1/0.292 ≈ 3.4 g honey/L.
+  //   Honey  ≈ 3.4 g/L per point  (35 PPG, ~80% sugars)
+  //   Sucrose ≈ 2.6 g/L per point (100% fermentable sugar)
+  //   DME    ≈ 2.9 g/L per point  (~85% fermentable)
+  var perPoint={honey:3.4,sugar:2.6,dme:2.9}[type];
   var typeName={honey:'honey',sugar:'table sugar',dme:'DME'}[type];
   var sweetenerG=deltaPoints*perPoint*vol;
   // Stabilization doses
