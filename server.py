@@ -244,6 +244,8 @@ LABEL_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+\.(png|jpe?g|webp|svg|gif)$", re.I)
 # split out of the single-file HTML for maintainability). Public, ETag-cached.
 STATIC_ASSETS = {
     "/app.js": "text/javascript; charset=utf-8",
+    "/data-libraries.js": "text/javascript; charset=utf-8",
+    "/data-recipes.js": "text/javascript; charset=utf-8",
     "/app.css": "text/css; charset=utf-8",
     # /test.html (zero-dep dev unit page) is served LAN-only — see do_GET.
     # PWA assets — all public (the install/offline shell isn't sensitive).
