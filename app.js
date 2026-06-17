@@ -2099,14 +2099,31 @@ function honeyTypesInRecipe(r){
 //     find their way into your brewing plans
 // Each entry: {honey: <Type>, shift: <how the recipe transforms>}.
 var RECIPE_HONEY_ALTERNATIVES={
-  r1:[
-    {honey:'Acacia',shift:'Almost neutral canvas — lets bottle-conditioning sparkle and yeast character shine. The result reads more wine-like, less honey-forward.'},
-    {honey:'Orange Blossom',shift:'Bright citrus-floral lift. Less generic than wildflower; reads more as a summer aperitif than a traditional show mead.'},
-    {honey:'Linden',shift:'Faint mint and herbal-tea notes baked into the base. More cooling on the finish, more interesting backbone.'},
-    {honey:'Clover',shift:'Soft vanilla-floral warmth — the classic American traditional character.'},
-    {honey:'Coriander',shift:'Built-in warm-spice note even without metheglin additions. A subtle citrus-coriander whisper through every sip.'},
-    {honey:'Mountain',shift:'More complex backbone with herbal alpine notes. Better candidate for long aging — gains vintage character.'},
-    {honey:'Rapeseed',shift:'Budget option — light, clean, mild. Good for first-time brews or experimental tweaks where you do not want to risk premium honey.'}
+  r1:[ // Traditional / Show Mead — the honey IS the drink, so a clean light honey wins; bold honeys stop being a "showcase".
+    {honey:'Acacia',fit:'great',shift:'The benchmark show-mead honey — water-pale and almost flavour-neutral, with very high fructose so it finishes crisp and bone-dry. There is nowhere for a fault to hide (clean ferment essential), but a good acacia traditional is the purest "this is what mead tastes like" glass you can pour. Stays brilliantly clear and barely crystallises.'},
+    {honey:'Tupelo',fit:'great',shift:'Buttery, gently floral (jasmine, a whisper of cinnamon) and intensely sweet on the tongue — a gorgeous, age-worthy show base. Catch: its very high fructose ratio stalls normal strains, so pitch a fructophilic yeast (K1-V1116) or hold some back to backsweeten. Premium-priced — brew it to show off.'},
+    {honey:'Sage',fit:'great',shift:'Light, mild and delicately sweet, water-white in colour — almost as neutral as acacia but a touch rounder, and very slow to crystallise so it stays clear. A forgiving, gentle canvas that lets a careful ferment speak.'},
+    {honey:'Orange Blossom',fit:'great',shift:'Bright orange-citrus and white-floral lift — the most aromatic of the easy show honeys. Turns a traditional into a summery, perfumed glass that reads almost like a still honey-spritz. Drink youngish to catch the citrus aromatics at their peak.'},
+    {honey:'Clover',fit:'great',shift:'Soft vanilla-floral warmth and a mild, friendly sweetness — the classic American traditional profile. Unintimidating and everywhere, it makes a rounded, crowd-pleasing show mead. Crystallises moderately fast, so warm gently when dissolving.'},
+    {honey:'Linden',fit:'great',shift:'Pale green-gold with a cooling mint and herbal-tea note built in — one of the most interesting clean bases. Adds a genuine aromatic backbone and a fresh, almost menthol finish without overpowering the honey. Excellent fresh, holds well past a year.'},
+    {honey:'Mountain',fit:'great',shift:'A blend of high-altitude wildflowers with layered alpine-herbal complexity — deeper and more characterful than plain wildflower. One of the best bases for a LONG-aged show mead, gaining vintage, herbal-honeyed complexity over a year or two. A connoisseur\'s traditional.'},
+    {honey:'Lemon Blossom',fit:'good',shift:'Zesty lemon-citrus over a light floral base — sharper and brighter than orange blossom. Pushes a traditional toward a fresh, sorbet-like character; lovely young and chilled, but the top notes fade with age so it is not your long-cellar pick.'},
+    {honey:'Coffee Blossom',fit:'good',shift:'Despite the name it is NOT coffee — jasmine-floral and lightly nutty with a faint caramel finish. Makes an elegant, slightly exotic show mead with more aromatic interest than clover. A rewarding, unusual choice when you can source it.'},
+    {honey:'Himalayan Balsam',fit:'good',shift:'A distinctive pear-and-honeysuckle floral with a faintly grassy edge — fragrant and a little unusual. Gives a traditional a fresh, northern-European fruit-floral lift. Pleasant young; the delicate aromatics don\'t reward very long aging.'},
+    {honey:'Coriander',fit:'good',shift:'A warm citrus-coriander spice woven into the honey itself — the mead reads gently spiced even though you added no botanicals. Lovely if you want subtle warmth, but it is no longer a strictly "neutral" honey showcase.'},
+    {honey:'Sunflower',fit:'good',shift:'Buttery, soft and faintly resinous with a golden hue — rounder and more overtly "honeyed" than the water-white honeys, giving a comfortable, mellow body rather than crisp delicacy. Crystallises very fast, so warm it well to dissolve.'},
+    {honey:'Rapeseed',fit:'good',shift:'Very pale and mild (a touch cabbage-y when raw) but ferments to a clean, neutral light base — and it is the cheapest honey going, ideal for practice or experimental batches. Crystallises extremely fast, sometimes within days, so liquefy gently before use.'},
+    {honey:'Lavender',fit:'good',shift:'A pronounced floral, almost perfumed character — beautiful but assertive, so it nudges a "pure" traditional toward a varietal floral mead. Lovely if you want lavender to be the story (Provençal aperitif); pick something quieter for a neutral honey showcase.'},
+    {honey:'Eucalyptus',fit:'workable',shift:'Distinct menthol and faintly medicinal-herbal — a love-it-or-hate-it honey. In a show mead it dominates with a cooling, camphorous note some find refreshing and others find soapy. Try a small experimental batch before committing a demijohn.'},
+    {honey:'Rosemary',fit:'workable',shift:'Pale amber with a herbaceous, pine-needle, faintly resinous edge — savoury rather than sweet-floral. Pulls a traditional toward a garrigue, Mediterranean-herbal direction that pairs with food better than it sips solo. Distinctive; only if you want that signature.'},
+    {honey:'Heather',fit:'workable',shift:'Amber, smoky and tannic with a port-like depth — and famously gel-like (thixotropic), which makes it fiddly to stir and ferment. Bold enough to take over a "pure" show mead, but it makes a striking, savoury, characterful traditional for the adventurous. Pairs with peated whisky.'},
+    {honey:'Forest',fit:'workable',shift:'Dark, malty and mineral — honeydew gathered from tree sap rather than nectar, so it carries less fermentable sugar and a savoury woodland undertone. The mead finishes drier and earthier, less sweet-floral. Characterful, but no longer a delicate showcase.'},
+    {honey:'Pine Honeydew',fit:'workable',shift:'Dark amber to near-black, resinous with woodsmoke-and-caramel notes; its complex honeydew sugars resist the yeast, leaving built-in body and sweetness. Makes a savoury, resinous traditional with natural weight — interesting, but the opposite of a crisp, delicate showcase.'},
+    {honey:'Thyme',fit:'workable',shift:'Intensely aromatic, herbal and faintly medicinal with a savoury Mediterranean character. It overpowers the gentle honey-forward intent of a show mead and pushes it toward a herbal liqueur — brilliant if that is the goal, wrong if you want the honey to lead.'},
+    {honey:'Manuka',fit:'workable',shift:'Strong, dark, medicinal and famously expensive — its assertive character buries the "honey showcase" idea, and fermenting a costly therapeutic honey bone-dry wastes both money and flavour. If you must, hold most of it back to backsweeten so the character survives.'},
+    {honey:'Sidr',fit:'workable',shift:'A prized, rich, complex honey (classically Yemeni) with a buttery, faintly spiced depth. Too valuable and too characterful to ferment dry as a neutral base — treated as a feature honey and finished off-dry it is spectacular, but that is a different mead than a clean traditional.'},
+    {honey:'Chestnut',fit:'poor',shift:'Very dark, bitter and tannic with a pungent, almost smoky bite — far too aggressive to lead a clean show mead, where it reads harsh and astringent. Its grip and tannin belong in big reds, sack meads and grape pyments. Reach for it elsewhere.'},
+    {honey:'Buckwheat',fit:'poor',shift:'The boldest common honey — molasses, malt and a barnyard funk, almost black. In a delicate traditional it steamrolls everything and reads more like a thin stout than a honey showcase. Save it for bochets and dark-fruit melomels; it is wasted (and overwhelming) here.'}
   ],
   r2:[
     {honey:'Wildflower',shift:'Standard balanced base — apple and cinnamon both come through clean.'},
@@ -2395,8 +2412,10 @@ function recipesAlternativeForHoney(honeyName){
     var alts=RECIPE_HONEY_ALTERNATIVES[rid];
     alts.forEach(function(a){
       // Match exact name; also handle the "Acerglyn — maple-forward (recipe
-      // default)" placeholder marker by skipping it.
-      if(a.honey===honeyName&&a.shift){
+      // default)" placeholder marker by skipping it. Only surface GOOD pairings
+      // here ("also works in") — skip curated entries flagged workable/poor/clash.
+      var fitOk=!a.fit||a.fit==='great'||a.fit==='good'||a.fit==='recommended';
+      if(a.honey===honeyName&&a.shift&&fitOk){
         var r=APP.recipes&&APP.recipes.find(function(x){return x.id===rid;});
         if(r){matches.push({recipeId:rid,recipeName:r.name,recipeStyle:r.style,recipeColor:r.brandColor,shift:a.shift});}
       }
@@ -2456,8 +2475,18 @@ function honeyFitForRecipe(r,honeyName,ctx){
   if(primarySet[honeyName])
     return{tier:'primary',order:0,badge:'PRIMARY',color:'var(--gold2)',inStock:inStock,
       note:(gist?gist+' — ':'')+'the honey this recipe is built around.'};
-  if(curated[honeyName])
-    return{tier:'recommended',order:1,badge:'✓ RECOMMENDED',color:'var(--green2)',inStock:inStock,note:curated[honeyName]};
+  if(curated[honeyName]){
+    // A hand-curated entry. {honey, shift} alone → "recommended". With an explicit
+    // {fit} the curator's verdict drives the tier (overriding the intensity guess).
+    var cu=curated[honeyName];
+    var FT={great:{tier:'great',order:2,badge:'✓ GREAT FIT',color:'var(--green2)'},
+            good:{tier:'good',order:3,badge:'✓ GOOD FIT',color:'var(--green2)'},
+            workable:{tier:'workable',order:4,badge:'~ WORKABLE',color:'var(--gold)'},
+            poor:{tier:'poor',order:5,badge:'✗ NOT IDEAL',color:'var(--red2)'},
+            clash:{tier:'poor',order:5,badge:'✗ CLASH',color:'var(--red2)'}};
+    var t=FT[cu.fit]||{tier:'recommended',order:1,badge:'✓ RECOMMENDED',color:'var(--green2)'};
+    return{tier:t.tier,order:t.order,badge:t.badge,color:t.color,inStock:inStock,note:cu.shift||cu.note||''};
+  }
   if(rank==null)
     return{tier:'varies',order:6,badge:'~ varies',color:'var(--text3)',inStock:inStock,
       note:(gist||'Character varies by source.')+' Judge by taste.'};
@@ -2476,7 +2505,7 @@ function honeyFitListForRecipe(r){
   var types=(typeof honeyTypesInRecipe==='function')?honeyTypesInRecipe(r):[];
   var primarySet={};types.forEach(function(t){primarySet[t]=true;});
   var curated={};
-  (alternativesForRecipe(r.id)||[]).forEach(function(a){if(a.shift)curated[a.honey]=a.shift;});
+  (alternativesForRecipe(r.id)||[]).forEach(function(a){if(a.shift)curated[a.honey]=a;});
   var ctx={primarySet:primarySet,curated:curated,ideal:recipeHoneyIdeal(r)};
   // Always include the recipe's own primary honeys even if some lack a profile.
   var names=HONEY_TYPES.filter(function(h){return h!=='Mixed'&&h!=='Other'&&HONEY_PROFILES[h];});
