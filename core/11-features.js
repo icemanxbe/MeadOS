@@ -737,7 +737,11 @@ function computeBrewableRecipes(scaleVol){
 function toggleBrewWhatYouHave(){
   window._bwyhOpen=!window._bwyhOpen;
   var card=document.getElementById('bwyh-card');
-  if(card)card.outerHTML=renderBrewWhatYouHaveCard();
+  if(!card)return;
+  var wrap=card.querySelector('.collapse-y');
+  if(wrap)wrap.classList.toggle('open',window._bwyhOpen);
+  var chev=card.querySelector('.bwyh-chev');
+  if(chev)chev.textContent=window._bwyhOpen?'▾':'▸';
 }
 function setBrewWhatYouHaveVol(v){
   window._bwyhVol=parseFloat(v)||5;
@@ -780,9 +784,8 @@ function renderBrewWhatYouHaveCard(){
   var header='<div class="card" id="bwyh-card" style="margin-bottom:16px">'
     +'<div onclick="toggleBrewWhatYouHave()" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none">'
     +'<div class="card-title">🍯 BREW WITH WHAT YOU HAVE</div>'
-    +'<div style="display:flex;align-items:center;gap:10px"><span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:0.5px">'+makeableCount+' ready · '+fmtWt(r.have.honey)+' honey</span><span style="color:var(--gold2);font-size:13px">'+(window._bwyhOpen?'▾':'▸')+'</span></div>'
+    +'<div style="display:flex;align-items:center;gap:10px"><span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:0.5px">'+makeableCount+' ready · '+fmtWt(r.have.honey)+' honey</span><span class="bwyh-chev" style="color:var(--gold2);font-size:13px">'+(window._bwyhOpen?'▾':'▸')+'</span></div>'
     +'</div>';
-  if(!window._bwyhOpen)return header+'</div>';
   var plannedNote=r.hasPlanned?'<div style="font-size:11.5px;color:var(--text3);margin-top:10px;font-style:italic">Cross-checked against your planned batches — a ⚠ badge means brewing it now would leave too little for a scheduled batch.</div>':'';
   var body='<div style="font-size:12px;color:var(--text3);margin:10px 0 4px">Recipes you can start now from your supplies — honey, yeast, nutrient and the chemicals each recipe calls for (pectic enzyme, metabisulfite, sorbate).</div>'
     +'<div style="display:flex;align-items:center;gap:12px;margin:8px 0 12px">'
@@ -792,7 +795,7 @@ function renderBrewWhatYouHaveCard(){
     +'</div>'
     +'<div id="bwyh-list">'+renderBwyhList()+'</div>'
     +plannedNote;
-  return header+body+'</div>';
+  return header+'<div class="collapse-y'+(window._bwyhOpen?' open':'')+'"><div>'+body+'</div></div>'+'</div>';
 }
 
 function renderShoppingListCard(){

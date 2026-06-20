@@ -313,11 +313,57 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .ferm-bubbles span:nth-child(3){left:8px;animation-delay:1.7s}
 .recipe-card{transition:transform .18s ease,box-shadow .18s ease}
 .recipe-card:hover{transform:translateY(-3px);box-shadow:0 8px 22px rgba(0,0,0,.32)}
+/* Bubbles rising through a fermenting vessel in the cellar shelf view */
+@keyframes cellarBubble{0%{transform:translateY(0);opacity:0}20%{opacity:.55}100%{transform:translateY(-44px);opacity:0}}
+.cellar-bubbles circle{animation:cellarBubble 2.8s ease-in infinite}
+.cellar-bubbles .cb2{animation-delay:1s;animation-duration:3.2s}
+.cellar-bubbles .cb3{animation-delay:1.9s}
 @media(prefers-reduced-motion:reduce){
-  .fade-in,.ferm-bubbles span{animation:none}
-  .ferm-bubbles span{opacity:0}
+  .fade-in,.ferm-bubbles span,.cellar-bubbles circle{animation:none}
+  .ferm-bubbles span,.cellar-bubbles circle{opacity:0}
   .recipe-card{transition:none}
   .recipe-card:hover{transform:none}
+}
+
+/* ── More micro-interactions: modals, buttons, nav, empty states ── */
+@keyframes overlayIn{from{opacity:0}to{opacity:1}}
+@keyframes modalIn{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
+/* .modal-static opts out — used by modals that rebuild their own DOM on every
+   interaction (label designer, image picker, bottling workflow) so the entrance
+   doesn't re-fire and flicker on each click. */
+.modal-overlay:not(.modal-static){animation:overlayIn .16s ease}
+.modal-overlay:not(.modal-static) .modal{animation:modalIn .24s cubic-bezier(.2,.85,.25,1)}
+.btn:active{transform:translateY(1px)}
+.nav-item{position:relative}
+.nav-item:hover{transform:translateX(2px)}
+.nav-item.active::before{content:'';position:absolute;left:-1px;top:50%;transform:translateY(-50%);width:3px;height:0;background:var(--gold);border-radius:0 2px 2px 0;box-shadow:0 0 6px rgba(201,168,76,.45);animation:navAccent .28s ease forwards}
+@keyframes navAccent{from{height:0}to{height:58%}}
+@keyframes floatBob{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+.empty-state .es-icon{animation:floatBob 3.4s ease-in-out infinite}
+/* Gold sheen that sweeps a card's accent bar once when its detail view opens */
+@keyframes barSheen{0%{background-position:-140% 0}60%,100%{background-position:140% 0}}
+.brand-bar{position:relative;overflow:hidden}
+.brand-bar::after{content:'';position:absolute;inset:0;background:linear-gradient(100deg,transparent 35%,rgba(255,255,255,.45) 50%,transparent 65%);background-size:220% 100%;animation:barSheen 2.6s ease-out 1}
+@media(prefers-reduced-motion:reduce){
+  .modal-overlay,.modal,.nav-item.active::before,.empty-state .es-icon,.brand-bar::after{animation:none}
+  .nav-item:hover,.btn:active{transform:none}
+  .brand-bar::after{display:none}
+}
+
+/* Smooth auto-height collapse/expand — grid-template-rows 0fr↔1fr animates to the
+   content's exact natural height (no max-height guesswork). Wrap a single child. */
+.collapse-y{display:grid;grid-template-rows:0fr;transition:grid-template-rows .3s ease}
+.collapse-y.open{grid-template-rows:1fr}
+.collapse-y>*{overflow:hidden;min-height:0}
+@media(prefers-reduced-motion:reduce){.collapse-y{transition:none}}
+
+/* Any clickable card (inline cursor:pointer) gets a gentle hover lift — covers the
+   Mead Guide, Troubleshoot tiles, batch list rows, etc. without markup changes. */
+.card[style*="cursor:pointer"]{transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.card[style*="cursor:pointer"]:hover{transform:translateY(-3px);box-shadow:0 8px 22px rgba(0,0,0,.3);border-color:var(--border2)}
+@media(prefers-reduced-motion:reduce){
+  .card[style*="cursor:pointer"]{transition:none}
+  .card[style*="cursor:pointer"]:hover{transform:none}
 }
 .empty-state{text-align:center;padding:48px 20px;color:var(--text3)}
 .empty-state .es-icon{font-size:48px;margin-bottom:12px;opacity:.4}

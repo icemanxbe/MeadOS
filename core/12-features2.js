@@ -1561,7 +1561,7 @@ function renderBottlingWorkflow(){
   var canNext=canAdvanceBottlingStep(step.id,s);
   var isLast=s.stepIdx===BOTTLING_STEPS.length-1;
   document.body.insertAdjacentHTML('beforeend',
-    '<div class="modal-overlay" onclick="if(event.target===this&&confirm(\'Cancel bottling workflow? Progress will be lost.\'))closeModal()"><div class="modal" style="max-width:640px;max-height:90vh;display:flex;flex-direction:column">'
+    '<div class="modal-overlay modal-static" onclick="if(event.target===this&&confirm(\'Cancel bottling workflow? Progress will be lost.\'))closeModal()"><div class="modal" style="max-width:640px;max-height:90vh;display:flex;flex-direction:column">'
     +'<div class="modal-title">🍾 GUIDED BOTTLING · '+escHtml(b.name)+'</div>'
     +'<div style="display:flex;gap:0;align-items:center;margin-bottom:18px">'+stepper+'</div>'
     +'<div style="flex:1;overflow-y:auto">'+content+'</div>'

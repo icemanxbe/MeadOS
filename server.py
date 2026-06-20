@@ -690,7 +690,7 @@ def login_page_html():
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Pro:ital@0;1&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0}
-body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0a0a0b;color:#e8e0d0;font-family:'Crimson Pro',serif;padding:24px}
+body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0a0a0b;color:#e8e0d0;font-family:'Crimson Pro',serif;padding:24px}
 .box{width:100%;max-width:360px;background:linear-gradient(180deg,#131317,#101013);border:1px solid #2a2a35;border-radius:16px;padding:32px 28px;box-shadow:0 6px 30px rgba(0,0,0,.5);position:relative}
 .box::before{content:'';position:absolute;top:0;left:26px;right:26px;height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,.5),transparent)}
 .crest{width:128px;height:128px;object-fit:contain;display:block;margin:0 auto 16px}
