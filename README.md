@@ -143,7 +143,7 @@ The complete handbook is in the **[Wiki](https://github.com/icemanxbe/MeadOS/wik
 └────────────┘                        └─────────────┘      └─ history  (last 50 saves)
 ```
 
-`index.html` is a small shell that loads `app.js` and `app.css` (served as ETag-cached static assets). `server.py` — **Python standard library only** — serves the app, stores the full state in SQLite, serves the PWA assets, the tokenised share page and the calendar feed, and adds security headers plus request hardening (login throttling, origin/CSRF checks, an audit log) to every response. Every browser reads and writes the **same shared data**; saves are debounced, offline edits re-sync, and every save is appended to a 50-deep history table so an accidental overwrite is recoverable.
+`index.html` is a small shell that loads `app.css` and the app's JavaScript — split into ordered plain `<script>` modules under `core/` (two data files + fourteen logic modules that share one global scope, with **no build step, no bundler and no Node**), each served as an ETag-cached static asset. `server.py` — **Python standard library only** — serves the app, stores the full state in SQLite, serves the PWA assets, the tokenised share page and the calendar feed, and adds security headers plus request hardening (login throttling, origin/CSRF checks, an audit log) to every response. Every browser reads and writes the **same shared data**; saves are debounced, offline edits re-sync, and every save is appended to a 50-deep history table so an accidental overwrite is recoverable.
 
 ➡️ More: **[Backups & Data](https://github.com/icemanxbe/MeadOS/wiki/Backups-and-Data)** · **[Security & Deployment](https://github.com/icemanxbe/MeadOS/wiki/Security-and-Deployment)**.
 
@@ -177,9 +177,12 @@ Yes — create, fork, template, import/export BeerXML or PDF, and toggle metric 
 
 ```
 MeadOS/
-├── index.html              # app shell (loads app.js + app.css)
-├── app.js                  # all UI, logic, recipes & libraries
+├── index.html              # app shell (loads app.css + core/*.js, in order)
 ├── app.css                 # styles
+├── core/                   # the app's JavaScript as ordered plain scripts (no build step)
+│   ├── data-libraries.js   # honey / yeast / nutrient reference data
+│   ├── data-recipes.js     # the 38 built-in recipes + pairings
+│   └── 01-state.js … 14-bootstrap.js   # logic modules, loaded in order (14 runs init())
 ├── server.py               # zero-dependency Python server + SQLite storage
 ├── sw.js                   # service worker (offline shell)
 ├── meados.db               # created on first save (gitignored)

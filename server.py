@@ -243,9 +243,8 @@ LABEL_NAME_RE = re.compile(r"^[A-Za-z0-9._-]+\.(png|jpe?g|webp|svg|gif)$", re.I)
 # Static front-end assets served next to index.html (the app's JS/CSS were
 # split out of the single-file HTML for maintainability). Public, ETag-cached.
 STATIC_ASSETS = {
-    "/app.js": "text/javascript; charset=utf-8",
-    "/data-libraries.js": "text/javascript; charset=utf-8",
-    "/data-recipes.js": "text/javascript; charset=utf-8",
+    # The app's JS now lives as ordered modules under core/ (served by the
+    # /core/ handler in do_GET); only app.css remains a top-level static asset.
     "/app.css": "text/css; charset=utf-8",
     # /test.html (zero-dep dev unit page) is served LAN-only — see do_GET.
     # PWA assets — all public (the install/offline shell isn't sensitive).
@@ -691,7 +690,7 @@ def login_page_html():
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Crimson+Pro:ital@0;1&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0}
-body{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#0a0a0b;color:#e8e0d0;font-family:'Crimson Pro',serif;padding:24px}
+body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0a0a0b;color:#e8e0d0;font-family:'Crimson Pro',serif;padding:24px}
 .box{width:100%;max-width:360px;background:linear-gradient(180deg,#131317,#101013);border:1px solid #2a2a35;border-radius:16px;padding:32px 28px;box-shadow:0 6px 30px rgba(0,0,0,.5);position:relative}
 .box::before{content:'';position:absolute;top:0;left:26px;right:26px;height:1px;background:linear-gradient(90deg,transparent,rgba(201,168,76,.5),transparent)}
 .crest{width:128px;height:128px;object-fit:contain;display:block;margin:0 auto 16px}
@@ -1282,6 +1281,32 @@ class Handler(BaseHTTPRequestHandler):
                 return
             with open(fpath, "rb") as f:
                 self._send(200, f.read(), "text/html; charset=utf-8")
+            return
+        if path.startswith("/core/") and path.endswith(".js") and ".." not in path:
+            # The app's modular JS (core/*.js + the split-out data files). Public,
+            # like app.js was — no secrets in the client code. ETag-cached so each
+            # module only re-transfers when it actually changes.
+            fpath = os.path.join(BASE_DIR, path.lstrip("/"))
+            if not os.path.isfile(fpath):
+                self._send(404, {"ok": False, "error": "not found"})
+                return
+            st = os.stat(fpath)
+            etag = '"%x-%x"' % (int(st.st_mtime), st.st_size)
+            if self.headers.get("If-None-Match") == etag:
+                self.send_response(304)
+                self.send_header("ETag", etag)
+                self.send_header("Cache-Control", "no-cache")
+                self.end_headers()
+                return
+            with open(fpath, "rb") as f:
+                data = f.read()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/javascript; charset=utf-8")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("ETag", etag)
+            self.send_header("Cache-Control", "no-cache")
+            self.end_headers()
+            self.wfile.write(data)
             return
         if path in STATIC_ASSETS:
             # Public so share-page guests (who may be behind the external

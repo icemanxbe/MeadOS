@@ -65,10 +65,25 @@
 <div id="main"></div>
 </div>
 <div id="toast"></div>
-<!-- Data split out of app.js for easier editing; plain scripts (shared global
-     scope) loaded BEFORE app.js, so app.js sees BUILTIN_RECIPES, HONEY_PROFILES, etc. -->
-<script src="/data-libraries.js"></script>
-<script src="/data-recipes.js"></script>
-<script src="/app.js"></script>
+<!-- MeadOS is modular: plain scripts in core/ sharing one global scope, loaded in
+     order. Data first (so the logic sees BUILTIN_RECIPES, HONEY_PROFILES, etc.),
+     then the logic modules, with 14-bootstrap.js (init) last. No build step. -->
+<script src="/core/data-libraries.js"></script>
+<script src="/core/data-recipes.js"></script>
+<script src="/core/01-state.js"></script>
+<script src="/core/02-honey-domain.js"></script>
+<script src="/core/03-brew-domain.js"></script>
+<script src="/core/04-server-ha.js"></script>
+<script src="/core/05-utils-nav.js"></script>
+<script src="/core/06-views-batch.js"></script>
+<script src="/core/07-views-recipe.js"></script>
+<script src="/core/08-tools.js"></script>
+<script src="/core/09-views-library.js"></script>
+<script src="/core/10-cellar-supplies.js"></script>
+<script src="/core/11-features.js"></script>
+<script src="/core/12-features2.js"></script>
+<script src="/core/13-labels-share.js"></script>
+<script src="/core/13b-label-studio.js"></script>
+<script src="/core/14-bootstrap.js"></script>
 </body>
 </html>
