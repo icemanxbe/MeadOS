@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📖 Documentation & Wiki
+    url: https://github.com/icemanxbe/MeadOS/wiki
+    about: The full handbook — installation, features, formulas, deployment and troubleshooting.
+  - name: 🔒 Security issue
+    url: https://github.com/icemanxbe/MeadOS/blob/main/SECURITY.md
+    about: Please report vulnerabilities privately, not as a public issue.
