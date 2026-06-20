@@ -62,7 +62,7 @@ function renderLabelDesignerModal(){
   // whole modal scrolls instead, the Save/Cancel footer ends up clipped below
   // the 92vh cutoff on short viewports (e.g. inside an HA iframe) where the
   // overlay scrollbar is invisible, making Save effectively unclickable.
-  return'<div class="modal-overlay" id="designer-overlay" onclick="if(event.target===this)closeLabelDesigner()">'
+  return'<div class="modal-overlay modal-static" id="designer-overlay" onclick="if(event.target===this)closeLabelDesigner()">'
     +'<div class="modal" style="max-width:980px;width:96vw;background:var(--bg2);border:1px solid '+color+';max-height:92vh;display:flex;flex-direction:column">'
     +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;padding-bottom:10px;border-bottom:1px solid var(--border)">'
     +'<div class="modal-title" style="color:'+color+';margin:0">🎨 LABEL DESIGNER</div>'
@@ -802,7 +802,7 @@ function renderImagePickerModal(){
   if(s.mode==='upload')body=renderPickerUpload();
   else if(s.mode==='media')body=renderPickerMedia();
   else body=renderPickerUrl();
-  return'<div class="modal-overlay" id="picker-overlay" onclick="if(event.target===this)closeImagePicker()">'
+  return'<div class="modal-overlay modal-static" id="picker-overlay" onclick="if(event.target===this)closeImagePicker()">'
     +'<div class="modal" style="max-width:760px;width:94vw;max-height:88vh;overflow:auto;background:var(--bg2)">'
     +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">'
     +'<div class="modal-title" style="margin:0">🖼 '+escHtml(s.title)+'</div>'

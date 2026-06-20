@@ -270,7 +270,7 @@ function renderCellar(){
       +headerLeft+headerRight+'</div>';
 
     // Expanded body — bottle grid, aging bar, actions, etc.
-    var body='<div id="cellar-body-'+b.id+'" style="padding:0 16px 16px;display:'+(isOpen?'block':'none')+'">'
+    var body='<div id="cellar-body-'+b.id+'"><div style="padding:0 16px 16px">'
       +(inconsistent?'<div class="stock-alert" style="margin-bottom:14px;flex-wrap:wrap"><span class="icon">⚠</span><span style="flex:1;min-width:200px"><strong>No bottles on hand</strong> — you recorded '+origCount+' bottled. Did you already drink/gift them, or was the cellar never filled in?</span><span style="display:flex;gap:8px"><button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();markBatchFinished(\''+b.id+'\')" style="white-space:nowrap">Mark finished</button><button class="btn btn-primary btn-sm" onclick="event.stopPropagation();fillCellarFromOriginal(\''+b.id+'\')" style="white-space:nowrap">Fill cellar ('+origCount+')</button></span></div>':'')
       +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">'
       +'<div style="text-align:center;padding:8px 4px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius)"><div style="font-family:var(--font-display);font-size:18px;color:var(--gold2)">'+fmtDaysShort(aged)+'</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-top:2px">AGED</div></div>'
@@ -321,11 +321,11 @@ function renderCellar(){
       +'<button class="btn btn-primary btn-sm" onclick="showView(\'batch\',\''+b.id+'\')" style="margin-left:6px">↗ Open Batch</button>'
       +'<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="removeFromCellar(\''+b.id+'\')" title="Return to active batches">🗑</button>'
       +'</div>'
-      +'</div>';
+      +'</div></div>';
 
     return'<div class="aging-card" id="aging-'+b.id+'">'
       +'<div style="height:3px;background:'+color+'"></div>'
-      +header+body
+      +header+'<div class="collapse-y'+(isOpen?' open':'')+'">'+body+'</div>'
       +'</div>';
   }).join('');
 
@@ -920,6 +920,15 @@ function renderFermenterShelfHTML(s,batches,fermenters){
     var liquidPath=liquidColor
       ?'<path d="M 7 42 L 7 96 Q 7 99 10 99 L 40 99 Q 43 99 43 96 L 43 42 Q 25 47 7 42 Z" fill="'+liquidColor+'" opacity="0.65"/>'
       :'';
+    // CO2 bubbles rising through the mead while this vessel is actively fermenting.
+    var fermenting=active&&typeof getBatchStatus==='function'&&getBatchStatus(active)==='fermenting';
+    var bubbles=fermenting
+      ?'<g class="cellar-bubbles">'
+        +'<circle class="cb1" cx="17" cy="92" r="1.5" fill="#fff" opacity="0.5"/>'
+        +'<circle class="cb2" cx="25" cy="94" r="1.1" fill="#fff" opacity="0.45"/>'
+        +'<circle class="cb3" cx="33" cy="90" r="1.4" fill="#fff" opacity="0.5"/>'
+        +'</g>'
+      :'';
     var activeText=active?active.name+(active.serial?' #'+active.serial:''):'empty';
     var activeStyle=active?'':'font-style:italic;opacity:0.6';
     var fullTooltip=f.name+(f.capacity?' ('+f.capacity+'L)':'')+(active?' — '+active.name+(active.serial?' #'+active.serial:''):' — empty');
@@ -928,6 +937,7 @@ function renderFermenterShelfHTML(s,batches,fermenters){
         +'<ellipse cx="25" cy="100" rx="22" ry="3" fill="#000000" opacity="0.7"/>'
         +'<path d="M 6 30 L 6 96 Q 6 100 10 100 L 40 100 Q 44 100 44 96 L 44 30 Q 44 26 40 24 L 32 24 L 32 18 L 18 18 L 18 24 L 10 24 Q 6 26 6 30 Z" fill="#2a2520" fill-opacity="0.55" stroke="'+color+'" stroke-width="1"/>'
         +liquidPath
+        +bubbles
         +'<rect x="12" y="35" width="2" height="55" fill="#fff" opacity="0.18"/>'
         +'<rect x="20" y="10" width="10" height="10" fill="#3a2c1e" stroke="#5a4530" stroke-width="0.5"/>'
         +'<line x1="25" y1="10" x2="25" y2="4" stroke="'+color+'" stroke-width="1" fill="none"/>'
@@ -1703,7 +1713,7 @@ function toggleCellarCard(batchId,event){
   window._cellarExpanded[batchId]=open;
   var body=document.getElementById('cellar-body-'+batchId);
   var chev=document.getElementById('cellar-chev-'+batchId);
-  if(body)body.style.display=open?'block':'none';
+  if(body&&body.parentElement)body.parentElement.classList.toggle('open',open);
   if(chev)chev.textContent=open?'▼':'▶';
 }
 
@@ -1714,7 +1724,7 @@ function cellarExpandAll(open){
   bodies.forEach(function(b){
     var id=b.id.replace('cellar-body-','');
     window._cellarExpanded[id]=!!open;
-    b.style.display=open?'block':'none';
+    if(b.parentElement)b.parentElement.classList.toggle('open',!!open);
     var chev=document.getElementById('cellar-chev-'+id);
     if(chev)chev.textContent=open?'▼':'▶';
   });
