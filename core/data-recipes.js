@@ -15,7 +15,8 @@ ingredients:[
 {item:'Spring Water',amount:'5.0 L',notes:'Chlorine-free; bottled or filtered'},
 {item:"Mangrove Jack's M05 Yeast",amount:'10 g (1 packet)',notes:''},
 {item:'Mead Yeast Nutrient',amount:'12 g (1 packet)',notes:'Staggered addition'},
-{item:'Potassium Metabisulfite',amount:'0.5 g',notes:'Optional: at racking'}
+{item:'Potassium Metabisulfite',amount:'0.5 g',notes:'Optional: at racking'},
+{item:'Potassium Sorbate',amount:'2 g',notes:'Stabilise before back-sweetening — use WITH metabisulfite, never alone. Skip if leaving dry.'}
 ],
 steps:[
 {day:0,title:'Brew Day',desc:'Clean all equipment with an oxygen-based cleaner (Chemipro OXI 4g/L warm water, 5 min), then sanitize with a no-rinse sanitizer (Chemipro SAN 2ml/L or Star San 1.5ml/L, 1-2 min contact). Mix honey into 4.5L room-temperature water — do not heat (preserves aromatics). Stir vigorously 5 minutes to dissolve and aerate. Take OG reading. Sprinkle M05 yeast directly on must surface. Seal with airlock filled to the line.'},
@@ -24,7 +25,7 @@ steps:[
 {day:7,title:'Week 1 Check',desc:'Fermentation slowing is normal. Take gravity reading. Mead may look cloudy — this is fine. Top up airlock water if needed.'},
 {day:14,title:'Rack to Secondary',desc:'If gravity stable over 2 days, rack to clean vessel using auto-siphon. Leave sediment (lees) behind. Add 0.5g potassium metabisulfite. Seal with airlock.'},
 {day:21,title:'Clarity Check',desc:'Mead should be visibly clearing from the top down. Take gravity reading. Cold crash in fridge for a week if you want to accelerate clearing.'},
-{day:42,title:'Final Gravity',desc:'Two readings 2 days apart. If identical and near 1.010, fermentation is complete. Taste — adjust sweetness if desired with honey + sorbate.'},
+{day:42,title:'Final Gravity',desc:'Two readings 2 days apart. If identical and near 1.010, fermentation is complete. To leave it dry, just bottle. To back-sweeten you MUST stabilise first or the new honey will referment: add BOTH 0.5 g potassium metabisulfite AND 2 g potassium sorbate together (metabisulfite stuns the yeast, sorbate stops it breeding; sorbate alone can smell of geranium and metabisulfite alone will not stop a restart). Stir, wait 24 h, then add honey to taste.'},
 {day:56,title:'Bottle',desc:'Clean bottles with your cleaner, then sanitize with your no-rinse sanitizer (1-2 min contact)... Siphon mead in, leaving minimal headspace. Cap. Label with batch name, date, OG/FG, ABV.'},
 {day:120,title:'First Tasting',desc:'Pour, observe color and clarity, smell, taste. Record tasting notes. Will continue improving for 6-12 months.'}
 ],
@@ -44,7 +45,9 @@ ingredients:[
 {item:'Mead Yeast Nutrient',amount:'12 g',notes:'Staggered'},
 {item:'Cinnamon Sticks',amount:'2 sticks',notes:'Added at secondary'},
 {item:'Apple slices (optional)',amount:'1 apple',notes:'Adds depth in secondary'},
-{item:'Pectic Enzyme',amount:'2 g',notes:'Optional — apple juice is pectin-rich; prevents a lasting haze'}
+{item:'Pectic Enzyme',amount:'2 g',notes:'Optional — apple juice is pectin-rich; prevents a lasting haze'},
+{item:'Potassium Metabisulfite',amount:'0.5 g',notes:'Stabilise before back-sweetening (use WITH sorbate); also guards against oxidation at bottling. Skip if leaving dry.'},
+{item:'Potassium Sorbate',amount:'2 g',notes:'Stabilise before back-sweetening — use WITH metabisulfite, never alone. Skip if leaving dry.'}
 ],
 steps:[
 {day:0,title:'Brew Day',desc:'Clean (Chemipro OXI 4g/L or PBW), then sanitize (Chemipro SAN 2ml/L or Star San 1.5ml/L). Combine apple juice, water and honey — stir 10+ minutes until honey fully dissolves. Add the pectic enzyme (amount in the ingredient list — it scales with the batch-size slider) and stir in. Take OG. Pitch M05 by sprinkling on surface. Seal with airlock.'},
@@ -52,7 +55,7 @@ steps:[
 {day:3,title:'Second Nutrient',desc:'Add remaining 6g. Log gravity — should be dropping steadily.'},
 {day:14,title:'Rack with Cinnamon',desc:'Rack to clean secondary. Add 2 cinnamon sticks (and optional sliced apple in a sanitized muslin bag). The slow infusion produces gentle warmth, not aggressive heat.'},
 {day:28,title:'Taste Test',desc:'Pull a small sample. If cinnamon strong enough, remove the sticks now. Otherwise leave longer.'},
-{day:42,title:'Final Gravity',desc:'Check FG — should be 1.005-1.010. Remove all spice/fruit. Taste — adjust with honey if needed (stabilize with sorbate first).'},
+{day:42,title:'Final Gravity',desc:'Check FG — should be 1.005-1.010. Remove all spice/fruit. To back-sweeten safely you must stabilise FIRST with BOTH 0.5 g potassium metabisulfite AND 2 g potassium sorbate together (both are needed — sorbate alone will not hold and can smell of geranium, metabisulfite alone will not stop a restart). Stir, wait 24 h, then add honey to taste.'},
 {day:56,title:'Bottle',desc:'Bottle in clear glass to show the warm amber color. Label with your Apple Cinnamon label.'},
 {day:90,title:'First Tasting',desc:'Perfect with apple desserts, pork, or just by the fire. Continues improving for 6+ months.'}
 ],
@@ -73,7 +76,9 @@ ingredients:[
 {item:'Spring Water',amount:'4.5 L',notes:''},
 {item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:''},
 {item:'Mead Yeast Nutrient',amount:'12 g',notes:''},
-{item:'Pectic Enzyme',amount:'2 g',notes:'Optional — helps clarity with fruit'}
+{item:'Pectic Enzyme',amount:'2 g',notes:'Optional — helps clarity with fruit'},
+{item:'Potassium Metabisulfite',amount:'0.5 g',notes:'Stabilise before back-sweetening (use WITH sorbate); also guards against oxidation at bottling. Skip if leaving dry.'},
+{item:'Potassium Sorbate',amount:'2 g',notes:'Stabilise before back-sweetening — use WITH metabisulfite, never alone. Skip if leaving dry.'}
 ],
 steps:[
 {day:0,title:'Brew Day',desc:'Freeze strawberries first if fresh. Thaw and add to fermenter (no need to chop — pectic enzyme will handle structure). Add honey and water. Stir thoroughly to dissolve honey. Take OG (account for fruit displacement). Add pectic enzyme if using. Pitch M05.'},
@@ -81,7 +86,7 @@ steps:[
 {day:3,title:'Second Nutrient',desc:'Add remaining 6g. Continue daily punch-down. Log gravity.'},
 {day:7,title:'Strain Fruit',desc:'Strain strawberries through sanitized mesh. Press gently — do NOT pulverize (releases tannins). Transfer clean liquid back to fermenter.'},
 {day:21,title:'Rack to Secondary',desc:'Rack off lees. Color should be a beautiful soft pink. Smells should be fresh strawberry, not jammy.'},
-{day:35,title:'Final Gravity',desc:'Check FG. Taste — if too dry (likely with M05), back-sweeten lightly to highlight fruit (sorbate + meta first, then honey to taste).'},
+{day:35,title:'Final Gravity',desc:'Check FG. Taste — if too dry (likely with M05) you can back-sweeten to highlight the fruit. Stabilise FIRST or it will referment: add BOTH 0.5 g potassium metabisulfite AND 2 g potassium sorbate together (both are needed, never sorbate alone). Stir, wait 24 h, then add honey to taste.'},
 {day:49,title:'Bottle',desc:'Bottle in clear glass to showcase the pink color. Keep chilled — strawberry mead loses character with heat exposure.'},
 {day:75,title:'First Tasting',desc:'Best young and chilled — drink within 1 year for peak fruit character.'}
 ],
@@ -134,7 +139,8 @@ ingredients:[
 {item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:''},
 {item:'Mead Yeast Nutrient',amount:'12 g',notes:''},
 {item:'Pectic Enzyme',amount:'2 g',notes:'Highly recommended with mixed berries'},
-{item:'Potassium Sorbate',amount:'1 g',notes:'Before back-sweetening'}
+{item:'Potassium Sorbate',amount:'1 g',notes:'Before back-sweetening'},
+{item:'Potassium Metabisulfite',amount:'0.5 g',notes:'Stabilise before back-sweetening (use WITH sorbate); also guards against oxidation at bottling. Skip if leaving dry.'}
 ],
 steps:[
 {day:0,title:'Brew Day',desc:'Thaw forest fruits. Add to fermenter — leave berries whole. Add honey and water, stir until honey dissolves completely. Add pectic enzyme. Take OG. Pitch M05.'},
@@ -142,7 +148,7 @@ steps:[
 {day:3,title:'Second Nutrient',desc:'Add remaining 6g. Continue daily cap punch-down. Color is now deep red-purple.'},
 {day:10,title:'Strain Berries',desc:'Strain through sanitized mesh bag. Gentle pressing only — pressed-out tannins make harsh mead. Transfer liquid back.'},
 {day:21,title:'Rack to Secondary',desc:'Rack to clean vessel. Color should be jewel-like ruby-purple. Smell should be bright, complex berry character.'},
-{day:42,title:'Final Gravity',desc:'Check FG — target 1.005-1.012. Mead may be too dry — typical with M05. Stabilize and back-sweeten with honey if needed.'},
+{day:42,title:'Final Gravity',desc:'Check FG — target 1.005-1.012. Mead may be too dry — typical with M05. To back-sweeten, stabilise FIRST with BOTH 0.5 g potassium metabisulfite AND 2 g potassium sorbate together (both are needed — sorbate alone can smell of geranium, metabisulfite alone will not stop a restart). Stir, wait 24 h, then add honey to taste.'},
 {day:56,title:'Clarity Check',desc:'Should be clear by now. If still hazy, add bentonite or cold crash for a week.'},
 {day:70,title:'Bottle',desc:'Bottle in clear or amber glass. The Forest Fruits label deserves the spotlight.'},
 {day:120,title:'First Tasting',desc:'Best after 4 months minimum. Improves dramatically for 1+ year. Pairs with dark chocolate, game, soft cheeses.'}
@@ -196,7 +202,9 @@ ingredients:[
 {item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:''},
 {item:'Mead Yeast Nutrient',amount:'12 g',notes:''},
 {item:'Pectic Enzyme',amount:'2 g',notes:'Blueberries are pectin-rich'},
-{item:'Lemon zest (optional)',amount:'1 lemon',notes:'Brightens the fruit'}
+{item:'Lemon zest (optional)',amount:'1 lemon',notes:'Brightens the fruit'},
+{item:'Potassium Metabisulfite',amount:'0.5 g',notes:'Stabilise before back-sweetening (use WITH sorbate); also guards against oxidation at bottling. Skip if leaving dry.'},
+{item:'Potassium Sorbate',amount:'2 g',notes:'Stabilise before back-sweetening — use WITH metabisulfite, never alone. Skip if leaving dry.'}
 ],
 steps:[
 {day:0,title:'Brew Day',desc:'Thaw blueberries. Lightly crush half of them with sanitized spoon (releases color). Add all to fermenter with honey and water. Stir well. Add pectic enzyme. Take OG. Pitch M05.'},
@@ -205,7 +213,7 @@ steps:[
 {day:10,title:'Strain Fruit',desc:'Strain through fine mesh. Press very gently. Add lemon zest at this stage if using (gives 1 week then remove).'},
 {day:17,title:'Remove Lemon',desc:'If using lemon zest, remove now — longer than 1 week creates pith bitterness.'},
 {day:21,title:'Rack to Secondary',desc:'Rack to clean vessel. Color should be indigo-purple. Mead may still be hazy — give it time.'},
-{day:42,title:'Final Gravity',desc:'Target FG 1.008-1.012. Stabilize before any back-sweetening.'},
+{day:42,title:'Final Gravity',desc:'Target FG 1.008-1.012. To back-sweeten you MUST stabilise first or the added honey will referment (risking gushers or burst bottles): add BOTH 0.5 g potassium metabisulfite AND 2 g potassium sorbate together (both are needed, never sorbate alone). Stir, wait 24 h, then add honey to taste.'},
 {day:70,title:'Clear & Bottle',desc:'Should be clear by now. Bottle in clear glass — the indigo color is the star.'},
 {day:150,title:'First Tasting',desc:'Blueberry mead benefits enormously from aging. Try at 5 months, then 8, then 12 — you\'ll see dramatic improvement.'}
 ],
@@ -696,7 +704,7 @@ minAgeDays:60,peakAgeDays:180,maxAgeDays:540,
 tags:['Spicy','Bold','Risky','Secondary'],
 description:'Chili peppers in secondary — for the bold. Pair sweet mead with chili heat for the famous sweet-then-burn pairing. Use FRUITY chilis (habanero, fresno) not just hot ones. Tiny amounts go far.',
 ingredients:[
-{item:'Wildflower Honey',amount:'1.8 kg',notes:'Sweet to balance heat'},
+{item:'Wildflower Honey',amount:'1.6 kg',notes:'Sweet to balance heat'},
 {item:'Spring Water',amount:'4.5 L',notes:''},
 {item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:''},
 {item:'Mead Yeast Nutrient',amount:'12 g',notes:''},
@@ -724,7 +732,7 @@ minAgeDays:90,peakAgeDays:180,maxAgeDays:540,
 tags:['Coffee','Roasted','Dessert','Secondary'],
 description:'Cold-brew concentrate added in secondary — gives coffee character without the bitterness of hot extraction. Drinks like a liqueur. Excellent after dinner.',
 ingredients:[
-{item:'Wildflower Honey',amount:'1.8 kg',notes:'Sweet to balance coffee\'s bitterness'},
+{item:'Wildflower Honey',amount:'1.6 kg',notes:'Sweet to balance coffee\'s bitterness'},
 {item:'Spring Water',amount:'4.5 L',notes:''},
 {item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:''},
 {item:'Mead Yeast Nutrient',amount:'12 g',notes:''},
@@ -751,11 +759,13 @@ minAgeDays:90,peakAgeDays:240,maxAgeDays:730,
 tags:['Lavender','Floral','Provence','Secondary','Restraint'],
 description:'Culinary lavender added in secondary — a delicate, perfumed mead reminiscent of a Provençal summer. The hardest part is restraint: lavender turns soapy past a threshold. Less is more.',
 ingredients:[
-{item:'Wildflower or Acacia Honey',amount:'1.7 kg',notes:'Light, neutral honey lets lavender lead'},
+{item:'Wildflower or Acacia Honey',amount:'1.58 kg',notes:'Light, neutral honey lets lavender lead'},
 {item:'Spring Water',amount:'4.5 L',notes:''},
 {item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:'Ferment cool 16-18°C — preserves floral aromatics'},
 {item:'Mead Yeast Nutrient',amount:'12 g',notes:''},
-{item:'Dried CULINARY lavender buds',amount:'8-12 g',notes:'SECONDARY: food-grade only; ornamental lavender may be treated'}
+{item:'Dried CULINARY lavender buds',amount:'8-12 g',notes:'SECONDARY: food-grade only; ornamental lavender may be treated'},
+{item:'Potassium Metabisulfite',amount:'0.5 g',notes:'Stabilise before back-sweetening (use WITH sorbate); also guards against oxidation at bottling. Skip if leaving dry.'},
+{item:'Potassium Sorbate',amount:'2 g',notes:'Stabilise before back-sweetening — use WITH metabisulfite, never alone. Skip if leaving dry.'}
 ],
 steps:[
 {day:0,title:'Brew Day',desc:'Standard traditional base. Honey + water + nutrient + yeast. Keep cool (16-18°C) to preserve aromatics later.'},
@@ -765,7 +775,7 @@ steps:[
 {day:24,title:'Add Lavender (SECONDARY)',desc:'SECONDARY: 8g for subtle, 12g maximum. Place in muslin bag (essential — buds float and clump). Drop into fermenter. Lavender extracts FAST in alcohol.'},
 {day:27,title:'TASTE TEST — Day 3',desc:'CRITICAL: Pull a small sample. If lavender is forward but not soapy, pull the bag NOW. If barely perceptible, leave 1-2 more days max. Past day 5 you risk perfume/soap territory.'},
 {day:29,title:'Remove Lavender',desc:'Pull the bag by day 5 latest. Even if subtle. It develops over weeks in the bottle.'},
-{day:42,title:'Stabilize & Bottle',desc:'Cold-crash 1 week if cloudy. Stabilize with 0.5g potassium metabisulfite + 1g sorbate (if back-sweetening). Bottle.'},
+{day:42,title:'Stabilize & Bottle',desc:'Cold-crash 1 week if cloudy. If back-sweetening, stabilise FIRST with BOTH 0.5 g potassium metabisulfite AND 2 g potassium sorbate together (both are needed — never sorbate alone), stir, wait 24 h, then add honey to taste. Bottle.'},
 {day:120,title:'First Tasting',desc:'4 months in. Lavender should be elegant, floral, integrated with honey — not perfume-counter soap. Pair with goat cheese, lemon tart, or sip alone.'}
 ],
 notes:'CULINARY GRADE ONLY — ornamental shop lavender is often sprayed. Provence lavender (Lavandula angustifolia) is the gold standard. NEVER exceed 12g/5L. Add a vanilla bean alongside if you want "lavender honey custard." Pairs beautifully with cyser or peach as a blending base.'
@@ -779,7 +789,7 @@ minAgeDays:90,peakAgeDays:240,maxAgeDays:730,
 tags:['Spices','Warming','Chai','Winter','Secondary'],
 description:'A spice blend straight from a chai tea recipe — cardamom, cinnamon, ginger, clove, black pepper — added in secondary. Drinks like a warming spiced wine. Excellent winter sipper.',
 ingredients:[
-{item:'Wildflower Honey',amount:'1.8 kg',notes:'Slightly sweeter base balances spice heat'},
+{item:'Wildflower Honey',amount:'1.68 kg',notes:'Slightly sweeter base balances spice heat'},
 {item:'Spring Water',amount:'4.5 L',notes:''},
 {item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:''},
 {item:'Mead Yeast Nutrient',amount:'12 g',notes:''},
@@ -787,7 +797,9 @@ ingredients:[
 {item:'Cinnamon stick (Ceylon, not cassia)',amount:'1 stick (~7 cm)',notes:'SECONDARY: broken into 2-3 pieces'},
 {item:'Fresh ginger (sliced)',amount:'15-20 g',notes:'SECONDARY: thin coin slices'},
 {item:'Whole cloves',amount:'3-4 cloves',notes:'SECONDARY: USE SPARINGLY — clove dominates fast'},
-{item:'Black peppercorns',amount:'6-8 corns',notes:'SECONDARY: gives back-of-throat warmth, not heat'}
+{item:'Black peppercorns',amount:'6-8 corns',notes:'SECONDARY: gives back-of-throat warmth, not heat'},
+{item:'Potassium Metabisulfite',amount:'0.5 g',notes:'Stabilise before back-sweetening (use WITH sorbate); also guards against oxidation at bottling. Skip if leaving dry.'},
+{item:'Potassium Sorbate',amount:'2 g',notes:'Stabilise before back-sweetening — use WITH metabisulfite, never alone. Skip if leaving dry.'}
 ],
 steps:[
 {day:0,title:'Brew Day',desc:'Standard traditional base. Aim slightly sweeter (target FG 1.012) so the spices have body to ride on.'},
@@ -797,7 +809,7 @@ steps:[
 {day:24,title:'Add Spice Blend (SECONDARY)',desc:'SECONDARY: Crush cardamom pods to expose seeds. Break cinnamon. Combine all spices in one muslin bag. Drop into fermenter.'},
 {day:28,title:'TASTE TEST — Day 4',desc:'Cloves and pepper extract fastest. Taste. If clove is forward — pull NOW.'},
 {day:31,title:'Remove Spices',desc:'7 days maximum. The cinnamon and cardamom carry the show; clove must stay background.'},
-{day:42,title:'Stabilize & Bottle',desc:'If desired, back-sweeten 1.014-1.016 for proper chai-latte feel. Stabilize first (sorbate + metabisulfite). Bottle.'},
+{day:42,title:'Stabilize & Bottle',desc:'If desired, back-sweeten to 1.014-1.016 for a proper chai-latte feel. Stabilise FIRST or it will referment: add BOTH 0.5 g potassium metabisulfite AND 2 g potassium sorbate together (both are needed). Stir, wait 24 h, then add honey to taste. Bottle.'},
 {day:120,title:'First Tasting',desc:'4 months. Spices have integrated. Warm gently in winter (max 50°C — preserves alcohol). Pair with pumpkin pie, gingerbread, or rich game.'}
 ],
 notes:'Use CEYLON cinnamon (true cinnamon) — cassia is harsher and dominates. Don\'t exceed the clove count; 5 cloves can ruin a batch. Brewers often add black tea bag (1 bag) for 24h with the spices for full chai authenticity. Star anise (1 pod) is a classic addition if you like anise.'
@@ -889,7 +901,9 @@ ingredients:[
 {item:'Spring Water',amount:'4.0 L',notes:'Slightly less to compensate for honey volume; final ~5L'},
 {item:"Mangrove Jack's M05 Yeast",amount:'15 g',notes:'1.5 packets — high OG needs robust pitch. M05 stops ~18% so will leave residual sweetness here'},
 {item:'Mead Yeast Nutrient',amount:'24 g',notes:'Doubled — high gravity batches starve without it'},
-{item:'Dried CULINARY lavender buds',amount:'10-14 g',notes:'SECONDARY ONLY: food-grade Lavandula angustifolia. Slightly more than the standard metheglin because sweetness mellows the perception'}
+{item:'Dried CULINARY lavender buds',amount:'10-14 g',notes:'SECONDARY ONLY: food-grade Lavandula angustifolia. Slightly more than the standard metheglin because sweetness mellows the perception'},
+{item:'Potassium Metabisulfite',amount:'0.5 g',notes:'Stabilise before back-sweetening (use WITH sorbate); also guards against oxidation at bottling. Skip if leaving dry.'},
+{item:'Potassium Sorbate',amount:'2 g',notes:'Stabilise before back-sweetening — use WITH metabisulfite, never alone. Skip if leaving dry.'}
 ],
 steps:[
 {day:0,title:'Brew Day · Sack Pitch',desc:'Combine 2.4 kg wildflower + 0.4 kg lavender honey (if using) with 4 L water at ~30°C. Stir until fully dissolved — this is dense and needs effort. Take OG (should read 1.130-1.140). Add 8 g nutrient. Pitch 1.5 packets M05 dry. Ferment at 18°C (cooler than usual — preserves both lavender and softens M05\'s harsh edge at high ABV).'},
@@ -923,7 +937,9 @@ ingredients:[
 {item:'Grade A Dark Maple Syrup',amount:'350 ml',notes:'Real maple ONLY — never pancake syrup (corn syrup with flavoring). Grade A Dark or Amber give the most flavor.'},
 {item:'Spring Water',amount:'4.2 L',notes:'Slightly less to compensate for maple syrup volume; final ~5L'},
 {item:"Mangrove Jack's M05 Yeast",amount:'10 g',notes:'Ferment at 18-20°C — preserves maple aromatics. Hot fermentation strips maple character.'},
-{item:'Mead Yeast Nutrient',amount:'12 g',notes:''}
+{item:'Mead Yeast Nutrient',amount:'12 g',notes:''},
+{item:'Potassium Metabisulfite',amount:'0.5 g',notes:'Stabilise before back-sweetening (use WITH sorbate); also guards against oxidation at bottling. Skip if leaving dry.'},
+{item:'Potassium Sorbate',amount:'2 g',notes:'Stabilise before back-sweetening — use WITH metabisulfite, never alone. Skip if leaving dry.'}
 ],
 steps:[
 {day:0,title:'Brew Day',desc:'Warm 1.5L water to ~30°C. Stir in 1.5 kg honey + 350 ml maple syrup until fully dissolved. Add remaining cool water to ~5L. Take OG (~1.090-1.094). Add 6g nutrient. Pitch M05 dry. Ferment at 18-20°C — cooler than usual to preserve maple aromatics.'},
