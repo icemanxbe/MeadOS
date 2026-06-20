@@ -35,7 +35,7 @@ var LABEL_FIELDS=[
   {key:'ingredients',label:'Ingredients'},
   {key:'allergens',label:'Allergens & dietary'},
   {key:'bottled',label:'Bottled date'},
-  {key:'window',label:'Best enjoyed'},
+  {key:'window',label:'Best-drink-between dates'},
   {key:'volume',label:'Volume'},
   {key:'serial',label:'Batch №'},
   {key:'brewer',label:'Brewer'},
@@ -92,21 +92,32 @@ function labelStudioPrimaryHoney(r){
 function firstSentence(s){if(!s)return'';var m=String(s).match(/^[^.!?]*[.!?]/);return m?m[0]:String(s);}
 function lcFirst(s){return s?s.charAt(0).toLowerCase()+s.slice(1):s;}
 
-// Tasting summary built from the HONEY actually used (not just the recipe).
+// The recipe's distinctive flavour lead, e.g. "Strawberry", "Chai-Spiced",
+// "Forest Fruits" — the part of the name before the style word.
+function recipeFlavorLead(r){
+  var n=(r.name||'').replace(/\s*\([^)]*\)/g,'').replace(/[·–—].*/,'').trim();
+  var m=n.split(/\b(mead|melomel|metheglin|pyment|cyser|bochet|braggot|hydromel|acerglyn|capsicumel|rhodomel)\b/i)[0].trim();
+  if(/^(traditional|classic|show|basic|simple|sweet|dry|sack|aged|heavy|dessert)$/i.test(m))return '';
+  return m;
+}
+// Tasting summary built from BOTH the recipe (flavour lead + style + sweetness)
+// AND the honey actually used (its flavour profile).
 function meadTastingSummary(ctx){
   var r=ctx.recipe||{},bot=ctx.bot,hp=ctx.hp,honey=ctx.honey;
   var sweet=(bot&&bot.sweetness)||labelStudioSweetGuess(r);
-  var style=(r.style||'mead');
-  var lead=(sweet?sweet.toLowerCase()+' ':'')+style.toLowerCase();
-  var art=/^[aeiou]/i.test(lead)?'An':'A';
-  var s;
+  var style=(r.style||'mead').toLowerCase();
+  var lead=recipeFlavorLead(r),leadLow=lead?lead.toLowerCase():'';
+  if(leadLow&&style.indexOf(leadLow)>=0)leadLow='';          // avoid "melomel melomel"
+  var desc=(sweet?sweet.toLowerCase()+' ':'')+(leadLow?leadLow+' ':'')+style;
+  var art=/^[aeiou]/i.test(desc)?'An':'A';
+  var s=art+' '+desc;
   if(hp&&hp.profile){
-    s=art+' '+lead+' on '+honey+' honey — '+lcFirst(firstSentence(hp.profile));
+    s+=' on '+honey+' honey — '+lcFirst(firstSentence(hp.profile));
   }else if(honey){
-    s=art+' '+lead+' built on '+honey+' honey.';
-  }else{
-    s=art+' '+lead+(r.description?' — '+lcFirst(firstSentence(r.description)):'.');
-  }
+    s+=' built on '+honey+' honey.';
+  }else if(r.description){
+    s+=' — '+lcFirst(firstSentence(r.description));
+  }else s+='.';
   if(!/[.!?]$/.test(s))s+='.';
   return s;
 }
@@ -150,12 +161,19 @@ function labelStudioBottled(ctx){
   return 'Bottled '+M[d.getMonth()]+' '+d.getFullYear();
 }
 function labelStudioWindow(ctx){
-  var bot=ctx.bot,r=ctx.recipe||{};if(!bot||!bot.date)return '';
-  var d=new Date(bot.date);if(isNaN(d.getTime()))return '';
+  var bot=ctx.bot,r=ctx.recipe||{};
+  var M=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   var minD=r.minAgeDays||30,maxD=r.maxAgeDays||(r.peakAgeDays?r.peakAgeDays*2:365);
-  var ry=new Date(d.getTime()+minD*86400000).getFullYear();
-  var my=new Date(d.getTime()+maxD*86400000).getFullYear();
-  return 'Best enjoyed '+(ry===my?ry:ry+'–'+my);
+  if(bot&&bot.date){
+    var d=new Date(bot.date);
+    if(!isNaN(d.getTime())){
+      var a=new Date(d.getTime()+minD*86400000),b=new Date(d.getTime()+maxD*86400000);
+      return 'Best between '+M[a.getMonth()]+' '+a.getFullYear()+' – '+M[b.getMonth()]+' '+b.getFullYear();
+    }
+  }
+  // No bottling date yet (e.g. designing from the recipe) — show it relatively.
+  var fc=(typeof fmtDurationCompact==='function')?fmtDurationCompact:function(x){return Math.round(x/30)+'mo';};
+  return 'Best '+fc(minD)+' – '+fc(maxD)+' after bottling';
 }
 // Resolve a field key → display string.
 function labelFieldValue(field,el,ctx){
@@ -398,17 +416,25 @@ function studioPointerDown(ev){
   var g=ev.target.closest&&ev.target.closest('[data-el-id]');
   if(!g){studioSelect(null);return;}
   var id=g.getAttribute('data-el-id');
+  // Capture geometry from the CURRENT (live) svg BEFORE studioSelect re-renders it
+  // — otherwise getBoundingClientRect on the detached node returns 0 and the scale
+  // becomes Infinity, flinging the element off the canvas.
+  var rect=svg.getBoundingClientRect(),d=studioDesign();
+  var scaleX=d.w/(rect.width||d.w), scaleY=d.h/(rect.height||d.h);
   studioSelect(id);
   var el=studioSelEl();if(!el)return;
-  var rect=svg.getBoundingClientRect();var d=studioDesign();
-  var scaleX=d.w/rect.width, scaleY=d.h/rect.height;
-  var startX=ev.clientX,startY=ev.clientY,ox=el.x,oy=el.y;
+  var startX=ev.clientX,startY=ev.clientY,ox=el.x,oy=el.y,moved=false,raf=0;
   function mv(e){
+    moved=true;
     el.x=Math.round(ox+(e.clientX-startX)*scaleX);
     el.y=Math.round(oy+(e.clientY-startY)*scaleY);
-    studioRefreshCanvas();
+    if(!raf)raf=requestAnimationFrame(function(){raf=0;studioRefreshCanvas();});
   }
-  function up(){document.removeEventListener('pointermove',mv);document.removeEventListener('pointerup',up);document.getElementById('studio-props').innerHTML=studioPropsHtml();}
+  function up(){
+    document.removeEventListener('pointermove',mv);document.removeEventListener('pointerup',up);
+    if(raf){cancelAnimationFrame(raf);studioRefreshCanvas();}
+    var p=document.getElementById('studio-props');if(p)p.innerHTML=studioPropsHtml();
+  }
   document.addEventListener('pointermove',mv);
   document.addEventListener('pointerup',up);
   ev.preventDefault();
