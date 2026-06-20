@@ -820,7 +820,7 @@ function renderRecipeDetail(){
     +'<button class="btn btn-secondary btn-sm" onclick="showView(\'recipes\')">← Recipes</button>'
     +'<div class="page-title" style="margin-bottom:0;color:'+r.brandColor+'">'+escHtml(r.name)+'</div>'
     +'<div style="margin-left:auto;display:flex;gap:6px">'
-    +'<button class="btn btn-secondary btn-sm" onclick="openLabelDesigner(\''+r.id+'\')" title="Customize where and how the label elements appear">🎨 Label</button>'
+    +'<button class="btn btn-secondary btn-sm" onclick="openLabelStudio(\''+r.id+'\')" title="Design a custom front &amp; back bottle label">🎨 Label Studio</button>'
     +(r.isCustom?'<button class="btn btn-secondary btn-sm" onclick="openCustomRecipeModal(\''+r.id+'\')">✏ Edit</button>':'<button class="btn btn-secondary btn-sm" onclick="openCustomRecipeModal(\''+r.id+'\')" title="Save a copy as your own custom recipe">⑂ Fork</button>')
     +(r.isCustom?'<button class="btn btn-danger btn-sm" onclick="deleteCustomRecipe(\''+r.id+'\')" title="Delete this recipe permanently">🗑 Delete</button>':'')
     +'</div></div>'
