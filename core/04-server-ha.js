@@ -530,6 +530,9 @@ async function loadData(){
       if(parsed){
         applyState(parsed);
         setSyncStatus('synced');
+        // Self-heal: migrate any embedded label images to /assets/ references so
+        // uploaded designs (and their per-volume clones) stop bloating the state.
+        if(!APP._shareMode&&typeof migrateLabelStudioImages==='function')migrateLabelStudioImages();
         var json=JSON.stringify(parsed);
         lastSyncMeta={ts:new Date(),bytes:json.length,mode:'server',ok:true,detail:'loaded from server (SQLite)'};
         try{

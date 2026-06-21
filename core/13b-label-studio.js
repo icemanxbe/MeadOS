@@ -936,6 +936,10 @@ function studioDeleteLayout(id){
 function studioUploadOwn(){
   studioPickImage(function(dataUrl){
     var d=studioDesign(),s=studioSide();
+    // Store the uploaded art as a /labels/ asset (a tiny URL) instead of a
+    // multi-MB data URL in the state blob. Show it instantly, then swap to the
+    // ref once the server has it (per-volume variants then clone just the URL).
+    if(typeof storeImageAsset==='function')storeImageAsset(dataUrl,'labels').then(function(ref){if(ref&&ref!==dataUrl&&studioSide().bgImage===dataUrl){studioSide().bgImage=ref;if(document.getElementById('studio-modal'))renderLabelStudio();}});
     function apply(w,h){
       d.w=w;d.h=h;
       s.bgImage=dataUrl;s.shape='rect';delete s.border;delete s.honeycomb;delete s.bg;
@@ -960,6 +964,31 @@ function studioUploadOwn(){
   });
 }
 function studioGenId(){return 'el'+(Date.now().toString(36))+Math.floor(performance.now()%1000);}
+// One-time self-heal: convert any embedded label-design images (data: URLs) into
+// /assets/ references so they stop bloating the saved state. Per-volume variants
+// and saved layouts that cloned the same image collapse onto a shared reference.
+// Idempotent — runs on load, does nothing once everything is a reference.
+async function migrateLabelStudioImages(){
+  if(APP._shareMode||typeof storeImageAsset!=='function')return;
+  var store=(APP.settings&&APP.settings.labelStudio)||{},cache={},changed=0;
+  async function ref(u){
+    if(typeof u!=='string'||u.indexOf('data:image')!==0)return u;
+    if(cache[u])return cache[u];
+    var r=await storeImageAsset(u,'labels');
+    if(r&&r!==u){cache[u]=r;changed++;return r;}
+    return u;
+  }
+  async function fixSide(s){
+    if(!s)return;
+    if(typeof s.bgImage==='string'&&s.bgImage.indexOf('data:image')===0)s.bgImage=await ref(s.bgImage);
+    if(Array.isArray(s.elements))for(var i=0;i<s.elements.length;i++){var el=s.elements[i];if(el&&typeof el.src==='string'&&el.src.indexOf('data:image')===0)el.src=await ref(el.src);}
+  }
+  var designs=[];
+  Object.keys(store).forEach(function(k){designs.push(store[k]);});
+  if(Array.isArray(APP.settings.labelLayouts))APP.settings.labelLayouts.forEach(function(l){designs.push(l);});
+  for(var j=0;j<designs.length;j++){var d=designs[j];if(d){await fixSide(d.front);await fixSide(d.back);}}
+  if(changed){if(typeof scheduleSave==='function')scheduleSave();if(typeof toast==='function')toast('🗜 Optimised '+changed+' label image'+(changed!==1?'s':'')+' → saved as references');}
+}
 function studioAdd(kind){
   var s=studioSide(),d=studioDesign(),el;
   var cx=Math.round(d.w/2-60),cy=Math.round(d.h/2-16);
@@ -984,8 +1013,8 @@ function studioAddField(){
   if(f==='custom'){el.text='Custom text';el.color='#e8e0d0';}
   s.elements.push(el);window._studio.selId=el.id;renderLabelStudio();
 }
-function studioAddImage(){studioPickImage(function(dataUrl){var s=studioSide(),d=studioDesign();s.elements.push({id:studioGenId(),type:'image',src:dataUrl,x:Math.round(d.w/2-60),y:Math.round(d.h/2-60),w:120,h:120});window._studio.selId=s.elements[s.elements.length-1].id;renderLabelStudio();});}
-function studioBgImage(){studioPickImage(function(dataUrl){studioSide().bgImage=dataUrl;renderLabelStudio();});}
+function studioAddImage(){studioPickImage(function(dataUrl){var s=studioSide(),d=studioDesign();var el={id:studioGenId(),type:'image',src:dataUrl,x:Math.round(d.w/2-60),y:Math.round(d.h/2-60),w:120,h:120};s.elements.push(el);window._studio.selId=el.id;renderLabelStudio();if(typeof storeImageAsset==='function')storeImageAsset(dataUrl,'labels').then(function(ref){if(ref&&ref!==dataUrl&&el.src===dataUrl){el.src=ref;if(document.getElementById('studio-modal'))renderLabelStudio();}});});}
+function studioBgImage(){studioPickImage(function(dataUrl){var s=studioSide();s.bgImage=dataUrl;renderLabelStudio();if(typeof storeImageAsset==='function')storeImageAsset(dataUrl,'labels').then(function(ref){if(ref&&ref!==dataUrl&&s.bgImage===dataUrl){s.bgImage=ref;if(document.getElementById('studio-modal'))renderLabelStudio();}});});}
 function studioPickImage(cb){
   // The input must be in the DOM or its change event won't fire in some browsers
   // (Safari especially) — that's why uploads silently did nothing.
