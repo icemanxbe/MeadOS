@@ -333,7 +333,7 @@ function meadTastingSummary(ctx){
     var sn='Een '+(adj?adj+' ':'')+(leadLow?leadLow+' ':'')+styleNl;
     if(hp&&hp.profile)sn+=' op '+labelHoneyPhrase(honey)+' — '+labelHoneyNotes(ctx);
     else if(honey)sn+=' op basis van '+labelHoneyPhrase(honey)+'.';
-    else if(r.description)sn+=' — '+lcFirst(firstSentence(r.description));
+    else if(r.description){var rd=(typeof RECIPE_DESC_NL!=='undefined'&&RECIPE_DESC_NL[r.id])||r.description;sn+=' — '+lcFirst(firstSentence(rd));}
     else sn+='.';
     if(!/[.!?]$/.test(sn))sn+='.';
     return sn;
