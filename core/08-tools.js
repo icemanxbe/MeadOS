@@ -1203,7 +1203,7 @@ function openPermanentRecord(batchId){
   var labelMini='';
   try{
     if(recipe&&typeof renderLabelWithABV==='function'){
-      labelMini=renderLabelWithABV(recipe.id,abv||'',{batch:b,maxWidth:'180px'});
+      labelMini=renderBatchLabel(recipe.id,abv||'',{batch:b,maxWidth:'180px'});
     }
   }catch(e){}
 

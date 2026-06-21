@@ -55,8 +55,11 @@ ABV, honey-for-target-gravity, **TOSNA 2.0** scheduling, sulfite (molecular SO�
 **🍾 Inventory & a cellar that mirror real life**
 Track honey, yeast, nutrients, chemicals and bottles with prices, expiry and restock thresholds; auto-deduct on brew day; see which recipes you can **brew with what you have**; and place finished bottles on real shelves with live drinking windows.
 
-**🔗 Labels, sharing, calendar & PWA**
-Procedural bottle/box labels and QR codes, an unguessable per-batch **share page**, a private `.ics` calendar feed, full metric / US / imperial units, and an installable offline-capable app.
+**🎨 Label Studio — design real bottle labels**
+A from-scratch **front & back** bottle-label designer. Start from a premium template or **upload your own art**, then drop live batch data onto it — ABV, net contents, batch №, vintage, a Dry→Sweet meter, ingredients, allergens, and a tasting note drawn from the *honey you actually used*. Pick shapes, fonts and honeycomb theming; **save element layouts** to reuse across labels. Design **per-bottle-size variants** (a 375 ml and a 750 ml version of the same label), flip the whole label — and the share page — into **English or Nederlands**, and print a sheet that can **match your exact bottle counts per size**, front-only or front + back.
+
+**🔗 Sharing, calendar & PWA**
+An unguessable per-batch **share page** (now in English or Dutch, with the Studio label front-and-centre), procedural QR codes, a private `.ics` calendar feed, full metric / US / imperial units, and an installable offline-capable app.
 
 **🏠 Optional Home Assistant**
 Live fermenter/cellar temperatures, hydrometer (iSpindel/Tilt/RAPT) readings and push notifications — proxied safely server-side. Entirely optional; MeadOS runs fully standalone.
@@ -64,6 +67,10 @@ Live fermenter/cellar temperatures, hydrometer (iSpindel/Tilt/RAPT) readings and
 ---
 
 ## 📸 A look around
+
+| Label Studio — front & back designer | The same label, in Nederlands |
+|---|---|
+| ![Label Studio](docs/screenshots/label-studio.jpg) | ![Dutch label](docs/screenshots/label-studio-nl.jpg) |
 
 | Batch detail & gravity log | Recipe detail — scale, ratings & steps |
 |---|---|

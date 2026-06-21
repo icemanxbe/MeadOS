@@ -1772,6 +1772,18 @@ async function initShareMode(token){
     APP.settings.recipeOverlays=APP.settings.recipeOverlays||{};
     APP.settings.recipeOverlays[b.recipeId]=payload.recipeOverlays;
   }
+  // Visitor-facing label locale: default to Dutch when the visitor's browser is
+  // Dutch-speaking (nl-BE / nl-NL), else the brewer's chosen locale. A toggle on
+  // the share page can override this.
+  var navLang=((navigator.languages&&navigator.languages.join(','))||navigator.language||navigator.userLanguage||'').toLowerCase();
+  APP.settings.labelLocale=/(^|,)nl\b/.test(navLang)?'nl':((typeof payload.labelLocale==='string'&&payload.labelLocale)||'en');
+  // Label Studio design (front only) so the share page renders the new label,
+  // print-ready. backEnabled:false → renderBatchLabel shows the front alone.
+  if(payload.labelStudio&&payload.labelStudio.front){
+    APP.settings.labelStudio=APP.settings.labelStudio||{};
+    var ls=payload.labelStudio;
+    APP.settings.labelStudio[b.recipeId]={w:ls.w||340,h:ls.h||440,front:ls.front,back:ls.front,backEnabled:false};
+  }
   renderPublicShareView(b);
   // Don't register hashchange — share view is static and we don't want any
   // navigation to fire later. If user changes the hash, nothing happens.

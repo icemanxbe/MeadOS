@@ -1505,7 +1505,10 @@ function packageState(){
       cellarTempSensorEntity:(APP.settings&&APP.settings.cellarTempSensorEntity)||'',
       notificationService:(APP.settings&&APP.settings.notificationService)||'',
       notificationsEnabled:!!(APP.settings&&APP.settings.notificationsEnabled),
-      favoriteRecipes:(APP.settings&&APP.settings.favoriteRecipes)||[]
+      favoriteRecipes:(APP.settings&&APP.settings.favoriteRecipes)||[],
+      labelStudio:(APP.settings&&APP.settings.labelStudio)||{},
+      labelLayouts:(APP.settings&&APP.settings.labelLayouts)||[],
+      labelLocale:(APP.settings&&APP.settings.labelLocale)||'en'
     },
     dataVersion:(typeof CURRENT_SCHEMA_VERSION!=='undefined'?CURRENT_SCHEMA_VERSION:8),
     version:8,
@@ -1569,6 +1572,9 @@ function applyState(d){
     var ss=d.sharedSettings;
     if(ss.recipeOverlays&&typeof ss.recipeOverlays==='object')APP.settings.recipeOverlays=ss.recipeOverlays;
     if(ss.customLabels&&typeof ss.customLabels==='object')APP.settings.customLabels=ss.customLabels;
+    if(ss.labelStudio&&typeof ss.labelStudio==='object')APP.settings.labelStudio=ss.labelStudio;
+    if(Array.isArray(ss.labelLayouts))APP.settings.labelLayouts=ss.labelLayouts;
+    if(typeof ss.labelLocale==='string')APP.settings.labelLocale=ss.labelLocale;
     if('brandLogo' in ss)APP.settings.brandLogo=ss.brandLogo;
     if('appIcon' in ss)APP.settings.appIcon=ss.appIcon;
     if(ss.brewerName)APP.settings.brewerName=ss.brewerName;

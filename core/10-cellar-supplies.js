@@ -1957,6 +1957,8 @@ function downloadLabel(batchId){
   if(!b){toast('⚠ Batch not found');return;}
   var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
   if(!recipe){toast('⚠ Recipe not found');return;}
+  // Prefer the Label Studio design when the recipe has one.
+  if(typeof studioHasDesign==='function'&&studioHasDesign(recipe.id)){studioDownloadFor(recipe.id,b.id);return;}
   var logs=APP.logs[b.id]||[];
   var lastG=logs.length?logs[logs.length-1].gravity:null;
   var bot=APP.bottling[b.id];
@@ -2025,6 +2027,7 @@ function printLabel(batchId){
   if(!b)return;
   var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
   if(!recipe)return;
+  if(typeof studioHasDesign==='function'&&studioHasDesign(recipe.id)){studioPrintFor(recipe.id,b.id,studioAskSides(recipe.id));return;}
   var logs=APP.logs[b.id]||[];
   var lastG=logs.length?logs[logs.length-1].gravity:null;
   var bot=APP.bottling[b.id];
@@ -2998,13 +3001,23 @@ var LABEL_LAYOUTS={
 
 function openLabelSheetModal(batchIds){
   closeModal();
+  // Union of bottle sizes across all bottled batches → "Version" options.
+  var _bottled=APP.batches.filter(function(b){return APP.bottling[b.id];});
+  var _sizes={};_bottled.forEach(function(b){activeBottleSizes(APP.bottling[b.id]).forEach(function(s){_sizes[s]=true;});});
+  var _sizeList=Object.keys(_sizes).map(Number).filter(function(s){return s>0;}).sort(function(a,b){return a-b;});
+  var _sizeOpts='<option value="match">Match bottle counts (per size)</option>'
+    +'<option value="all">Every size × copies</option>'
+    +'<option value="">Default design × copies</option>'
+    +_sizeList.map(function(s){return '<option value="'+s+'">'+s+' ml only × copies</option>';}).join('');
   var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:540px">'
     +'<div class="modal-title">PRINT LABEL SHEET</div>'
-    +'<div style="font-size:13px;color:var(--text2);margin-bottom:14px">A4 sheet with multiple labels. Pick batches and how many of each — by default the sheet auto-fills.</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:14px">A4 sheet with multiple labels. <strong>Version</strong> picks which size variant to print — <em>Match bottle counts</em> prints exactly as many of each size as you bottled, using that size\'s label.</div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">Layout per A4 page</label><select class="form-select" id="ls-layout" onchange="updateLabelSheetTotals()">'
     +Object.keys(LABEL_LAYOUTS).map(function(k){return'<option value="'+k+'"'+(k==='2x3'?' selected':'')+'>'+LABEL_LAYOUTS[k].label+'</option>';}).join('')
     +'</select></div>'
-    +'<div class="form-group"><label class="form-label">Copies of each batch</label><input class="form-input" type="number" id="ls-copies" value="6" min="1" max="100" oninput="updateLabelSheetTotals()"></div></div>'
+    +'<div class="form-group"><label class="form-label">Copies of each batch</label><input class="form-input" type="number" id="ls-copies" value="6" min="1" max="100" oninput="updateLabelSheetTotals()"></div>'
+    +'<div class="form-group"><label class="form-label">Sides</label><select class="form-select" id="ls-sides" onchange="updateLabelSheetTotals()"><option value="front">Front only</option><option value="both">Front + back</option></select></div>'
+    +'<div class="form-group"><label class="form-label">Version</label><select class="form-select" id="ls-size" onchange="updateLabelSheetTotals()">'+_sizeOpts+'</select></div></div>'
     +'<div style="background:var(--bg4);border-radius:var(--radius);padding:10px;font-family:var(--font-mono);font-size:12px;color:var(--text2);margin-bottom:14px" id="ls-summary">—</div>'
     +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;margin:8px 0">SELECT BATCHES</div>'
     +'<div style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--radius);padding:8px">'
@@ -3015,7 +3028,7 @@ function openLabelSheetModal(batchIds){
     +'</div>'
     +'<div class="modal-actions">'
     +'<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>'
-    +'<button class="btn btn-secondary" onclick="setLabelCopiesPerBottle()" title="One copy per bottle in cellar+fridge">Match Bottle Counts</button>'
+    +'<button class="btn btn-secondary" onclick="setLabelCopiesPerBottle()" title="Print exactly as many labels as you bottled, per size, each in that size\'s variant">Match Bottle Counts</button>'
     +'<button class="btn btn-primary" onclick="generateLabelSheet()">Generate &amp; Print</button>'
     +'</div></div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
@@ -3025,29 +3038,33 @@ function openLabelSheetModal(batchIds){
 function updateLabelSheetTotals(){
   var layout=document.getElementById('ls-layout').value;
   var copies=Math.max(1,parseInt(document.getElementById('ls-copies').value)||1);
+  var sizeMode=(document.getElementById('ls-size')||{}).value||'';
+  var sides=(document.getElementById('ls-sides')||{}).value||'front';
   var checked=Array.from(document.querySelectorAll('.ls-batch-row input:checked'));
-  var batchCount=checked.length;
   var layoutInfo=LABEL_LAYOUTS[layout];
-  var total=batchCount*copies;
-  var pages=Math.ceil(total/layoutInfo.cells);
+  var labels=0;
+  checked.forEach(function(cb){
+    var bot=APP.bottling[cb.dataset.batch]||{};
+    if(sizeMode==='match')activeBottleSizes(bot).forEach(function(sz){labels+=bottlesOriginalBySize(bot,sz)||0;});
+    else if(sizeMode==='all')labels+=Math.max(1,activeBottleSizes(bot).length)*copies;
+    else labels+=copies;
+  });
+  var cells=labels*(sides==='both'?2:1);
+  var pages=Math.ceil(cells/layoutInfo.cells)||0;
   var s=document.getElementById('ls-summary');
   if(s){
-    if(batchCount===0)s.innerHTML='<span style="color:var(--text3)">No batches selected</span>';
-    else s.innerHTML=batchCount+' batch'+(batchCount!==1?'es':'')+' × '+copies+' copies = <strong style="color:var(--gold2)">'+total+' labels</strong> across <strong>'+pages+' A4 page'+(pages!==1?'s':'')+'</strong>'+(total<layoutInfo.cells?' <span style="color:var(--text3)">(page will have '+(layoutInfo.cells-total)+' empty cells)</span>':'');
+    if(!checked.length){s.innerHTML='<span style="color:var(--text3)">No batches selected</span>';return;}
+    var mode=sizeMode==='match'?'matched to bottle counts':(sizeMode==='all'?'every size × '+copies:(/^\d+$/.test(sizeMode)?sizeMode+' ml × '+copies:'default × '+copies));
+    s.innerHTML='<strong style="color:var(--gold2)">'+labels+' label'+(labels!==1?'s':'')+'</strong> ('+mode+(sides==='both'?', front + back':'')+') across <strong>'+pages+' A4 page'+(pages!==1?'s':'')+'</strong>';
   }
 }
 
 function setLabelCopiesPerBottle(){
-  // Sum bottles across all checked batches and set copies = max bottles
-  var checked=Array.from(document.querySelectorAll('.ls-batch-row input:checked'));
-  if(!checked.length){toast('⚠ Select batches first');return;}
-  var maxBottles=Math.max.apply(null,checked.map(function(cb){
-    var bid=cb.dataset.batch;
-    return totalBottles(APP.bottling[bid])||1;
-  }));
-  document.getElementById('ls-copies').value=Math.max(1,maxBottles);
+  // Switch the sheet to "Match bottle counts" — one label per bottle, per size,
+  // each in that size's own label variant.
+  var sel=document.getElementById('ls-size');if(sel)sel.value='match';
   updateLabelSheetTotals();
-  toast('Copies set to '+maxBottles+' (highest bottle count)');
+  toast('Matching bottle counts — one label per bottle, per size');
 }
 
 function generateLabelSheet(){
@@ -3064,30 +3081,53 @@ function generateLabelSheet(){
     '3x4':{w:'58mm',h:'62mm',fs:'9px',abvFs:'10px'},
     '1x2':{w:'180mm',h:'130mm',fs:'18px',abvFs:'24px'}
   }[layout];
-  // Build queue: each batch × copies times, interleaved so similar labels group naturally
+  var sizeMode=(document.getElementById('ls-size')||{}).value||'';
+  var sides=(document.getElementById('ls-sides')||{}).value||'front';
+  // Size-aware queue of {id, vol}. 'match' = one label per bottled bottle, per
+  // size; 'all' = every size × copies; a number = that size × copies; '' = default.
   var queue=[];
-  for(var c=0;c<copies;c++){
-    batchIds.forEach(function(id){queue.push(id);});
-  }
-  // Render labels
-  var labelHtmls=queue.map(function(id){
-    var b=APP.batches.find(function(x){return x.id===id;});
-    if(!b)return'';
+  batchIds.forEach(function(id){
     var bot=APP.bottling[id]||{};
-    var abv=bot.abv||(b.og&&bot.fg?calcABV(b.og,bot.fg):null);
+    if(sizeMode==='match'){
+      activeBottleSizes(bot).forEach(function(sz){
+        var n=bottlesOriginalBySize(bot,sz)||0;
+        for(var i=0;i<n;i++)queue.push({id:id,vol:sz});
+      });
+    }else if(sizeMode==='all'){
+      activeBottleSizes(bot).forEach(function(sz){for(var c=0;c<copies;c++)queue.push({id:id,vol:sz});});
+    }else if(/^\d+$/.test(sizeMode)){
+      var sz=parseInt(sizeMode);for(var c=0;c<copies;c++)queue.push({id:id,vol:sz});
+    }else{
+      for(var c=0;c<copies;c++)queue.push({id:id,vol:null});
+    }
+  });
+  if(!queue.length){toast('⚠ Nothing to print for that version');return;}
+  // One cell for a side at a bottle volume. Prefer the Studio design (the right
+  // size variant); fall back to legacy art (front only) when there's no design.
+  function sheetCell(b,abv,side,vol){
+    if(typeof studioSideSVG==='function'){
+      var svg=studioSideSVG(b.recipeId,b.id,side,{volume:(vol!=null?vol:undefined),style:'display:block;width:100%;height:100%;object-fit:contain'});
+      if(svg)return'<div class="lbl" style="display:flex;align-items:center;justify-content:center;padding:1.5mm">'+svg+'</div>';
+    }
+    if(side==='back')return'';
     var labelImg=getLabelImage(b.recipeId);
     if(!labelImg)return'<div class="lbl placeholder">No label</div>';
     var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
-    var overlay=(typeof renderOverlayLayer==='function')
-      ?renderOverlayLayer(recipe,b,abv||'')
-      :'';
-    return'<div class="lbl">'
-      +'<svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">'
-      +'<image href="'+labelImg+'" x="0" y="0" width="900" height="900" preserveAspectRatio="xMidYMid meet"/>'
-      +overlay
-      +'</svg>'
-      +'</div>';
+    var overlay=(typeof renderOverlayLayer==='function')?renderOverlayLayer(recipe,b,abv||''):'';
+    return'<div class="lbl"><svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">'
+      +'<image href="'+labelImg+'" x="0" y="0" width="900" height="900" preserveAspectRatio="xMidYMid meet"/>'+overlay+'</svg></div>';
+  }
+  // Render labels (front, plus back when 'both' sides chosen)
+  var labelHtmls=queue.map(function(item){
+    var b=APP.batches.find(function(x){return x.id===item.id;});
+    if(!b)return'';
+    var bot=APP.bottling[item.id]||{};
+    var abv=bot.abv||(b.og&&bot.fg?calcABV(b.og,bot.fg):null);
+    var cells=sheetCell(b,abv,'front',item.vol);
+    if(sides==='both')cells+=sheetCell(b,abv,'back',item.vol);
+    return cells;
   }).join('');
+  var cellCount=(labelHtmls.match(/class="lbl/g)||[]).length||queue.length;
   closeModal();
   var w=window.open('','_blank');
   if(!w){toast('⚠ Pop-up blocked — allow pop-ups for this site');return;}
@@ -3111,7 +3151,7 @@ function generateLabelSheet(){
     +'.no-guides .lbl{border-color:transparent!important}'
     +'@media print{.toolbar{display:none!important}body{background:#fff}}'
     +'</style></head><body>'
-    +'<div class="toolbar"><button onclick="window.print()">🖨 Print '+queue.length+' Labels</button><label class="toolbar-toggle"><input type="checkbox" checked onchange="document.body.classList.toggle(\'no-guides\',!this.checked)"> Show cut guides</label><span>'+queue.length+' labels · '+info.c+'×'+info.r+' grid · '+Math.ceil(queue.length/info.cells)+' page'+(Math.ceil(queue.length/info.cells)!==1?'s':'')+'</span></div>'
+    +'<div class="toolbar"><button onclick="window.print()">🖨 Print '+queue.length+' Labels</button><label class="toolbar-toggle"><input type="checkbox" checked onchange="document.body.classList.toggle(\'no-guides\',!this.checked)"> Show cut guides</label><span>'+queue.length+' labels · '+info.c+'×'+info.r+' grid · '+Math.ceil(cellCount/info.cells)+' page'+(Math.ceil(cellCount/info.cells)!==1?'s':'')+'</span></div>'
     +'<div class="sheet">'+labelHtmls+'</div>'
     +'</body></html>');
   w.document.close();

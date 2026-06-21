@@ -823,6 +823,16 @@ def build_share_payload(state, token):
     if rid and isinstance(overlays_map.get(rid), dict):
         recipe_overlays = overlays_map.get(rid)
 
+    # The recipe's Label Studio design — FRONT side only, since the share page
+    # shows a single print-ready front label. Layout + embedded art, no secrets.
+    label_studio = None
+    studio_map = ss.get("labelStudio") if isinstance(ss.get("labelStudio"), dict) else {}
+    if rid and isinstance(studio_map.get(rid), dict):
+        dsn = studio_map.get(rid)
+        front = dsn.get("front") if isinstance(dsn.get("front"), dict) else None
+        if front:
+            label_studio = {"w": dsn.get("w") or 340, "h": dsn.get("h") or 440, "front": front}
+
     return {
         "ok": True,
         "batch": _pick(batch, SHARE_BATCH_FIELDS),
@@ -834,6 +844,8 @@ def build_share_payload(state, token):
         "meadery": meadery,
         "labelImage": label_image,
         "recipeOverlays": recipe_overlays,
+        "labelStudio": label_studio,
+        "labelLocale": ss.get("labelLocale") if isinstance(ss.get("labelLocale"), str) else "en",
     }
 
 
