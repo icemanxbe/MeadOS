@@ -1291,27 +1291,27 @@ function suggestFoodPairings(s){
   var cat=s.cat||s.category||'';
   var abv=s.abv||0;
   if(sw==='Bone Dry'||sw==='Dry'){
-    pairings.push('Aged cheeses (gouda, manchego, parmesan)');
-    pairings.push('Charcuterie boards — saucisson, prosciutto, jamón');
-    pairings.push('Grilled or roasted meats');
+    pairings.push(_ST('Aged cheeses (gouda, manchego, parmesan)','Belegen kazen (gouda, manchego, parmezaan)'));
+    pairings.push(_ST('Charcuterie boards — saucisson, prosciutto, jamón','Charcuterieplank — saucisson, prosciutto, jamón'));
+    pairings.push(_ST('Grilled or roasted meats','Gegrild of gebraden vlees'));
   }else if(sw==='Off-Dry'||sw==='Semi-Sweet'){
-    pairings.push('Soft cheeses (brie, camembert)');
-    pairings.push('Spicy Asian dishes — Thai curry, Korean BBQ');
-    pairings.push('Mild creamy sauces over poultry');
+    pairings.push(_ST('Soft cheeses (brie, camembert)','Zachte kazen (brie, camembert)'));
+    pairings.push(_ST('Spicy Asian dishes — Thai curry, Korean BBQ','Pittige Aziatische gerechten — Thaise curry, Koreaanse BBQ'));
+    pairings.push(_ST('Mild creamy sauces over poultry','Milde roomsauzen bij gevogelte'));
   }else if(sw==='Sweet'||sw==='Dessert'){
-    pairings.push('Blue cheeses (roquefort, gorgonzola, stilton)');
-    pairings.push('Fruit-based desserts — tarte tatin, fruit pies');
-    pairings.push('Dark chocolate and chocolate-based desserts');
-    pairings.push('Foie gras and rich pâtés');
+    pairings.push(_ST('Blue cheeses (roquefort, gorgonzola, stilton)','Blauwe kazen (roquefort, gorgonzola, stilton)'));
+    pairings.push(_ST('Fruit-based desserts — tarte tatin, fruit pies','Fruitdesserts — tarte tatin, fruittaarten'));
+    pairings.push(_ST('Dark chocolate and chocolate-based desserts','Pure chocolade en chocoladedesserts'));
+    pairings.push(_ST('Foie gras and rich pâtés','Foie gras en rijke paté'));
   }
-  if(cat==='Bochet')pairings.push('Caramel desserts, crème brûlée, vanilla ice cream');
-  if(cat==='Cyser')pairings.push('Pork dishes, especially with apples or root vegetables');
-  if(cat==='Pyment')pairings.push('Match its body to the dish like a wine');
-  if(cat==='Melomel')pairings.push('Same fruit desserts especially');
-  if(cat==='Metheglin')pairings.push('Mulled cider season — spiced cookies, gingerbread');
-  if(cat==='Braggot')pairings.push('Pub fare — sausages, hearty stews, smoked meats');
-  if(cat==='Specialty')pairings.push('Match the dominant flavor (chili → spicy, coffee → desserts)');
-  if(abv>=13)pairings.push('Sipped on its own — treat like a digestif');
+  if(cat==='Bochet')pairings.push(_ST('Caramel desserts, crème brûlée, vanilla ice cream','Karameldesserts, crème brûlée, vanille-ijs'));
+  if(cat==='Cyser')pairings.push(_ST('Pork dishes, especially with apples or root vegetables','Varkensgerechten, vooral met appel of wortelgroenten'));
+  if(cat==='Pyment')pairings.push(_ST('Match its body to the dish like a wine','Stem het lichaam af op het gerecht zoals bij wijn'));
+  if(cat==='Melomel')pairings.push(_ST('Same fruit desserts especially','Vooral desserts met hetzelfde fruit'));
+  if(cat==='Metheglin')pairings.push(_ST('Mulled cider season — spiced cookies, gingerbread','Winterse sfeer — speculaas, ontbijtkoek'));
+  if(cat==='Braggot')pairings.push(_ST('Pub fare — sausages, hearty stews, smoked meats','Café-klassiekers — worst, stevige stoofpotten, gerookt vlees'));
+  if(cat==='Specialty')pairings.push(_ST('Match the dominant flavor (chili → spicy, coffee → desserts)','Volg de dominante smaak (chili → pittig, koffie → desserts)'));
+  if(abv>=13)pairings.push(_ST('Sipped on its own — treat like a digestif','Puur te drinken — als een digestief'));
   return pairings.slice(0,5);
 }
 
@@ -1368,18 +1368,20 @@ function renderShareIngredients(b,recipe){
       var yn=yeastShortName(getYeastById(b.yeast));
       if(yn&&item.toLowerCase().indexOf(yn.toLowerCase())<0)item=yn+' Yeast';
     }
+    if(typeof labelTrIngredient==='function')item=labelTrIngredient(item);
     return'<li><span class="ing-item">'+escHtml(item)+'</span>'+(it.amount?'<span class="ing-amt">'+escHtml(it.amount)+'</span>':'')+'</li>';
   }).join('');
   // The batch's own logged additions (fruit, spices, oak, etc.) — what actually
   // went into THIS batch beyond the base recipe. Removed items are still shown
   // (they shaped the mead), flagged so the reader knows they're no longer in it.
   rows+=adds.map(function(a){
-    var label=(a.item||'addition')+(a.removedDate?' · removed':'');
+    var nm=(typeof labelTrIngredient==='function')?labelTrIngredient(a.item||'addition'):(a.item||'addition');
+    var label=nm+(a.removedDate?_ST(' · removed',' · verwijderd'):'');
     return'<li><span class="ing-item">'+escHtml(label)+'</span>'+(a.amount?'<span class="ing-amt">'+escHtml(a.amount)+'</span>':'')+'</li>';
   }).join('');
-  return'<section class="section"><div class="section-title">What’s Inside</div>'
+  return'<section class="section"><div class="section-title">'+_ST('What’s Inside','Wat zit erin')+'</div>'
     +'<ul class="share-ingredients">'+rows+'</ul>'
-    +'<div class="ing-note">Honey, water and yeast are the heart of every mead — the nutrients and finishing aids are consumed during fermentation or settle out, leaving no meaningful trace in the glass.</div>'
+    +'<div class="ing-note">'+_ST('Honey, water and yeast are the heart of every mead — the nutrients and finishing aids are consumed during fermentation or settle out, leaving no meaningful trace in the glass.','Honing, water en gist zijn het hart van elke mede — de voedingsstoffen en klaringsmiddelen worden tijdens de gisting verbruikt of zakken uit, en laten geen noemenswaardig spoor na in het glas.')+'</div>'
     +'</section>';
 }
 
@@ -1408,18 +1410,19 @@ function renderShareDietary(b,recipe,bot){
     return'<span class="diet-badge" style="color:'+c+';border-color:'+c+'55;background:'+c+'14">'+escHtml(txt)+'</span>';
   }
   var badges=[];
-  if(bot.abv)badges.push(badge(bot.abv.toFixed(1)+'% alcohol','warn'));
-  badges.push(d.gluten?badge('Contains gluten','warn'):badge('Gluten-free','good'));
-  badges.push(badge('Vegetarian','good'));
-  badges.push(badge('Not vegan · honey','base'));
+  if(bot.abv)badges.push(badge(bot.abv.toFixed(1)+_ST('% alcohol','% alcohol'),'warn'));
+  badges.push(d.gluten?badge(_ST('Contains gluten','Bevat gluten'),'warn'):badge(_ST('Gluten-free','Glutenvrij'),'good'));
+  badges.push(badge(_ST('Vegetarian','Vegetarisch'),'good'));
+  badges.push(badge(_ST('Not vegan · honey','Niet veganistisch · honing'),'base'));
+  var allergenNl={'tree nuts':'noten','milk':'melk','egg or fish':'ei of vis'};
   var lines=[];
-  lines.push(d.sulfites?'<strong>Contains sulfites</strong> — added as an antioxidant and stabiliser.':'<strong>No sulfites added</strong> — though fermentation itself can leave trace amounts.');
-  d.contains.forEach(function(c){lines.push('<strong>Contains '+escHtml(c.k)+'</strong> — '+escHtml(c.d)+'.');});
-  if(!d.gluten)lines.push('<strong>Naturally gluten-free</strong> — mead is fermented from honey, not grain.');
-  return'<section class="section"><div class="section-title">Allergens &amp; Dietary</div>'
+  lines.push(d.sulfites?_ST('<strong>Contains sulfites</strong> — added as an antioxidant and stabiliser.','<strong>Bevat sulfieten</strong> — toegevoegd als antioxidant en stabilisator.'):_ST('<strong>No sulfites added</strong> — though fermentation itself can leave trace amounts.','<strong>Geen sulfieten toegevoegd</strong> — al kan de gisting zelf sporen achterlaten.'));
+  d.contains.forEach(function(c){var k=_ST(c.k,allergenNl[c.k]||c.k);lines.push(_ST('<strong>Contains '+escHtml(k)+'</strong> — '+escHtml(c.d)+'.','<strong>Bevat '+escHtml(k)+'</strong>.'));});
+  if(!d.gluten)lines.push(_ST('<strong>Naturally gluten-free</strong> — mead is fermented from honey, not grain.','<strong>Van nature glutenvrij</strong> — mede wordt gegist uit honing, niet uit granen.'));
+  return'<section class="section"><div class="section-title">'+_ST('Allergens &amp; Dietary','Allergenen &amp; dieet')+'</div>'
     +'<div class="diet-badges">'+badges.join('')+'</div>'
     +'<ul class="allergen-list">'+lines.map(function(l){return'<li>'+l+'</li>';}).join('')+'</ul>'
-    +'<div class="ing-note">Homemade — not produced in an allergen-controlled facility. Contains alcohol; not for anyone under legal drinking age, pregnant, or avoiding alcohol.</div>'
+    +'<div class="ing-note">'+_ST('Homemade — not produced in an allergen-controlled facility. Contains alcohol; not for anyone under legal drinking age, pregnant, or avoiding alcohol.','Huisgemaakt — niet geproduceerd in een allergeenvrije omgeving. Bevat alcohol; niet voor personen onder de wettelijke leeftijd, zwangere vrouwen of wie alcohol vermijdt.')+'</div>'
     +'</section>';
 }
 
@@ -1439,14 +1442,14 @@ function renderSharePhotos(b){
       +(p.caption?'<figcaption>'+escHtml(p.caption)+'</figcaption>':'')
       +'</figure>';
   }).join('');
-  return'<section class="section"><div class="section-title">Photo Journal</div><div class="share-gallery">'+thumbs+'</div></section>';
+  return'<section class="section"><div class="section-title">'+_ST('Photo Journal','Fotodagboek')+'</div><div class="share-gallery">'+thumbs+'</div></section>';
 }
 
 function renderShareFunFacts(b,recipe,bot,ageDays){
   var cat=(recipe&&recipe.category)||'';
   var style=(recipe&&recipe.style)||'';
   var f=[];
-  var meaning={
+  var meaning=_ST({
     Bochet:'A bochet is made from honey caramelised before fermenting — that’s where its toffee, marshmallow and dark-chocolate notes come from.',
     Cyser:'A cyser is a mead fermented with apples or apple juice — a honey-and-orchard hybrid.',
     Pyment:'A pyment is a mead made with grapes or grape juice — the point where mead and wine meet.',
@@ -1455,43 +1458,65 @@ function renderShareFunFacts(b,recipe,bot,ageDays){
     Braggot:'A braggot is an ancient mead-and-ale hybrid, brewed with both honey and malt.',
     Acerglyn:'An acerglyn is a mead made with maple syrup alongside the honey.',
     Sack:'A “sack” mead is a deliberately strong, sweet style, traditionally aged for years before drinking.'
-  };
+  },{
+    Bochet:'Een bochet wordt gemaakt van honing die vóór het gisten gekarameliseerd is — vandaar de toffee-, marshmallow- en pure-chocoladetonen.',
+    Cyser:'Een cyser is een mede die met appels of appelsap gegist is — een kruising van honing en boomgaard.',
+    Pyment:'Een pyment is een mede met druiven of druivensap — waar mede en wijn elkaar raken.',
+    Melomel:'Een melomel is simpelweg een mede met fruit; de naam dekt alles van bessen- tot steenfruitmede.',
+    Metheglin:'Een metheglin is een gekruide mede — het woord deelt een wortel met “medicijn”, want ze werden ooit als tonicum gebrouwen.',
+    Braggot:'Een braggot is een oude kruising van mede en bier, gebrouwen met zowel honing als mout.',
+    Acerglyn:'Een acerglyn is een mede die naast honing ook met ahornsiroop gemaakt is.',
+    Sack:'Een “sack”-mede is een bewust sterke, zoete stijl, traditioneel jaren gerijpt voor het drinken.'
+  });
   // Recipes carry the style word in either `category` or `style`.
   var styleFact=meaning[cat]||meaning[style];
   if(styleFact)f.push(styleFact);
-  else if(/show|traditional/i.test(style+' '+cat))f.push('A “show mead” (or traditional) contains nothing but honey, water and yeast — it’s judged purely on the character of the honey, with nowhere to hide.');
-  f.push('Mead is widely considered humanity’s oldest fermented drink — residue on pottery in northern China dates a honey-based brew to roughly 7000 BCE, predating both wine and beer.');
+  else if(/show|traditional/i.test(style+' '+cat))f.push(_ST('A “show mead” (or traditional) contains nothing but honey, water and yeast — it’s judged purely on the character of the honey, with nowhere to hide.','Een “show mede” (of traditionele) bevat niets dan honing, water en gist — ze wordt puur op het karakter van de honing beoordeeld, zonder ergens te kunnen schuilen.'));
+  f.push(_ST('Mead is widely considered humanity’s oldest fermented drink — residue on pottery in northern China dates a honey-based brew to roughly 7000 BCE, predating both wine and beer.','Mede geldt als de oudste gegiste drank van de mens — resten op aardewerk in Noord-China dateren een honingdrank op ongeveer 7000 v.Chr., ouder dan wijn én bier.'));
   var kg=shareHoneyKg(b,recipe);
   if(kg>0){
     var flowers=Math.round(kg*4.4);
     var km=Math.round(kg*120000/1000)*1000;
     var laps=(kg*120000/40075).toFixed(1);
     var kgStr=(kg%1===0)?String(kg):kg.toFixed(1);
-    f.push('The '+kgStr+' kg of honey in this batch took bees roughly '+flowers+' million flower visits to gather — about '+km.toLocaleString()+' km of flight, the equivalent of circling the Earth around '+laps+' times.');
+    f.push(_ST('The '+kgStr+' kg of honey in this batch took bees roughly '+flowers+' million flower visits to gather — about '+km.toLocaleString()+' km of flight, the equivalent of circling the Earth around '+laps+' times.','Voor de '+kgStr+' kg honing in deze charge bezochten bijen zo’n '+flowers+' miljoen bloemen — ongeveer '+km.toLocaleString()+' km vliegen, alsof ze de aarde zo’n '+laps+' keer rondvliegen.'));
   }
   if(bot.abv){
     var a=bot.abv;
-    var ctx=a>=14?'stronger than most wine':a>=11?'right in wine territory':a>=8?'between a strong beer and a light wine':'around the strength of a beer';
-    f.push('At '+a.toFixed(1)+'% ABV this mead is '+ctx+'. Honey has no vintage: the very same honey can ferment bone-dry or lusciously sweet depending only on the yeast and the brewer.');
+    var ctx=a>=14?_ST('stronger than most wine','sterker dan de meeste wijn'):a>=11?_ST('right in wine territory','precies in wijngebied'):a>=8?_ST('between a strong beer and a light wine','tussen een sterk bier en een lichte wijn'):_ST('around the strength of a beer','ongeveer zo sterk als bier');
+    f.push(_ST('At '+a.toFixed(1)+'% ABV this mead is '+ctx+'. Honey has no vintage: the very same honey can ferment bone-dry or lusciously sweet depending only on the yeast and the brewer.','Met '+a.toFixed(1)+'% vol is deze mede '+ctx+'. Honing heeft geen jaargang: dezelfde honing kan kurkdroog of weelderig zoet gisten, enkel afhankelijk van de gist en de brouwer.'));
   }
-  var hp=(typeof HONEY_PROFILES!=='undefined'&&b.honeyType)?HONEY_PROFILES[b.honeyType]:null;
-  var honeyHistory=hp&&((hp.details&&hp.details.history)||hp.history);
-  if(honeyHistory){
-    var first=String(honeyHistory).split('. ')[0];
-    if(first)f.push(escHtmlStrip(b.honeyType)+' honey: '+first+'.');
+  // Honey history comes from English-only data — show it only in English.
+  if(labelLocale()!=='nl'){
+    var hp=(typeof HONEY_PROFILES!=='undefined'&&b.honeyType)?HONEY_PROFILES[b.honeyType]:null;
+    var honeyHistory=hp&&((hp.details&&hp.details.history)||hp.history);
+    if(honeyHistory){
+      var first=String(honeyHistory).split('. ')[0];
+      if(first)f.push(escHtmlStrip(b.honeyType)+' honey: '+first+'.');
+    }
   }
-  f.push('The word “honeymoon” may trace back to mead — a tradition of newlyweds drinking honey wine for one moon (a month) after the wedding to bless the union.');
+  f.push(_ST('The word “honeymoon” may trace back to mead — a tradition of newlyweds drinking honey wine for one moon (a month) after the wedding to bless the union.','Het woord “huwelijksreis” gaat in sommige talen terug op mede — pasgetrouwden dronken een maan (maand) lang honingwijn om het huwelijk te zegenen.'));
   if(!f.length)return'';
-  return'<section class="section"><div class="section-title">Fun Facts</div><ul class="facts-list">'+f.map(function(x){return'<li>'+escHtml(x)+'</li>';}).join('')+'</ul></section>';
+  return'<section class="section"><div class="section-title">'+_ST('Fun Facts','Wist je dat')+'</div><ul class="facts-list">'+f.map(function(x){return'<li>'+escHtml(x)+'</li>';}).join('')+'</ul></section>';
 }
 // Tiny helper: strip any stray markup from a label before re-escaping in context.
 function escHtmlStrip(s){return String(s||'').replace(/<[^>]*>/g,'');}
 
+function shareSetLocale(loc){if(!APP.settings)APP.settings={};APP.settings.labelLocale=loc;if(window._shareBatch)renderPublicShareView(window._shareBatch);}
+// Share-page text: EN by default, NL when the chosen label locale is Dutch.
+function _ST(en,nl){return (typeof labelLocale==='function'&&labelLocale()==='nl')?nl:en;}
+// A recipe's description in the active locale (Dutch built-in translation if any).
+function shareRecipeDesc(recipe){
+  if(!recipe)return '';
+  if(typeof labelLocale==='function'&&labelLocale()==='nl'&&typeof RECIPE_DESC_NL!=='undefined'&&RECIPE_DESC_NL[recipe.id])return RECIPE_DESC_NL[recipe.id];
+  return recipe.description||'';
+}
 function renderPublicShareView(b){
   if(!b||!b.id){
     document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:Georgia,serif;color:#888;background:#1a0f08;font-size:18px;padding:20px;text-align:center">This batch was not found.</div>';
     return;
   }
+  window._shareBatch=b;                       // for the language toggle to re-render
   var bot=APP.bottling[b.id]||{};
   var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
   var tastings=APP.tastings[b.id]||[];
@@ -1648,6 +1673,12 @@ function renderPublicShareView(b){
     +'}'
     +'</style>'
     +'<div class="share-container">'
+    +(function(){
+      // Language toggle (EN / NL) — defaults to the visitor's locale, lets them switch.
+      return '<div style="position:fixed;top:10px;right:10px;z-index:50;display:flex;border:1px solid rgba(200,170,90,0.45);border-radius:8px;overflow:hidden;font-family:Georgia,serif;font-size:12px;letter-spacing:1px">'
+        +['en','nl'].map(function(L){var on=labelLocale()===L;return '<button onclick="shareSetLocale(\''+L+'\')" style="padding:6px 13px;border:0;cursor:pointer;background:'+(on?'#caa84c':'rgba(0,0,0,0.45)')+';color:'+(on?'#1a0f08':'#caa84c')+';font-weight:'+(on?'700':'400')+'">'+L.toUpperCase()+'</button>';}).join('')
+        +'</div>';
+    }())
     +'<header class="share-header">'
     +(function(){
       var lg=(typeof getBrandLogoSrc==='function')?getBrandLogoSrc():'';
@@ -1655,7 +1686,7 @@ function renderPublicShareView(b){
       // unresolved media-source:// refs would render a broken image).
       return(lg&&/^(data:|https?:|\/)/.test(lg))?'<img class="share-crest" src="'+escHtml(lg)+'" alt="">':'';
     }())
-    +'<div class="brewed-by">Brewed by</div>'
+    +'<div class="brewed-by">'+_ST('Brewed by','Gebrouwen door')+'</div>'
     +'<div class="brewer-name">'+escHtml(brewerName)+'</div>'
     +'<div class="share-orn">❦</div>'
     +'</header>'
@@ -1664,22 +1695,24 @@ function renderPublicShareView(b){
       // Bottle label, rendered through the SAME path as the Label Maker (art +
       // the recipe's overlay config) so it looks exactly as designed — just with
       // the QR code and drinking-window box suppressed for the public page.
-      if(!window._shareLabelImage||typeof renderLabelWithABV!=='function')return'';
+      var hasStudio=(typeof studioHasDesign==='function'&&studioHasDesign(b.recipeId));
+      if(!hasStudio&&(!window._shareLabelImage||typeof renderLabelWithABV!=='function'))return'';
       var abvText=(bot&&bot.abv!=null)?String(bot.abv):'';
-      return'<div class="label-frame">'+renderLabelWithABV(b.recipeId,abvText,{batch:b,qr:false,bestDrink:false})+'</div>';
+      // Studio design → front-only (backEnabled:false on the reconstructed design).
+      return'<div class="label-frame">'+renderBatchLabel(b.recipeId,abvText,{batch:b,qr:false,bestDrink:false})+'</div>';
     }())
     +'<div class="batch-name">'+escHtml(b.name||'')+'</div>'
     +'<div class="batch-style">'+escHtml(recipeName||'')+(recipe&&recipe.category&&recipe.category!==recipeName?' · '+escHtml(recipe.category):'')+'</div>'
-    +(recipe&&recipe.description?'<div class="batch-desc">“'+escHtml(recipe.description)+'”</div>':'')
+    +((recipe&&shareRecipeDesc(recipe))?'<div class="batch-desc">“'+escHtml(shareRecipeDesc(recipe))+'”</div>':'')
     +'<div class="stats">'
-    +'<div class="stat"><div class="stat-val">'+(bot.abv?bot.abv.toFixed(1)+'%':'—')+'</div><div class="stat-lbl">ABV</div></div>'
-    +'<div class="stat"><div class="stat-val">'+escHtml(bot.sweetness||'—')+'</div><div class="stat-lbl">Sweetness</div></div>'
-    +'<div class="stat"><div class="stat-val">'+(bot.date?(typeof fmtDurationCompact==='function'?fmtDurationCompact(ageDays):ageDays+'d'):'—')+'</div><div class="stat-lbl">Bottle Age</div></div>'
+    +'<div class="stat"><div class="stat-val">'+(bot.abv?bot.abv.toFixed(1)+'%':'—')+'</div><div class="stat-lbl">'+_ST('ABV','Alcohol')+'</div></div>'
+    +'<div class="stat"><div class="stat-val">'+escHtml(bot.sweetness||'—')+'</div><div class="stat-lbl">'+_ST('Sweetness','Zoetheid')+'</div></div>'
+    +'<div class="stat"><div class="stat-val">'+(bot.date?(typeof fmtDurationCompact==='function'?fmtDurationCompact(ageDays):ageDays+'d'):'—')+'</div><div class="stat-lbl">'+_ST('Bottle Age','Flesleeftijd')+'</div></div>'
     +'</div>'
-    +(b.honeyType?'<div class="meta-line"><strong>Honey:</strong> '+escHtml(b.honeyType)+'</div>':'')
-    +(bot.date?'<div class="meta-line"><strong>Bottled:</strong> '+escHtml(typeof fmtDate==='function'?fmtDate(bot.date):bot.date)+'</div>':'')
-    +(avgRating>0&&tastings.length?'<div class="meta-line"><strong>Brewer\'s rating:</strong> '+(Math.round(avgRating*10)/10)+'★ ('+tastings.length+' tasting'+(tastings.length!==1?'s':'')+')</div>':'')
-    +(b.serial?'<div class="seal"><div class="s1">BATCH</div><div class="s2">'+escHtml(b.serial)+'</div></div>':'')
+    +(b.honeyType?'<div class="meta-line"><strong>'+_ST('Honey:','Honing:')+'</strong> '+escHtml((typeof labelHoneyPhrase==='function')?labelHoneyPhrase(b.honeyType):b.honeyType)+'</div>':'')
+    +(bot.date?'<div class="meta-line"><strong>'+_ST('Bottled:','Gebotteld:')+'</strong> '+escHtml(typeof fmtDate==='function'?fmtDate(bot.date):bot.date)+'</div>':'')
+    +(avgRating>0&&tastings.length?'<div class="meta-line"><strong>'+_ST('Brewer\'s rating:','Beoordeling brouwer:')+'</strong> '+(Math.round(avgRating*10)/10)+'★ ('+tastings.length+' '+_ST(tastings.length!==1?'tastings':'tasting',tastings.length!==1?'proeverijen':'proeverij')+')</div>':'')
+    +(b.serial?'<div class="seal"><div class="s1">'+_ST('BATCH','CHARGE')+'</div><div class="s2">'+escHtml(b.serial)+'</div></div>':'')
     +'</section>'
     +ingredientsHtml
     +allergensHtml
@@ -1687,9 +1720,9 @@ function renderPublicShareView(b){
     +gravityHtml
     +tastingHtml
     +photosHtml
-    +(pairings.length?'<section class="section"><div class="section-title">Suggested Pairings</div><div class="pairings"><ul>'+pairings.map(function(p){return'<li>'+escHtml(p)+'</li>';}).join('')+'</ul></div></section>':'')
+    +(pairings.length?'<section class="section"><div class="section-title">'+_ST('Suggested Pairings','Aanbevolen combinaties')+'</div><div class="pairings"><ul>'+pairings.map(function(p){return'<li>'+escHtml(p)+'</li>';}).join('')+'</ul></div></section>':'')
     +factsHtml
-    +'<footer class="footer"><div class="footer-orn">❦</div>'+escHtml(brewerName)+(bot.date?' · '+escHtml(typeof fmtDate==='function'?fmtDate(bot.date):bot.date):'')+'<div class="footer-tag">Crafted with patience</div></footer>'
+    +'<footer class="footer"><div class="footer-orn">❦</div>'+escHtml(brewerName)+(bot.date?' · '+escHtml(typeof fmtDate==='function'?fmtDate(bot.date):bot.date):'')+'<div class="footer-tag">'+_ST('Crafted with patience','Met geduld gemaakt')+'</div></footer>'
     +'</div>';
   document.body.innerHTML=html;
   document.title=(b.name||'Mead')+' · '+brewerName;
@@ -1710,19 +1743,19 @@ function renderShareAgingTimeline(ageDays,minD,peakD,maxD){
   var gradient,statusColor,icon,head,sub;
   if(ageDays<minD){
     gradient='linear-gradient(90deg,#7a5e2a,#c9a84c)';statusColor='#c9a84c';icon='⏳';
-    head='Still maturing';sub='About '+fmtDuration(minD-ageDays)+' until it’s ready to pour — patience rewards a mead.';
+    head=_ST('Still maturing','Nog aan het rijpen');sub=_ST('About '+fmtDuration(minD-ageDays)+' until it’s ready to pour — patience rewards a mead.','Nog ongeveer '+fmtDuration(minD-ageDays)+' tot ze schenkklaar is — geduld beloont een mede.');
   }else if(ageDays<peakD){
     gradient='linear-gradient(90deg,#c9a84c,#7cc87c)';statusColor='#7cc87c';icon='✦';
-    head='In its drinking window';sub='Lovely to drink now — about '+fmtDuration(peakD-ageDays)+' until its estimated peak.';
+    head=_ST('In its drinking window','In haar drinkvenster');sub=_ST('Lovely to drink now — about '+fmtDuration(peakD-ageDays)+' until its estimated peak.','Heerlijk om nu te drinken — nog ongeveer '+fmtDuration(peakD-ageDays)+' tot het geschatte hoogtepunt.');
   }else if(ageDays<maxD){
     gradient='linear-gradient(90deg,#c9a84c,#7cc87c,#e8a050)';statusColor='#e8a050';icon='★';
-    head='At its peak';sub='Right in the sweet spot — flavour will ease gently from here, so enjoy it before too long.';
+    head=_ST('At its peak','Op haar hoogtepunt');sub=_ST('Right in the sweet spot — flavour will ease gently from here, so enjoy it before too long.','Precies op dreef — de smaak neemt vanaf hier langzaam af, dus geniet er niet te lang mee.');
   }else{
     gradient='linear-gradient(90deg,#c9a84c,#e8a050,#d06060)';statusColor='#d06060';icon='⚜';
-    head='Beyond the usual window';sub='Older than the typical window — taste before sharing; a well-kept bottle can still surprise.';
+    head=_ST('Beyond the usual window','Voorbij het gebruikelijke venster');sub=_ST('Older than the typical window — taste before sharing; a well-kept bottle can still surprise.','Ouder dan gebruikelijk — proef voor je deelt; een goed bewaarde fles kan nog verrassen.');
   }
   function on(lo,hi){return ageDays>=lo&&ageDays<hi?' dw-ms-on':'';}
-  return'<section class="section"><div class="section-title">Drinking Window</div>'
+  return'<section class="section"><div class="section-title">'+_ST('Drinking Window','Drinkvenster')+'</div>'
     +'<div class="share-chart-wrap dw-wrap">'
     +'<div class="dw-headline"><span class="dw-icon" style="color:'+statusColor+'">'+icon+'</span><span style="color:'+statusColor+'">'+escHtml(head)+'</span></div>'
     +'<div class="dw-sub">'+escHtml(sub)+'</div>'
@@ -1734,9 +1767,9 @@ function renderShareAgingTimeline(ageDays,minD,peakD,maxD){
     +'<div class="dw-now" style="left:'+pct.toFixed(1)+'%"><span class="dw-now-dot" style="background:'+statusColor+';box-shadow:0 0 0 3px '+statusColor+'33,0 0 12px '+statusColor+'"></span></div>'
     +'</div>'
     +'<div class="dw-milestones">'
-    +'<div class="dw-ms'+on(0,minD)+'"><span class="dw-ms-v">'+fmtDurationCompact(minD)+'</span><span class="dw-ms-k">Ready</span></div>'
-    +'<div class="dw-ms'+on(minD,peakD)+'"><span class="dw-ms-v">'+fmtDurationCompact(peakD)+'</span><span class="dw-ms-k">Peak</span></div>'
-    +'<div class="dw-ms'+on(peakD,1e12)+'"><span class="dw-ms-v">'+fmtDurationCompact(maxD)+'</span><span class="dw-ms-k">Best by</span></div>'
+    +'<div class="dw-ms'+on(0,minD)+'"><span class="dw-ms-v">'+fmtDurationCompact(minD)+'</span><span class="dw-ms-k">'+_ST('Ready','Klaar')+'</span></div>'
+    +'<div class="dw-ms'+on(minD,peakD)+'"><span class="dw-ms-v">'+fmtDurationCompact(peakD)+'</span><span class="dw-ms-k">'+_ST('Peak','Top')+'</span></div>'
+    +'<div class="dw-ms'+on(peakD,1e12)+'"><span class="dw-ms-v">'+fmtDurationCompact(maxD)+'</span><span class="dw-ms-k">'+_ST('Best by','Best voor')+'</span></div>'
     +'</div>'
     +'</div></section>';
 }
@@ -1783,7 +1816,7 @@ function renderShareGravityChart(data,og){
   for(var d=0;d<=maxDay;d+=xStep){
     xLabels+='<text x="'+sx(d).toFixed(1)+'" y="'+(h-padB+14)+'" font-family="monospace" font-size="9" fill="#8a7d68" text-anchor="middle">'+d+'d</text>';
   }
-  return'<section class="section"><div class="section-title">Fermentation Curve</div><div class="share-chart-wrap">'
+  return'<section class="section"><div class="section-title">'+_ST('Fermentation Curve','Gistingscurve')+'</div><div class="share-chart-wrap">'
     // Safari/WebKit collapses SVGs with bare height:auto + no width/height
     // attrs to wrong intrinsic dimensions, which made the chart caption render
     // ON TOP OF the next section title. Belt-and-braces: explicit width/height
@@ -1795,7 +1828,7 @@ function renderShareGravityChart(data,og){
     +dots
     +abvPath+abvDots
     +'</svg>'
-    +'<div style="text-align:center;font-size:10px;color:#8a7d68;letter-spacing:1.5px;margin-top:6px;font-family:Cinzel,serif">'+(showAbv?'<span style="color:#c9a84c">●</span> GRAVITY &nbsp;·&nbsp; <span style="color:#7cc87c">●</span> ABV % &nbsp;·&nbsp; OVER FERMENTATION DAYS':'SPECIFIC GRAVITY OVER FERMENTATION DAYS')+'</div>'
+    +'<div style="text-align:center;font-size:10px;color:#8a7d68;letter-spacing:1.5px;margin-top:6px;font-family:Cinzel,serif">'+(showAbv?'<span style="color:#c9a84c">●</span> '+_ST('GRAVITY','DICHTHEID')+' &nbsp;·&nbsp; <span style="color:#7cc87c">●</span> '+_ST('ABV %','% VOL')+' &nbsp;·&nbsp; '+_ST('OVER FERMENTATION DAYS','OVER GISTINGSDAGEN'):_ST('SPECIFIC GRAVITY OVER FERMENTATION DAYS','DICHTHEID OVER GISTINGSDAGEN'))+'</div>'
     +'</div></section>';
 }
 
@@ -1823,10 +1856,10 @@ function renderShareTastingNotes(t){
   }
   // Optional text fields
   function fieldRow(label,val){return val?'<div style="font-size:13px;color:#c9b990;margin:4px 0"><strong style="color:var(--gold)">'+label+':</strong> '+escHtml(val)+'</div>':'';}
-  var fields=fieldRow('Color',t.color)+fieldRow('Aroma',t.aroma)+fieldRow('Flavor',t.flavor)+fieldRow('Finish',t.finish);
+  var fields=fieldRow(_ST('Color','Kleur'),t.color)+fieldRow(_ST('Aroma','Aroma'),t.aroma)+fieldRow(_ST('Flavor','Smaak'),t.flavor)+fieldRow(_ST('Finish','Afdronk'),t.finish);
   // Notes can be in `notes` or `note` depending on schema vintage
   var notes=t.notes||t.note||'';
-  return'<section class="section"><div class="section-title">Tasting Journal</div>'
+  return'<section class="section"><div class="section-title">'+_ST('Tasting Journal','Proefdagboek')+'</div>'
     +'<div class="tasting-quote">'
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;flex-wrap:wrap;gap:6px"><div style="font-family:ui-monospace,monospace;font-size:12px;color:#8a7d68">'+escHtml(t.date||'')+'</div><div>'+stars+'</div></div>'
     +wheelSection
