@@ -659,7 +659,7 @@ function renderBatchDetail(){
         +'</table></div>':'')
       +'</div><div>'
       +'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">BRAND LABEL</div></div>'
-      +'<div style="max-width:420px;margin:0 auto">'+renderLabelWithABV(recipe?recipe.id:'r1',currentABV,{batch:b})+'</div>'
+      +'<div style="max-width:760px;margin:0 auto">'+renderBatchLabel(recipe?recipe.id:'r1',currentABV,{batch:b,maxWidth:'420px'})+'</div>'
       +'<div style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center;font-family:var(--font-mono);letter-spacing:1px">'+escHtml(b.name).toUpperCase()+' · '+fmtDate(b.startDate)+(currentABV!=='—'?' · '+currentABV+'% ABV':'')+'</div>'
       +'</div>'
       +'<div class="card"><div class="card-header"><div class="card-title">JOURNEY</div></div>'
@@ -867,7 +867,7 @@ function renderBatchDetail(){
       // Cap the preview at 420px so wide screens don\'t blow up the 900×900
       // square label image into a half-meter horse mosaic. Centered with margin
       // auto. The PNG/print outputs are unaffected — they render at full res.
-      +'<div style="max-width:420px;margin:0 auto">'+renderLabelWithABV(recipe?recipe.id:'r1',bottling.abv||currentABV,{batch:b})+'</div>'
+      +'<div style="max-width:760px;margin:0 auto">'+renderBatchLabel(recipe?recipe.id:'r1',bottling.abv||currentABV,{batch:b,maxWidth:'420px'})+'</div>'
       +'<div style="font-size:12px;color:var(--text3);margin-top:12px;font-style:italic;text-align:center">ABV is baked into the hexagon. <strong>Save</strong> downloads a PNG; <strong>Print</strong> opens a print dialog sized for bottle labels.</div>'
       +'</div>'
       +(bottling.date

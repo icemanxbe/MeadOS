@@ -1662,7 +1662,7 @@ function renderBottlingStepContent(stepId,s,b){
     var abvForLabel=s.abv||(b.og&&s.fg?parseFloat(calcABV(b.og,s.fg)):null);
     return'<div style="font-size:13px;color:var(--text2);margin-bottom:14px">Your label is ready. Save as PNG, print directly, or skip if you\'ll label later. The ABV is baked into the hexagon — no separate sticker needed.</div>'
       +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:14px;margin-bottom:14px;text-align:center">'
-      +renderLabelWithABV(recipe?recipe.id:'r1',abvForLabel||0,{batch:b})
+      +renderBatchLabel(recipe?recipe.id:'r1',abvForLabel||0,{batch:b})
       +'</div>'
       +'<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
       +'<button class="btn btn-secondary" onclick="(function(){var tempBot={abv:'+(abvForLabel||0)+'};APP.bottling[\''+b.id+'\']=Object.assign({},APP.bottling[\''+b.id+'\']||{},tempBot);downloadLabel(\''+b.id+'\');}())">⬇ Save PNG</button>'
