@@ -1505,6 +1505,12 @@ function escHtmlStrip(s){return String(s||'').replace(/<[^>]*>/g,'');}
 function shareSetLocale(loc){if(!APP.settings)APP.settings={};APP.settings.labelLocale=loc;if(window._shareBatch)renderPublicShareView(window._shareBatch);}
 // Share-page text: EN by default, NL when the chosen label locale is Dutch.
 function _ST(en,nl){return (typeof labelLocale==='function'&&labelLocale()==='nl')?nl:en;}
+// A recipe's description in the active locale (Dutch built-in translation if any).
+function shareRecipeDesc(recipe){
+  if(!recipe)return '';
+  if(typeof labelLocale==='function'&&labelLocale()==='nl'&&typeof RECIPE_DESC_NL!=='undefined'&&RECIPE_DESC_NL[recipe.id])return RECIPE_DESC_NL[recipe.id];
+  return recipe.description||'';
+}
 function renderPublicShareView(b){
   if(!b||!b.id){
     document.body.innerHTML='<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;font-family:Georgia,serif;color:#888;background:#1a0f08;font-size:18px;padding:20px;text-align:center">This batch was not found.</div>';
@@ -1697,7 +1703,7 @@ function renderPublicShareView(b){
     }())
     +'<div class="batch-name">'+escHtml(b.name||'')+'</div>'
     +'<div class="batch-style">'+escHtml(recipeName||'')+(recipe&&recipe.category&&recipe.category!==recipeName?' · '+escHtml(recipe.category):'')+'</div>'
-    +(recipe&&recipe.description?'<div class="batch-desc">“'+escHtml(recipe.description)+'”</div>':'')
+    +((recipe&&shareRecipeDesc(recipe))?'<div class="batch-desc">“'+escHtml(shareRecipeDesc(recipe))+'”</div>':'')
     +'<div class="stats">'
     +'<div class="stat"><div class="stat-val">'+(bot.abv?bot.abv.toFixed(1)+'%':'—')+'</div><div class="stat-lbl">'+_ST('ABV','Alcohol')+'</div></div>'
     +'<div class="stat"><div class="stat-val">'+escHtml(bot.sweetness||'—')+'</div><div class="stat-lbl">'+_ST('Sweetness','Zoetheid')+'</div></div>'
