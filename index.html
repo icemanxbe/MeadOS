@@ -68,22 +68,50 @@
 <!-- MeadOS is modular: plain scripts in core/ sharing one global scope, loaded in
      order. Data first (so the logic sees BUILTIN_RECIPES, HONEY_PROFILES, etc.),
      then the logic modules, with 14-bootstrap.js (init) last. No build step. -->
-<script src="/core/data-libraries.js"></script>
-<script src="/core/data-recipes.js"></script>
-<script src="/core/01-state.js"></script>
-<script src="/core/02-honey-domain.js"></script>
-<script src="/core/03-brew-domain.js"></script>
-<script src="/core/04-server-ha.js"></script>
-<script src="/core/05-utils-nav.js"></script>
-<script src="/core/06-views-batch.js"></script>
-<script src="/core/07-views-recipe.js"></script>
-<script src="/core/08-tools.js"></script>
-<script src="/core/09-views-library.js"></script>
-<script src="/core/10-cellar-supplies.js"></script>
-<script src="/core/11-features.js"></script>
-<script src="/core/12-features2.js"></script>
-<script src="/core/13-labels-share.js"></script>
-<script src="/core/13b-label-studio.js"></script>
-<script src="/core/14-bootstrap.js"></script>
+<script src="/core/data/data-libraries.js"></script>
+<script src="/core/data/data-recipes.js"></script>
+<script src="/core/state/01-state.js"></script>
+<script src="/core/domain/02-honey-domain.js"></script>
+<script src="/core/domain/03-brew-domain.js"></script>
+<script src="/core/sync/04-server-ha.js"></script>
+<script src="/core/domain/04b-bottle-helpers.js"></script>
+<script src="/core/state/05-utils-nav.js"></script>
+<script src="/core/views/06-views-batch.js"></script>
+<script src="/core/views/07-views-recipe.js"></script>
+<script src="/core/tools/08-tools.js"></script>
+<script src="/core/tools/08-guide-scanner.js"></script>
+<script src="/core/tools/08-search.js"></script>
+<script src="/core/tools/08-record-pdf.js"></script>
+<script src="/core/tools/08-beerxml.js"></script>
+<script src="/core/tools/08-rehydration.js"></script>
+<script src="/core/views/09-views-library.js"></script>
+<script src="/core/views/10-cellar.js"></script>
+<script src="/core/labels/10b-labels-print.js"></script>
+<script src="/core/views/10c-compare.js"></script>
+<script src="/core/views/10d-supplies.js"></script>
+<script src="/core/views/10e-cellar-misc.js"></script>
+<script src="/core/features/11-alerts.js"></script>
+<script src="/core/features/11-schedule.js"></script>
+<script src="/core/views/11-year-review.js"></script>
+<script src="/core/features/11-recipe-designer.js"></script>
+<script src="/core/features/11-tasting-exports.js"></script>
+<script src="/core/features/11-ha-additions-temp.js"></script>
+<script src="/core/views/12-troubleshoot.js"></script>
+<script src="/core/views/12-insights.js"></script>
+<script src="/core/features/12-tasting-analysis.js"></script>
+<script src="/core/features/12-records.js"></script>
+<script src="/core/tools/12-blending-yeast.js"></script>
+<script src="/core/features/12-gift-bottling.js"></script>
+<script src="/core/labels/13-label-designer.js"></script>
+<script src="/core/share/13-media-ha-ws.js"></script>
+<script src="/core/labels/13-image-upload.js"></script>
+<script src="/core/labels/13-misc-modals.js"></script>
+<script src="/core/share/13-share.js"></script>
+<script src="/core/labels/13-exports.js"></script>
+<script src="/core/labels/13b-label-studio.js"></script>
+<script src="/core/boot/14-schema.js"></script>
+<script src="/core/boot/14-storage-budget.js"></script>
+<script src="/core/boot/14-modals.js"></script>
+<script src="/core/boot/14-bootstrap.js"></script>
 </body>
 </html>

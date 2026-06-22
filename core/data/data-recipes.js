@@ -3057,7 +3057,7 @@ var RECIPE_COMBO_NOTES={"r1":{"intro":"A Traditional is pure honey, yeast and nu
 // Dutch translations of the built-in recipe descriptions, keyed by recipe id.
 // Used on the share page (and the label tasting fallback) when labelLocale is 'nl'.
 var RECIPE_DESC_NL={
-  r1:'Een pure, honinggedreven mede zonder iets te verbergen. De klassieke stijl die het karakter van je honing laat schitteren. Perfect als eerste charge.',
+  r1:'Een pure, honinggedreven mede zonder iets te verbergen. De klassieke stijl die het karakter van je honing laat schitteren. Perfect als eerste lot.',
   r2:'Een gezellige herfstmede — geperste appel met warme kaneelkruiding. Een etiketwaardig vlaggenschip. Drinkt prachtig op elke temperatuur.',
   r36:'Aardbeiaroma is het meest delicate van de bessen — het vervaagt het snelst door een volledige gisting. Deze versie houdt het fris door eerst een zuivere traditionele basis te vergisten en daarna in de tweede gisting op de aardbeien over te hevelen. De frisste, meest geurige van de twee aardbeimeden, met een iets blekere roze tint.',
   r3:'Een delicate, prachtig roze mede. Aardbeien zijn subtiel — het resultaat is meer "vers veld" dan snoep. Jong en gekoeld drinken.',
@@ -3087,7 +3087,7 @@ var RECIPE_DESC_NL={
   r24:'Een kruidenmix recht uit een chai-theerecept — kardemom, kaneel, gember, kruidnagel, zwarte peper — toegevoegd in de tweede gisting. Drinkt als een warme gekruide wijn. Uitstekend om in de winter van te nippen.',
   r25:'Een bewuste robijnport-hommage — hoge dichtheid, donkerbessengedreven, zoete afdronk, 14-15% vol. Pyment-basis (rode druivensap doet het zware werk) met zwarte bes en een vleugje eikenhout. Drinkt als een jonge robijnport: diep, fruitig, weelderig.',
   r26:'Een geduldsproject: bochet-basis (gekarameliseerde honing) + vijgen + langdurige eikenrijping = een tawny-port-hommage. Waar de robijnversie fruit najaagt, jaagt deze tijd na. Drinkt naar karamel, gedroogde vijg, walnoot en butterscotch na 18+ maanden.',
-  r27:'Een dessertachtige sack-mede met laat toegevoegde lavendel — hoge honingdosis, ingetogen gisting, weelderige zoetheid die parfumachtige Provencaalse bloemen draagt. Drinkt als een digestief: dik, honingachtig, met lavendel die over de jaren van scherp naar geintegreerd evolueert. Een charge van 7 flessen die je bovenhaalt bij verjaardagen.',
+  r27:'Een dessertachtige sack-mede met laat toegevoegde lavendel — hoge honingdosis, ingetogen gisting, weelderige zoetheid die parfumachtige Provencaalse bloemen draagt. Drinkt als een digestief: dik, honingachtig, met lavendel die over de jaren van scherp naar geintegreerd evolueert. Een lot van 7 flessen die je bovenhaalt bij verjaardagen.',
   r28:'Honing en ahornsiroop samen vergist — de klassieke acerglyn. De ahorn voegt een rijke, houtige diepte en lichte rook toe; de honing houdt het bloemig. Drinkt als een bos in vloeibare vorm. Het best met grade A donkere ahorn (meer smaak dan grade A licht).',
   r29:'Het bos ontmoet het kampvuur. Karameliseer de honing tot diep amber (toffee, marshmallow) en vergist daarna met grade A donkere ahornsiroop. Het resultaat smaakt als ahornbourbon met een honingruggengraat — dessertsterkte, diep amber, cadeauwaardig. Lange rijping verzacht de gebrande-suikerrand tot pure karamel-ahornweelde.',
   r30:'Een kurkdroge, op fles gerijpte mede die drinkt als een honingchampagne — fijne bubbels, frisse afdronk, de honingaromatiek opgetild door de koolzuur. Volledig droog vergist met een champagnegist, daarna geprimed en gerijpt in drukbestendige flessen. De klassieke feestmede.',
@@ -3095,4 +3095,32 @@ var RECIPE_DESC_NL={
   r32:'Een lichte, alcoholarme mousserende mede (ongeveer 6%) die je snel kunt brouwen en jong kunt drinken — denk aan een honing-"spritz". Lage dichtheid betekent een snelle, zuivere gisting; op fles gerijpt voor een verfrissende bruis. De instap-mousserende mede.',
   r33:'Een droge mousserende melomel boordevol bosvruchtenaroma — het fruit gaat in de tweede gisting zodat het bessenkarakter helder en fris overleeft, daarna op fles gerijpt tot een roze, levendige bruis. Pectine-enzym houdt het helder.',
   r34:'Een pittige mousserende gembermede — honing + verse gember droog vergist en op fles gerijpt tot een volwassen gemberbier met ruggengraat. Warmend, droog, bruisend en gevaarlijk drinkbaar. Een blijvende favoriet.'
+};
+
+// Dutch display names per recipe (share page + label name/style), keyed by id.
+var RECIPE_NAME_NL={
+  r1:'Traditionele Mede', r2:'Appel-Kaneelmede',
+  r3:'Aardbeienmede', r36:'Aardbeienmede · Fruit in tweede gisting',
+  r4:'Bosvruchtenmede', r35:'Bosvruchtenmede · Fruit in tweede gisting',
+  r5:'Bosbessenmede', r38:'Bosbessenmede · Fruit in tweede gisting',
+  r6:'Kersenmede', r7:'Gekruide Mede (Metheglin)', r8:'Zware Dessertmede (Sack)',
+  r9:'Bochet · Gekarameliseerde Honingmede', r10:'Cyser · Appelmede',
+  r11:'Pyment · Druivenmede', r12:'Braggot · Bier-Mede Hybride',
+  r13:'Frambozenmelomel', r37:'Frambozenmelomel · Fruit in tweede gisting',
+  r14:'Zwartebessenmelomel', r15:'Perzikmelomel', r16:'Vanillemede (Metheglin)',
+  r17:'Gembermede (Metheglin)', r18:'Hibiscusmede', r19:'Rozenblaadjesmede (Rhodomel)',
+  r20:'Gehopte Mede (Dry-Hopped)', r21:'Capsicumel · Chilimede', r22:'Koffiemede',
+  r23:'Lavendelmede (Metheglin)', r24:'Chai-gekruide Mede (Metheglin)',
+  r25:'Sack-mede · Portstijl (Ruby)', r26:'Gerijpte Mede · Tawny-portstijl',
+  r27:'Sack Lavendel · Lang Gerijpte Zoete Metheglin', r28:'Acerglyn · Ahornmede',
+  r29:'Ahorn-Bochet · Gekarameliseerde Bos-Sack', r30:'Mousserende Traditionele Mede',
+  r31:'Mousserende Cyser', r32:'Hydromel · Mousserende Sessiemede',
+  r33:'Mousserende Bessenmelomel', r34:'Mousserende Gembermede'
+};
+// Dutch for the style/category word shown alongside the name.
+var RECIPE_STYLE_NL={
+  'Show Mead':'Show mede','Mead':'Mede','Traditional':'Traditioneel','Melomel':'Melomel',
+  'Cyser':'Cyser','Pyment':'Pyment','Metheglin':'Metheglin','Bochet':'Bochet',
+  'Braggot':'Braggot','Acerglyn':'Acerglyn','Sack Mead':'Sack-mede','Sack':'Sack',
+  'Specialty':'Specialiteit','Sparkling':'Mousserend','Hydromel':'Hydromel'
 };
