@@ -15,7 +15,7 @@
 </head>
 <body>
 <h1>MeadOS — zero-dependency unit checks</h1>
-<div class="muted">Open this at <code>/test.html</code> (or via file://). It loads app.js and asserts the data/logic functions. Re-run after changes to catch regressions.</div>
+<div class="muted">Open this at <code>/test.html</code> (or via file://). It loads the <code>core/</code> modules and asserts the data/logic functions. Re-run after changes to catch regressions.</div>
 
 <!-- Minimal DOM skeleton so app.js init()/renderMain() don't crash on load. -->
 <div id="app" style="display:none">
@@ -29,7 +29,53 @@
 <div id="summary"></div>
 <div id="results"></div>
 
-<script src="/app.js"></script>
+<!-- The app is served as ordered modules under core/ (the old /app.js bundle is gone). -->
+<script src="/chart.umd.js"></script>
+<script src="/core/data/data-libraries.js"></script>
+<script src="/core/data/data-recipes.js"></script>
+<script src="/core/state/01-state.js"></script>
+<script src="/core/domain/02-honey-domain.js"></script>
+<script src="/core/domain/03-brew-domain.js"></script>
+<script src="/core/sync/04-server-ha.js"></script>
+<script src="/core/domain/04b-bottle-helpers.js"></script>
+<script src="/core/state/05-utils-nav.js"></script>
+<script src="/core/views/06-views-batch.js"></script>
+<script src="/core/views/07-views-recipe.js"></script>
+<script src="/core/tools/08-tools.js"></script>
+<script src="/core/tools/08-guide-scanner.js"></script>
+<script src="/core/tools/08-search.js"></script>
+<script src="/core/tools/08-record-pdf.js"></script>
+<script src="/core/tools/08-beerxml.js"></script>
+<script src="/core/tools/08-rehydration.js"></script>
+<script src="/core/views/09-views-library.js"></script>
+<script src="/core/views/10-cellar.js"></script>
+<script src="/core/labels/10b-labels-print.js"></script>
+<script src="/core/views/10c-compare.js"></script>
+<script src="/core/views/10d-supplies.js"></script>
+<script src="/core/views/10e-cellar-misc.js"></script>
+<script src="/core/features/11-alerts.js"></script>
+<script src="/core/features/11-schedule.js"></script>
+<script src="/core/views/11-year-review.js"></script>
+<script src="/core/features/11-recipe-designer.js"></script>
+<script src="/core/features/11-tasting-exports.js"></script>
+<script src="/core/features/11-ha-additions-temp.js"></script>
+<script src="/core/views/12-troubleshoot.js"></script>
+<script src="/core/views/12-insights.js"></script>
+<script src="/core/features/12-tasting-analysis.js"></script>
+<script src="/core/features/12-records.js"></script>
+<script src="/core/tools/12-blending-yeast.js"></script>
+<script src="/core/features/12-gift-bottling.js"></script>
+<script src="/core/labels/13-label-designer.js"></script>
+<script src="/core/share/13-media-ha-ws.js"></script>
+<script src="/core/labels/13-image-upload.js"></script>
+<script src="/core/labels/13-misc-modals.js"></script>
+<script src="/core/share/13-share.js"></script>
+<script src="/core/labels/13-exports.js"></script>
+<script src="/core/labels/13b-label-studio.js"></script>
+<script src="/core/boot/14-schema.js"></script>
+<script src="/core/boot/14-storage-budget.js"></script>
+<script src="/core/boot/14-modals.js"></script>
+<script src="/core/boot/14-bootstrap.js"></script>
 <script>
 (function(){
   var out=document.getElementById('results'), pass=0, fail=0;
@@ -100,6 +146,44 @@
     ok('projection: drop rate > 0', p && p.ratePerDay>0, p?('rate='+p.ratePerDay):'null');
     ok('projection: FG not above current gravity', p && p.estFG<=1.020+1e-9, p?('estFG='+p.estFG):'null');
     APP.recipes=BUILTIN_RECIPES();
+  })();
+
+  // ---- calculators / conversions (pure logic) ----
+  eq('calcABV 1.090 -> 1.000 = 11.8', calcABV(1.090,1.000), '11.8');
+  ok('calcABV monotonic (higher OG -> higher ABV)', parseFloat(calcABV(1.120,1.000))>parseFloat(calcABV(1.090,1.000)));
+
+  // SG <-> Brix
+  (function(){
+    ok('sgToBrix(1.000) ~ 0', Math.abs(sgToBrix(1.000))<0.1, 'got '+sgToBrix(1.000));
+    ok('sgToBrix(1.040) ~ 9.9', Math.abs(sgToBrix(1.040)-9.9)<0.5, 'got '+sgToBrix(1.040));
+    ok('sgToBrix out-of-range -> null', sgToBrix(0.5)===null);
+    ok('brixToSG(10) ~ 1.040', Math.abs(brixToSG(10)-1.040)<0.002, 'got '+brixToSG(10));
+    ok('SG<->Brix round-trip @1.060', Math.abs(brixToSG(sgToBrix(1.060))-1.060)<0.002, 'got '+brixToSG(sgToBrix(1.060)));
+  })();
+
+  // Unit conversions (pure SI helpers)
+  ok('volFromSI/volToSI round-trip', Math.abs(volToSI(volFromSI(5))-5)<1e-9);
+  ok('wtFromSI/wtToSI round-trip', Math.abs(wtToSI(wtFromSI(1.5))-1.5)<1e-9);
+
+  // studioSweetIndex — bottling sweetness -> 4-point Dry..Sweet meter
+  eq('sweet: Bone Dry -> 0', studioSweetIndex('Bone Dry'), 0);
+  eq('sweet: Dry -> 0', studioSweetIndex('Dry'), 0);
+  eq('sweet: Off-Dry -> 1', studioSweetIndex('Off-Dry'), 1);
+  eq('sweet: Semi-Sweet -> 2', studioSweetIndex('Semi-Sweet'), 2);
+  eq('sweet: Sweet -> 3', studioSweetIndex('Sweet'), 3);
+  eq('sweet: Dessert -> 3', studioSweetIndex('Dessert'), 3);
+
+  // labelStudioNetVol — per-bottle net contents + unit
+  eq('netvol 750 ml', labelStudioNetVol({bottleVol:750}), '750 ml ℮');
+  eq('netvol 750 -> cl', labelStudioNetVol({bottleVol:750},'cl'), '75 cl ℮');
+  eq('netvol 750 -> L', labelStudioNetVol({bottleVol:750},'l'), '0.75 L ℮');
+
+  // label ingredients reflect the batch's chosen yeast (regression guard)
+  (function(){
+    var ctx={recipe:{id:'rx',ingredients:[{item:'Wildflower Honey'},{item:'Spring Water'}]},batch:{id:'bx',yeast:'ec1118'},honey:'Wildflower'};
+    var ing=labelStudioIngredients(ctx);
+    ok('ingredients include EC-1118 yeast', /EC-?1118/i.test(ing), ing);
+    ok('ingredients drop the default M05', ing.toLowerCase().indexOf('m05')<0, ing);
   })();
 
   var s=document.getElementById('summary');

@@ -14,7 +14,6 @@
 const CACHE_VERSION = 'meados-v1';
 const SHELL = [
   '/index.html',
-  '/app.js',
   '/app.css',
   '/manifest.webmanifest',
   '/icon-192.png',

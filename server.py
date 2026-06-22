@@ -53,7 +53,7 @@ import urllib.error
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-HISTORY_KEEP = 50
+HISTORY_KEEP = 200  # state is a few tens of KB now, so deep undo history is cheap
 MAX_BODY = 64 * 1024 * 1024  # 64 MB — far above any realistic state size
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))

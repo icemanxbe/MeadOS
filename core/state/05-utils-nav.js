@@ -292,10 +292,32 @@ function renderSidebar(){
   }).join('');
 }
 
+// Create a Chart.js chart, first destroying any existing chart bound to the same
+// canvas — full-view re-renders reuse canvas ids, so without this old instances
+// leak and Chart.js throws "Canvas is already in use".
+function makeChart(target,cfg){
+  try{
+    if(typeof Chart!=='undefined'&&Chart.getChart){
+      var canvas=(target&&target.canvas)?target.canvas:target; // 2d-context → its canvas
+      var ex=Chart.getChart(canvas);
+      if(ex)ex.destroy();
+    }
+  }catch(e){}
+  return new Chart(target,cfg);
+}
+var _lastRenderedView=null;
 function renderMain(){
   renderSidebar();
   var main=document.getElementById('main');
   if(!main)return; // share mode has no app shell to render into
+  // Preserve scroll + focus on an in-place re-render (same view, e.g. after
+  // logging a reading). On a real navigation (view changed) start at the top.
+  var _sameView=(_lastRenderedView===currentView);
+  var _keepScroll=_sameView?main.scrollTop:0;
+  var _afEl=_sameView?document.activeElement:null;
+  var _afId=(_afEl&&_afEl.id&&main.contains(_afEl))?_afEl.id:null;
+  var _selS=_afId&&_afEl.selectionStart!=null?_afEl.selectionStart:null;
+  var _selE=_afId&&_afEl.selectionEnd!=null?_afEl.selectionEnd:null;
   switch(currentView){
     case'dashboard':main.innerHTML=renderDashboard();initDashCharts();break;
     case'batches':main.innerHTML=renderBatchList();break;
@@ -353,4 +375,10 @@ function renderMain(){
   main.classList.remove('fade-in');
   void main.offsetWidth;
   main.classList.add('fade-in');
+  _lastRenderedView=currentView;
+  // Restore scroll + focus on an in-place re-render so a mutation doesn't jump
+  // the page to the top or drop the cursor out of the field being edited.
+  if(_afId){var _el=document.getElementById(_afId);if(_el){try{_el.focus({preventScroll:true});if(_selS!=null&&_el.setSelectionRange)_el.setSelectionRange(_selS,_selE);}catch(e){}}}
+  main.scrollTop=_keepScroll;
+  if(typeof a11yEnhance==='function')a11yEnhance(main);
 }
