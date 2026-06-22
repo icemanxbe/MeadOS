@@ -319,7 +319,7 @@ function initDashCharts(){
       var data=[{x:0,y:b.og||1.095}].concat(logs.map(function(l,j){return{x:j+1,y:l.gravity};}));
       return{label:b.name,data:data,borderColor:getBatchColor(b),backgroundColor:'transparent',tension:0.4,pointRadius:3,borderWidth:2};
     });
-    new Chart(ctx,{
+    makeChart(ctx,{
       type:'line',data:{datasets:datasets},
       options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
         scales:{x:{type:'linear',ticks:{color:'#6a5f50',font:{size:10}},grid:{color:'#2a2a35'}},
@@ -983,7 +983,7 @@ function initBatchCharts(){
       // Gravity (left axis) and estimated ABV (right axis) on one chart, so the
       // ABV rise as gravity falls is visible at a glance. Both carry the dashed
       // projection forward to expected finish.
-      new Chart(gctx,{
+      makeChart(gctx,{
         type:'line',
         data:{labels:allLabels,datasets:[
           {label:'Gravity',data:gravFull,borderColor:color,backgroundColor:color+'22',tension:0.35,fill:true,pointRadius:4,pointBackgroundColor:color,pointBorderColor:'#fff',pointBorderWidth:1.5,spanGaps:false,yAxisID:'y'},
@@ -1003,7 +1003,7 @@ function initBatchCharts(){
     var tempLogs=logs.filter(function(l){return l.temp!=null;});
     var tctx=document.getElementById('batch-temp-chart');
     if(tctx&&tempLogs.length>1){
-      new Chart(tctx,{
+      makeChart(tctx,{
         type:'line',
         data:{labels:tempLogs.map(function(l){return fmtDateShort(l.date);}),datasets:[
           {label:'Temp',data:tempLogs.map(function(l){return l.temp;}),borderColor:'#e8a020',backgroundColor:'#e8a02022',tension:0.4,fill:true,pointRadius:4,pointBackgroundColor:'#e8a020'}
