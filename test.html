@@ -46,6 +46,7 @@
 <script src="/core/state/i18n.js"></script>
 <script src="/core/domain/02-honey-domain.js"></script>
 <script src="/core/domain/03-brew-domain.js"></script>
+<script src="/core/domain/03d-mead-model.js"></script>
 <script src="/core/sync/04-server-ha.js"></script>
 <script src="/core/domain/04b-bottle-helpers.js"></script>
 <script src="/core/state/05-utils-nav.js"></script>
@@ -196,6 +197,20 @@
     var ing=labelStudioIngredients(ctx);
     ok('ingredients include EC-1118 yeast', /EC-?1118/i.test(ing), ing);
     ok('ingredients drop the default M05', ing.toLowerCase().indexOf('m05')<0, ing);
+  })();
+
+  // ---- mead-model (recipe configurator + advisor foundation) ----
+  (function(){
+    ok('honeyKg: OG 1.098 @ 5L ~ 1.68 kg', Math.abs(mwHoneyKg(1.098,5)-1.68)<0.05, 'got '+mwHoneyKg(1.098,5));
+    ok('sugarBreak 1.098→1.010 = 1.069', Math.abs(mwSugarBreak(1.098,1.010)-1.069)<0.001, 'got '+mwSugarBreak(1.098,1.010));
+    // EC-1118: 18% tolerance, high attenuation → ferments dry
+    (function(){var t=mwYeastTargets(1.098,'ec1118');ok('yeastTargets ec1118 returns fg/abv', t&&t.fg<1.01&&t.abv>10, JSON.stringify(t));})();
+    // M05: attenuation-limited target above 0.996
+    (function(){var t=mwYeastTargets(1.120,'m05');ok('yeastTargets m05 high OG returns object', !!(t&&t.fg&&t.abv), JSON.stringify(t));})();
+    eq('attenuation 1.098→1.069 ≈ 0.30', Math.round(mwAttenuation(1.098,1.069)*100)/100, 0.30);
+    (function(){var n=mwNutrientGrams(5,1.098,'tosna');ok('nutrient tosna = 4 doses', n.doses===4&&n.total>0, JSON.stringify(n));})();
+    (function(){var n=mwNutrientGrams(5,1.098,'sna');ok('nutrient sna = 2 doses', n.doses===2, JSON.stringify(n));})();
+    ok('yeastTargets null on bad OG', mwYeastTargets(0.9,'m05')===null);
   })();
 
   var s=document.getElementById('summary');
