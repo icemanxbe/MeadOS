@@ -518,7 +518,11 @@ function setBrewWhatYouHaveVol(v){
   var lbl=document.getElementById('bwyh-vol-label');
   if(lbl)lbl.textContent=fmtVol(window._bwyhVol);
   var list=document.getElementById('bwyh-list');
-  if(list)list.innerHTML=renderBwyhList();
+  if(list){list.innerHTML=renderBwyhList();
+    // The slider swaps innerHTML imperatively, so the post-render i18n pass never
+    // runs on it — re-translate this subtree when in Dutch.
+    if(typeof appLang==='function'&&appLang()==='nl'&&typeof translateChrome==='function')translateChrome(list);
+  }
 }
 function renderBwyhList(){
   var r=computeBrewableRecipes(window._bwyhVol);

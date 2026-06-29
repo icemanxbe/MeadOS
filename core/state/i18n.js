@@ -480,6 +480,7 @@ var UI_PHRASES={
   // ---- shopping list / supplies ----
   'Also gather (recipe-specific)':'Ook verzamelen (receptspecifiek)',
   'Running low / out of stock':'Bijna op / niet op voorraad','out of stock':'niet op voorraad',
+  'No recipes to evaluate yet.':'Nog geen recepten om te evalueren.',
   'Low stock:':'Lage voorraad:','✓ have enough':'✓ genoeg in voorraad',
   'Est. cost to buy the shortfall':'Geschatte kost om het tekort te kopen',
   'Bottles · 750 ml':'Flessen · 750 ml','Bottles · 500 ml':'Flessen · 500 ml',
