@@ -57,6 +57,56 @@ function _advHealthMeta(band){
   return M[band]||M.unknown;
 }
 
+// Compact health + top-recommendation strip for the batch Overview tab. Links
+// through to the full Advisor tab. Returns '' when there's nothing useful to say.
+function renderBatchAdvisorStrip(b){
+  var nl=_advNL();
+  var adv=(typeof mwBatchAdvice==='function')?mwBatchAdvice(b):null;
+  if(!adv||!adv.signals||(adv.signals.status==='complete'))return '';
+  var h=adv.health, r=adv.readiness, hm=_advHealthMeta(h&&h.band);
+  var top=adv.items.filter(function(i){return i.severity!=='info';})[0]||adv.items[0];
+  var topTxt=top?_advItemText(top):null, topMeta=top?_advSeverityMeta(top.severity):null;
+  return '<div class="card" style="margin-bottom:16px;border-left:3px solid '+hm.c+'">'
+    +'<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">'
+    +'<div style="text-align:center;min-width:62px"><div style="font-family:var(--font-display);font-size:30px;line-height:1;color:'+hm.c+'">'+(h&&h.score!=null?h.score:'—')+'</div><div class="micro-label">'+(nl?'GEZONDHEID':'HEALTH')+'</div></div>'
+    +'<div style="flex:1;min-width:180px">'
+    +(top?'<div style="font-size:13px;color:'+topMeta.color+';font-family:var(--font-display)">'+topTxt.icon+' '+escHtml(topTxt.title)+'</div><div style="font-size:11.5px;color:var(--text3);margin-top:2px">'+escHtml(topTxt.reason.length>120?topTxt.reason.slice(0,118)+'…':topTxt.reason)+'</div>'
+        :'<div style="font-size:13px;color:var(--green2)">'+(nl?'✓ Alles ziet er goed uit':'✓ Everything looks good')+'</div>')
+    +(r?'<div style="font-size:11px;color:var(--text3);margin-top:5px;font-family:var(--font-mono)">'+(nl?'DRINKBAARHEID':'READINESS')+' '+r.pct+'%</div>':'')
+    +'</div>'
+    +'<button class="btn btn-secondary btn-sm" onclick="setBatchTab(\''+b.id+'\',\'coach\')">'+(nl?'Adviseur →':'Advisor →')+'</button>'
+    +'</div></div>';
+}
+
+// Targets vs actual: at a glance, are we on track / over / under recipe spec?
+function renderBatchTargets(b){
+  var nl=_advNL();
+  var adv=(typeof mwBatchAdvice==='function')?mwBatchAdvice(b):null;
+  if(!adv||!adv.signals||!adv.signals.og)return '';
+  var s=adv.signals, recipe=(APP.recipes||[]).filter(function(r){return r.id===b.recipeId;})[0];
+  function cmp(actual,target,tol){if(actual==null||target==null)return null;var d=actual-target;if(Math.abs(d)<=tol)return 'on';return d>0?'over':'under';}
+  function ind(state){if(state==null)return '';if(state==='on')return '<span style="color:var(--green2)">✓</span>';if(state==='over')return '<span style="color:var(--gold2)">↑</span>';return '<span style="color:var(--blue2)">↓</span>';}
+  var ogA=s.og, ogT=recipe&&recipe.ogTarget;
+  var fgT=s.targetFG, fgA=(s.status==='fermenting')?(s.estFG!=null?s.estFG:s.lastG):s.lastG;
+  var abvT=s.targetABV, abvA=s.currentABV;
+  // predicted finish day vs recipe ferment days
+  var predDay=(s.daysSinceStart!=null&&s.daysToFG!=null)?(s.daysSinceStart+s.daysToFG):null;
+  var fermT=recipe&&recipe.fermentDays;
+  function row(label,actual,target,state,fmt){
+    return '<tr><td style="color:var(--text3)">'+label+'</td>'
+      +'<td style="font-family:var(--font-mono)">'+(actual!=null?fmt(actual):'—')+'</td>'
+      +'<td style="font-family:var(--font-mono);color:var(--text3)">'+(target!=null?fmt(target):'—')+' '+ind(state)+'</td></tr>';
+  }
+  var g=function(x){return (+x).toFixed(3);}, p1=function(x){return (+x).toFixed(1)+'%';}, dd=function(x){return '~'+Math.round(x)+(nl?'d':'d');};
+  return '<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">'+(nl?'🎯 DOEL vs ACTUEEL':'🎯 TARGET vs ACTUAL')+'</div></div>'
+    +'<table class="data-table"><tr><td></td><td style="color:var(--text3);font-family:var(--font-mono);font-size:10px;letter-spacing:1px">'+(nl?'ACTUEEL':'ACTUAL')+'</td><td style="color:var(--text3);font-family:var(--font-mono);font-size:10px;letter-spacing:1px">'+(nl?'DOEL':'TARGET')+'</td></tr>'
+    +row('OG',ogA,ogT,cmp(ogA,ogT,0.003),g)
+    +row(nl?'FG (prognose)':'FG (proj.)',fgA,fgT,cmp(fgA,fgT,0.004),g)
+    +row(nl?'Alcohol':'ABV',abvA,abvT,cmp(abvA,abvT,0.6),p1)
+    +(s.status==='fermenting'?row(nl?'Klaar (dag)':'Finish (day)',predDay,fermT,cmp(predDay,fermT,5),dd):'')
+    +'</table></div>';
+}
+
 function renderBatchAdvisor(b){
   var nl=_advNL();
   var adv=(typeof mwBatchAdvice==='function')?mwBatchAdvice(b):null;
