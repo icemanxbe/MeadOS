@@ -502,7 +502,7 @@ async function renderTempHistoryChart(canvasId,batchId){
           filter:function(item){return!String(item.dataset.label||'').startsWith('_');},
           callbacks:{
             label:function(item){return item.parsed.y.toFixed(1)+'°C ('+fermentTempEval(item.parsed.y,chartYeast).zone+')';},
-            title:function(items){if(!items.length)return'';return new Date(items[0].parsed.x).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});}
+            title:function(items){if(!items.length)return'';return new Date(items[0].parsed.x).toLocaleString(_dloc(),{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});}
           }
         }
       },
@@ -512,7 +512,7 @@ async function renderTempHistoryChart(canvasId,batchId){
             var d=new Date(v);
             return hours<=24
               ?d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})
-              :d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+              :d.toLocaleDateString(_dloc(),{day:'2-digit',month:'short'});
           }},
           grid:{color:'#2a2a35'}
         },

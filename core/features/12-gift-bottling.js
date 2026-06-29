@@ -21,8 +21,8 @@ function openGiftRecipientModal(batchId,deltaCount,size){
   var dataListOpts=Object.keys(priorRecipients).map(function(n){return'<option value="'+escHtml(n)+'">';}).join('');
   document.body.insertAdjacentHTML('beforeend',
     '<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:460px">'
-    +'<div class="modal-title">🎁 RECORD GIFT'+(deltaCount>1?' ('+deltaCount+' × '+size+'ml)':' ('+size+'ml)')+'</div>'
-    +'<div style="font-size:13px;color:var(--text2);margin-bottom:14px">Recording '+deltaCount+' × '+size+'ml gift'+(deltaCount!==1?'s':'')+' of <strong style="color:var(--gold2)">'+escHtml(b.name)+'</strong>. Track who got the bottle'+(deltaCount!==1?'s':'')+' so you can follow up later.</div>'
+    +'<div class="modal-title">'+(appLang()==='nl'?'🎁 CADEAU REGISTREREN':'🎁 RECORD GIFT')+(deltaCount>1?' ('+deltaCount+' × '+size+'ml)':' ('+size+'ml)')+'</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:14px">'+(appLang()==='nl'?deltaCount+' × '+size+'ml cadeau'+(deltaCount!==1?'s':'')+' van <strong style="color:var(--gold2)">'+escHtml(b.name)+'</strong> registreren. Houd bij wie de fles'+(deltaCount!==1?'sen':'')+' kreeg zodat je later kunt opvolgen.':'Recording '+deltaCount+' × '+size+'ml gift'+(deltaCount!==1?'s':'')+' of <strong style="color:var(--gold2)">'+escHtml(b.name)+'</strong>. Track who got the bottle'+(deltaCount!==1?'s':'')+' so you can follow up later.')+'</div>'
     +'<input type="hidden" id="gift-size" value="'+size+'">'
     +'<div class="form-group"><label class="form-label">Recipient</label><input class="form-input" id="gift-recipient" placeholder="Mom / Sarah / Jan & Marie" list="gift-recipients-list" autofocus>'
     +'<datalist id="gift-recipients-list">'+dataListOpts+'</datalist></div>'

@@ -27,7 +27,7 @@ function renderHoneyLibrary(){
 function renderHoneyInSeasonCard(){
   var now=new Date();
   var monthIdx=now.getMonth()+1;
-  var monthName=now.toLocaleDateString('en-GB',{month:'long'});
+  var monthName=now.toLocaleDateString(_dloc(),{month:'long'});
   var hits=honeysInSeason(monthIdx);
   if(!hits.length)return''; // nothing fresh this month — quiet
   // Group by region
@@ -75,6 +75,7 @@ function renderHoneyInSeasonCard(){
 function renderHoneyUsageForecast(){
   // Forecast = honey you still need to BUY, so it's driven by PLANNED (not-yet-
   // brewed) batches. Active batches already had their honey added at brew day.
+  var _nl=(typeof appLang==='function'&&appLang()==='nl');
   var planned=APP.plannedBatches||[];
   if(!planned.length)return'';
   var demand={};
@@ -118,20 +119,20 @@ function renderHoneyUsageForecast(){
     if(!supply){
       status='<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">NOT IN SUPPLIES</span>';
     }else if(shortage>0){
-      status='<span style="font-family:var(--font-mono);font-size:10px;color:var(--red2);letter-spacing:1px">SHORT '+shortage.toFixed(2)+' kg</span>';
+      status='<span style="font-family:var(--font-mono);font-size:10px;color:var(--red2);letter-spacing:1px">'+(_nl?'TEKORT ':'SHORT ')+shortage.toFixed(2)+' kg</span>';
     }else{
       var buffer=onHandKg-d.kg;
-      status='<span style="font-family:var(--font-mono);font-size:10px;color:var(--green2);letter-spacing:1px">+'+buffer.toFixed(2)+' kg BUFFER</span>';
+      status='<span style="font-family:var(--font-mono);font-size:10px;color:var(--green2);letter-spacing:1px">+'+buffer.toFixed(2)+(_nl?' kg MARGE':' kg BUFFER')+'</span>';
     }
     return'<div style="display:flex;align-items:center;gap:12px;padding:8px 0;border-bottom:1px solid var(--border)">'
       +'<div style="width:8px;height:32px;border-radius:2px;background:'+color+';flex-shrink:0"></div>'
       +'<div style="flex:1;min-width:0"><div style="font-family:var(--font-display);font-size:13px;color:'+color+'">'+escHtml(ht)+seasonBadge+'</div>'
-      +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+d.kg.toFixed(2)+' kg needed across '+d.batches.length+' planned batch'+(d.batches.length===1?'':'es')+(supply?' · '+onHandKg.toFixed(2)+' kg on hand':'')+'</div></div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+(_nl?(d.kg.toFixed(2)+' kg nodig voor '+d.batches.length+' geplande partij'+(d.batches.length===1?'':'en')+(supply?' · '+onHandKg.toFixed(2)+' kg op voorraad':'')):(d.kg.toFixed(2)+' kg needed across '+d.batches.length+' planned batch'+(d.batches.length===1?'':'es')+(supply?' · '+onHandKg.toFixed(2)+' kg on hand':'')))+'</div></div>'
       +status
       +'</div>';
   }).join('');
-  return'<div class="card" style="border-left:3px solid var(--gold2);height:100%"><div class="card-header"><div class="card-title">🍯 HONEY USAGE FORECAST</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+planned.length+' PLANNED BATCH'+(planned.length===1?'':'ES')+'</div></div>'
-    +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:10px;line-height:1.55">Honey your <strong>planned</strong> batches will need vs. what\'s in your supplies (honey already brewed isn\'t counted). Watch seasonal honeys (lavender, chestnut) you can\'t just restock anytime.</div>'
+  return'<div class="card" style="border-left:3px solid var(--gold2);height:100%"><div class="card-header"><div class="card-title">'+(_nl?'🍯 HONINGVERBRUIK-PROGNOSE':'🍯 HONEY USAGE FORECAST')+'</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+planned.length+(_nl?(' GEPLANDE PARTIJ'+(planned.length===1?'':'EN')):(' PLANNED BATCH'+(planned.length===1?'':'ES')))+'</div></div>'
+    +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:10px;line-height:1.55">'+(_nl?'Honing die je <strong>geplande</strong> partijen nodig hebben versus wat in je voorraad zit (al gebrouwen honing telt niet mee). Let op seizoenshoningen (lavendel, kastanje) die je niet zomaar opnieuw kunt inslaan.':'Honey your <strong>planned</strong> batches will need vs. what\'s in your supplies (honey already brewed isn\'t counted). Watch seasonal honeys (lavender, chestnut) you can\'t just restock anytime.')+'</div>'
     +rows
     +'</div>';
 }
@@ -453,11 +454,14 @@ function renderYeastLibrary(){
   }
   function attBadge(y){
     var label=y.attenuation>=92?'very dry':y.attenuation>=85?'dry':y.attenuation>=80?'medium':'leaves sweet';
+    if(typeof appLang==='function'&&appLang()==='nl')label=({'very dry':'zeer droog','dry':'droog','medium':'medium','leaves sweet':'laat zoet'})[label];
     return '<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);background:rgba(201,163,80,0.1);padding:2px 7px;border-radius:8px;letter-spacing:0.5px">'+y.attenuation+'% · '+label+'</span>';
   }
   function speedBadge(y){
     var iconMap={'very-fast':'⚡⚡','fast':'⚡','medium-fast':'⚡','medium':'•','slow':'∼'};
-    return '<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);background:rgba(201,163,80,0.1);padding:2px 7px;border-radius:8px;letter-spacing:0.5px">'+iconMap[y.speed]+' '+y.speed.replace('-',' ')+'</span>';
+    var sp=y.speed.replace('-',' ');
+    if(typeof appLang==='function'&&appLang()==='nl')sp=({'very fast':'zeer snel','fast':'snel','medium fast':'gemiddeld snel','medium':'gemiddeld','slow':'langzaam'})[sp]||sp;
+    return '<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);background:rgba(201,163,80,0.1);padding:2px 7px;border-radius:8px;letter-spacing:0.5px">'+iconMap[y.speed]+' '+sp+'</span>';
   }
 
   function card(y){
@@ -504,6 +508,7 @@ window.currentYeastId=null;
 function renderYeastDetail(){
   var y=getYeastById(window.currentYeastId);
   if(!y)return renderYeastLibrary();
+  var _nl=(typeof appLang==='function'&&appLang()==='nl');
   function section(title,body){if(!body)return'';return'<div class="card" style="margin-bottom:14px"><div class="card-header"><div class="card-title">'+title+'</div></div><div style="font-size:13px;color:var(--text2);line-height:1.65">'+body+'</div></div>';}
   function listBlock(items){if(!items||!items.length)return'';return'<ul style="margin:0;padding-left:18px">'+items.map(function(i){return'<li style="margin-bottom:5px">'+escHtml(i)+'</li>';}).join('')+'</ul>';}
   function pillRow(items,color){
@@ -534,9 +539,9 @@ function renderYeastDetail(){
     +'<tr><td class="kv-key">STRAIN</td><td><em>'+escHtml(y.strain)+'</em></td></tr>'
     +'<tr><td class="kv-key">FORMAT</td><td>'+escHtml(y.format)+(y.sachetSize?' · '+y.sachetSize+'g sachet':' · liquid pouch')+'</td></tr>'
     +'<tr><td class="kv-key">ABV TOLERANCE</td><td><strong style="color:var(--gold2)">'+y.abvMax+'%</strong></td></tr>'
-    +'<tr><td class="kv-key">ATTENUATION</td><td><strong>'+y.attenuation+'%</strong> · '+(y.attenuation>=92?'ferments very dry':y.attenuation>=85?'ferments dry':y.attenuation>=80?'medium attenuation':'leaves residual sweetness')+'</td></tr>'
-    +'<tr><td class="kv-key">OPTIMAL TEMP</td><td>'+y.optimalTempLow+'-'+y.optimalTempHigh+'°C (tolerates '+y.tempToleranceLow+'-'+y.tempToleranceHigh+'°C)</td></tr>'
-    +'<tr><td class="kv-key">SPEED</td><td>'+escHtml(y.speed.replace('-',' '))+'</td></tr>'
+    +'<tr><td class="kv-key">ATTENUATION</td><td><strong>'+y.attenuation+'%</strong> · '+(_nl?(y.attenuation>=92?'gist zeer droog':y.attenuation>=85?'gist droog':y.attenuation>=80?'medium vergisting':'laat restzoetheid'):(y.attenuation>=92?'ferments very dry':y.attenuation>=85?'ferments dry':y.attenuation>=80?'medium attenuation':'leaves residual sweetness'))+'</td></tr>'
+    +'<tr><td class="kv-key">OPTIMAL TEMP</td><td>'+y.optimalTempLow+'-'+y.optimalTempHigh+'°C ('+(_nl?'verdraagt':'tolerates')+' '+y.tempToleranceLow+'-'+y.tempToleranceHigh+'°C)</td></tr>'
+    +'<tr><td class="kv-key">SPEED</td><td>'+escHtml(_nl?(({'very fast':'zeer snel','fast':'snel','medium fast':'gemiddeld snel','medium':'gemiddeld','slow':'langzaam'})[y.speed.replace('-',' ')]||y.speed.replace('-',' ')):y.speed.replace('-',' '))+'</td></tr>'
     +'<tr><td class="kv-key">FLOCCULATION</td><td>'+escHtml(y.flocculation)+'</td></tr>'
     +'<tr><td class="kv-key">NITROGEN NEED</td><td>'+escHtml(y.nitrogenNeed)+'</td></tr>'
     +'<tr><td class="kv-key">FRUCTOPHILIC</td><td>'+(y.fructophilic?'<strong style="color:var(--green2)">Yes</strong> — finishes high-fructose honey (acacia, tupelo, lavender)':'<span style="color:var(--text3)">No</span> — may stall on fructose-dominant honey')+'</td></tr>'
@@ -820,6 +825,8 @@ function renderSettings(){
     +'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">🗄 SERVER DATA · SQLITE</div></div>'
     +'<div class="info-box green" style="margin-bottom:14px"><div style="font-size:13px;color:var(--green2)"><strong>Shared storage.</strong> All data lives server-side in an SQLite database (<code>meados.db</code>) managed by <code>server.py</code>. Every browser that opens this page reads and writes the same data — nothing to configure per device.</div></div>'
     +'<div class="form-group"><label class="form-label">Brewer Name (optional)</label><input class="form-input" id="set-brewer" type="text" placeholder="Your meadery name" value="'+escHtml(APP.settings.brewerName||'')+'"></div>'
+    +'<div class="form-group"><label class="form-label">Language · Taal</label><select class="form-select" id="set-lang" onchange="setAppLang(this.value)"><option value="en"'+(appLang()==='en'?' selected':'')+'>English</option><option value="nl"'+(appLang()==='nl'?' selected':'')+'>Nederlands</option></select>'
+    +'<div style="font-size:12px;color:var(--text3);margin-top:4px">Interface chrome, bottle labels and the public share page.</div></div>'
     +'<div class="form-group"><label class="form-label">Public URL <span style="font-weight:400;color:var(--text3);font-size:11px;margin-left:6px">optional — for reverse proxies</span></label><input class="form-input" id="set-external-url" type="text" placeholder="https://mead.example.com" value="'+escHtml(APP.settings.externalUrl||'')+'">'
     +'<div style="font-size:12px;color:var(--text3);margin-top:4px">Share links and QR codes are built from this address instead of the URL you happen to be browsing on. Set it when the server sits behind a reverse proxy or is reachable under several hostnames. Leave blank to use the current address. Applies to all devices.</div></div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
@@ -847,7 +854,7 @@ function renderSettings(){
       // claim, show a status pill. <90 days = warning; <30 = critical.
       var info=(typeof getActiveTokenExpiry==='function')?getActiveTokenExpiry():null;
       if(!info)return'';
-      var fmtExp=info.expDate.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});
+      var fmtExp=info.expDate.toLocaleDateString(_dloc(),{day:'2-digit',month:'short',year:'numeric'});
       var styles={
         expired:  {bg:'rgba(200,48,32,0.15)',border:'var(--red)',  icon:'⛔',label:'Token EXPIRED on '+fmtExp,sub:'Sensor reads and notifications will fail until you replace it. Generate a new long-lived token in HA → Profile → Security → Long-Lived Access Tokens and paste it below.'},
         critical: {bg:'rgba(200,160,32,0.15)',border:'var(--gold)', icon:'⚠',label:'Token expires in '+info.daysLeft+' day'+(info.daysLeft===1?'':'s')+' ('+fmtExp+')',sub:'Rotate soon. Generate a fresh long-lived token in HA → Profile → Security → Long-Lived Access Tokens.'},

@@ -315,7 +315,7 @@ async function loadHistoryPanel(){
   el.innerHTML=items.map(function(it){
     var when=it.savedAt||it.updatedAt||'';
     var dt=when?new Date(when):null;
-    var label=(dt&&!isNaN(dt))?dt.toLocaleString('en-GB',{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'(unknown time)';
+    var label=(dt&&!isNaN(dt))?dt.toLocaleString(_dloc(),{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'(unknown time)';
     var kb=it.bytes?(it.bytes/1024).toFixed(0)+' KB':'';
     return'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">'
       +'<div><span style="color:var(--text)">'+label+'</span> <span style="font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-left:6px">'+kb+'</span></div>'
@@ -341,7 +341,7 @@ function openSnapshotRestoreModal(){
   if(typeof closeModal==='function')closeModal();
   var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:520px">'
     +'<div class="modal-title">🕘 Restore from snapshot</div>'
-    +'<div style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.55">The server keeps your recent saved snapshots. Restoring rolls <strong>all</strong> your data back to that point — your current data is saved as a new snapshot first, so it\'s reversible.</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.55">'+(appLang()==='nl'?'De server bewaart je recente opgeslagen momentopnames. Herstellen rolt <strong>al</strong> je data terug naar dat punt — je huidige data wordt eerst als een nieuwe momentopname opgeslagen, dus het is omkeerbaar.':'The server keeps your recent saved snapshots. Restoring rolls <strong>all</strong> your data back to that point — your current data is saved as a new snapshot first, so it\'s reversible.')+'</div>'
     +'<div id="history-list" style="font-size:13px;color:var(--text3);max-height:55vh;overflow:auto">Loading…</div>'
     +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'
     +'</div></div>';

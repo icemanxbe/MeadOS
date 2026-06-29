@@ -197,14 +197,14 @@ function renderTimeCapsulesCard(b){
       +'</div>';
   }).join('');
   return'<div class="card" style="margin-top:16px"><div class="card-header"><div class="card-title">🕰 TIME CAPSULE RESERVATIONS</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+reserved+' OF '+onHand+' RESERVED · '+available+' FREE</div></div>'
-    +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:12px;line-height:1.55">Mark bottles set aside for a specific future event (anniversary, milestone birthday, vintage tasting). Counted as "reserved" so you don\'t accidentally drink them — but the bottles stay in the cellar and become available again after the open date passes.</div>'
+    +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:12px;line-height:1.55">'+(appLang()==='nl'?'Markeer flessen die je apart zet voor een specifieke toekomstige gelegenheid (jubileum, mijlpaalverjaardag, vintage-proeverij). Geteld als "gereserveerd" zodat je ze niet per ongeluk opdrinkt — maar de flessen blijven in de kelder en worden weer beschikbaar nadat de openingsdatum is verstreken.':'Mark bottles set aside for a specific future event (anniversary, milestone birthday, vintage tasting). Counted as "reserved" so you don\'t accidentally drink them — but the bottles stay in the cellar and become available again after the open date passes.')+'</div>'
     +(rows?'<div style="background:var(--bg);border-radius:var(--radius);overflow:hidden;margin-bottom:12px">'+rows+'</div>':'')
     +(available>0
       ?'<div class="form-row"><div class="form-group"><label class="form-label">Bottles to reserve</label><input class="form-input" type="number" id="tc-count" min="1" max="'+available+'" placeholder="e.g. 4"></div>'
         +'<div class="form-group"><label class="form-label">Open date (optional)</label><input class="form-input" type="date" id="tc-date"></div></div>'
         +'<div class="form-group"><label class="form-label">Reason / occasion</label><input class="form-input" type="text" id="tc-reason" placeholder="e.g. 10th anniversary, baby\'s 18th, vintage 2030 tasting"></div>'
         +'<button class="btn btn-secondary btn-sm" onclick="addTimeCapsule(\''+b.id+'\',document.getElementById(\'tc-count\').value,document.getElementById(\'tc-date\').value,document.getElementById(\'tc-reason\').value)">＋ Add reservation</button>'
-      :'<div style="font-size:12px;color:var(--text3);font-style:italic;padding:10px 0">All on-hand bottles are reserved. Open or release reservations to add more.</div>')
+      :'<div style="font-size:12px;color:var(--text3);font-style:italic;padding:10px 0">'+(appLang()==='nl'?'Alle aanwezige flessen zijn gereserveerd. Open of geef reserveringen vrij om er meer toe te voegen.':'All on-hand bottles are reserved. Open or release reservations to add more.')+'</div>')
     +'</div>';
 }
 
@@ -234,7 +234,7 @@ function renderCellarSublocationCard(b){
   return'<div class="card" style="margin-top:16px"><div class="card-header"><div class="card-title">📍 CELLAR SUB-LOCATION</div>'
     +'<button class="btn btn-secondary btn-sm" onclick="showView(\'cellar-map\')" title="Set up your cellar with shelves for structured placement tracking">🏠 Configure cellar</button>'
     +'</div>'
-    +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:12px;line-height:1.55">Where is this batch stored in your cellar? Free-text label like "Shelf A box 3". For richer placement tracking (visual shelves, sensor binding), configure your cellar via My Cellar in the sidebar.</div>'
+    +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:12px;line-height:1.55">'+(appLang()==='nl'?'Waar wordt deze partij in je kelder bewaard? Vrij-tekstlabel zoals "Plank A doos 3". Voor uitgebreidere plaatsregistratie (visuele planken, sensorkoppeling) stel je je kelder in via Mijn Kelder in de zijbalk.':'Where is this batch stored in your cellar? Free-text label like "Shelf A box 3". For richer placement tracking (visual shelves, sensor binding), configure your cellar via My Cellar in the sidebar.')+'</div>'
     +'<div class="form-row"><div class="form-group" style="flex:1"><input class="form-input" type="text" id="sub-loc-'+b.id+'" value="'+escHtml(current)+'" placeholder="e.g. Shelf A box 3" oninput="updateSublocation(\''+b.id+'\',this.value)" style="font-family:var(--font-mono);font-size:12.5px"></div></div>'
     +'</div>';
 }
@@ -311,9 +311,12 @@ function setSyncStatus(status){
   var effectiveStatus=status;
   if(status==='error'&&pendingSync)effectiveStatus='pending';
   badge.className='sync-badge '+effectiveStatus;
-  var label={local:'⬡ LOCAL',synced:'✓ SYNCED',syncing:'↻ SYNCING',error:'⚠ ERROR',pending:'⏳ QUEUED'}[effectiveStatus]||effectiveStatus;
+  var _nl=(typeof appLang==='function'&&appLang()==='nl');
+  var label=(_nl
+    ?{local:'⬡ LOKAAL',synced:'✓ GESYNCT',syncing:'↻ SYNCEN',error:'⚠ FOUT',pending:'⏳ WACHTRIJ'}
+    :{local:'⬡ LOCAL',synced:'✓ SYNCED',syncing:'↻ SYNCING',error:'⚠ ERROR',pending:'⏳ QUEUED'})[effectiveStatus]||effectiveStatus;
   badge.textContent=label;
-  badge.title=effectiveStatus==='pending'?'Sync queued — will retry when the server is reachable':'';
+  badge.title=effectiveStatus==='pending'?(_nl?'Sync staat in de wachtrij — opnieuw zodra de server bereikbaar is':'Sync queued — will retry when the server is reachable'):'';
   var btn=document.getElementById('sync-btn');
   if(btn)btn.classList.toggle('spinning',status==='syncing');
 }

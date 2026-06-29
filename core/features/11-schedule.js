@@ -44,7 +44,7 @@ function renderTimeline(){
   var d=new Date(earliestMs);
   d.setDate(1);d.setHours(0,0,0,0);
   while(d.getTime()<latestMs){
-    markers.push({ms:d.getTime(),label:d.toLocaleString('en-GB',{month:'short',year:'2-digit'})});
+    markers.push({ms:d.getTime(),label:d.toLocaleString(_dloc(),{month:'short',year:'2-digit'})});
     d.setMonth(d.getMonth()+1);
   }
   var markerHtml=markers.map(function(m){
@@ -155,7 +155,7 @@ function renderFermenterTimeline(){
   var d=new Date(startMs);
   d.setDate(1);d.setHours(0,0,0,0);
   while(d.getTime()<endMs){
-    markers.push({ms:d.getTime(),label:d.toLocaleString('en-GB',{month:'short',year:'2-digit'})});
+    markers.push({ms:d.getTime(),label:d.toLocaleString(_dloc(),{month:'short',year:'2-digit'})});
     d.setMonth(d.getMonth()+1);
   }
   var markerHtml=markers.map(function(m){
@@ -253,9 +253,9 @@ function renderFermenterTimeline(){
     +'<button class="btn btn-secondary btn-sm" onclick="navFermTimeline('+ftStep+')" title="Shift '+ftStep+' month'+(ftStep===1?'':'s')+' forward">+'+ftStep+'mo ▶</button>'
     +'</div>'
     +'<div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);letter-spacing:1px">'
-    +new Date(startMs).toLocaleString('en-GB',{month:'short',year:'numeric'})
+    +new Date(startMs).toLocaleString(_dloc(),{month:'short',year:'numeric'})
     +' → '
-    +new Date(endMs).toLocaleString('en-GB',{month:'short',year:'numeric'})
+    +new Date(endMs).toLocaleString(_dloc(),{month:'short',year:'numeric'})
     +(window._ftOffset?' · shifted '+(window._ftOffset>0?'+':'')+window._ftOffset+'mo':'')
     +'</div></div>';
 
