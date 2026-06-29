@@ -538,7 +538,9 @@ function renderBatchDetail(){
         +'<div class="tl-day">Day '+s.day+'</div><div class="tl-title">'+escHtml(s.title)+'</div><div class="tl-desc">'+escHtml(annotateNutrientDesc(s.desc))+'</div></div>';
     }).join('')+sugarBreakNote(steps);
     var bottling=APP.bottling[b.id];
-    tabContent='<div class="grid-2">'
+    tabContent=(typeof renderBatchAdvisorStrip==='function'?renderBatchAdvisorStrip(b):'')
+      +(typeof renderBatchTargets==='function'?renderBatchTargets(b):'')
+      +'<div class="grid-2">'
       +'<div><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">BATCH DETAILS</div><button class="btn btn-secondary btn-sm" onclick="openEditBatchModal(\''+b.id+'\')">Edit</button></div>'
       +'<table class="data-table">'
       +'<tr><td style="color:var(--text3)">Status</td><td>'+statusBadge(status)+'</td></tr>'
