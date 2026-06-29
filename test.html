@@ -231,6 +231,7 @@
     ok('advice: health score is 0..100', adv && adv.health.score>=0 && adv.health.score<=100, adv&&adv.health.score);
     ok('advice: severities valid', adv.items.every(function(i){return /^(critical|recommended|info)$/.test(i.severity);}), JSON.stringify(adv.items.map(function(i){return i.id+':'+i.severity;})));
     ok('advice: confidence 0..1', adv.items.every(function(i){return i.confidence>0&&i.confidence<=1;}), '');
+    ok('advice: confidence number + reasons[]', typeof adv.confidence==='number'&&Array.isArray(adv.confidenceReasons)&&adv.confidenceReasons.length>0, JSON.stringify(adv.confidenceReasons));
     // stalled batch → critical 'stalled'
     (function(){
       var bs={id:'adv2',recipeId:'rA',startDate:isoAgo(20),og:1.098,yeast:'ec1118'};

@@ -519,6 +519,25 @@ function recipeConfigTargetsHtml(r,vol,cfg){
     +sc('~'+abv.toFixed(1)+'%','ABV')
     +(nut?sc(nut.total+' g',nl?'VOEDING':'NUTRIENT'):'');
 }
+// Pre-brew sanity check: will the chosen yeast actually reach the recipe's target
+// finish? If it's tolerance- or attenuation-limited well short of fgTarget, warn
+// (it'll stall sweeter than intended) and suggest a fix. Deterministic.
+function recipeConfigWarning(r,cfg){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var og=r.ogTarget; if(!og||!cfg||!cfg.yeast||typeof mwYeastTargets!=='function')return '';
+  var yt=mwYeastTargets(og,cfg.yeast); if(!yt)return '';
+  var recipeFG=r.fgTarget;
+  if(recipeFG==null||yt.fg<=recipeFG+0.006)return '';
+  var y=(typeof getYeastById==='function')?getYeastById(cfg.yeast):null;
+  var name=(y&&y.name)||cfg.yeast;
+  var why=yt.limitedBy==='tolerance'
+    ?(nl?('bereikt zijn alcoholtolerantie ('+((y&&y.abvMax)||'?')+'%) voordat de most droog is'):('reaches its alcohol tolerance ('+((y&&y.abvMax)||'?')+'%) before the must finishes dry'))
+    :(nl?'heeft een lagere vergistingsgraad':'has lower attenuation');
+  return '<div style="margin-top:10px;padding:9px 11px;border-radius:var(--radius);background:rgba(224,132,60,0.10);border-left:3px solid #e0843c;font-size:12px;color:var(--text2);line-height:1.5">⚠ <strong style="color:#e0843c">'+escHtml(name)+'</strong> '+why+' — '
+    +(nl?('verwacht eindigt het rond FG '+yt.fg.toFixed(3)+' (~'+yt.abv.toFixed(1)+'% alcohol), zoeter dan het recept mikt ('+recipeFG.toFixed(3)+'). Kies een gist met hogere tolerantie of verlaag de OG.')
+        :('it will likely finish around FG '+yt.fg.toFixed(3)+' (~'+yt.abv.toFixed(1)+'% ABV), sweeter than the recipe target ('+recipeFG.toFixed(3)+'). Pick a higher-tolerance yeast or lower the OG.'))
+    +'</div>';
+}
 function renderRecipeConfigurator(r){
   var nl=(typeof appLang==='function'&&appLang()==='nl');
   var cfg=ensureRecipeConfig(r);
@@ -536,6 +555,7 @@ function renderRecipeConfigurator(r){
     +row(nl?'Voeding':'Nutrient',sel('cfg-nutrient','nutrient',nutOpts))
     +row(nl?'Voedingsschema':'Nutrient schedule',sel('cfg-schedule','schedule',schedOpts))
     +'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-top:2px">'+(nl?'↑ De TARGETS-kaart werkt live mee.':'↑ The TARGETS card updates live.')+'</div>'
+    +'<div id="recipe-config-warn">'+recipeConfigWarning(r,cfg)+'</div>'
     +'</div>';
 }
 function setRecipeConfig(recipeId,field,value){
@@ -628,6 +648,8 @@ function updateRecipeScale(recipeId,val){
   // existing TARGETS card in place.
   var tgtEl=document.getElementById('recipe-targets-live');
   if(tgtEl&&cfg&&typeof recipeConfigTargetsHtml==='function')tgtEl.innerHTML=recipeConfigTargetsHtml(r,vol,cfg);
+  var warnEl2=document.getElementById('recipe-config-warn');
+  if(warnEl2&&cfg&&typeof recipeConfigWarning==='function')warnEl2.innerHTML=recipeConfigWarning(r,cfg);
   var costEl=document.getElementById('scale-cost-estimate');
   if(costEl&&typeof renderRecipeCostEstimate==='function'){
     costEl.outerHTML=renderRecipeCostEstimate(r,vol);
