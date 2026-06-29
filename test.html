@@ -47,6 +47,7 @@
 <script src="/core/domain/02-honey-domain.js"></script>
 <script src="/core/domain/03-brew-domain.js"></script>
 <script src="/core/domain/03d-mead-model.js"></script>
+<script src="/core/domain/03e-advisor.js"></script>
 <script src="/core/sync/04-server-ha.js"></script>
 <script src="/core/domain/04b-bottle-helpers.js"></script>
 <script src="/core/state/05-utils-nav.js"></script>
@@ -211,6 +212,41 @@
     (function(){var n=mwNutrientGrams(5,1.098,'tosna');ok('nutrient tosna = 4 doses', n.doses===4&&n.total>0, JSON.stringify(n));})();
     (function(){var n=mwNutrientGrams(5,1.098,'sna');ok('nutrient sna = 2 doses', n.doses===2, JSON.stringify(n));})();
     ok('yeastTargets null on bad OG', mwYeastTargets(0.9,'m05')===null);
+  })();
+
+  // ---- advisor: signals + rules + health + readiness ----
+  (function(){
+    APP.recipes=[{id:'rA',ogTarget:1.098,fgTarget:1.010,abvTarget:11.5,fermentDays:42,minAgeDays:60,peakAgeDays:240,steps:[]}];
+    // mid-ferment batch, dropping, past nothing yet
+    var b={id:'adv1',recipeId:'rA',startDate:isoAgo(6),og:1.098,yeast:'ec1118'};
+    APP.batches=[b];
+    APP.logs={adv1:[{date:isoAgo(6),gravity:1.098,temp:19},{date:isoAgo(3),gravity:1.060,temp:19},{date:isoAgo(0),gravity:1.030,temp:19}]};
+    APP.bottling={};APP.additions={};
+    var s=mwBatchSignals(b);
+    ok('signals: facts only object', s && s.og===1.098 && s.lastG===1.030, JSON.stringify(s&&{og:s.og,lastG:s.lastG}));
+    ok('signals: attenuation ~0.69', s && Math.abs(s.attenuation-0.69)<0.03, s&&s.attenuation);
+    ok('signals: sugarBreak computed', s && s.sugarBreak>1.0 && s.sugarBreak<1.098, s&&s.sugarBreak);
+    var adv=mwBatchAdvice(b);
+    ok('advice: snapshot has items[]+health+readiness', adv && Array.isArray(adv.items) && adv.health && adv.readiness, '');
+    ok('advice: health score is 0..100', adv && adv.health.score>=0 && adv.health.score<=100, adv&&adv.health.score);
+    ok('advice: severities valid', adv.items.every(function(i){return /^(critical|recommended|info)$/.test(i.severity);}), JSON.stringify(adv.items.map(function(i){return i.id+':'+i.severity;})));
+    ok('advice: confidence 0..1', adv.items.every(function(i){return i.confidence>0&&i.confidence<=1;}), '');
+    // stalled batch → critical 'stalled'
+    (function(){
+      var bs={id:'adv2',recipeId:'rA',startDate:isoAgo(20),og:1.098,yeast:'ec1118'};
+      APP.batches=[bs];APP.logs={adv2:[{date:isoAgo(20),gravity:1.060},{date:isoAgo(10),gravity:1.058},{date:isoAgo(2),gravity:1.058}]};
+      var a2=mwBatchAdvice(bs);
+      ok('advice: stalled → critical item', a2.items.some(function(i){return i.id==='stalled'&&i.severity==='critical';}), JSON.stringify(a2.items.map(function(i){return i.id;})));
+    })();
+    // readiness for a bottled, well-aged batch → high
+    (function(){
+      var bb={id:'adv3',recipeId:'rA',startDate:isoAgo(400),og:1.098,yeast:'ec1118'};
+      APP.batches=[bb];APP.logs={adv3:[{date:isoAgo(400),gravity:1.098},{date:isoAgo(360),gravity:1.005}]};
+      APP.bottling={adv3:{date:isoAgo(300),countsAtBottling:{750:6},locations:{cellar:{750:6}},fg:1.005,abv:12}};
+      var r=mwReadiness(bb);
+      ok('readiness: long-aged near peak', r && r.pct>=100, JSON.stringify(r));
+    })();
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};APP.additions={};
   })();
 
   var s=document.getElementById('summary');
