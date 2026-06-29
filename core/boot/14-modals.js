@@ -8,6 +8,16 @@ function closeModal(){var m=document.querySelector('.modal-overlay');if(m)m.remo
 function openNewBatchModal(recipeId,scaledVol,opts){
   closeModal();
   opts=opts||{};
+  // Carry the recipe page's configurator selections (honey/yeast/nutrient/schedule)
+  // into the modal so "Brew This Recipe" reflects exactly what the user picked.
+  // Only fills fields the caller didn't already set, and only for the same recipe.
+  if(recipeId&&window.recipeConfig&&window.recipeConfig._rid===recipeId){
+    var _rc=window.recipeConfig;
+    if(opts.yeast==null)opts.yeast=_rc.yeast;
+    if(opts.nutrient==null)opts.nutrient=_rc.nutrient;
+    if(opts.honeyType==null)opts.honeyType=_rc.honey;
+    if(opts.schedule==null)opts.schedule=_rc.schedule;
+  }
   // When deploying a planned batch, remember which plan to retire on success.
   // A plain new batch clears it so a stale id can't consume an unrelated plan.
   window._deployingPlanId=opts.plannedId||null;
@@ -169,6 +179,7 @@ function openNewBatchModal(recipeId,scaledVol,opts){
   if(opts.yeast){var ye=document.getElementById('nb-yeast');if(ye){ye.value=opts.yeast;if(typeof updateYeastCompatibility==='function')updateYeastCompatibility();}}
   if(opts.nutrient){var nu=document.getElementById('nb-nutrient');if(nu){nu.value=opts.nutrient;if(typeof onNutrientChange==='function')onNutrientChange();}}
   if(opts.honeyType){var ht=document.getElementById('nb-honey-type');if(ht)ht.value=opts.honeyType;}
+  if(opts.schedule){var pe=document.getElementById('nb-protocol');if(pe)pe.value=opts.schedule;}
   if(typeof onNutrientChange==='function')onNutrientChange();
   if(typeof updateYeastCompatibility==='function')updateYeastCompatibility();
 }
