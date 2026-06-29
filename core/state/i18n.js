@@ -896,6 +896,8 @@ function _buildDataMaps(){
   if(typeof RECIPE_GUIDE_NL!=='undefined')Object.keys(RECIPE_GUIDE_NL).forEach(function(k){prose[k]=RECIPE_GUIDE_NL[k];});
   // failure-category labels (postmortems) render combined with icon/prefix → proseL them
   Object.keys(FAILCAT_NL).forEach(function(k){prose[k]=FAILCAT_NL[k];});
+  // honey-detail content (origin/season/history/tips/pairings/best-styles/mistakes)
+  if(typeof HONEY_DETAIL_NL!=='undefined')Object.keys(HONEY_DETAIL_NL).forEach(function(k){prose[k]=HONEY_DETAIL_NL[k];});
   // recipe step titles render raw → reverse-map them (descs go through annotateNutrientDesc)
   if(typeof STEP_TITLE_NL!=='undefined')Object.keys(STEP_TITLE_NL).forEach(function(k){prose[k]=STEP_TITLE_NL[k];});
   // recipe ingredient item names + per-ingredient notes render raw → reverse-map
