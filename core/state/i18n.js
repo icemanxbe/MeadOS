@@ -525,6 +525,25 @@ var UI_PHRASES={
   'Nutrient':'Voeding','Pitch rate:':'Entdosering:',
   // ---- yeast library (colon variant) ----
   'BEST FOR:':'HET BEST VOOR:',
+  // ---- honey "source your honey" supplier section ----
+  'PRIMARY HONEYS · WHERE TO SOURCE':'PRIMAIRE HONINGSOORTEN · WAAR TE KOPEN','WHERE TO SOURCE':'WAAR TE KOPEN',
+  '🛒 WHERE TO SOURCE':'🛒 WAAR TE KOPEN','open library →':'open bibliotheek →','Honey · open library →':'· open bibliotheek →',
+  'VISIT SHOP →':'BEZOEK WINKEL →',
+  // ---- honey DETAIL view chrome ----
+  'HONEY VARIETY':'HONINGVARIËTEIT','INTENSITY':'INTENSITEIT','FLAVOR PROFILE':'SMAAKPROFIEL','🔍 QUICK FACTS':'🔍 SNELLE FEITEN',
+  'ORIGIN':'HERKOMST','SEASON':'SEIZOEN','HARVEST SEASON':'OOGSTSEIZOEN','CRYSTALLIZATION':'KRISTALLISATIE','AGING POTENTIAL':'RIJPINGSPOTENTIEEL','PRICE':'PRIJS','PRICE POINT':'PRIJSKLASSE',
+  '⚗ FERMENTATION DATA':'⚗ GISTINGSGEGEVENS','✦ BEST IN THESE STYLES':'✦ HET BEST IN DEZE STIJLEN',
+  '🍽 FOOD & DRINK PAIRINGS':'🍽 ETEN- & DRANKCOMBINATIES','↔ SIMILAR HONEYS':'↔ VERGELIJKBARE HONINGSOORTEN',
+  '📜 HISTORY & CONTEXT':'📜 GESCHIEDENIS & CONTEXT',
+  'FRUCTOSE-STALL RISK':'FRUCTOSE-STILVAL-RISICO','FRUCTOPHILIC YEAST':'FRUCTOFIELE GIST','CRYSTALLISATION':'KRISTALLISATIE',
+  'NITROGEN (YAN) OFFSET':'STIKSTOF (YAN) CORRECTIE','pH SHIFT':'pH-VERSCHUIVING',
+  'LOW':'LAAG','HIGH':'HOOG','CRITICAL':'KRITIEK','REQUIRED':'VEREIST','Not required':'Niet vereist',
+  'Very slow (stays liquid)':'Zeer traag (blijft vloeibaar)','Slow':'Traag','Moderate':'Matig','Fast':'Snel','Very fast (sets in days)':'Zeer snel (zet binnen dagen)',
+  'Fructophilic yeast required':'Fructofiele gist vereist','High fructose — watch the 1/3 break':'Hoog fructose — let op de 1/3-breuk',
+  'This honey is not used in any built-in recipes — but you can substitute it into any recipe where the character fits, or design a custom recipe around it.':'Deze honing wordt in geen enkel ingebouwd recept gebruikt — maar je kunt het in elk recept vervangen waar het karakter past, of een eigen recept eromheen ontwerpen.',
+  // supplier type labels (lowercase = select options, uppercase = chips)
+  'beekeeper':'imker','shop':'winkel','market':'markt',
+  'BEEKEEPER':'IMKER','SHOP':'WINKEL','MARKET':'MARKT',
   // ---- modals / forms (audit pass) ----
   'Actually Removed On':'Werkelijk verwijderd op','Add':'Toevoegen','Amount':'Hoeveelheid','Apply':'Toepassen',
   'Auto — match the nutrient':'Auto — afstemmen op de voeding','Batch Name':'Partijnaam','Batch Volume (L)':'Partijvolume (L)',
@@ -708,6 +727,11 @@ var UI_PATTERNS=[
   [/^🌸 IN SEASON — (.+)$/, '🌸 IN SEIZOEN — $1'],
   [/^(\d+) VARIET(?:Y|IES)$/, function(m,n){return n+(n==='1'?' VARIËTEIT':' VARIËTEITEN');}],
   [/^USED IN (\d+) RECIPES?$/, function(m,n){return 'GEBRUIKT IN '+n+(n==='1'?' RECEPT':' RECEPTEN');}],
+  [/^🍷 USED IN (\d+) BUILT-IN RECIPES?$/, function(m,n){return '🍷 GEBRUIKT IN '+n+(n==='1'?' INGEBOUWD RECEPT':' INGEBOUWDE RECEPTEN');}],
+  [/^✦ ALSO WORKS AS AN ALTERNATIVE IN (\d+) RECIPES?$/, function(m,n){return '✦ WERKT OOK ALS ALTERNATIEF IN '+n+(n==='1'?' RECEPT':' RECEPTEN');}],
+  [/^＋ Start Batch With (.+)$/, function(m,n){return '＋ Start partij met '+proseL(n);}],
+  [/^\+(\d+) ppm assumed$/, '+$1 ppm aangenomen'],
+  [/^([+-][\d.]+) vs typical must$/, '$1 t.o.v. typische most'],
   [/^\+(\d+) more$/, '+$1 meer'],
   [/^Choose the honey, shape the mead · (\d+) varieties$/, 'Kies de honing, vorm de mede · $1 variëteiten'],
   // ---- supplies ----
