@@ -382,7 +382,7 @@ function renderHoneyDetail(){
   var alternativesBlock='';
   if(alternativeMatches.length){
     alternativesBlock='<div class="card" style="margin-bottom:16px;border-left:3px solid '+p.color+'"><div class="card-header"><div class="card-title">✦ ALSO WORKS AS AN ALTERNATIVE IN '+alternativeMatches.length+' RECIPE'+(alternativeMatches.length===1?'':'S')+'</div></div>'
-      +'<div style="font-size:13px;color:var(--text3);margin-bottom:12px;line-height:1.6;font-style:italic">'+escHtml(name)+' can substitute for the primary honey in these recipes. Each entry describes how the character shifts when you make the swap — so you know what to expect before committing.</div>'
+      +'<div style="font-size:13px;color:var(--text3);margin-bottom:12px;line-height:1.6;font-style:italic">'+(appLang()==='nl'?escHtml(name)+' kan de primaire honing in deze recepten vervangen. Elke vermelding beschrijft hoe het karakter verschuift bij de wissel — zodat je weet wat je kunt verwachten voordat je beslist.':escHtml(name)+' can substitute for the primary honey in these recipes. Each entry describes how the character shifts when you make the swap — so you know what to expect before committing.')+'</div>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;align-items:start">'
       +alternativeMatches.map(function(m){
         return'<div onclick="currentRecipeId=\''+m.recipeId+'\';showView(\'recipe-detail\')" style="background:var(--bg);padding:12px 14px;border-radius:var(--radius);cursor:pointer;border-left:3px solid '+m.recipeColor+';transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
