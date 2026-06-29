@@ -258,7 +258,7 @@ function renderHoneyDetail(){
     ].filter(Boolean).join('');
     fermDataBlock='<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">⚗ FERMENTATION DATA</div></div>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px">'+cells+'</div>'
-      +'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-top:10px;line-height:1.5">The fructose:glucose ratio decides whether a normal yeast can finish. Most strains eat glucose first; a fructose-heavy honey leaves a sluggish, fructose-rich tail that can stall around the <strong>1/3 sugar break</strong> (the point where one third of the available sugar is gone). Honeydew/forest and eucalyptus honeys carry their own nitrogen, so a YAN offset is assumed automatically.</div>'
+      +'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-top:10px;line-height:1.5">'+(appLang()==='nl'?'De fructose:glucose-verhouding bepaalt of een normale gist kan afgisten. De meeste stammen eten eerst glucose; een fructoserijke honing laat een trage, fructoserijke staart achter die rond de <strong>1/3-suikerbreuk</strong> kan stilvallen (het punt waarop een derde van de beschikbare suiker op is). Honingdauw/bos- en eucalyptushoning dragen hun eigen stikstof, dus een YAN-correctie wordt automatisch aangenomen.':'The fructose:glucose ratio decides whether a normal yeast can finish. Most strains eat glucose first; a fructose-heavy honey leaves a sluggish, fructose-rich tail that can stall around the <strong>1/3 sugar break</strong> (the point where one third of the available sugar is gone). Honeydew/forest and eucalyptus honeys carry their own nitrogen, so a YAN offset is assumed automatically.')+'</div>'
       +'</div>';
     if(t.fructoseRisk==='high'||t.fructoseRisk==='critical'){
       var crit=(t.fructoseRisk==='critical');
@@ -266,10 +266,15 @@ function renderHoneyDetail(){
         +'<div style="display:flex;gap:12px;align-items:flex-start">'
         +'<div style="font-size:22px;line-height:1">'+(crit?'⛔':'⚠')+'</div>'
         +'<div><div style="font-family:var(--font-display);font-size:15px;color:'+(crit?'var(--red2)':'#e0843c')+';margin-bottom:5px">'+(crit?'Fructophilic yeast required':'High fructose — watch the 1/3 break')+'</div>'
-        +'<div style="font-size:12.5px;color:var(--text2);line-height:1.65">'+escHtml(name)+' is fructose-dominant (F:G ~'+(t.fgRatio?t.fgRatio.toFixed(2):'?')+'). '
-        +(crit
-          ?'A standard glucose-first strain will consume the glucose, hit the fructose-heavy remainder, and <strong>stall around the 1/3 sugar break</strong>. Use a fructophilic strain — <strong>K1-V1116</strong>, <strong>Fermentis BC-S103</strong>, or <strong>UVAFERM 43</strong> — it is not optional here.'
-          :'It can usually be finished by a robust strain such as <strong>EC-1118</strong> or <strong>K1-V1116</strong>, but keep nutrients well-timed and the temperature steady, and watch gravity closely as it approaches the 1/3 sugar break in case it slows.')
+        +'<div style="font-size:12.5px;color:var(--text2);line-height:1.65">'+(appLang()==='nl'
+          ?escHtml(name)+' is fructose-dominant (F:G ~'+(t.fgRatio?t.fgRatio.toFixed(2):'?')+'). '
+            +(crit
+              ?'Een standaard glucose-eerst-stam verbruikt de glucose, raakt de fructoserijke rest, en <strong>valt stil rond de 1/3-suikerbreuk</strong>. Gebruik een fructofiele stam — <strong>K1-V1116</strong>, <strong>Fermentis BC-S103</strong>, of <strong>UVAFERM 43</strong> — het is hier niet optioneel.'
+              :'Het kan meestal worden afgegist door een robuuste stam zoals <strong>EC-1118</strong> of <strong>K1-V1116</strong>, maar houd de voeding goed getimed en de temperatuur stabiel, en volg de dichtheid nauwlettend richting de 1/3-suikerbreuk voor het geval het vertraagt.')
+          :escHtml(name)+' is fructose-dominant (F:G ~'+(t.fgRatio?t.fgRatio.toFixed(2):'?')+'). '
+            +(crit
+              ?'A standard glucose-first strain will consume the glucose, hit the fructose-heavy remainder, and <strong>stall around the 1/3 sugar break</strong>. Use a fructophilic strain — <strong>K1-V1116</strong>, <strong>Fermentis BC-S103</strong>, or <strong>UVAFERM 43</strong> — it is not optional here.'
+              :'It can usually be finished by a robust strain such as <strong>EC-1118</strong> or <strong>K1-V1116</strong>, but keep nutrients well-timed and the temperature steady, and watch gravity closely as it approaches the 1/3 sugar break in case it slows.'))
         +'</div></div></div></div>';
     }
   }
@@ -324,7 +329,7 @@ function renderHoneyDetail(){
     var sup=suppliersForHoney(name);
     if(sup&&sup.length){
       suppliersBlock='<div class="card" style="margin-bottom:16px;border-left:3px solid '+p.color+'"><div class="card-header"><div class="card-title">🛒 WHERE TO SOURCE</div></div>'
-        +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:10px">Your suppliers stocking '+escHtml(name)+' honey:</div>'
+        +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:10px">'+(appLang()==='nl'?'Jouw leveranciers die '+escHtml(name)+'-honing voeren:':'Your suppliers stocking '+escHtml(name)+' honey:')+'</div>'
         +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px">'
         +sup.map(function(s){
           var stars=s.rating?'★'.repeat(s.rating):'';
@@ -343,7 +348,9 @@ function renderHoneyDetail(){
     }else{
       suppliersBlock='<div class="card" style="margin-bottom:16px;border-left:3px solid var(--text3)"><div class="card-header"><div class="card-title">🛒 WHERE TO SOURCE</div></div>'
         +'<div style="font-size:13px;color:var(--text2);line-height:1.6">'
-        +'None of your suppliers are tagged with '+escHtml(name)+' honey yet. Add or edit suppliers in the <span style="color:var(--gold2);cursor:pointer;text-decoration:underline" onclick="showView(\'suppliers\')">Suppliers</span> view and tick the honey types they stock to see sourcing hints here.'
+        +(appLang()==='nl'
+          ?'Geen van je leveranciers is nog getagd met '+escHtml(name)+'-honing. Voeg leveranciers toe of bewerk ze in de <span style="color:var(--gold2);cursor:pointer;text-decoration:underline" onclick="showView(\'suppliers\')">Leveranciers</span>-weergave en vink de honingsoorten aan die ze voeren om hier inkooptips te zien.'
+          :'None of your suppliers are tagged with '+escHtml(name)+' honey yet. Add or edit suppliers in the <span style="color:var(--gold2);cursor:pointer;text-decoration:underline" onclick="showView(\'suppliers\')">Suppliers</span> view and tick the honey types they stock to see sourcing hints here.')
         +'</div></div>';
     }
   }
@@ -395,7 +402,7 @@ function renderHoneyDetail(){
     var validSimilar=d.similarTo.filter(function(n){return HONEY_PROFILES[n.replace(/\s*\(.+\)\s*/,'')];});
     if(validSimilar.length){
       similarBlock='<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">↔ SIMILAR HONEYS</div></div>'
-        +'<div style="font-size:13px;color:var(--text3);margin-bottom:10px">If you cannot find '+escHtml(name)+', these have a related character:</div>'
+        +'<div style="font-size:13px;color:var(--text3);margin-bottom:10px">'+(appLang()==='nl'?'Als je geen '+escHtml(name)+' kunt vinden, hebben deze een verwant karakter:':'If you cannot find '+escHtml(name)+', these have a related character:')+'</div>'
         +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
         +validSimilar.map(function(simName){
           var cleanName=simName.replace(/\s*\(.+\)\s*/,'');
