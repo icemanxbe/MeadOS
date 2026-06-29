@@ -755,38 +755,9 @@ function renderBatchDetail(){
   }
 
   if(activeTab==='coach'){
-    var tasks=getTasksForBatch(b);
-    var todayTasks=tasks.filter(function(t){
-      if(t.isDue)return true;
-      if(t.isOverdue)return true;
-      if(t.doneToday)return true;
-      return false;
-    });
-    var upcomingTasks=tasks.filter(function(t){return t.isFuture;}).slice(0,5);
-    var wisdom=getMeadWisdom(b,d);
-    tabContent='<div class="grid-2">'
-      +'<div>'
-      +(todayTasks.length?todayTasks.map(function(td){
-        var overdue=td.isOverdue;
-        var dayLabel=td.isDue?' (TODAY)':(overdue?' ('+fmtDuration(td.daysFromDue)+' overdue — DO NOW)':td.done?' (done)':' (in '+fmtDuration(-td.daysFromDue)+')');
-        return'<div class="coach-box" style="margin-bottom:16px'+(overdue?';border-color:var(--red);border-left:4px solid var(--red2);background:linear-gradient(135deg,#251012,#180b0b)':'')+'"><div class="coach-title"'+(overdue?' style="color:var(--red2)"':'')+'>'+(overdue?'⚠':'⚗')+' ACTION DUE — DAY '+td.day+dayLabel+'</div>'
-          +'<div style="font-family:var(--font-display);font-size:15px;color:'+(overdue?'var(--red2)':'var(--gold2)')+';margin-bottom:8px">'+escHtml(td.title)+'</div>'
-          +'<div class="coach-text">'+escHtml(stepDescL(td.desc))+'</div>'
-          +'<div class="coach-tasks" style="margin-top:12px"><div class="coach-task"><div class="task-cb '+(td.done?'checked':'')+'" onclick="toggleTask(\''+td.id+'\',this)">'+(td.done?'✓':'')+'</div><span style="font-size:13px">'+(td.done?'Done today — uncheck if not':'Mark as completed')+'</span></div></div></div>';
-      }).join('')
-        :'<div class="info-box green" style="margin-bottom:16px"><div style="font-size:13px;color:var(--green2)">✓ No action required today. Check airlock water level and ambient temperature.</div></div>')
-      +'<div class="card"><div class="card-header"><div class="card-title">UPCOMING STEPS</div></div>'
-      +(upcomingTasks.length?upcomingTasks.map(function(t){
-        return'<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">'
-          +'<div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);white-space:nowrap;padding-top:2px">Day '+t.day+'</div>'
-          +'<div><div style="font-size:14px;color:var(--text)">'+escHtml(t.title)+'</div>'
-          +'<div style="font-size:12px;color:var(--text3);margin-top:2px">'+escHtml(annotateNutrientDesc(t.desc).substring(0,110))+'…</div></div></div>';
-      }).join(''):'<p style="color:var(--text3);font-style:italic;font-size:13px">No more steps in recipe.</p>')
-      +'</div></div>'
-      +'<div><div class="card"><div class="card-header"><div class="card-title">MEADWRIGHT\'S WISDOM</div></div>'
-      +'<div class="ornament">— ⬡ —</div>'
-      +wisdom.map(function(tip){return'<div class="info-box" style="margin-bottom:8px"><div style="font-size:13px;color:var(--text2)">'+tip+'</div></div>';}).join('')
-      +'</div></div></div>';
+    // Brew Coach merged into the Advisor — one source of truth. The advisor view
+    // folds in today's actions, upcoming steps and the meadwright's wisdom.
+    tabContent=(typeof renderBatchAdvisor==='function')?renderBatchAdvisor(b):'';
   }
 
   if(activeTab==='tasting'){
@@ -919,7 +890,7 @@ function renderBatchDetail(){
     +'<div class="tab '+(activeTab==='overview'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'overview\')">Overview</div>'
     +'<div class="tab '+(activeTab==='log'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'log\')">Gravity Log</div>'
     +'<div class="tab '+(activeTab==='additions'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'additions\')">Additions'+(getOverdueAdditions().filter(function(x){return x.batch.id===b.id;}).length?' <span style="background:var(--red);color:#fff;font-size:9px;padding:1px 5px;border-radius:6px;margin-left:4px">!</span>':'')+'</div>'
-    +'<div class="tab '+(activeTab==='coach'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'coach\')">Brew Coach</div>'
+    +'<div class="tab '+(activeTab==='coach'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'coach\')">'+(appLang()==='nl'?'⭐ Adviseur':'⭐ Advisor')+'</div>'
     +'<div class="tab '+(activeTab==='tasting'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'tasting\')">Tasting Notes</div>'
     +'<div class="tab '+(activeTab==='photos'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'photos\')">Photos'+((APP.photos[b.id]||[]).length?' <span style="background:var(--bg4);color:var(--text3);font-size:9px;padding:1px 5px;border-radius:6px;margin-left:2px">'+(APP.photos[b.id]||[]).length+'</span>':'')+'</div>'
     +'<div class="tab '+(activeTab==='bottle'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'bottle\')">Bottling</div>'
