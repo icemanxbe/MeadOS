@@ -708,6 +708,7 @@ function renderBatchDetail(){
       +'<button class="btn btn-primary" onclick="addLog(\''+b.id+'\')">Log Reading</button></div></div>'
       +'<div><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">FERMENTATION CHARTS</div></div>'
       +'<div class="chart-card"><div class="chart-card-title">📉 Gravity &amp; ABV  ·  <span style="color:var(--text3)">SG falls (left), ABV rises (right) · solid = readings, dashed = projection</span></div><div class="chart-wrap" style="height:240px"><canvas id="batch-gravity-chart"></canvas></div></div>'
+      +(logs.filter(function(l){return l.gravity!=null;}).length>1?'<div class="chart-card" style="margin-top:12px"><div class="chart-card-title">📊 '+(appLang()==='nl'?'Gistingsanalyse':'Fermentation Analysis')+'  ·  <span style="color:var(--text3);font-size:11px">'+(appLang()==='nl'?'SG · temperatuur · daalsnelheid op één tijdas — zie hoe temperatuur de gisting stuurt':'SG · temperature · drop-rate on one timeline — see how temperature drives fermentation')+'</span></div><div class="chart-wrap" style="height:240px"><canvas id="batch-analysis-chart"></canvas></div></div>':'')
       +(function(){
         // Resolve which sensor to graph: prefer the batch's fermenter binding,
         // fall back to the global fermentation sensor, then to nothing (only
@@ -741,9 +742,8 @@ function renderBatchDetail(){
             +'<div id="batch-temp-summary" style="font-size:11px;color:var(--text3);margin-top:6px;font-family:var(--font-mono);letter-spacing:1px;text-align:center"></div>'
             +'</div>';
         }
-        if(logs.filter(function(l){return l.temp!=null;}).length>1){
-          return'<div class="chart-card" style="margin-top:12px"><div class="chart-card-title">🌡 Temperature (from gravity logs)</div><div class="chart-wrap" style="height:160px"><canvas id="batch-temp-chart"></canvas></div></div>';
-        }
+        // Per-log temperature is now folded into the unified Fermentation Analysis
+        // overlay above (SG · temp · rate), so no separate temp-from-logs chart.
         return'';
       }())
       +'</div>'
@@ -978,21 +978,38 @@ function initBatchCharts(){
             y1:{position:'right',beginAtZero:true,title:{display:true,text:'ABV %',color:'#6a9f70',font:{size:9}},ticks:{color:'#6a9f70',font:{size:10},callback:function(v){return v.toFixed(0)+'%';}},grid:{drawOnChartArea:false}}}}
       });
     }
-    // ===== Temperature trace =====
-    var tempLogs=logs.filter(function(l){return l.temp!=null;});
-    var tctx=document.getElementById('batch-temp-chart');
-    if(tctx&&tempLogs.length>1){
-      makeChart(tctx,{
-        type:'line',
-        data:{labels:tempLogs.map(function(l){return fmtDateShort(l.date);}),datasets:[
-          {label:'Temp',data:tempLogs.map(function(l){return l.temp;}),borderColor:'#e8a020',backgroundColor:'#e8a02022',tension:0.4,fill:true,pointRadius:4,pointBackgroundColor:'#e8a020'}
-        ]},
-        options:{responsive:true,maintainAspectRatio:false,
-          plugins:{legend:{display:false},tooltip:{callbacks:{label:function(c){return c.parsed.y.toFixed(1)+'°C';}}},
-            annotation:{}},
-          scales:{x:{ticks:{color:'#6a5f50',font:{size:10},maxRotation:30,autoSkip:true},grid:{color:'#2a2a35'}},
-            y:{ticks:{color:'#6a5f50',font:{size:10},callback:function(v){return v+'°';}},grid:{color:'#2a2a35'},suggestedMin:14,suggestedMax:26}}}
-      });
+    // ===== Fermentation Analysis overlay: SG · temperature · drop-rate =====
+    // One timeline so correlations are visible (e.g. "temp rose 0.8°C →
+    // fermentation accelerated"). Rate = SG points dropped per day between
+    // consecutive readings, drawn as faint bars on a hidden axis.
+    var actx=document.getElementById('batch-analysis-chart');
+    if(actx){
+      var nlA=(typeof appLang==='function'&&appLang()==='nl');
+      var aRead=(APP.logs[b.id]||[]).filter(function(l){return l.gravity!=null;}).slice()
+        .sort(function(x,y){return(x.date||'').localeCompare(y.date||'');});
+      if(aRead.length>1){
+        var aLabels=aRead.map(function(l){return fmtDateShort(l.date);});
+        var aSG=aRead.map(function(l){return l.gravity;});
+        var aTemp=aRead.map(function(l){return l.temp!=null&&l.temp!==''?parseFloat(l.temp):null;});
+        var aRate=aRead.map(function(l,i){if(i===0)return null;var dt=(new Date(l.date).getTime()-new Date(aRead[i-1].date).getTime())/86400000;if(dt<=0)return null;return parseFloat((((aRead[i-1].gravity-l.gravity)/dt)*1000).toFixed(1));});
+        var hasTemp=aTemp.some(function(v){return v!=null;});
+        var ds=[
+          {label:'SG',data:aSG,borderColor:color,backgroundColor:'transparent',tension:0.35,fill:false,pointRadius:3,pointBackgroundColor:color,yAxisID:'y',order:1},
+          {label:nlA?'Daalsnelheid (pt/d)':'Drop rate (pt/d)',type:'bar',data:aRate,backgroundColor:'#6ab87a55',borderColor:'#6ab87a',borderWidth:1,yAxisID:'y2',order:3}
+        ];
+        if(hasTemp)ds.splice(1,0,{label:nlA?'Temperatuur (°C)':'Temperature (°C)',data:aTemp,borderColor:'#e8a020',backgroundColor:'transparent',tension:0.35,fill:false,pointRadius:3,pointBackgroundColor:'#e8a020',spanGaps:true,yAxisID:'y1',order:2});
+        makeChart(actx,{
+          type:'line',
+          data:{labels:aLabels,datasets:ds},
+          options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
+            plugins:{legend:{display:true,labels:{color:'#8a7d66',font:{size:10},boxWidth:14}},
+              tooltip:{callbacks:{label:function(c){if(c.parsed.y==null)return null;var id=c.dataset.yAxisID;if(id==='y')return 'SG: '+c.parsed.y.toFixed(3);if(id==='y1')return (nlA?'Temp: ':'Temp: ')+c.parsed.y.toFixed(1)+'°C';return (nlA?'Snelheid: ':'Rate: ')+c.parsed.y.toFixed(1)+' pt/d';}}}},
+            scales:{x:{ticks:{color:'#6a5f50',font:{size:10},maxRotation:30,autoSkip:true},grid:{color:'#2a2a35'}},
+              y:{position:'left',title:{display:true,text:'SG',color:'#6a5f50',font:{size:9}},ticks:{color:'#6a5f50',font:{size:10},callback:function(v){return v.toFixed(3);}},grid:{color:'#2a2a35'}},
+              y1:{position:'right',title:{display:true,text:'°C',color:'#c98a2c',font:{size:9}},ticks:{color:'#c98a2c',font:{size:10}},grid:{drawOnChartArea:false}},
+              y2:{position:'right',display:false,beginAtZero:true,grid:{drawOnChartArea:false}}}}
+        });
+      }
     }
     // ===== HA Temperature history (from sensor) =====
     if(document.getElementById('batch-temp-history-chart')){
