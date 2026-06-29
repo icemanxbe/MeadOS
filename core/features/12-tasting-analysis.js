@@ -182,6 +182,7 @@ function openTroubleshootTopic(id){
     .concat((typeof APP_TROUBLESHOOT_TOPICS!=='undefined'&&APP_TROUBLESHOOT_TOPICS)||[]);
   var t=all.find(function(x){return x.id===id;});
   if(!t)return;
+  t=tsLocalizeTopic(t);
   closeModal();
   var stepsHtml=t.steps.map(function(s){return'<li style="margin-bottom:10px;line-height:1.55">'+s+'</li>';}).join('');
   var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:600px">'
@@ -191,6 +192,15 @@ function openTroubleshootTopic(id){
     +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
+}
+// Swap a troubleshooting topic's title + steps for the Dutch version (keeping
+// id/icon/category so grouping and the detail modal still work) when NL.
+function tsLocalizeTopic(t){
+  if(!t||typeof appLang!=='function'||appLang()!=='nl')return t;
+  var nl=(typeof TROUBLESHOOT_TOPICS_NL!=='undefined'&&TROUBLESHOOT_TOPICS_NL[t.id])
+        ||(typeof APP_TROUBLESHOOT_TOPICS_NL!=='undefined'&&APP_TROUBLESHOOT_TOPICS_NL[t.id]);
+  if(!nl)return t;
+  return {id:t.id,icon:t.icon,category:t.category,title:nl.title||t.title,steps:nl.steps||t.steps};
 }
 function renderTroubleshoot(){
   // Group by category — each category becomes a large card, with its topics as
@@ -209,6 +219,7 @@ function renderTroubleshoot(){
   }
   // Same tile as the Mead Guide topic cards (icon + title + teaser + footer link).
   function topicCard(t){
+    t=tsLocalizeTopic(t);
     return'<div class="card" style="cursor:pointer;margin:0" onclick="openTroubleshootTopic(\''+t.id+'\')">'
       +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px"><span style="font-size:20px">'+t.icon+'</span><div class="card-title" style="font-size:12.5px">'+escHtml(t.title.toUpperCase())+'</div></div>'
       +'<div style="font-size:12.5px;color:var(--text3);line-height:1.5">'+escHtml(tsTeaser(t))+'…</div>'

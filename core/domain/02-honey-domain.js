@@ -191,7 +191,9 @@ function honeyVarietyInStock(honeyName){
 function honeyGist(honeyName){
   var p=HONEY_PROFILES[honeyName];
   if(!p||!p.profile)return'';
-  var first=String(p.profile).split('. ')[0].trim();
+  var prof=String(p.profile);
+  if(typeof appLang==='function'&&appLang()==='nl'&&typeof HONEY_PROFILES_NL!=='undefined'&&HONEY_PROFILES_NL[honeyName]&&HONEY_PROFILES_NL[honeyName].profile)prof=String(HONEY_PROFILES_NL[honeyName].profile);
+  var first=prof.split('. ')[0].trim();
   return first?(/[.!?]$/.test(first)?first:first+'.'):'';
 }
 
@@ -204,7 +206,7 @@ function honeyFitForRecipe(r,honeyName,ctx){
   var gist=honeyGist(honeyName), inStock=honeyVarietyInStock(honeyName);
   if(primarySet[honeyName])
     return{tier:'primary',order:0,badge:'PRIMARY',color:'var(--gold2)',inStock:inStock,
-      note:(gist?gist+' — ':'')+'the honey this recipe is built around.'};
+      note:(gist?gist+' — ':'')+((typeof appLang==='function'&&appLang()==='nl')?'de honing waar dit recept omheen is gebouwd.':'the honey this recipe is built around.')};
   if(curated[honeyName]){
     // A hand-curated entry. {honey, shift} alone → "recommended". With an explicit
     // {fit} the curator's verdict drives the tier (overriding the intensity guess).

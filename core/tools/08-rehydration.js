@@ -63,63 +63,64 @@ function renderYeastRehydrationModal(){
   // Water volume: 20× yeast weight (so 5g yeast → 100ml water)
   var waterMl=(s.yeastGrams*20).toFixed(0);
 
+  var _nl=(typeof appLang==='function'&&appLang()==='nl');
   var steps=[
     {
-      title:'Confirm inputs',
-      detail:'Adjust if you\'re rehydrating a different amount of yeast or pitching to a different temperature.',
+      title:_nl?'Invoer bevestigen':'Confirm inputs',
+      detail:_nl?'Pas aan als je een andere hoeveelheid gist rehydrateert of op een andere temperatuur ent.':'Adjust if you\'re rehydrating a different amount of yeast or pitching to a different temperature.',
       content:function(){
         return'<div class="form-row">'
-          +'<div class="form-group"><label class="form-label">Yeast (grams)</label><input class="form-input" type="number" min="1" max="30" step="0.5" value="'+s.yeastGrams+'" oninput="window._yeastRehydration.yeastGrams=parseFloat(this.value)||5;persistYeastRehydration();renderYeastRehydrationModal()"></div>'
-          +'<div class="form-group"><label class="form-label">Target must temp (°C)</label><input class="form-input" type="number" min="10" max="30" step="0.5" value="'+s.mustTemp+'" oninput="window._yeastRehydration.mustTemp=parseFloat(this.value)||20;persistYeastRehydration()"></div>'
+          +'<div class="form-group"><label class="form-label">'+(_nl?'Gist (gram)':'Yeast (grams)')+'</label><input class="form-input" type="number" min="1" max="30" step="0.5" value="'+s.yeastGrams+'" oninput="window._yeastRehydration.yeastGrams=parseFloat(this.value)||5;persistYeastRehydration();renderYeastRehydrationModal()"></div>'
+          +'<div class="form-group"><label class="form-label">'+(_nl?'Doel-mosttemperatuur (°C)':'Target must temp (°C)')+'</label><input class="form-input" type="number" min="10" max="30" step="0.5" value="'+s.mustTemp+'" oninput="window._yeastRehydration.mustTemp=parseFloat(this.value)||20;persistYeastRehydration()"></div>'
           +'</div>'
           +'<div style="background:var(--bg);border-radius:var(--radius);padding:12px;margin-top:8px;font-size:13px;line-height:1.7">'
-          +'<div><strong>Computed doses:</strong></div>'
-          +'<div>· Water: <span style="font-family:var(--font-mono);color:var(--gold2)">'+waterMl+' ml</span> heated to <span style="font-family:var(--font-mono);color:var(--gold2)">43°C</span></div>'
-          +'<div>· Go-Ferm Protect: <span style="font-family:var(--font-mono);color:var(--gold2)">'+goferm+' g</span> (1.25 g per g of yeast)</div>'
-          +'<div>· Yeast: <span style="font-family:var(--font-mono);color:var(--gold2)">'+s.yeastGrams+' g</span></div>'
+          +'<div><strong>'+(_nl?'Berekende doses:':'Computed doses:')+'</strong></div>'
+          +'<div>· Water: <span style="font-family:var(--font-mono);color:var(--gold2)">'+waterMl+' ml</span> '+(_nl?'verwarmd tot':'heated to')+' <span style="font-family:var(--font-mono);color:var(--gold2)">43°C</span></div>'
+          +'<div>· Go-Ferm Protect: <span style="font-family:var(--font-mono);color:var(--gold2)">'+goferm+' g</span> '+(_nl?'(1,25 g per g gist)':'(1.25 g per g of yeast)')+'</div>'
+          +'<div>· '+(_nl?'Gist':'Yeast')+': <span style="font-family:var(--font-mono);color:var(--gold2)">'+s.yeastGrams+' g</span></div>'
           +'</div>';
       },
       timer:null
     },
     {
-      title:'Heat water + dissolve Go-Ferm',
-      detail:'Heat '+waterMl+' ml of filtered/dechlorinated water to 43°C (109°F). Stir in '+goferm+' g of Go-Ferm Protect until fully dissolved. Temperature precision matters here — use a thermometer.',
+      title:_nl?'Water verwarmen + Go-Ferm oplossen':'Heat water + dissolve Go-Ferm',
+      detail:_nl?'Verwarm '+waterMl+' ml gefilterd/ontchloord water tot 43°C (109°F). Roer '+goferm+' g Go-Ferm Protect erdoor tot volledig opgelost. Temperatuurprecisie is hier belangrijk — gebruik een thermometer.':'Heat '+waterMl+' ml of filtered/dechlorinated water to 43°C (109°F). Stir in '+goferm+' g of Go-Ferm Protect until fully dissolved. Temperature precision matters here — use a thermometer.',
       content:function(){
-        return'<div class="info-box" style="border-left-color:var(--gold2)"><div style="font-size:13px;line-height:1.65"><strong>Why 43°C?</strong> Below 40°C the cell membranes won\'t become permeable enough to absorb Go-Ferm\'s sterols. Above 46°C cell death starts. The window is tight.</div></div>';
+        return'<div class="info-box" style="border-left-color:var(--gold2)"><div style="font-size:13px;line-height:1.65">'+(_nl?'<strong>Waarom 43°C?</strong> Onder 40°C worden de celmembranen niet doorlaatbaar genoeg om Go-Ferms sterolen op te nemen. Boven 46°C begint celdood. Het venster is smal.':'<strong>Why 43°C?</strong> Below 40°C the cell membranes won\'t become permeable enough to absorb Go-Ferm\'s sterols. Above 46°C cell death starts. The window is tight.')+'</div></div>';
       },
       timer:null
     },
     {
-      title:'Sprinkle yeast on water',
-      detail:'Gently sprinkle '+s.yeastGrams+' g of yeast across the entire surface of the Go-Ferm water. Do NOT stir yet. Let it sit undisturbed for 15 minutes.',
+      title:_nl?'Gist op het water strooien':'Sprinkle yeast on water',
+      detail:_nl?'Strooi '+s.yeastGrams+' g gist voorzichtig over het hele oppervlak van het Go-Ferm-water. Roer nog NIET. Laat het 15 minuten onaangeroerd staan.':'Gently sprinkle '+s.yeastGrams+' g of yeast across the entire surface of the Go-Ferm water. Do NOT stir yet. Let it sit undisturbed for 15 minutes.',
       content:function(){
-        return'<div class="info-box" style="border-left-color:var(--gold2)"><div style="font-size:13px;line-height:1.65">The yeast will absorb water and bloom. Disturbing it early prevents proper rehydration.</div></div>';
+        return'<div class="info-box" style="border-left-color:var(--gold2)"><div style="font-size:13px;line-height:1.65">'+(_nl?'De gist neemt water op en komt tot leven. Te vroeg roeren verhindert goede rehydratie.':'The yeast will absorb water and bloom. Disturbing it early prevents proper rehydration.')+'</div></div>';
       },
       timer:15*60 // 15 min in seconds
     },
     {
-      title:'Stir gently',
-      detail:'After 15 minutes of resting, swirl the container gently to form a uniform slurry. Should be creamy, not chunky.',
+      title:_nl?'Voorzichtig roeren':'Stir gently',
+      detail:_nl?'Zwenk de container na 15 minuten rusten voorzichtig tot een gelijkmatige slurry. Moet romig zijn, niet klonterig.':'After 15 minutes of resting, swirl the container gently to form a uniform slurry. Should be creamy, not chunky.',
       content:function(){
-        return'<div class="info-box" style="border-left-color:var(--gold2)"><div style="font-size:13px;line-height:1.65">If you see chunks or dry yeast, give it another 5 minutes — yeast must be fully hydrated before the next step.</div></div>';
+        return'<div class="info-box" style="border-left-color:var(--gold2)"><div style="font-size:13px;line-height:1.65">'+(_nl?'Zie je klontjes of droge gist, geef het nog 5 minuten — gist moet volledig gehydrateerd zijn vóór de volgende stap.':'If you see chunks or dry yeast, give it another 5 minutes — yeast must be fully hydrated before the next step.')+'</div></div>';
       },
       timer:null
     },
     {
-      title:'Acclimate to must temperature',
-      detail:'Your slurry is at ~38°C; your must is at '+s.mustTemp+'°C. You need to close that gap to within 10°C BEFORE pitching, or thermal shock kills 20-50% of the yeast. Add a splash of cool must to the slurry every 5 minutes, gently mixing each time.',
+      title:_nl?'Acclimatiseren aan mosttemperatuur':'Acclimate to must temperature',
+      detail:_nl?'Je slurry is ~38°C; je most is '+s.mustTemp+'°C. Je moet dat verschil tot binnen 10°C dichten VÓÓR het enten, anders doodt thermische schok 20-50% van de gist. Voeg elke 5 minuten een scheutje koele most toe, telkens voorzichtig mengend.':'Your slurry is at ~38°C; your must is at '+s.mustTemp+'°C. You need to close that gap to within 10°C BEFORE pitching, or thermal shock kills 20-50% of the yeast. Add a splash of cool must to the slurry every 5 minutes, gently mixing each time.',
       content:function(){
         var deltaTime=Math.ceil(Math.max(0,(38-s.mustTemp-10))/2)*5; // rough estimate
-        return'<div class="info-box" style="border-left-color:var(--gold2)"><div style="font-size:13px;line-height:1.65"><strong>Suggested protocol:</strong> add ~50 ml of must to the slurry every 5 minutes for ~'+deltaTime+' minutes (until slurry is within 10°C of must temp). Then pitch.</div></div>';
+        return'<div class="info-box" style="border-left-color:var(--gold2)"><div style="font-size:13px;line-height:1.65">'+(_nl?'<strong>Voorgesteld protocol:</strong> voeg elke 5 minuten ~50 ml most toe aan de slurry gedurende ~'+deltaTime+' minuten (tot de slurry binnen 10°C van de mosttemperatuur is). Ent dan.':'<strong>Suggested protocol:</strong> add ~50 ml of must to the slurry every 5 minutes for ~'+deltaTime+' minutes (until slurry is within 10°C of must temp). Then pitch.')+'</div></div>';
       },
       timer:20*60
     },
     {
-      title:'Pitch + done',
-      detail:'Pour the acclimated slurry into the must. Stir gently to incorporate. Cap the fermenter, attach the airlock. First signs of fermentation should appear in 12-48 hours.',
+      title:_nl?'Enten + klaar':'Pitch + done',
+      detail:_nl?'Giet de geacclimatiseerde slurry in de most. Roer voorzichtig om te mengen. Sluit het gistingsvat, plaats het waterslot. Eerste tekenen van gisting zouden binnen 12-48 uur moeten verschijnen.':'Pour the acclimated slurry into the must. Stir gently to incorporate. Cap the fermenter, attach the airlock. First signs of fermentation should appear in 12-48 hours.',
       content:function(){
-        return'<div class="info-box" style="border-left-color:var(--green2);background:rgba(122,160,64,0.10)"><div style="font-size:13px;line-height:1.65"><strong>You\'re done.</strong> Log your batch start now if you haven\'t — and remember to schedule the first SNA / TOSNA dose for 24h from now.</div></div>'
-          +'<div style="margin-top:14px;text-align:center"><button class="btn btn-secondary btn-sm" onclick="resetYeastRehydration()">↻ Reset workflow</button></div>';
+        return'<div class="info-box" style="border-left-color:var(--green2);background:rgba(122,160,64,0.10)"><div style="font-size:13px;line-height:1.65">'+(_nl?'<strong>Je bent klaar.</strong> Log je partijstart nu als je dat nog niet deed — en vergeet niet de eerste SNA/TOSNA-dosis voor over 24 u in te plannen.':'<strong>You\'re done.</strong> Log your batch start now if you haven\'t — and remember to schedule the first SNA / TOSNA dose for 24h from now.')+'</div></div>'
+          +'<div style="margin-top:14px;text-align:center"><button class="btn btn-secondary btn-sm" onclick="resetYeastRehydration()">↻ '+(_nl?'Workflow resetten':'Reset workflow')+'</button></div>';
       },
       timer:null
     }
@@ -195,11 +196,17 @@ function renderTOSNAPlan(){
   var startDate=new Date(b.startDate);
   var dayLabel=function(d){
     var dt=new Date(startDate.getTime()+d*86400000);
-    return dt.toLocaleDateString('en-GB',{weekday:'short',day:'2-digit',month:'short'});
+    return dt.toLocaleDateString(_dloc(),{weekday:'short',day:'2-digit',month:'short'});
   };
   var daysSinceStart=Math.floor((Date.now()-startDate.getTime())/86400000);
 
-  var schedule=[
+  var _nl=(typeof appLang==='function'&&appLang()==='nl');
+  var schedule=_nl?[
+    {day:1,title:'Dosis 1/4',rationale:'24u na enten — gist is in actieve groeifase, heeft stikstof nodig.'},
+    {day:2,title:'Dosis 2/4',rationale:'Krachtige gisting nu zichtbaar. Organische stikstof wordt traag opgenomen, dus dagelijkse spreiding voorkomt overbelasting.'},
+    {day:3,title:'Dosis 3/4',rationale:'Neem een dichtheidsmeting. Op zoek naar de 1/3-suikerbreuk voor de laatste dosis.'},
+    {day:7,title:'Dosis 4/4',rationale:'Laatste dosis bij 1/3-suikerbreuk of dag 7 (wat eerst komt). Houdt de gist door alcoholstress heen.'}
+  ]:[
     {day:1,title:'Dose 1/4',rationale:'24h after pitch — yeast is in active growth phase, needs nitrogen.'},
     {day:2,title:'Dose 2/4',rationale:'Vigorous fermentation now visible. Organic N is absorbed slowly so daily spacing avoids overwhelming.'},
     {day:3,title:'Dose 3/4',rationale:'Take a gravity reading. Looking for the 1/3 sugar break for the final dose.'},
@@ -212,7 +219,7 @@ function renderTOSNAPlan(){
   var rows=schedule.map(function(s){
     var isPast=s.day<=daysSinceStart;
     return'<div style="display:flex;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);align-items:flex-start">'
-      +'<div style="width:60px;flex-shrink:0;font-family:var(--font-mono);font-size:11px;color:'+(isPast?'var(--text3)':'var(--gold2)')+';letter-spacing:0.5px">DAY '+s.day+(isPast?' ⏪':'')+'</div>'
+      +'<div style="width:60px;flex-shrink:0;font-family:var(--font-mono);font-size:11px;color:'+(isPast?'var(--text3)':'var(--gold2)')+';letter-spacing:0.5px">'+(_nl?'DAG ':'DAY ')+s.day+(isPast?' ⏪':'')+'</div>'
       +'<div style="flex:1">'
       +'<div style="font-family:var(--font-display);font-size:13px;color:'+(isPast?'var(--text3)':'var(--text)')+'">'+s.title+' · '+doses.perDose+' g Fermaid-O</div>'
       +'<div style="font-size:11px;color:var(--text3);margin-top:2px;line-height:1.5">'+dayLabel(s.day)+' · '+s.rationale+'</div>'
@@ -220,13 +227,13 @@ function renderTOSNAPlan(){
   }).join('');
 
   out.innerHTML='<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:12px">'
-    +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center"><div style="font-family:var(--font-display);font-size:22px;color:var(--gold2)">'+doses.totalGrams+' g</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1.5px;margin-top:4px">TOTAL Fermaid-O</div></div>'
-    +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center"><div style="font-family:var(--font-display);font-size:22px;color:var(--gold2)">'+doses.perDose+' g</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1.5px;margin-top:4px">PER DOSE</div></div>'
+    +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center"><div style="font-family:var(--font-display);font-size:22px;color:var(--gold2)">'+doses.totalGrams+' g</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1.5px;margin-top:4px">'+(_nl?'TOTAAL Fermaid-O':'TOTAL Fermaid-O')+'</div></div>'
+    +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center"><div style="font-family:var(--font-display);font-size:22px;color:var(--gold2)">'+doses.perDose+' g</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1.5px;margin-top:4px">'+(_nl?'PER DOSIS':'PER DOSE')+'</div></div>'
     +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:12px;text-align:center"><div style="font-family:var(--font-display);font-size:22px;color:var(--gold2)">4</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1.5px;margin-top:4px">DOSES</div></div>'
     +'</div>'
     +'<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden">'+rows+'</div>'
     +(alreadyTOSNA
-      ?'<div style="padding:10px 12px;background:rgba(122,160,64,0.12);border-left:3px solid var(--green2);border-radius:var(--radius);font-size:12px;color:var(--green2)">✓ This batch is already on the TOSNA protocol — Fermaid-O is the configured nutrient. Use the button below to <em>also</em> write explicit doses into the additions log for tracking.</div>'
+      ?'<div style="padding:10px 12px;background:rgba(122,160,64,0.12);border-left:3px solid var(--green2);border-radius:var(--radius);font-size:12px;color:var(--green2)">'+(_nl?'✓ Deze partij volgt al het TOSNA-protocol — Fermaid-O is de ingestelde voeding. Gebruik de knop hieronder om <em>ook</em> expliciete doses in het toevoegingenlogboek te schrijven ter registratie.':'✓ This batch is already on the TOSNA protocol — Fermaid-O is the configured nutrient. Use the button below to <em>also</em> write explicit doses into the additions log for tracking.')+'</div>'
       :'<div style="padding:10px 12px;background:rgba(200,160,64,0.10);border-left:3px solid var(--gold2);border-radius:var(--radius);font-size:12px;color:var(--text2)">Applying will switch this batch\'s nutrient from <strong>'+escHtml((getNutrientById(currentNutrient)||{}).name||currentNutrient)+'</strong> to <strong>Fermaid-O (TOSNA)</strong> and write the 4 doses above into the additions log.</div>')
     +'<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'
     +'<button class="btn btn-primary" onclick="applyTOSNAToBatch(\''+batchId+'\')">Apply TOSNA plan to this batch</button>'

@@ -205,7 +205,7 @@ function printYearReview(year){
     +(totalCost>0?'<div class="section"><h2>💰 ECONOMICS</h2><div class="grid"><div class="stat"><div class="stat-val">'+ccy+totalCost.toFixed(0)+'</div><div class="stat-lbl">Total Spent</div></div>'
       +'<div class="stat"><div class="stat-val">'+(volProduced>0?ccy+perLitreAvg:'—')+'</div><div class="stat-lbl">Per Litre Avg</div></div>'
       +'<div class="stat"><div class="stat-val">'+(thisYearBatches.length>0?ccy+(totalCost/thisYearBatches.length).toFixed(0):'—')+'</div><div class="stat-lbl">Per Batch Avg</div></div></div></div>':'')
-    +'<div class="footer">Crafted with patience · MeadOS · '+new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})+'</div>'
+    +'<div class="footer">Crafted with patience · MeadOS · '+new Date().toLocaleDateString(_dloc(),{day:'numeric',month:'long',year:'numeric'})+'</div>'
     +'</div></body></html>');
   w.document.close();
 }

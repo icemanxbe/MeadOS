@@ -33,9 +33,21 @@
 <script src="/chart.umd.js"></script>
 <script src="/core/data/data-libraries.js"></script>
 <script src="/core/data/data-recipes.js"></script>
+<script src="/core/data/data-recipes-nl.js"></script>
+<script src="/core/data/data-libraries-nl.js"></script>
+<script src="/core/data/data-recipe-steps-nl.js"></script>
+<script src="/core/data/data-recipe-ingredients-nl.js"></script>
+<script src="/core/data/data-yeast-nl.js"></script>
+<script src="/core/data/data-nutrient-nl.js"></script>
+<script src="/core/data/data-honeyfit-nl.js"></script>
+<script src="/core/data/data-recipe-guide-nl.js"></script>
+<script src="/core/data/data-honeydetail-nl.js"></script>
 <script src="/core/state/01-state.js"></script>
+<script src="/core/state/i18n.js"></script>
 <script src="/core/domain/02-honey-domain.js"></script>
 <script src="/core/domain/03-brew-domain.js"></script>
+<script src="/core/domain/03d-mead-model.js"></script>
+<script src="/core/domain/03e-advisor.js"></script>
 <script src="/core/sync/04-server-ha.js"></script>
 <script src="/core/domain/04b-bottle-helpers.js"></script>
 <script src="/core/state/05-utils-nav.js"></script>
@@ -60,6 +72,8 @@
 <script src="/core/features/11-tasting-exports.js"></script>
 <script src="/core/features/11-ha-additions-temp.js"></script>
 <script src="/core/views/12-troubleshoot.js"></script>
+<script src="/core/views/12-troubleshoot-nl.js"></script>
+<script src="/core/views/12-offflavor-nl.js"></script>
 <script src="/core/views/12-insights.js"></script>
 <script src="/core/features/12-tasting-analysis.js"></script>
 <script src="/core/features/12-records.js"></script>
@@ -184,6 +198,56 @@
     var ing=labelStudioIngredients(ctx);
     ok('ingredients include EC-1118 yeast', /EC-?1118/i.test(ing), ing);
     ok('ingredients drop the default M05', ing.toLowerCase().indexOf('m05')<0, ing);
+  })();
+
+  // ---- mead-model (recipe configurator + advisor foundation) ----
+  (function(){
+    ok('honeyKg: OG 1.098 @ 5L ~ 1.68 kg', Math.abs(mwHoneyKg(1.098,5)-1.68)<0.05, 'got '+mwHoneyKg(1.098,5));
+    ok('sugarBreak 1.098→1.010 = 1.069', Math.abs(mwSugarBreak(1.098,1.010)-1.069)<0.001, 'got '+mwSugarBreak(1.098,1.010));
+    // EC-1118: 18% tolerance, high attenuation → ferments dry
+    (function(){var t=mwYeastTargets(1.098,'ec1118');ok('yeastTargets ec1118 returns fg/abv', t&&t.fg<1.01&&t.abv>10, JSON.stringify(t));})();
+    // M05: attenuation-limited target above 0.996
+    (function(){var t=mwYeastTargets(1.120,'m05');ok('yeastTargets m05 high OG returns object', !!(t&&t.fg&&t.abv), JSON.stringify(t));})();
+    eq('attenuation 1.098→1.069 ≈ 0.30', Math.round(mwAttenuation(1.098,1.069)*100)/100, 0.30);
+    (function(){var n=mwNutrientGrams(5,1.098,'tosna');ok('nutrient tosna = 4 doses', n.doses===4&&n.total>0, JSON.stringify(n));})();
+    (function(){var n=mwNutrientGrams(5,1.098,'sna');ok('nutrient sna = 2 doses', n.doses===2, JSON.stringify(n));})();
+    ok('yeastTargets null on bad OG', mwYeastTargets(0.9,'m05')===null);
+  })();
+
+  // ---- advisor: signals + rules + health + readiness ----
+  (function(){
+    APP.recipes=[{id:'rA',ogTarget:1.098,fgTarget:1.010,abvTarget:11.5,fermentDays:42,minAgeDays:60,peakAgeDays:240,steps:[]}];
+    // mid-ferment batch, dropping, past nothing yet
+    var b={id:'adv1',recipeId:'rA',startDate:isoAgo(6),og:1.098,yeast:'ec1118'};
+    APP.batches=[b];
+    APP.logs={adv1:[{date:isoAgo(6),gravity:1.098,temp:19},{date:isoAgo(3),gravity:1.060,temp:19},{date:isoAgo(0),gravity:1.030,temp:19}]};
+    APP.bottling={};APP.additions={};
+    var s=mwBatchSignals(b);
+    ok('signals: facts only object', s && s.og===1.098 && s.lastG===1.030, JSON.stringify(s&&{og:s.og,lastG:s.lastG}));
+    ok('signals: attenuation ~0.69', s && Math.abs(s.attenuation-0.69)<0.03, s&&s.attenuation);
+    ok('signals: sugarBreak computed', s && s.sugarBreak>1.0 && s.sugarBreak<1.098, s&&s.sugarBreak);
+    var adv=mwBatchAdvice(b);
+    ok('advice: snapshot has items[]+health+readiness', adv && Array.isArray(adv.items) && adv.health && adv.readiness, '');
+    ok('advice: health score is 0..100', adv && adv.health.score>=0 && adv.health.score<=100, adv&&adv.health.score);
+    ok('advice: severities valid', adv.items.every(function(i){return /^(critical|recommended|info)$/.test(i.severity);}), JSON.stringify(adv.items.map(function(i){return i.id+':'+i.severity;})));
+    ok('advice: confidence 0..1', adv.items.every(function(i){return i.confidence>0&&i.confidence<=1;}), '');
+    ok('advice: confidence number + reasons[]', typeof adv.confidence==='number'&&Array.isArray(adv.confidenceReasons)&&adv.confidenceReasons.length>0, JSON.stringify(adv.confidenceReasons));
+    // stalled batch → critical 'stalled'
+    (function(){
+      var bs={id:'adv2',recipeId:'rA',startDate:isoAgo(20),og:1.098,yeast:'ec1118'};
+      APP.batches=[bs];APP.logs={adv2:[{date:isoAgo(20),gravity:1.060},{date:isoAgo(10),gravity:1.058},{date:isoAgo(2),gravity:1.058}]};
+      var a2=mwBatchAdvice(bs);
+      ok('advice: stalled → critical item', a2.items.some(function(i){return i.id==='stalled'&&i.severity==='critical';}), JSON.stringify(a2.items.map(function(i){return i.id;})));
+    })();
+    // readiness for a bottled, well-aged batch → high
+    (function(){
+      var bb={id:'adv3',recipeId:'rA',startDate:isoAgo(400),og:1.098,yeast:'ec1118'};
+      APP.batches=[bb];APP.logs={adv3:[{date:isoAgo(400),gravity:1.098},{date:isoAgo(360),gravity:1.005}]};
+      APP.bottling={adv3:{date:isoAgo(300),countsAtBottling:{750:6},locations:{cellar:{750:6}},fg:1.005,abv:12}};
+      var r=mwReadiness(bb);
+      ok('readiness: long-aged near peak', r && r.pct>=100, JSON.stringify(r));
+    })();
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};APP.additions={};
   })();
 
   var s=document.getElementById('summary');

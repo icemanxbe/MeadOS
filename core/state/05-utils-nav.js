@@ -21,11 +21,14 @@ function fmtDateShort(d){
   var mm=String(x.getMonth()+1).padStart(2,'0');
   return dd+'/'+mm;
 }
+// Locale tag for date formatting — follows the chosen language so every
+// toLocaleDateString in the app shows Dutch month/weekday names in NL mode.
+function _dloc(){return (typeof appLang==='function'&&appLang()==='nl')?'nl-NL':'en-GB';}
 function fmtDateLong(d){
   // Friendly long form: "Saturday 30 May 2026"
   var x=new Date(d);
   if(isNaN(x.getTime()))return'';
-  return x.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  return x.toLocaleDateString(_dloc(),{weekday:'long',day:'numeric',month:'long',year:'numeric'});
 }
 function fmtDateTime(d){
   // DD/MM/YYYY HH:MM
@@ -48,14 +51,16 @@ function daysSince(ds){return Math.floor((Date.now()-new Date(ds))/86400000);}
 // Returns "—" for null/undefined/negative so callers don't need to guard.
 function fmtDuration(d){
   if(d==null||d<0)return'—';
-  if(d===0)return'today';
-  if(d<7)return d+(d===1?' day':' days');
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var MO=nl?'mnd':'mo',Y=nl?'j':'y';
+  if(d===0)return nl?'vandaag':'today';
+  if(d<7)return d+(d===1?(nl?' dag':' day'):(nl?' dagen':' days'));
   if(d<30){var w=Math.floor(d/7),wr=d%7;return w+'w'+(wr>0?' '+wr+'d':'');}
-  if(d<365){var m=Math.floor(d/30),mr=d%30;return m+'mo'+(mr>0?' '+mr+'d':'');}
+  if(d<365){var m=Math.floor(d/30),mr=d%30;return m+MO+(mr>0?' '+mr+'d':'');}
   var y=Math.floor(d/365),md=d%365;
-  if(md<30)return y+'y'+(md>0?' '+md+'d':'');
+  if(md<30)return y+Y+(md>0?' '+md+'d':'');
   var m2=Math.floor(md/30);
-  return y+'y '+m2+'mo';
+  return y+Y+' '+m2+MO;
 }
 
 // Ultra-compact variant for tight UI like sidebar pills. Single unit only,
@@ -63,11 +68,12 @@ function fmtDuration(d){
 // 'y' for years (>=365d). For step day indices use the raw number.
 function fmtDurationCompact(d){
   if(d==null||d<0)return'—';
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
   if(d<14)return d+'d';
   if(d<60)return Math.floor(d/7)+'w';
-  if(d<365)return Math.floor(d/30)+'mo';
+  if(d<365)return Math.floor(d/30)+(nl?'mnd':'mo');
   var y=d/365;
-  return(y>=10?Math.round(y):y.toFixed(1))+'y';
+  return(y>=10?Math.round(y):y.toFixed(1))+(nl?'j':'y');
 }
 function addDays(ds,n){var d=new Date(ds);d.setDate(d.getDate()+n);return d.toISOString().split('T')[0];}
 function calcABV(og,fg){return((og-fg)*131.25).toFixed(1);}
@@ -248,15 +254,20 @@ function fermentationBadge(b){
 
 function statusBadge(s){
   var m={fermenting:'badge-fermenting',conditioning:'badge-conditioning',aging:'badge-aging',bottled:'badge-bottled',complete:'badge-complete',planning:'badge-planning',failed:'badge-failed'};
-  if(s==='failed')return'<span class="badge" style="background:rgba(180,40,40,0.18);color:#e89090;border-color:rgba(180,40,40,0.4)">⚰ '+s+'</span>';
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var T={fermenting:'gistend',conditioning:'conditioneren',aging:'rijpend',bottled:'gebotteld',complete:'voltooid',planning:'plannen',failed:'mislukt'};
+  var lbl=nl?(T[s]||s):s;
+  if(s==='failed')return'<span class="badge" style="background:rgba(180,40,40,0.18);color:#e89090;border-color:rgba(180,40,40,0.4)">⚰ '+lbl+'</span>';
   // Active fermentation gets a few tiny rising CO2 bubbles (currentColor, so they
   // tint with the badge). Purely decorative; hidden under prefers-reduced-motion.
   var bubbles=s==='fermenting'?'<span class="ferm-bubbles" aria-hidden="true"><span></span><span></span><span></span></span>':'';
-  return'<span class="badge '+(m[s]||'badge-planning')+'">'+bubbles+s+'</span>';
+  return'<span class="badge '+(m[s]||'badge-planning')+'">'+bubbles+lbl+'</span>';
 }
 
 function toast(msg,durationMs){
   var t=document.getElementById('toast');
+  // Translate toast text centrally when in Dutch (uiL = UI_PHRASES/UI_PATTERNS).
+  if(typeof uiL==='function')msg=uiL(msg);
   t.textContent=msg;t.classList.add('show');
   setTimeout(function(){t.classList.remove('show');},durationMs||2200);
 }
@@ -381,4 +392,6 @@ function renderMain(){
   if(_afId){var _el=document.getElementById(_afId);if(_el){try{_el.focus({preventScroll:true});if(_selS!=null&&_el.setSelectionRange)_el.setSelectionRange(_selS,_selE);}catch(e){}}}
   main.scrollTop=_keepScroll;
   if(typeof a11yEnhance==='function')a11yEnhance(main);
+  if(typeof translateChrome==='function')translateChrome(main);
+  if(typeof translateChrome==='function')translateChrome(document.getElementById('sidebar'));
 }
