@@ -68,7 +68,7 @@ function renderBatchAdvisorStrip(b){
   var topTxt=top?_advItemText(top):null, topMeta=top?_advSeverityMeta(top.severity):null;
   return '<div class="card" style="margin-bottom:16px;border-left:3px solid '+hm.c+'">'
     +'<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">'
-    +'<div style="text-align:center;min-width:62px"><div style="font-family:var(--font-display);font-size:30px;line-height:1;color:'+hm.c+'">'+(h&&h.score!=null?h.score:'—')+'</div><div class="micro-label">'+(nl?'GEZONDHEID':'HEALTH')+'</div></div>'
+    +'<div style="text-align:center;min-width:62px"><div style="font-family:var(--font-display);font-size:30px;line-height:1;color:'+hm.c+'">'+(h&&h.score!=null?h.score:'—')+_advTrendChip(h&&h.trend)+'</div><div class="micro-label">'+(nl?'GEZONDHEID':'HEALTH')+'</div></div>'
     +'<div style="flex:1;min-width:180px">'
     +(top?'<div style="font-size:13px;color:'+topMeta.color+';font-family:var(--font-display)">'+topTxt.icon+' '+escHtml(topTxt.title)+'</div><div style="font-size:11.5px;color:var(--text3);margin-top:2px">'+escHtml(topTxt.reason.length>120?topTxt.reason.slice(0,118)+'…':topTxt.reason)+'</div>'
         :'<div style="font-size:13px;color:var(--green2)">'+(nl?'✓ Alles ziet er goed uit':'✓ Everything looks good')+'</div>')
@@ -107,6 +107,20 @@ function renderBatchTargets(b){
     +'</table></div>';
 }
 
+// Localize the confidence reason codes into a "because: …" phrase.
+function _advConfidenceText(reasons){
+  var nl=_advNL();
+  var M=nl?{'readings-many':'veel metingen','readings-several':'meerdere metingen','readings-few':'enkele metingen','readings-one':'slechts één meting','rate-steady':'gestage daalsnelheid','temp-stable':'stabiele temperatuur','known-yeast':'bekende gistvergisting'}
+            :{'readings-many':'many readings','readings-several':'several readings','readings-few':'a few readings','readings-one':'only one reading','rate-steady':'steady drop rate','temp-stable':'stable temperature','known-yeast':'known yeast attenuation'};
+  return (reasons||[]).map(function(c){return M[c]||c;}).join(' · ');
+}
+// Small ↑/↓ trend chip for the health score (vs the previous reading).
+function _advTrendChip(trend){
+  if(trend==null||trend===0)return '';
+  var up=trend>0;
+  return '<span style="font-size:12px;color:'+(up?'var(--green2)':'var(--red2)')+';margin-left:4px">'+(up?'▲':'▼')+Math.abs(trend)+'</span>';
+}
+
 function renderBatchAdvisor(b){
   var nl=_advNL();
   var adv=(typeof mwBatchAdvice==='function')?mwBatchAdvice(b):null;
@@ -127,13 +141,16 @@ function renderBatchAdvisor(b){
         +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);width:30px;text-align:right">'+txt+'</div></div>';
     }).join('');
   }
+  var confTxt=_advConfidenceText(adv.confidenceReasons);
   var healthCard='<div class="card" style="margin-bottom:16px;border-left:3px solid '+hm.c+'">'
     +'<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">'
-    +'<div style="text-align:center;min-width:96px"><div style="font-family:var(--font-display);font-size:42px;line-height:1;color:'+hm.c+'">'+(h&&h.score!=null?h.score:'—')+'</div>'
+    +'<div style="text-align:center;min-width:96px"><div style="font-family:var(--font-display);font-size:42px;line-height:1;color:'+hm.c+'">'+(h&&h.score!=null?h.score:'—')+_advTrendChip(h&&h.trend)+'</div>'
     +'<div class="micro-label" style="margin-top:4px">'+(nl?'GEZONDHEID':'HEALTH')+'</div>'
     +'<div style="font-family:var(--font-display);font-size:14px;color:'+hm.c+';margin-top:2px">'+hm.l+'</div></div>'
     +'<div style="flex:1;min-width:220px">'+bars+'</div>'
-    +'</div></div>';
+    +'</div>'
+    +(confTxt?'<div style="font-size:11px;color:var(--text3);margin-top:10px;font-style:italic">'+(nl?'Vertrouwen ':'Confidence ')+Math.round((adv.confidence||0)*100)+'% — '+(nl?'op basis van':'based on')+' '+escHtml(confTxt)+'</div>':'')
+    +'</div>';
 
   // ---- Readiness ("can I drink it yet?") ----
   var readyCard='';

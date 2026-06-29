@@ -72,16 +72,19 @@ function mwBatchSignals(b){
   };
 }
 
-// ---- Confidence: honest, derived from how much signal we actually have -----
+// ---- Confidence: honest, derived from how much signal we actually have, and
+// it reports the REASONS behind the number (the view localizes the codes). -----
 function mwConfidence(s){
-  if(!s)return 0.3;
-  var c=0.45;
+  if(!s)return {value:0.3,reasons:['readings-one']};
+  var c=0.45,reasons=[];
   if(s.readings>=2)c+=0.15;
   if(s.readings>=4)c+=0.15;
   if(s.readings>=8)c+=0.1;
-  if(s.tempStable===true)c+=0.05;
-  if(s.ratePerDay!=null&&s.ratePerDay>0)c+=0.1;
-  return Math.min(0.99,Math.round(c*100)/100);
+  reasons.push(s.readings>=8?'readings-many':s.readings>=4?'readings-several':s.readings>=2?'readings-few':'readings-one');
+  if(s.ratePerDay!=null&&s.ratePerDay>0){c+=0.1;reasons.push('rate-steady');}
+  if(s.tempStable===true){c+=0.05;reasons.push('temp-stable');}
+  if(s.yeastId)reasons.push('known-yeast');
+  return {value:Math.min(0.99,Math.round(c*100)/100),reasons:reasons};
 }
 
 // ---- Rules: each reads signals, returns a recommendation or null ----------
@@ -222,12 +225,18 @@ function mwBatchAdvice(b){
   if(cached&&cached.sig===sig)return cached.val;
   var s=mwBatchSignals(b);
   if(!s)return null;
-  var conf=mwConfidence(s);
+  var cf=mwConfidence(s), conf=cf.value;
   var items=_advRules().map(function(rule){var v=rule(s);if(!v)return null;if(v.confidence==null)v.confidence=conf;return v;}).filter(Boolean);
   // Order: critical → recommended → info
   var rank={critical:0,recommended:1,info:2};
   items.sort(function(a,c){return rank[a.severity]-rank[c.severity];});
-  var val={signals:s, items:items, health:mwBatchHealth(s), readiness:mwReadiness(b)};
+  var health=mwBatchHealth(s);
+  // Trend: compare to the score from the previous recompute (different signature =
+  // an input changed, e.g. a new reading). Pure, no persistence; resets per session.
+  if(health&&cached&&cached.val&&cached.val.health&&cached.val.health.score!=null&&health.score!=null){
+    health.trend=health.score-cached.val.health.score;
+  }
+  var val={signals:s, items:items, health:health, readiness:mwReadiness(b), confidence:conf, confidenceReasons:cf.reasons};
   _mwAdviceMemo[b.id]={sig:sig,val:val};
   return val;
 }
