@@ -397,7 +397,8 @@ function identifyNutrientFromText(itemText){
 //
 // Everything else (honey, water, fruit, spice, sulfite, sorbate, pectic)
 // scales linearly as before.
-function scaleRecipeIngredients(r,scaleVol){
+function scaleRecipeIngredients(r,scaleVol,config){
+  config=config||{};   // {honey,yeast,nutrient} overrides from the recipe configurator
   var linearFactor=scaleVol/(r.volume||5);
   // "to the N mark" follows the chosen recipe-scale unit (L / US gal / UK gal).
   var mark=(typeof fmtRecipeScale==='function')?fmtRecipeScale(scaleVol):(scaleVol+' L');
@@ -418,9 +419,12 @@ function scaleRecipeIngredients(r,scaleVol){
     var unitLower=m[2].toLowerCase();
     var isYeast=/yeast/i.test(item)&&!/nutrient/i.test(item);
     var isNutrient=/nutrient/i.test(item);
+    var isHoney=/honey/i.test(item)&&!isYeast&&!isNutrient;
+    var outItem=item;   // may be relabelled below when the configurator overrides a choice
     if(isYeast&&unitLower==='g'){
-      // YEAST: coverage-based ceiling. Identify the strain if possible.
-      var strain=identifyYeastFromText(item);
+      // YEAST: coverage-based ceiling. Configurator override wins over text match.
+      var strain=(config.yeast&&typeof getYeastById==='function'&&getYeastById(config.yeast))||identifyYeastFromText(item);
+      if(config.yeast&&strain&&strain.name)outItem=strain.name;
       var coverage=(strain&&strain.sachetCoversL)||23;
       var sachetG=(strain&&strain.sachetSize)||10;
       // Apply OG stress if the recipe declares ogTarget — high-OG batches
@@ -445,7 +449,8 @@ function scaleRecipeIngredients(r,scaleVol){
       amt=amt.replace(m[0],formattedG);
       amt=amt.replace(/\s*\([^)]*(?:packet|sachet)[^)]*\)/i,'');
       amt=amt.replace(/\s*·\s*[0-9.]+\s+(?:packet|sachet)s?/gi,'');
-      var product=identifyNutrientFromText(item);
+      var product=(config.nutrient&&typeof getNutrientById==='function'&&getNutrientById(config.nutrient))||identifyNutrientFromText(item);
+      if(config.nutrient&&product&&product.name)outItem=product.name;
       if(product&&product.sachetCoversL&&product.sachetSize){
         // Sachet-based — show ceiling count, e.g. "18g · 2 sachets" for 12L batch
         var nSachets=Math.max(1,Math.ceil(scaleVol/product.sachetCoversL));
@@ -472,8 +477,72 @@ function scaleRecipeIngredients(r,scaleVol){
       }
       amt=amt.replace(m[0],formatted+' '+m[2]);
     }
-    return Object.assign({},ing,{amount:amt,notes:note});
+    if(isHoney&&config.honey){outItem=/honey/i.test(config.honey)?config.honey:(config.honey+' Honey');}
+    return Object.assign({},ing,{item:outItem,amount:amt,notes:note});
   });
+}
+
+// ==================== RECIPE CONFIGURATOR ====================
+// Lets the user pick honey / yeast / nutrient / schedule on the recipe page. The
+// scale slider and these dropdowns share one live-update path (updateRecipeScale),
+// and the chosen config flows straight into "Brew This Recipe".
+function recipeConfigDefaults(r){
+  var honeyTypes=(typeof honeyTypesInRecipe==='function')?honeyTypesInRecipe(r):[];
+  var honey=honeyTypes[0]||'Wildflower';
+  var yeast=null,nutrient=null;
+  (r.ingredients||[]).forEach(function(ing){
+    var it=ing.item||'';
+    if(/yeast/i.test(it)&&!/nutrient/i.test(it)&&!yeast){var s=(typeof identifyYeastFromText==='function')?identifyYeastFromText(it):null;if(s)yeast=s.id;}
+    if(/nutrient/i.test(it)&&!nutrient){var p=(typeof identifyNutrientFromText==='function')?identifyNutrientFromText(it):null;if(p)nutrient=p.id;}
+  });
+  return {honey:honey,yeast:yeast||'m05',nutrient:nutrient||'mj-mead',schedule:'auto'};
+}
+function ensureRecipeConfig(r){
+  if(!window.recipeConfig||window.recipeConfig._rid!==r.id){window.recipeConfig=recipeConfigDefaults(r);window.recipeConfig._rid=r.id;}
+  return window.recipeConfig;
+}
+// Live targets readout — OG fixed by recipe; FG/ABV follow the chosen yeast;
+// nutrient total follows volume + schedule. Replaced in place on any change.
+function recipeConfigTargetsHtml(r,vol,cfg){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var og=r.ogTarget||1.095;
+  var yt=(typeof mwYeastTargets==='function')?mwYeastTargets(og,cfg.yeast):null;
+  var fg=yt?yt.fg:(r.fgTarget||1.000);
+  var abv=yt?yt.abv:(r.abvTarget||parseFloat(calcABV(og,fg)));
+  var nut=(typeof mwNutrientGrams==='function')?mwNutrientGrams(vol,og,cfg.schedule):null;
+  // Inner stat-cards only (no wrapper) so it can fill the existing TARGETS card
+  // (#recipe-targets-live) live. OG is the recipe's spec; FG/ABV follow the yeast;
+  // nutrient follows volume + schedule.
+  function sc(v,l){return '<div class="stat-card"><div class="stat-val" style="font-size:18px">'+v+'</div><div class="stat-label">'+l+'</div></div>';}
+  return sc(og.toFixed(3),'OG')
+    +sc(fg.toFixed(3),nl?'FG (verw.)':'FG (est.)')
+    +sc('~'+abv.toFixed(1)+'%','ABV')
+    +(nut?sc(nut.total+' g',nl?'VOEDING':'NUTRIENT'):'');
+}
+function renderRecipeConfigurator(r){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var cfg=ensureRecipeConfig(r);
+  var vol=window.recipeScaleVol||r.volume||5;
+  function sel(id,field,opts){return '<select class="form-select" id="'+id+'" onchange="setRecipeConfig(\''+r.id+'\',\''+field+'\',this.value)">'+opts+'</select>';}
+  var honeyOpts=(typeof HONEY_TYPES!=='undefined'?HONEY_TYPES:[]).map(function(h){return '<option value="'+escHtml(h)+'"'+(h===cfg.honey?' selected':'')+'>'+escHtml(proseL(h))+'</option>';}).join('');
+  var yeastOpts=(typeof YEAST_STRAINS!=='undefined'?YEAST_STRAINS:[]).map(function(y){return '<option value="'+y.id+'"'+(y.id===cfg.yeast?' selected':'')+'>'+escHtml(y.name)+'</option>';}).join('');
+  var nutOpts=(typeof NUTRIENT_PRODUCTS!=='undefined'?NUTRIENT_PRODUCTS:[]).map(function(p){return '<option value="'+p.id+'"'+(p.id===cfg.nutrient?' selected':'')+'>'+escHtml(p.name)+'</option>';}).join('');
+  var schedOpts=[['auto',nl?'Auto — afstemmen op de voeding':'Auto — match the nutrient'],['tosna2',nl?'TOSNA — organisch (4 doses)':'TOSNA — organic (4 doses)'],['sna',nl?'SNA — standaard (2 doses)':'SNA — standard (2 doses)'],['sna-high',nl?'SNA — hoge dichtheid (3 doses)':'SNA — high-gravity (3 doses)']].map(function(o){return '<option value="'+o[0]+'"'+(o[0]===cfg.schedule?' selected':'')+'>'+escHtml(o[1])+'</option>';}).join('');
+  function row(label,ctl){return '<div class="form-group" style="margin-bottom:8px"><label class="form-label">'+label+'</label>'+ctl+'</div>';}
+  return '<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">'+(nl?'⚙ CONFIGUREER':'⚙ CONFIGURE')+'</div></div>'
+    +'<div style="font-size:11.5px;color:var(--text3);margin-bottom:10px;line-height:1.5">'+(nl?'Kies honing, gist, voeding en schema — ingrediënten en doelen passen zich live aan, en “Brouw dit recept” neemt je keuzes over.':'Pick honey, yeast, nutrient and schedule — ingredients and targets update live, and "Brew This Recipe" carries your choices.')+'</div>'
+    +row(nl?'Honingsoort':'Honey',sel('cfg-honey','honey',honeyOpts))
+    +row(nl?'Giststam':'Yeast',sel('cfg-yeast','yeast',yeastOpts))
+    +row(nl?'Voeding':'Nutrient',sel('cfg-nutrient','nutrient',nutOpts))
+    +row(nl?'Voedingsschema':'Nutrient schedule',sel('cfg-schedule','schedule',schedOpts))
+    +'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-top:2px">'+(nl?'↑ De TARGETS-kaart werkt live mee.':'↑ The TARGETS card updates live.')+'</div>'
+    +'</div>';
+}
+function setRecipeConfig(recipeId,field,value){
+  var r=APP.recipes.find(function(x){return x.id===recipeId;});if(!r)return;
+  ensureRecipeConfig(r)[field]=value;
+  var sl=document.getElementById('scale-slider');
+  updateRecipeScale(recipeId,sl?sl.value:(window.recipeScaleVol||r.volume||5));
 }
 
 // Live slider — replaces ingredient table + readout without destroying the
@@ -549,11 +618,16 @@ function updateRecipeScale(recipeId,val){
       warnEl.innerHTML='';
     }
   }
+  var cfg=(typeof ensureRecipeConfig==='function')?ensureRecipeConfig(r):null;
   var tbl=document.getElementById('scale-ingredients-table');
   if(tbl){
-    var scaled=scaleRecipeIngredients(r,vol);
+    var scaled=scaleRecipeIngredients(r,vol,cfg||{});
     tbl.innerHTML=scaled.map(function(ing){return'<tr><td style="color:var(--text)">'+escHtml(ing.item)+'</td><td style="font-family:var(--font-mono);font-size:12px;color:'+r.brandColor+'">'+escHtml(ing.amount)+'</td><td style="color:var(--text3);font-style:italic;font-size:12px">'+escHtml(ing.notes)+'</td></tr>';}).join('');
   }
+  // Live configured targets (FG/ABV by yeast, nutrient by schedule) fill the
+  // existing TARGETS card in place.
+  var tgtEl=document.getElementById('recipe-targets-live');
+  if(tgtEl&&cfg&&typeof recipeConfigTargetsHtml==='function')tgtEl.innerHTML=recipeConfigTargetsHtml(r,vol,cfg);
   var costEl=document.getElementById('scale-cost-estimate');
   if(costEl&&typeof renderRecipeCostEstimate==='function'){
     costEl.outerHTML=renderRecipeCostEstimate(r,vol);
@@ -856,7 +930,9 @@ function renderRecipeDetail(){
     +'<div class="scale-slider"><input type="range" id="scale-slider" min="'+sCfg.min+'" max="'+sCfg.max+'" step="'+sCfg.step+'" value="'+sVal+'" oninput="updateRecipeScale(\''+r.id+'\',this.value)"><span class="scale-val" id="scale-slider-val">'+fmtRecipeScale(scaleVol)+'</span></div>'
     +'<div style="display:flex;gap:6px;margin-top:8px">'+scaleUnitBtns+'</div>'
     +'<div id="scale-warning">'+initialWarning+'</div>'
-    +'</div></div>'
+    +'</div>'
+    +(typeof renderRecipeConfigurator==='function'?renderRecipeConfigurator(r):'')
+    +'</div>'
     +'<div class="ra-ingredients"><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">INGREDIENTS</div></div><table class="data-table" id="scale-ingredients-table">'
     +scaledIngredients.map(function(ing){return'<tr><td style="color:var(--text)">'+escHtml(ing.item)+'</td><td style="font-family:var(--font-mono);font-size:12px;color:'+r.brandColor+'">'+escHtml(ing.amount)+'</td><td style="color:var(--text3);font-style:italic;font-size:12px">'+escHtml(ing.notes)+'</td></tr>';}).join('')
     +'</table></div></div>'
@@ -942,9 +1018,7 @@ function renderRecipeDetail(){
     +(r.notes?'<div class="info-box" style="border-left-color:'+r.brandColor+'"><div style="font-size:13px;color:var(--text2);font-style:italic">'+escHtml(r.notes)+'</div></div>':'')
     +'</div>'
     +'<div class="ra-targets"><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">TARGETS</div></div>'
-    +'<div class="grid-3"><div class="stat-card"><div class="stat-val" style="font-size:18px">'+r.ogTarget+'</div><div class="stat-label">OG</div></div>'
-    +'<div class="stat-card"><div class="stat-val" style="font-size:18px">'+r.fgTarget+'</div><div class="stat-label">FG</div></div>'
-    +'<div class="stat-card"><div class="stat-val" style="font-size:18px">'+r.abvTarget+'%</div><div class="stat-label">ABV</div></div></div>'
+    +'<div class="grid-3" id="recipe-targets-live">'+((typeof recipeConfigTargetsHtml==='function')?recipeConfigTargetsHtml(r,scaleVol,ensureRecipeConfig(r)):'')+'</div>'
     +'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'
     +r.tags.map(function(t){return'<span class="recipe-tag">'+escHtml(t)+'</span>';}).join('')
     +'</div></div></div>'
