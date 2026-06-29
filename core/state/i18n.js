@@ -541,6 +541,7 @@ var UI_PHRASES={
   'Very slow (stays liquid)':'Zeer traag (blijft vloeibaar)','Slow':'Traag','Moderate':'Matig','Fast':'Snel','Very fast (sets in days)':'Zeer snel (zet binnen dagen)',
   'Fructophilic yeast required':'Fructofiele gist vereist','High fructose — watch the 1/3 break':'Hoog fructose — let op de 1/3-breuk',
   'This honey is not used in any built-in recipes — but you can substitute it into any recipe where the character fits, or design a custom recipe around it.':'Deze honing wordt in geen enkel ingebouwd recept gebruikt — maar je kunt het in elk recept vervangen waar het karakter past, of een eigen recept eromheen ontwerpen.',
+  'Buckwheat (less malty, more medicinal)':'Boekweit (minder moutig, medicinaler)','Acacia (in profile, though much faster crystallization)':'Acacia (qua profiel, maar veel snellere kristallisatie)',
   // supplier type labels (lowercase = select options, uppercase = chips)
   'beekeeper':'imker','shop':'winkel','market':'markt',
   'BEEKEEPER':'IMKER','SHOP':'WINKEL','MARKET':'MARKT',
