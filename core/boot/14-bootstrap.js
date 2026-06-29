@@ -5,7 +5,7 @@
 // ==================== INIT ====================
 function updateTopbarDate(){
   var el=document.getElementById('topbar-date');
-  if(el)el.textContent=new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}).toUpperCase();
+  if(el)el.textContent=new Date().toLocaleDateString(_dloc(),{weekday:'short',day:'numeric',month:'short'}).toUpperCase();
 }
 
 async function init(){
@@ -82,6 +82,7 @@ async function init(){
   }
   if(!APP.settings.favoriteRecipes)APP.settings.favoriteRecipes=[];
   rebuildRecipes(); // Re-merge after loadData populated customRecipes
+  if(typeof applyUiLanguage==='function')applyUiLanguage(); // localise the static app shell
   // Hash routing: support QR code deep-links like #batch=b1, #recipe=r9, #view=cellar
   handleHashRoute();
   window.addEventListener('hashchange',handleHashRoute);
@@ -277,6 +278,7 @@ function a11yEnhance(root){
         var ttl=modal.querySelector('.modal-title');
         if(ttl&&!modal.getAttribute('aria-label'))modal.setAttribute('aria-label',ttl.textContent.trim());
         a11yEnhance(modal);
+        if(typeof translateChrome==='function')translateChrome(modal);
         var f=focusables(modal);if(f.length){try{f[0].focus();}catch(e){}}
       });
       Array.prototype.forEach.call(m.removedNodes,function(n){

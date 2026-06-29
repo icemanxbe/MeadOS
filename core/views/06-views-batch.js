@@ -190,7 +190,7 @@ function renderDashboard(){
     +'</div>'
     +'<div>'
     +'<div style="font-family:var(--font-display);font-size:11px;color:var(--gold);letter-spacing:2px;margin-bottom:12px">✦ TODAY\'S TASKS</div>'
-    +'<div class="coach-box"><div class="coach-title">⚗ DAILY BREW LOG · '+new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+'</div>'
+    +'<div class="coach-box"><div class="coach-title">⚗ DAILY BREW LOG · '+new Date().toLocaleDateString(_dloc(),{weekday:'long',day:'numeric',month:'long'})+'</div>'
     +'<div class="coach-tasks">'+taskHtml+'</div>'
     +(todayTasks.length?'<div style="margin-top:12px"><button class="btn btn-secondary btn-sm" onclick="showView(\'coach\')">See full briefing →</button></div>':'')
     +'</div>'
@@ -289,7 +289,7 @@ function renderOnThisDayCard(){
   });
   var groupOrder=Object.keys(yearGroups).map(Number).sort(function(a,b){return a-b;});
 
-  var html='<div class="card" style="margin-top:16px;border-left:3px solid var(--gold2)"><div class="card-header"><div class="card-title">📅 ON THIS DAY · '+today.toLocaleDateString('en-GB',{day:'numeric',month:'long'})+'</div></div>'
+  var html='<div class="card" style="margin-top:16px;border-left:3px solid var(--gold2)"><div class="card-header"><div class="card-title">📅 ON THIS DAY · '+today.toLocaleDateString(_dloc(),{day:'numeric',month:'long'})+'</div></div>'
     +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:14px;font-style:italic;line-height:1.55">What you were brewing on this calendar day in previous years.</div>'
     +groupOrder.map(function(y){
       var label=y===1?'1 year ago':y+' years ago';
@@ -771,7 +771,7 @@ function renderBatchDetail(){
         var dayLabel=td.isDue?' (TODAY)':(overdue?' ('+fmtDuration(td.daysFromDue)+' overdue — DO NOW)':td.done?' (done)':' (in '+fmtDuration(-td.daysFromDue)+')');
         return'<div class="coach-box" style="margin-bottom:16px'+(overdue?';border-color:var(--red);border-left:4px solid var(--red2);background:linear-gradient(135deg,#251012,#180b0b)':'')+'"><div class="coach-title"'+(overdue?' style="color:var(--red2)"':'')+'>'+(overdue?'⚠':'⚗')+' ACTION DUE — DAY '+td.day+dayLabel+'</div>'
           +'<div style="font-family:var(--font-display);font-size:15px;color:'+(overdue?'var(--red2)':'var(--gold2)')+';margin-bottom:8px">'+escHtml(td.title)+'</div>'
-          +'<div class="coach-text">'+escHtml(td.desc)+'</div>'
+          +'<div class="coach-text">'+escHtml(stepDescL(td.desc))+'</div>'
           +'<div class="coach-tasks" style="margin-top:12px"><div class="coach-task"><div class="task-cb '+(td.done?'checked':'')+'" onclick="toggleTask(\''+td.id+'\',this)">'+(td.done?'✓':'')+'</div><span style="font-size:13px">'+(td.done?'Done today — uncheck if not':'Mark as completed')+'</span></div></div></div>';
       }).join('')
         :'<div class="info-box green" style="margin-bottom:16px"><div style="font-size:13px;color:var(--green2)">✓ No action required today. Check airlock water level and ambient temperature.</div></div>')
@@ -857,18 +857,24 @@ function renderBatchDetail(){
       +'<option value="crown"'+((bottling.closure||'crown')!=='cork'?' selected':'')+'>⭕ Crown caps</option>'
       +'<option value="cork"'+(bottling.closure==='cork'?' selected':'')+'>🪵 Corks</option>'
       +'</select></div></div>'
-      +(!bottling.date?'<div style="font-size:11.5px;color:var(--text3);font-style:italic;margin:-4px 0 12px">Bottles and '+((bottling.closure==='cork')?'corks':'caps')+' will be deducted from your tracked supplies.</div>':'')
+      +(!bottling.date?'<div style="font-size:11.5px;color:var(--text3);font-style:italic;margin:-4px 0 12px">'+(appLang()==='nl'?'Flessen en '+((bottling.closure==='cork')?'kurken':'doppen')+' worden afgetrokken van je bijgehouden voorraad.':'Bottles and '+((bottling.closure==='cork')?'corks':'caps')+' will be deducted from your tracked supplies.')+'</div>':'')
       +'<div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="bt-notes" placeholder="Bottle type, cap/cork, storage location…">'+escHtml(bottling.notes||'')+'</textarea></div>'
       +'<button class="btn btn-primary" onclick="saveBottling(\''+b.id+'\')">'+(bottling.date?'Update':'Record')+' Bottling</button>'
       +(bottling.date?' <button class="btn btn-danger" onclick="clearBottling(\''+b.id+'\')">Clear</button>':'')
       +'<script>setTimeout(updateBottlingTotalDisplay,10);<\/script>'
       +'</div></div>'
-      +'<div><div class="card"><div class="card-header"><div class="card-title">BOTTLE LABEL</div><div style="display:flex;gap:6px"><button class="btn btn-secondary btn-sm" onclick="downloadLabel(\''+b.id+'\')" title="Save as PNG">⬇ Save</button><button class="btn btn-secondary btn-sm" onclick="printLabel(\''+b.id+'\')" title="Print">🖨 Print</button></div></div>'
+      +'<div><div class="card"><div class="card-header"><div class="card-title">BOTTLE LABEL</div><div style="display:flex;gap:6px;flex-wrap:wrap">'
+      +((recipe&&typeof studioHasBack==='function'&&studioHasBack(recipe.id))
+        ?'<button class="btn btn-secondary btn-sm" onclick="downloadLabel(\''+b.id+'\',\'front\')" title="Save the front label as PNG">⬇ Front</button>'
+          +'<button class="btn btn-secondary btn-sm" onclick="downloadLabel(\''+b.id+'\',\'back\')" title="Save the back label as PNG">⬇ Back</button>'
+          +'<button class="btn btn-secondary btn-sm" onclick="downloadLabel(\''+b.id+'\',\'both\')" title="Save front and back as two separate PNG files">⬇ Both</button>'
+        :'<button class="btn btn-secondary btn-sm" onclick="downloadLabel(\''+b.id+'\')" title="Save as PNG">⬇ Save</button>')
+      +'<button class="btn btn-secondary btn-sm" onclick="printLabel(\''+b.id+'\')" title="Print">🖨 Print</button></div></div>'
       // Cap the preview at 420px so wide screens don\'t blow up the 900×900
       // square label image into a half-meter horse mosaic. Centered with margin
       // auto. The PNG/print outputs are unaffected — they render at full res.
       +'<div style="max-width:760px;margin:0 auto">'+renderBatchLabel(recipe?recipe.id:'r1',bottling.abv||currentABV,{batch:b,maxWidth:'420px'})+'</div>'
-      +'<div style="font-size:12px;color:var(--text3);margin-top:12px;font-style:italic;text-align:center">ABV is baked into the hexagon. <strong>Save</strong> downloads a PNG; <strong>Print</strong> opens a print dialog sized for bottle labels.</div>'
+      +'<div style="font-size:12px;color:var(--text3);margin-top:12px;font-style:italic;text-align:center">'+(appLang()==='nl'?'Het alcoholpercentage zit verwerkt in de zeshoek. <strong>Opslaan</strong> downloadt een PNG; <strong>Afdrukken</strong> opent een printdialoog op flesetiket-formaat.':'ABV is baked into the hexagon. <strong>Save</strong> downloads a PNG; <strong>Print</strong> opens a print dialog sized for bottle labels.')+'</div>'
       +'</div>'
       +(bottling.date
         ?'<div class="card" style="margin-top:16px"><div class="card-header"><div class="card-title">📦 STORAGE BOX LABEL</div><div style="display:flex;gap:6px"><button class="btn btn-secondary btn-sm" onclick="downloadStorageLabel(\''+b.id+'\')" title="Save as high-res PNG">⬇ Save</button><button class="btn btn-secondary btn-sm" onclick="printStorageLabel(\''+b.id+'\')" title="Print at 15cm × 10cm">🖨 Print</button></div></div>'
@@ -877,7 +883,7 @@ function renderBatchDetail(){
         // at its intrinsic viewBox dimensions (1500×1000) which overflows on
         // wide screens.
         +'<div style="max-width:560px;margin:0 auto;background:#faf3e0;padding:8px;border-radius:var(--radius);overflow:hidden"><div style="width:100%;line-height:0">'+renderStorageLabelSVG(b).replace('<svg ','<svg style="width:100%;height:auto;display:block" ')+'</div></div>'
-        +'<div style="font-size:12px;color:var(--text3);margin-top:12px;font-style:italic;line-height:1.55">Stick this on the side of your aging-storage box for quick identification across the cellar. Includes batch name, style, ABV, drinking window (ready / peak / drink-by), bottle contents, and a QR code linking back to this batch. Prints at 15×10 cm.</div>'
+        +'<div style="font-size:12px;color:var(--text3);margin-top:12px;font-style:italic;line-height:1.55">'+(appLang()==='nl'?'Plak dit op de zijkant van je rijpings-opslagdoos voor snelle herkenning in de kelder. Bevat partijnaam, stijl, alcoholpercentage, drinkvenster (klaar / hoogtepunt / drink-voor), flesinhoud, en een QR-code die terugverwijst naar deze partij. Print op 15×10 cm.':'Stick this on the side of your aging-storage box for quick identification across the cellar. Includes batch name, style, ABV, drinking window (ready / peak / drink-by), bottle contents, and a QR code linking back to this batch. Prints at 15×10 cm.')+'</div>'
         +'</div>'
         +renderTimeCapsulesCard(b)
         +renderCellarSublocationCard(b)
@@ -1293,10 +1299,11 @@ function renderCoach(){
       });
       var nextTask=tasks.find(function(t){return t.isFuture;});
       var color=getBatchColor(b);
+      var _nl=(typeof appLang==='function'&&appLang()==='nl');
       var statusMsg='';
-      if(status==='fermenting')statusMsg='Active fermentation underway. Day '+day+' — gravity dropping, CO₂ being produced. Keep temperature stable; resist opening the vessel.';
-      else if(status==='conditioning')statusMsg='Fermentation mostly complete. Mead is conditioning and clearing. Confirm gravity stability before racking.';
-      else if(status==='aging')statusMsg=b.name+' is aging gracefully. The harder it is to wait, the more rewarding the result.';
+      if(status==='fermenting')statusMsg=_nl?('Actieve gisting aan de gang. Dag '+day+' — dichtheid daalt, CO₂ wordt geproduceerd. Houd de temperatuur stabiel; weersta de drang het vat te openen.'):('Active fermentation underway. Day '+day+' — gravity dropping, CO₂ being produced. Keep temperature stable; resist opening the vessel.');
+      else if(status==='conditioning')statusMsg=_nl?'Gisting grotendeels voltooid. De mede conditioneert en klaart. Bevestig dichtheidsstabiliteit vóór het overhevelen.':'Fermentation mostly complete. Mead is conditioning and clearing. Confirm gravity stability before racking.';
+      else if(status==='aging')statusMsg=_nl?(b.name+' rijpt gracieus. Hoe moeilijker het wachten, hoe lonender het resultaat.'):(b.name+' is aging gracefully. The harder it is to wait, the more rewarding the result.');
       return'<div class="card" style="margin-bottom:16px;padding:0;overflow:hidden">'
         +'<div style="height:3px;background:'+color+'"></div>'
         +'<div style="padding:18px">'
@@ -1305,14 +1312,14 @@ function renderCoach(){
         +'<div class="info-box" style="margin:0 0 12px;border-left-color:'+color+'"><div style="font-size:13px;color:var(--text2)">'+statusMsg+'</div></div>'
         +(visibleTasks.length?visibleTasks.map(function(td){
           var overdueClass=td.isOverdue?' overdue':'';
-          var dayLabel=td.isDue?' (TODAY)':(td.isOverdue?' ('+fmtDuration(td.daysFromDue)+' overdue — DO NOW)':td.done?' (done)':' (in '+fmtDuration(-td.daysFromDue)+')');
-          return'<div class="coach-box'+overdueClass+'" style="margin-bottom:12px'+(td.isOverdue?';border-color:var(--red);border-left:4px solid var(--red2);background:linear-gradient(135deg,#251012,#180b0b)':'')+'"><div class="coach-title"'+(td.isOverdue?' style="color:var(--red2)"':'')+'>'+(td.isOverdue?'⚠':'⚗')+' ACTION DUE — DAY '+td.day+dayLabel+'</div>'
+          var dayLabel=_nl?(td.isDue?' (VANDAAG)':(td.isOverdue?' ('+fmtDuration(td.daysFromDue)+' te laat — NU DOEN)':td.done?' (gedaan)':' (over '+fmtDuration(-td.daysFromDue)+')')):(td.isDue?' (TODAY)':(td.isOverdue?' ('+fmtDuration(td.daysFromDue)+' overdue — DO NOW)':td.done?' (done)':' (in '+fmtDuration(-td.daysFromDue)+')'));
+          return'<div class="coach-box'+overdueClass+'" style="margin-bottom:12px'+(td.isOverdue?';border-color:var(--red);border-left:4px solid var(--red2);background:linear-gradient(135deg,#251012,#180b0b)':'')+'"><div class="coach-title"'+(td.isOverdue?' style="color:var(--red2)"':'')+'>'+(td.isOverdue?'⚠':'⚗')+(_nl?' ACTIE VEREIST — DAG ':' ACTION DUE — DAY ')+td.day+dayLabel+'</div>'
             +'<div style="font-family:var(--font-display);font-size:14px;color:'+(td.isOverdue?'var(--red2)':'var(--gold2)')+';margin-bottom:6px">'+escHtml(td.title)+'</div>'
             +'<div class="coach-text">'+escHtml(annotateNutrientDesc(td.desc))+'</div>'
             +'<div class="coach-tasks" style="margin-top:12px"><div class="coach-task"><div class="task-cb '+(td.done?'checked':'')+'" onclick="toggleTask(\''+td.id+'\',this)">'+(td.done?'✓':'')+'</div><span style="font-size:13px">'+(td.done?'Done today — uncheck if not':'Mark as done')+'</span></div></div></div>';
         }).join('')
           :'<div class="info-box green" style="margin-bottom:12px"><div style="font-size:13px;color:var(--green2)">✓ No action today. Verify airlock water and temperature.</div></div>')
-        +(nextTask?'<div style="font-size:13px;color:var(--text3)">Next: <span style="color:var(--text2)">Day '+nextTask.day+' — '+escHtml(nextTask.title)+'</span> (in '+fmtDuration(-nextTask.daysFromDue)+')</div>':'')
+        +(nextTask?'<div style="font-size:13px;color:var(--text3)">'+(_nl?'Volgende: ':'Next: ')+'<span style="color:var(--text2)">'+(_nl?'Dag ':'Day ')+nextTask.day+' — '+escHtml((_nl&&typeof STEP_TITLE_NL!=='undefined'&&STEP_TITLE_NL[nextTask.title])||nextTask.title)+'</span> ('+(_nl?'over ':'in ')+fmtDuration(-nextTask.daysFromDue)+')</div>':'')
         +'</div></div>';
     }).join('');
   }
@@ -1330,7 +1337,7 @@ function renderCoach(){
   var rRange=(rLo!=null&&rHi!=null)?rLo+'-'+rHi+'°C':'each yeast’s optimal range';
   var tempReminder='Fermentation space at '+rRange+'? '+(rStrains.length===1?'Even brief swings stress '+rStrains[0]+'.':(rStrains.length>1?'Even brief swings stress yeast — your batches use '+rStrains.join(', ')+'.':'Even brief swings stress yeast.'));
   return'<div class="page-title">Daily Coach</div>'
-    +'<div class="page-subtitle">'+d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+' · Morning Briefing</div>'
+    +'<div class="page-subtitle">'+d.toLocaleDateString(_dloc(),{weekday:'long',day:'numeric',month:'long',year:'numeric'})+' · '+_UI('Morning Briefing','Ochtendbriefing')+'</div>'
     +'<div class="ornament">— ⬡ ✦ ⬡ —</div>'
     +'<div style="margin:16px 0">'+briefs+'</div>'
     +renderCoachDrinkingSection()
@@ -1369,7 +1376,7 @@ function renderCoachDrinkingSection(){
       var titleColor=/peak/i.test(td.title)?'var(--green2)':(/max|approaching/i.test(td.title)?'var(--red2)':'var(--gold2)');
       return'<div style="background:rgba(0,0,0,0.18);border-radius:var(--radius);padding:12px;margin-bottom:8px;border-left:3px solid '+titleColor+'">'
         +'<div style="font-family:var(--font-display);font-size:13px;color:'+titleColor+';margin-bottom:4px;letter-spacing:1px">'+icon+' '+escHtml(td.title)+'</div>'
-        +'<div style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:10px">'+escHtml(td.desc)+'</div>'
+        +'<div style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:10px">'+escHtml(stepDescL(td.desc))+'</div>'
         +'<div class="coach-task" style="margin-top:4px"><div class="task-cb '+(done?'checked':'')+'" onclick="toggleTask(\''+td.id+'\',this)">'+(done?'✓':'')+'</div><span style="font-size:12.5px">'+(done?'Acknowledged today':'Mark acknowledged')+'</span></div>'
         +'</div>';
     }).join('');

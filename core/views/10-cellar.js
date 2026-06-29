@@ -256,7 +256,7 @@ function renderCellar(){
       +'<div style="font-family:var(--font-display);font-size:15px;color:'+color+';letter-spacing:1px;display:flex;align-items:baseline;gap:8px;flex-wrap:wrap"><span style="overflow:hidden;text-overflow:ellipsis;min-width:0">'+escHtml(b.name)+'</span>'
       +(b.serial?'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);padding:1px 7px;border-radius:8px;letter-spacing:0.5px;white-space:nowrap">#'+escHtml(b.serial)+'</span>':'')
       +'</div>'
-      +'<div style="font-size:12px;color:var(--text3);margin-top:3px;line-height:1.7">'+escHtml(recipe?recipe.style:(b.style||'Custom'))+' · Bottled '+fmtDate(bot.date)
+      +'<div style="font-size:12px;color:var(--text3);margin-top:3px;line-height:1.7">'+escHtml(recipe?recipe.style:(b.style||'Custom'))+' · '+(appLang()==='nl'?'Gebotteld':'Bottled')+' '+fmtDate(bot.date)
       +agingStr
       +(perLStr?' · <span style="color:var(--green2);font-family:var(--font-mono)">'+perLStr+'</span>':'')
       +(perBottleStr?' · <span style="color:var(--gold2);font-family:var(--font-mono);font-size:11px">'+perBottleStr+'</span>':'')
@@ -481,7 +481,7 @@ async function drawCellarTempChart(en){
           filter:function(item){return!String(item.dataset.label||'').startsWith('_');},
           callbacks:{
             label:function(item){return item.parsed.y.toFixed(1)+'°C';},
-            title:function(items){if(!items.length)return'';return new Date(items[0].parsed.x).toLocaleString('en-GB',{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});}
+            title:function(items){if(!items.length)return'';return new Date(items[0].parsed.x).toLocaleString(_dloc(),{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});}
           }
         }
       },
@@ -491,7 +491,7 @@ async function drawCellarTempChart(en){
             var d=new Date(v);
             return hours<=24
               ?d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})
-              :d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
+              :d.toLocaleDateString(_dloc(),{day:'2-digit',month:'short'});
           }},
           grid:{color:'#2a2a35'}
         },

@@ -33,7 +33,7 @@ function openPermanentRecord(batchId){
 
   // Profile (drinking window) for sign-off section
   var profile=typeof getAgingProfile==='function'?getAgingProfile(b):null;
-  function fmtShort(d){if(!d)return'—';return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'});}
+  function fmtShort(d){if(!d)return'—';return d.toLocaleDateString(_dloc(),{day:'2-digit',month:'short',year:'numeric'});}
   var readyDate=profile&&bot.date?new Date(new Date(bot.date).getTime()+profile.minDays*86400000):null;
   var peakDate=profile&&bot.date?new Date(new Date(bot.date).getTime()+profile.peakDays*86400000):null;
   var drinkByDate=profile&&bot.date?new Date(new Date(bot.date).getTime()+profile.maxDays*86400000):null;

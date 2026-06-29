@@ -74,8 +74,8 @@ function openNewBatchModal(recipeId,scaledVol,opts){
         .map(function(t){return'<option value="'+escHtml(t)+'"'+(t==='Wildflower'&&!inStockOptions?' selected':'')+'>'+escHtml(t)+'</option>';}).join('');
       // If user has stocked honeys, default-select the first one
       if(inStockOptions){
-        return'<optgroup label="🟢 In your supplies">'+inStockOptions+'</optgroup>'
-          +'<optgroup label="Other varieties (not stocked)">'+otherOptions+'</optgroup>';
+        return'<optgroup label="'+uiL('🟢 In your supplies')+'">'+inStockOptions+'</optgroup>'
+          +'<optgroup label="'+uiL('Other varieties (not stocked)')+'">'+otherOptions+'</optgroup>';
       }
       return otherOptions;
     }())
@@ -99,8 +99,8 @@ function openNewBatchModal(recipeId,scaledVol,opts){
       var otherOptions=YEAST_STRAINS.filter(function(y){return!stockedStrains[y.id];})
         .map(function(y){return'<option value="'+escHtml(y.id)+'"'+(y.id==='m05'&&!inStockOptions?' selected':'')+'>'+escHtml(y.name)+'</option>';}).join('');
       if(inStockOptions){
-        return'<optgroup label="🟢 In your supplies">'+inStockOptions+'</optgroup>'
-          +'<optgroup label="Other strains (not stocked)">'+otherOptions+'</optgroup>';
+        return'<optgroup label="'+uiL('🟢 In your supplies')+'">'+inStockOptions+'</optgroup>'
+          +'<optgroup label="'+uiL('Other strains (not stocked)')+'">'+otherOptions+'</optgroup>';
       }
       return otherOptions;
     }())
@@ -137,8 +137,8 @@ function openNewBatchModal(recipeId,scaledVol,opts){
       var otherOptions=NUTRIENT_PRODUCTS.filter(function(p){return!stockedProducts[p.id];})
         .map(function(p){var tag=' ['+(p.protocol==='tosna'?'TOSNA':p.protocol==='goferm'?'rehydration':'SNA')+']';return'<option value="'+escHtml(p.id)+'"'+(p.id==='mj-mead'&&!inStockOptions?' selected':'')+'>'+escHtml(p.name)+tag+'</option>';}).join('');
       if(inStockOptions){
-        return'<optgroup label="🟢 In your supplies">'+inStockOptions+'</optgroup>'
-          +'<optgroup label="Other products (not stocked)">'+otherOptions+'</optgroup>';
+        return'<optgroup label="'+uiL('🟢 In your supplies')+'">'+inStockOptions+'</optgroup>'
+          +'<optgroup label="'+uiL('Other products (not stocked)')+'">'+otherOptions+'</optgroup>';
       }
       return otherOptions;
     }())
@@ -620,7 +620,7 @@ function renderBatchPhotos(b){
   if(!photos.length){
     return'<div class="card">'+head
       +'<div style="text-align:center;padding:30px 16px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">📷</div>'
-      +'<div style="font-size:13px;font-style:italic;line-height:1.5">No photos yet. Capture brew day, the fermentation, racking, or the finished bottles —<br>a visual diary of this batch\'s life.</div></div></div>';
+      +'<div style="font-size:13px;font-style:italic;line-height:1.5">'+(appLang()==='nl'?'Nog geen foto\'s. Leg de brouwdag, de gisting, het overhevelen of de afgewerkte flessen vast —<br>een visueel dagboek van het leven van deze partij.':'No photos yet. Capture brew day, the fermentation, racking, or the finished bottles —<br>a visual diary of this batch\'s life.')+'</div></div></div>';
   }
   var grid=photos.map(function(p){
     var st=photoStage(p.stage);
@@ -898,7 +898,7 @@ function openFailureModal(batchId){
   var isEdit=!!b.failed;
   var catChips=FAILURE_CATEGORIES.map(function(c){
     var isSel=f.category===c.id;
-    return'<span onclick="document.querySelectorAll(\'.fail-cat-chip\').forEach(function(el){el.classList.remove(\'sel\');el.style.background=\'var(--bg)\';el.style.color=\'var(--text2)\';el.style.borderColor=\'var(--border)\'});this.classList.add(\'sel\');this.style.background=\'rgba(232,196,106,0.15)\';this.style.color=\'var(--gold2)\';this.style.borderColor=\'var(--gold)\';document.getElementById(\'fail-cat\').value=\''+c.id+'\'" class="fail-cat-chip'+(isSel?' sel':'')+'" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;background:'+(isSel?'rgba(232,196,106,0.15)':'var(--bg)')+';border:1px solid '+(isSel?'var(--gold)':'var(--border)')+';color:'+(isSel?'var(--gold2)':'var(--text2)')+';padding:5px 11px;border-radius:14px;margin:3px 4px 3px 0;transition:all 0.15s">'+c.icon+' '+escHtml(c.label)+'</span>';
+    return'<span onclick="document.querySelectorAll(\'.fail-cat-chip\').forEach(function(el){el.classList.remove(\'sel\');el.style.background=\'var(--bg)\';el.style.color=\'var(--text2)\';el.style.borderColor=\'var(--border)\'});this.classList.add(\'sel\');this.style.background=\'rgba(232,196,106,0.15)\';this.style.color=\'var(--gold2)\';this.style.borderColor=\'var(--gold)\';document.getElementById(\'fail-cat\').value=\''+c.id+'\'" class="fail-cat-chip'+(isSel?' sel':'')+'" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;background:'+(isSel?'rgba(232,196,106,0.15)':'var(--bg)')+';border:1px solid '+(isSel?'var(--gold)':'var(--border)')+';color:'+(isSel?'var(--gold2)':'var(--text2)')+';padding:5px 11px;border-radius:14px;margin:3px 4px 3px 0;transition:all 0.15s">'+c.icon+' '+escHtml(proseL(c.label))+'</span>';
   }).join('');
   var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:680px;max-height:92vh;display:flex;flex-direction:column">'
     +'<div class="modal-title">⚰ '+(isEdit?'EDIT POSTMORTEM':'MARK BATCH AS FAILED')+'</div>'
@@ -960,8 +960,8 @@ function renderFailureBanner(b){
   var cat=FAILURE_CATEGORIES.find(function(c){return c.id===f.category;})||{label:f.category||'Unknown',icon:'⚰'};
   return'<div style="background:rgba(180,40,40,0.10);border-left:4px solid var(--red2);border-radius:var(--radius);padding:14px 18px;margin:12px 0">'
     +'<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:6px">'
-      +'<div style="font-family:var(--font-display);font-size:16px;color:var(--red2)">'+cat.icon+' Failed batch — '+escHtml(cat.label)+'</div>'
-      +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+(f.date?fmtDate(f.date):'')+(f.wasSaved?' · SALVAGED':' · DUMPED')+'</div>'
+      +'<div style="font-family:var(--font-display);font-size:16px;color:var(--red2)">'+cat.icon+' '+(appLang()==='nl'?'Mislukte partij':'Failed batch')+' — '+escHtml(proseL(cat.label))+'</div>'
+      +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+(f.date?fmtDate(f.date):'')+(appLang()==='nl'?(f.wasSaved?' · GERED':' · WEGGEGOOID'):(f.wasSaved?' · SALVAGED':' · DUMPED'))+'</div>'
     +'</div>'
     +(f.whatWentWrong?'<div style="font-size:12.5px;color:var(--text2);line-height:1.6;margin-bottom:6px"><strong style="color:var(--red2);font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase">What went wrong</strong><br>'+escHtml(f.whatWentWrong)+'</div>':'')
     +(f.whatToTryNext?'<div style="font-size:12.5px;color:var(--text2);line-height:1.6"><strong style="color:var(--gold2);font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase">What to try next time</strong><br>'+escHtml(f.whatToTryNext)+'</div>':'')

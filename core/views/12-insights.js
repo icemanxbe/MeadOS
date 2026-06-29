@@ -129,7 +129,7 @@ function renderFailedBatchInsights(){
     return'<div onclick="showView(\'batch\',\''+b.id+'\')" style="cursor:pointer;background:var(--bg);border-left:3px solid var(--red2);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
       +'<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px">'
         +'<div style="display:flex;align-items:baseline;gap:8px"><div style="font-family:var(--font-display);font-size:13px;color:'+color+'">'+escHtml(b.name)+'</div>'+(b.serial?'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3)">#'+escHtml(b.serial)+'</div>':'')+'</div>'
-        +'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--red2);letter-spacing:1.5px">'+cat.icon+' '+escHtml(cat.label.toUpperCase())+'</div>'
+        +'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--red2);letter-spacing:1.5px">'+cat.icon+' '+escHtml(proseL(cat.label).toUpperCase())+'</div>'
       +'</div>'
       +(f.whatWentWrong?'<div style="font-size:11.5px;color:var(--text2);line-height:1.5;font-style:italic">'+escHtml(f.whatWentWrong.length>180?f.whatWentWrong.slice(0,180)+'…':f.whatWentWrong)+'</div>':'')
       +(f.whatToTryNext?'<div style="font-size:11px;color:var(--gold2);line-height:1.5;margin-top:6px;border-top:1px dotted var(--border);padding-top:5px"><strong style="font-family:var(--font-mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase">→</strong> '+escHtml(f.whatToTryNext.length>140?f.whatToTryNext.slice(0,140)+'…':f.whatToTryNext)+'</div>':'')
@@ -142,7 +142,7 @@ function renderFailedBatchInsights(){
     if(commonYeast&&commonYeast[1]>=2)patternRows.push({k:'Most common yeast',v:commonYeast[0],detail:'in '+commonYeast[1]+' of '+failed.length+' failures'});
     if(commonStyle&&commonStyle[1]>=2)patternRows.push({k:'Most common style',v:commonStyle[0],detail:'in '+commonStyle[1]+' of '+failed.length+' failures'});
     if(topCategory&&byCategory[topCategory].count>=2){
-      var topCatLabel=(FAILURE_CATEGORIES.find(function(c){return c.id===topCategory;})||{label:topCategory}).label;
+      var topCatLabel=proseL((FAILURE_CATEGORIES.find(function(c){return c.id===topCategory;})||{label:topCategory}).label);
       patternRows.push({k:'Most common failure',v:topCatLabel,detail:byCategory[topCategory].count+' of '+failed.length+' failures'});
     }
   }

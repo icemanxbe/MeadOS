@@ -260,32 +260,28 @@ function toggleAnalytics(){
 
 function annotateNutrientDesc(desc){
   if(!desc)return desc;
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
   var sachet=APP.settings.sachetSize||12;
-  // Match patterns like "Add 6g nutrient", "add 12 g yeast nutrient", "6g of nutrient", etc.
-  desc=desc.replace(/(\d+(?:\.\d+)?)\s*g\s+(?:of\s+)?(?:yeast\s+)?nutrient/gi,function(m,g){
-    var grams=parseFloat(g);
+  // Reminder triggers are computed from the ENGLISH source (reliable keyword
+  // match) BEFORE translating, so they still fire on the Dutch body.
+  var enLow=String(desc).toLowerCase();
+  var needSorbate=/(metabisulf|metabisulph|campden|k-?meta|sodium\s+metabisul)/i.test(desc)&&!/sorbate/i.test(desc)&&/(stabili|back-?sweet|sweeten|restart|prevent)/i.test(enLow);
+  var needRack=/\brack/i.test(desc)&&!/(stable|finished|fermentation is done|two readings|done fermenting)/i.test(enLow);
+  var needBottle=/\bbottl(e|es|ed|ing)\b/i.test(desc)&&!/earliest/i.test(enLow)&&!/priming|carbonat|sparkling/i.test(enLow);
+  // Translate the body to Dutch (no-op in English).
+  if(nl&&typeof STEP_DESC_NL!=='undefined'&&STEP_DESC_NL[desc])desc=STEP_DESC_NL[desc];
+  // Sachet hint: "6g nutrient" (EN) / "6 g voeding" (NL) → "(~0.5 sachets)".
+  desc=desc.replace(nl?/(\d+(?:[.,]\d+)?)\s*g\s+(?:gist)?voeding/gi:/(\d+(?:\.\d+)?)\s*g\s+(?:of\s+)?(?:yeast\s+)?nutrient/gi,function(m,g){
+    var grams=parseFloat(String(g).replace(',','.'));
     var n=Math.round(grams/sachet*10)/10;
     var nDisplay=Math.abs(n-Math.round(n))<0.05?Math.round(n):n;
-    var lab=parseFloat(nDisplay)===1?'sachet':'sachets';
-    return m+' (~'+nDisplay+' '+lab+')';
+    var lab=nl?'sachets':(parseFloat(nDisplay)===1?'sachet':'sachets');
+    return m+' (~'+String(nDisplay).replace('.',nl?',':'.')+' '+lab+')';
   });
-  // ---- Universal brewing-convention reminders, applied to every recipe's steps
-  // so the guidance is consistent everywhere they render (detail, coach, calendar).
-  var low=desc.toLowerCase();
-  // Stabilising with metabisulfite but NOT sorbate won't actually stop a restart.
-  if(/(metabisulf|metabisulph|campden|k-?meta|sodium\s+metabisul)/i.test(desc)
-      && !/sorbate/i.test(desc)
-      && /(stabili|back-?sweet|sweeten|restart|prevent)/i.test(low)){
-    desc+=' ⚠ To truly stabilise (e.g. before back-sweetening), add potassium sorbate (~1 g/4.5 L) ALONGSIDE the metabisulfite — metabisulfite alone will not stop the yeast restarting.';
-  }
-  // Racking should be gated on a finished fermentation, not a calendar day.
-  if(/\brack/i.test(desc) && !/(stable|finished|fermentation is done|two readings|done fermenting)/i.test(low)){
-    desc+=' (Rack only once fermentation is finished — a stable gravity across two readings — not on a fixed day.)';
-  }
-  // A "bottle" step is the EARLIEST sensible point, never a deadline.
-  if(/\bbottl(e|es|ed|ing)\b/i.test(desc) && !/earliest/i.test(low) && !/priming|carbonat|sparkling/i.test(low)){
-    desc+=' (This is the earliest sensible bottling point, not a deadline — longer bulk aging is generally safer and better.)';
-  }
+  // ---- Universal brewing-convention reminders (right language per trigger).
+  if(needSorbate)desc+=nl?' ⚠ Om echt te stabiliseren (bv. vóór terugzoeten), voeg kaliumsorbaat (~1 g/4,5 L) TOE NAAST het metabisulfiet — metabisulfiet alleen belet de gist niet te herstarten.':' ⚠ To truly stabilise (e.g. before back-sweetening), add potassium sorbate (~1 g/4.5 L) ALONGSIDE the metabisulfite — metabisulfite alone will not stop the yeast restarting.';
+  if(needRack)desc+=nl?' (Hevel pas over zodra de gisting klaar is — een stabiele dichtheid over twee metingen — niet op een vaste dag.)':' (Rack only once fermentation is finished — a stable gravity across two readings — not on a fixed day.)';
+  if(needBottle)desc+=nl?' (Dit is het vroegst zinvolle bottelmoment, geen deadline — langere bulkrijping is doorgaans veiliger en beter.)':' (This is the earliest sensible bottling point, not a deadline — longer bulk aging is generally safer and better.)';
   return desc;
 }
 
@@ -301,8 +297,9 @@ function injectCareSteps(steps){
   // recipe explains the aeration principle (oxygenate early, then STOP after
   // the 1/3 break), which is the most commonly missed mead technique.
   if(steps.some(function(s){return s._care;}))return steps;
-  var care={day:1,_care:true,title:'Aerate & Degas · daily through the 1/3 break',
-    desc:'During the first third of fermentation, stir the must vigorously once or twice a day. This drives off dissolved CO₂ (degassing) and gives the multiplying yeast the oxygen they need to build healthy cell walls — the single biggest thing you can do for a clean, stall-free ferment. Always degas BEFORE a nutrient addition so it doesn\'t foam over. Then STOP aerating after the 1/3 sugar break: once the yeast switch to anaerobic alcohol production, adding oxygen oxidises the mead instead of helping it.'};
+  var _nl=(typeof appLang==='function'&&appLang()==='nl');
+  var care={day:1,_care:true,title:_nl?'Beluchten & ontgassen · dagelijks tot de 1/3-breuk':'Aerate & Degas · daily through the 1/3 break',
+    desc:_nl?'Roer tijdens het eerste derde van de gisting de most één of twee keer per dag krachtig. Dit drijft opgelost CO₂ uit (ontgassen) en geeft de vermenigvuldigende gist de zuurstof die ze nodig heeft om gezonde celwanden te bouwen — het belangrijkste wat je kunt doen voor een schone gisting die niet stilvalt. Ontgas altijd VÓÓR een voedingstoevoeging zodat het niet overschuimt. Stop daarna met beluchten na de 1/3-suikerbreuk: zodra de gist overschakelt op anaerobe alcoholproductie, oxideert toegevoegde zuurstof de mede in plaats van te helpen.':'During the first third of fermentation, stir the must vigorously once or twice a day. This drives off dissolved CO₂ (degassing) and gives the multiplying yeast the oxygen they need to build healthy cell walls — the single biggest thing you can do for a clean, stall-free ferment. Always degas BEFORE a nutrient addition so it doesn\'t foam over. Then STOP aerating after the 1/3 sugar break: once the yeast switch to anaerobic alcohol production, adding oxygen oxidises the mead instead of helping it.'};
   return steps.concat([care]).sort(function(a,b){return a.day-b.day;});
 }
 
@@ -311,6 +308,8 @@ function injectCareSteps(steps){
 function sugarBreakNote(steps){
   var refs=(steps||[]).some(function(s){return /sugar break|1\/3 break|⅓\s*break/i.test((s.title||'')+' '+(s.desc||''));});
   if(!refs)return'';
+  if(typeof appLang==='function'&&appLang()==='nl')return '<div style="margin-top:12px;padding:11px 13px;border-radius:var(--radius);background:var(--bg3);border-left:3px solid var(--gold);font-size:12px;color:var(--text2);line-height:1.6">'
+    +'<strong style="color:var(--gold2)">ℹ Wat is de “1/3-suikerbreuk”?</strong> Het is het punt waarop de gisting ongeveer een derde van de suiker heeft opgegeten — d.w.z. de dichtheid is een derde gezakt van je OG richting de verwachte einddichtheid (≈ OG − (OG − FG) ÷ 3). Voor een most van 1.100 die rond 1.000 eindigt is dat ongeveer <strong>SG 1.067</strong>, doorgaans bereikt rond dag 3–7. Het telt omdat gist vroeg voeding opneemt: alle stikstof — vooral DAP — moet <em>vóór</em> dit punt worden toegevoegd, en het is ook wanneer je stopt met beluchten.</div>';
   return '<div style="margin-top:12px;padding:11px 13px;border-radius:var(--radius);background:var(--bg3);border-left:3px solid var(--gold);font-size:12px;color:var(--text2);line-height:1.6">'
     +'<strong style="color:var(--gold2)">ℹ What\'s the “1/3 sugar break”?</strong> It\'s the point where fermentation has eaten about one-third of the sugar — i.e. the gravity has dropped one-third of the way from your OG down toward its expected final gravity (≈ OG − (OG − FG) ÷ 3). For a 1.100 must finishing near 1.000 that\'s about <strong>SG 1.067</strong>, usually reached around days 3–7. It matters because yeast absorb nutrients early: all nitrogen — especially DAP — should be added <em>before</em> this point, and it\'s also when you stop aerating.</div>';
 }
@@ -409,8 +408,9 @@ function scaleRecipeIngredients(r,scaleVol){
     // WATER: never a fixed volume to pour — you top up to the batch mark after
     // the honey/fruit/etc. are in (they add their own volume). Show that instead.
     if(/^spring water$/i.test(item.trim())||/^water$/i.test(item.trim())){
-      return Object.assign({},ing,{amount:'top up to the '+mark+' mark',
-        notes:note||'Add the honey and other ingredients first, then top up with water to the '+mark+' mark — do NOT pour this much water on top, it would overshoot the volume'});
+      var _nlw=(typeof appLang==='function'&&appLang()==='nl');
+      return Object.assign({},ing,{amount:_nlw?('bijvullen tot '+mark):('top up to the '+mark+' mark'),
+        notes:note||(_nlw?('Voeg eerst de honing en andere ingrediënten toe, vul dan bij met water tot '+mark+' — giet NIET zoveel water erbovenop, dat zou het volume overschrijden'):('Add the honey and other ingredients first, then top up with water to the '+mark+' mark — do NOT pour this much water on top, it would overshoot the volume'))});
     }
     var m=amt.match(/^~?\s*([0-9]+(?:\.[0-9]+)?)\s*(kg|g|L|ml)\b/i);
     if(!m)return Object.assign({},ing,{amount:amt,notes:note});
@@ -434,7 +434,8 @@ function scaleRecipeIngredients(r,scaleVol){
       amt=amt.replace(m[0],totalG+' g');
       amt=amt.replace(/\s*\([^)]*(?:packet|sachet)[^)]*\)/i,'');
       amt=amt.replace(/\s*·\s*[0-9.]+\s+(?:packet|sachet)s?/gi,'');
-      amt+='  ·  '+sachets+' '+(sachets===1?'packet':'packets');
+      if(typeof appLang==='function'&&appLang()==='nl')amt=amt.replace('(a part-pack covers 5 L — reseal & fridge the rest)','(een deel-pakje dekt 5 L — hersluit & koel de rest)').replace('(part-pack; reseal the rest)','(deel-pakje; hersluit de rest)');
+      amt+='  ·  '+sachets+' '+((typeof appLang==='function'&&appLang()==='nl')?(sachets===1?'pakje':'pakjes'):(sachets===1?'packet':'packets'));
     }else if(isNutrient&&unitLower==='g'){
       // NUTRIENT: scale grams linearly (that's correct — YAN demand is per L).
       // Sachet count uses ceiling math only for products SOLD in single-batch
@@ -454,7 +455,7 @@ function scaleRecipeIngredients(r,scaleVol){
       // Flag when you won't use a whole sachet so the rest can be saved.
       var sachetSz=parseFloat(APP.settings&&APP.settings.sachetSize)||12;
       if(grams>0&&grams<sachetSz-0.5){
-        note=(note?note+' · ':'')+'only ~'+Math.round(grams)+' g — under a full sachet, so save the rest for another batch';
+        note=(note?note+' · ':'')+((typeof appLang==='function'&&appLang()==='nl')?('slechts ~'+Math.round(grams)+' g — minder dan een vol sachet, bewaar de rest voor een andere partij'):('only ~'+Math.round(grams)+' g — under a full sachet, so save the rest for another batch'));
       }
     }else{
       // Everything else (honey, water, fruit, sulfite, sorbate, pectic):
@@ -657,7 +658,9 @@ function renderRecipeNutrientBlock(r){
     +'<div style="font-size:12.5px;color:var(--text3);font-style:italic;line-height:1.55;margin-bottom:12px">'+escHtml(p.notes)+'</div>'
     +'<div style="display:flex;flex-direction:column;gap:6px">'+recRows+'</div>'
     +(accRows?'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--gold2);letter-spacing:1.5px;margin:14px 0 6px">ALSO WORKS</div><div style="display:flex;flex-direction:column;gap:6px">'+accRows+'</div>':'')
-    +(goferm?'<div style="margin-top:12px;padding:9px 12px;background:rgba(122,160,64,0.08);border-left:3px solid var(--green);border-radius:var(--radius);font-size:11.5px;color:var(--text2);line-height:1.5"><strong style="color:var(--green2)">Rehydration:</strong> stir the dry yeast into warm water with <span style="cursor:pointer;color:var(--gold2)" onclick="currentNutrientId=\'goferm\';showView(\'nutrient-detail\')">Go-Ferm Protect</span> before pitching — primes sterols and micronutrients for a clean start, whatever schedule you choose. Add ALL nutrient doses before the 1/3 sugar break to avoid late-DAP fusels.</div>':'')
+    +(goferm?((typeof appLang==='function'&&appLang()==='nl')
+      ?'<div style="margin-top:12px;padding:9px 12px;background:rgba(122,160,64,0.08);border-left:3px solid var(--green);border-radius:var(--radius);font-size:11.5px;color:var(--text2);line-height:1.5"><strong style="color:var(--green2)">Rehydratie:</strong> roer de droge gist in warm water met <span style="cursor:pointer;color:var(--gold2)" onclick="currentNutrientId=\'goferm\';showView(\'nutrient-detail\')">Go-Ferm Protect</span> vóór het enten — dit primt sterolen en micronutriënten voor een schone start, welk schema je ook kiest. Voeg ALLE voedingsdoses toe vóór de 1/3-suikerbreuk om late-DAP-fuselalcoholen te vermijden.</div>'
+      :'<div style="margin-top:12px;padding:9px 12px;background:rgba(122,160,64,0.08);border-left:3px solid var(--green);border-radius:var(--radius);font-size:11.5px;color:var(--text2);line-height:1.5"><strong style="color:var(--green2)">Rehydration:</strong> stir the dry yeast into warm water with <span style="cursor:pointer;color:var(--gold2)" onclick="currentNutrientId=\'goferm\';showView(\'nutrient-detail\')">Go-Ferm Protect</span> before pitching — primes sterols and micronutrients for a clean start, whatever schedule you choose. Add ALL nutrient doses before the 1/3 sugar break to avoid late-DAP fusels.</div>'):'')
   +'</div>';
 }
 
@@ -678,12 +681,12 @@ function renderRecipeAdjunctBlock(r){
     return'<div style="background:var(--bg2);border:1px solid var(--border);border-left:3px solid '+c.color+';border-radius:var(--radius);padding:9px 12px">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;flex-wrap:wrap">'
         +'<span style="font-size:13px;min-width:16px">'+c.icon+'</span>'
-        +'<div style="font-family:var(--font-display);font-size:13px;color:var(--text);flex:1;letter-spacing:0.4px;min-width:120px">'+escHtml(a.name)+'</div>'
+        +'<div style="font-family:var(--font-display);font-size:13px;color:var(--text);flex:1;letter-spacing:0.4px;min-width:120px">'+escHtml(proseL(a.name))+'</div>'
         +'<span style="font-family:var(--font-mono);font-size:9px;color:'+c.color+';letter-spacing:1.2px;background:'+c.color+'1e;border:1px solid '+c.color+'55;padding:1px 6px;border-radius:8px">'+c.label+'</span>'
       +'</div>'
       +'<div style="display:flex;gap:10px;flex-wrap:wrap;padding-left:24px;margin-bottom:4px">'
-        +'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text2);background:var(--bg3);padding:1px 7px;border-radius:7px">'+escHtml(a.dose)+'</span>'
-        +'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:0.5px">⏱ '+escHtml(a.timing)+'</span>'
+        +'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text2);background:var(--bg3);padding:1px 7px;border-radius:7px">'+escHtml(proseL(a.dose))+'</span>'
+        +'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:0.5px">⏱ '+escHtml(proseL(a.timing))+'</span>'
       +'</div>'
       +'<div style="font-style:italic;color:var(--text3);font-size:11.5px;line-height:1.55;padding-left:24px">'+escHtml(a.effect)+'</div>'
     +'</div>';
@@ -693,7 +696,7 @@ function renderRecipeAdjunctBlock(r){
     +'<div style="font-size:12.5px;color:var(--text3);font-style:italic;line-height:1.6;margin-bottom:12px">'+escHtml(p.intro)+'</div>'
     +'<div style="display:flex;flex-direction:column;gap:7px">'+rows+'</div>'
     +(p.caution?'<div style="margin-top:12px;padding:9px 12px;background:rgba(196,90,90,0.09);border-left:3px solid var(--red2);border-radius:var(--radius);font-size:11.5px;color:var(--text2);line-height:1.55"><strong style="color:var(--red2)">Watch out:</strong> '+escHtml(p.caution)+'</div>':'')
-    +(typeof RECIPE_ADJUNCT_FOOTER!=='undefined'?'<div style="margin-top:12px;padding:10px 12px;background:rgba(0,0,0,0.16);border-radius:var(--radius);font-size:11.5px;color:var(--text2);line-height:1.7">'+RECIPE_ADJUNCT_FOOTER+'</div>':'')
+    +(typeof RECIPE_ADJUNCT_FOOTER!=='undefined'?'<div style="margin-top:12px;padding:10px 12px;background:rgba(0,0,0,0.16);border-radius:var(--radius);font-size:11.5px;color:var(--text2);line-height:1.7">'+((typeof appLang==='function'&&appLang()==='nl'&&typeof RECIPE_ADJUNCT_FOOTER_NL!=='undefined')?RECIPE_ADJUNCT_FOOTER_NL:RECIPE_ADJUNCT_FOOTER)+'</div>':'')
   +'</div>';
 }
 
@@ -703,11 +706,11 @@ function renderRecipeComboBlock(r){
   if(!c||!c.combos||!c.combos.length)return'';
   var rows=c.combos.map(function(x){
     return'<div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:11px 13px;margin-bottom:8px">'
-      +'<div style="font-family:var(--font-display);font-size:13.5px;color:var(--gold2);letter-spacing:0.4px;margin-bottom:8px">🎯 '+escHtml(x.target)+'</div>'
+      +'<div style="font-family:var(--font-display);font-size:13.5px;color:var(--gold2);letter-spacing:0.4px;margin-bottom:8px">🎯 '+escHtml(proseL(x.target))+'</div>'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'
-        +'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text);background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:8px"><span style="color:var(--text3)">honey</span> '+escHtml(x.honey)+'</span>'
-        +'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text);background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:8px"><span style="color:var(--text3)">yeast</span> '+escHtml(x.yeast)+'</span>'
-        +'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text);background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:8px"><span style="color:var(--text3)">nutrient</span> '+escHtml(x.nutrient)+'</span>'
+        +'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text);background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:8px"><span style="color:var(--text3)">honey</span> '+escHtml(proseL(x.honey))+'</span>'
+        +'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text);background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:8px"><span style="color:var(--text3)">yeast</span> '+escHtml(proseL(x.yeast))+'</span>'
+        +'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text);background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:8px"><span style="color:var(--text3)">nutrient</span> '+escHtml(proseL(x.nutrient))+'</span>'
       +'</div>'
       +'<div style="font-size:12px;color:var(--text2);line-height:1.6">'+escHtml(x.outcome)+'</div>'
     +'</div>';
@@ -833,7 +836,7 @@ function renderRecipeDetail(){
       var chips=r.linked.map(function(lk){
         var lr=APP.recipes.find(function(x){return x.id===lk.id;});
         if(!lr)return'';
-        return'<span onclick="currentRecipeId=\''+lr.id+'\';showView(\'recipe-detail\')" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;background:var(--bg3);border:1px solid '+lr.brandColor+'99;color:var(--text);padding:5px 11px;border-radius:14px">↔ '+escHtml(lr.name)+(lk.label?' · <span style="color:var(--text3)">'+escHtml(lk.label)+'</span>':'')+'</span>';
+        return'<span onclick="currentRecipeId=\''+lr.id+'\';showView(\'recipe-detail\')" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;background:var(--bg3);border:1px solid '+lr.brandColor+'99;color:var(--text);padding:5px 11px;border-radius:14px">↔ '+escHtml(proseL(lr.name))+(lk.label?' · <span style="color:var(--text3)">'+escHtml(proseL(lk.label))+'</span>':'')+'</span>';
       }).join('');
       if(!chips)return'';
       return'<div class="info-box" style="border-left-color:var(--gold);margin-bottom:16px">'
@@ -911,7 +914,7 @@ function renderRecipeDetail(){
         return header
           +'<div style="padding:9px 11px;background:'+rowBg+';border-radius:var(--radius);border-left:3px solid '+rowBorder+';margin-bottom:7px">'
           +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;flex-wrap:wrap">'
-          +'<div style="font-family:var(--font-display);font-size:13px;color:'+f.color2+';cursor:pointer" onclick="currentHoneyName=\''+f.honey+'\';showView(\'honey-detail\')">'+escHtml(f.honey)+' →</div>'
+          +'<div style="font-family:var(--font-display);font-size:13px;color:'+f.color2+';cursor:pointer" onclick="currentHoneyName=\''+f.honey+'\';showView(\'honey-detail\')">'+escHtml(proseL(f.honey))+' →</div>'
           +'<div style="display:flex;align-items:center;gap:6px">'+stock
           +'<span style="font-family:var(--font-mono);font-size:9px;color:'+f.color+';letter-spacing:0.5px">'+escHtml(f.badge)+'</span></div>'
           +'</div>'
@@ -920,7 +923,10 @@ function renderRecipeDetail(){
       }).join('');
       var fitSection=fitList.length
         ?'<div style="font-size:12.5px;color:var(--text3);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:1px">EVERY HONEY · HOW EACH ONE FITS</div>'
-          +'<div style="font-size:11.5px;color:var(--text3);font-style:italic;margin-bottom:4px;line-height:1.5">This recipe wants '+escHtml(ideal.label)+'. Each honey in the library is rated for it — <span style="color:var(--green2)">green</span> fits, <span style="color:var(--gold)">amber</span> works with a shift, <span style="color:var(--red2)">red</span> fights the style. Honeys you have in stock are highlighted and pinned to the top of their tier.</div>'
+          +(function(){var _nl=(typeof appLang==='function'&&appLang()==='nl');var IL={'a bold, robust honey':'een krachtige, robuuste honing','a light, delicate honey':'een lichte, delicate honing','a light honey that lets the fruit lead':'een lichte honing die het fruit laat leiden','a medium honey (bold honeys also work)':'een medium honing (krachtige honingen werken ook)','a medium-bodied honey':'een honing met medium body'};var lbl=escHtml(_nl?(IL[ideal.label]||ideal.label):ideal.label);
+            return _nl
+            ?'<div style="font-size:11.5px;color:var(--text3);font-style:italic;margin-bottom:4px;line-height:1.5">Dit recept wil '+lbl+'. Elke honing in de bibliotheek is ervoor beoordeeld — <span style="color:var(--green2)">groen</span> past, <span style="color:var(--gold)">amber</span> werkt met een verschuiving, <span style="color:var(--red2)">rood</span> botst met de stijl. Honingen die je op voorraad hebt, zijn gemarkeerd en bovenaan hun categorie vastgezet.</div>'
+            :'<div style="font-size:11.5px;color:var(--text3);font-style:italic;margin-bottom:4px;line-height:1.5">This recipe wants '+lbl+'. Each honey in the library is rated for it — <span style="color:var(--green2)">green</span> fits, <span style="color:var(--gold)">amber</span> works with a shift, <span style="color:var(--red2)">red</span> fights the style. Honeys you have in stock are highlighted and pinned to the top of their tier.</div>';})()
           +'<div class="honey-fit-grid">'+fitRows+'</div>'
         :'';
       return'<div class="card" style="margin-bottom:16px;border-left:3px solid var(--gold)"><div class="card-header"><div class="card-title">🛒 SOURCE YOUR HONEY</div></div>'
@@ -1035,7 +1041,7 @@ function openBrewSessionPlanner(recipeId,volume){
     +'<h2>Brew-day procedure</h2>'
     +'<table>'+(r.steps||[]).filter(function(s){return s.day===0;}).map(function(s){
       return'<tr><td style="padding:8px 12px 8px 0;vertical-align:top"><input type="checkbox" style="width:16px;height:16px"></td>'
-        +'<td style="padding:8px 12px;font-size:12.5px;line-height:1.6">'+escHtml(s.desc)+'</td></tr>';
+        +'<td style="padding:8px 12px;font-size:12.5px;line-height:1.6">'+escHtml(stepDescL(s.desc))+'</td></tr>';
     }).join('')+'</table>'
     +'<h2>Session notes</h2>'
     +'<div class="notes-box">Actual OG, time started, anything unusual…</div>'
@@ -1126,7 +1132,7 @@ function renderCalendar(){
   year=viewDate.getFullYear();
   month=viewDate.getMonth();
   var firstDay=new Date(year,month,1).getDay(),daysInMonth=new Date(year,month+1,0).getDate();
-  var monthName=viewDate.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+  var monthName=viewDate.toLocaleDateString(_dloc(),{month:'long',year:'numeric'});
   var events={};
   APP.batches.forEach(function(b){
     if(getBatchStatus(b)==='complete'||getBatchStatus(b)==='bottled'||getBatchStatus(b)==='failed')return;

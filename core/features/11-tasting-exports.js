@@ -127,7 +127,8 @@ function getTastingWheelRadarHTML(values){
     var angle=(Math.PI*2*i/n)-Math.PI/2;
     var lx=cx+Math.cos(angle)*(r+18);
     var ly=cy+Math.sin(angle)*(r+18)+4;
-    return'<text x="'+lx+'" y="'+ly+'" text-anchor="middle" fill="#a89880" font-family="var(--font-mono)" font-size="9" style="text-transform:uppercase;letter-spacing:1px">'+ax.label+'</text>';
+    var axl=(typeof appLang==='function'&&appLang()==='nl')?({Sweetness:'Zoetheid',Body:'Body',Acidity:'Zuurgraad',Honey:'Honing',Fruit:'Fruit',Spice:'Specerij',Finish:'Afdronk',Warmth:'Warmte'}[ax.label]||ax.label):ax.label;
+    return'<text x="'+lx+'" y="'+ly+'" text-anchor="middle" fill="#a89880" font-family="var(--font-mono)" font-size="9" style="text-transform:uppercase;letter-spacing:1px">'+axl+'</text>';
   }).join('');
   // Grid rings
   var rings=[1,2,3,4,5].map(function(level){
@@ -297,7 +298,7 @@ function printBatchCertificate(batchId){
       +'<div class="stat"><div class="stat-val">'+totalBottles(bot)+'</div><div class="stat-lbl">Bottles</div></div>'
       +'</div></div>':'')
     +(b.notes||bot.notes?'<div class="section"><h2>NOTES</h2><div style="font-style:italic;color:#555">'+escHtml(b.notes||bot.notes||'')+'</div></div>':'')
-    +'<div class="footer">Crafted with patience · MeadOS · '+new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'})+'</div>'
+    +'<div class="footer">Crafted with patience · MeadOS · '+new Date().toLocaleDateString(_dloc(),{day:'numeric',month:'long',year:'numeric'})+'</div>'
     +'</div></body></html>');
   w.document.close();
 }

@@ -33,11 +33,11 @@
 <span class="topbar-date" id="topbar-date"></span>
 <span class="sync-badge local" id="sync-badge">⬡ LOCAL</span>
 <button class="btn-icon" onclick="forceSyncNow()" title="Sync to server" id="sync-btn">↻</button>
-<button class="btn-icon" onclick="showView('settings')" title="Settings">⚙</button>
+<button class="btn-icon" onclick="showView('settings')" title="Settings" id="settings-btn">⚙</button>
 </div>
 </div>
 <div id="sidebar">
-<div class="sidebar-section">Navigation</div>
+<div class="sidebar-section" id="side-sec-nav">Navigation</div>
 <div class="nav-item active" onclick="showView('dashboard')" id="nav-dashboard"><span class="ni">⬡</span><span>Dashboard</span></div>
 <div class="nav-item" onclick="showView('batches')" id="nav-batches"><span class="ni">⚗</span><span>My Batches</span></div>
 <div class="nav-item" onclick="showView('cellar')" id="nav-cellar"><span class="ni">🍾</span><span>The Cellar</span></div>
@@ -56,10 +56,10 @@
 <div class="nav-item" onclick="showView('supplies')" id="nav-supplies"><span class="ni">📦</span><span>Supplies</span></div>
 <div class="nav-item" onclick="showView('guide')" id="nav-guide"><span class="ni">❧</span><span>Mead Guide</span></div>
 <div class="nav-item" onclick="showView('troubleshoot')" id="nav-troubleshoot"><span class="ni">🛠</span><span>Troubleshoot</span></div>
-<div class="sidebar-section" style="margin-top:8px">Active Batches</div>
+<div class="sidebar-section" style="margin-top:8px" id="side-sec-active">Active Batches</div>
 <div class="sidebar-batch-list" id="sidebar-batches"></div>
 <div class="sidebar-bottom">
-<button class="btn btn-primary" style="width:100%;justify-content:center" onclick="openNewBatchModal()">＋ New Batch</button>
+<button class="btn btn-primary" style="width:100%;justify-content:center" onclick="openNewBatchModal()" id="btn-new-batch">＋ New Batch</button>
 </div>
 </div>
 <div id="main"></div>
@@ -70,7 +70,16 @@
      then the logic modules, with 14-bootstrap.js (init) last. No build step. -->
 <script src="/core/data/data-libraries.js"></script>
 <script src="/core/data/data-recipes.js"></script>
+<script src="/core/data/data-recipes-nl.js"></script>
+<script src="/core/data/data-libraries-nl.js"></script>
+<script src="/core/data/data-recipe-steps-nl.js"></script>
+<script src="/core/data/data-recipe-ingredients-nl.js"></script>
+<script src="/core/data/data-yeast-nl.js"></script>
+<script src="/core/data/data-nutrient-nl.js"></script>
+<script src="/core/data/data-honeyfit-nl.js"></script>
+<script src="/core/data/data-recipe-guide-nl.js"></script>
 <script src="/core/state/01-state.js"></script>
+<script src="/core/state/i18n.js"></script>
 <script src="/core/domain/02-honey-domain.js"></script>
 <script src="/core/domain/03-brew-domain.js"></script>
 <script src="/core/sync/04-server-ha.js"></script>
@@ -97,6 +106,8 @@
 <script src="/core/features/11-tasting-exports.js"></script>
 <script src="/core/features/11-ha-additions-temp.js"></script>
 <script src="/core/views/12-troubleshoot.js"></script>
+<script src="/core/views/12-troubleshoot-nl.js"></script>
+<script src="/core/views/12-offflavor-nl.js"></script>
 <script src="/core/views/12-insights.js"></script>
 <script src="/core/features/12-tasting-analysis.js"></script>
 <script src="/core/features/12-records.js"></script>
