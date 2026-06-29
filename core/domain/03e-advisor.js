@@ -193,8 +193,33 @@ function mwReadiness(b){
   return {pct:Math.max(0,Math.min(100,pct)),phase:aged>=peak?'peak':(aged>=ready?'ready':'aging'),readyDays:ready,peakDays:peak,agedDays:aged};
 }
 
+// ---- Ephemeral memo: version the INPUTS, memoise the OUTPUT, never persist --
+// The advice is a pure function of the batch's data, so we cache one snapshot per
+// batch keyed by a cheap signature of every input that can change it (logs, OG,
+// yeast, ticked steps, bottling, additions). When any input changes the signature
+// changes and we recompute — so it can never go stale, and repeated reads in one
+// render (dashboard row + overview + advisor tab) cost nothing. Not serialised.
+var _mwAdviceMemo={};
+function _mwAdviceSig(b){
+  var logs=(typeof APP!=='undefined'&&APP.logs&&APP.logs[b.id])||[];
+  var last=logs.length?logs[logs.length-1]:{};
+  var doneN=0,td=(typeof APP!=='undefined'&&APP.tasksDone)||{},pre=b.id+'-step-';
+  for(var k in td){if(td.hasOwnProperty(k)&&k.indexOf(pre)===0)doneN++;}
+  var bot=(typeof APP!=='undefined'&&APP.bottling&&APP.bottling[b.id])||null;
+  var adds=((typeof APP!=='undefined'&&APP.additions&&APP.additions[b.id])||[]).length;
+  // Domain-aligned time: key off the actual age integers the output depends on
+  // (fermentation age + days bottled), not wall-clock — invalidates as the batch
+  // ages, with no midnight-boundary artifact.
+  var ageF=(typeof daysSince==='function'&&b.startDate)?daysSince(b.startDate):0;
+  var ageB=(typeof daysSince==='function'&&bot&&bot.date)?daysSince(bot.date):0;
+  return [b.id,b.recipeId,b.og,b.yeast,b.startDate,b.failed?1:0,logs.length,last.date,last.gravity,last.temp,doneN,bot?bot.date:0,adds,ageF,ageB].join('|');
+}
+
 // ---- The single snapshot every view consumes ------------------------------
 function mwBatchAdvice(b){
+  if(!b)return null;
+  var sig=_mwAdviceSig(b), cached=_mwAdviceMemo[b.id];
+  if(cached&&cached.sig===sig)return cached.val;
   var s=mwBatchSignals(b);
   if(!s)return null;
   var conf=mwConfidence(s);
@@ -202,5 +227,7 @@ function mwBatchAdvice(b){
   // Order: critical → recommended → info
   var rank={critical:0,recommended:1,info:2};
   items.sort(function(a,c){return rank[a.severity]-rank[c.severity];});
-  return {signals:s, items:items, health:mwBatchHealth(s), readiness:mwReadiness(b)};
+  var val={signals:s, items:items, health:mwBatchHealth(s), readiness:mwReadiness(b)};
+  _mwAdviceMemo[b.id]={sig:sig,val:val};
+  return val;
 }
