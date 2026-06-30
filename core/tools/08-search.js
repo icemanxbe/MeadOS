@@ -14,6 +14,7 @@
 
 function openGlobalSearch(){
   window._globalSearch={query:''};
+  window._gsIndex=_buildGlobalSearchIndex();
   renderGlobalSearchModal();
   setTimeout(function(){
     var el=document.getElementById('gs-input');
@@ -76,9 +77,12 @@ function updateGlobalSearchResults(){
 
   function section(label,icon,items,renderItem,emptyText){
     if(!items.length)return'';
+    var CAP=25;
+    var shown=items.length>CAP?items.slice(0,CAP):items;
+    var more=items.length>CAP?' <span style="color:var(--text3)">(showing '+CAP+')</span>':'';
     return'<div style="margin-bottom:18px">'
-      +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:8px">'+icon+' '+label+' · '+items.length+'</div>'
-      +items.map(renderItem).join('')
+      +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:8px">'+icon+' '+label+' · '+items.length+more+'</div>'
+      +shown.map(renderItem).join('')
       +'</div>';
   }
 
@@ -139,56 +143,59 @@ function updateGlobalSearchResults(){
   container.innerHTML=html;
 }
 
+// Build a flat, pre-lowercased index ONCE per modal open (data can't change
+// while the modal is up). Each doc carries the refs needed to render its hit,
+// so per-keystroke search is a single linear scan with no nested walks and no
+// O(batches) find() per entry. Rebuilt every openGlobalSearch().
+function _buildGlobalSearchIndex(){
+  var docs=[], bmap={};
+  (APP.batches||[]).forEach(function(b){bmap[b.id]=b;});
+  (APP.batches||[]).forEach(function(b){
+    docs.push({kind:'batch',b:b,hay:(b.name+' '+(b.serial||'')+' '+(b.notes||'')+' '+(b.style||'')+' '+(b.honeyType||'')+' '+(b.yeast||'')).toLowerCase()});
+  });
+  Object.keys(APP.tastings||{}).forEach(function(bid){
+    var b=bmap[bid];if(!b)return;
+    (APP.tastings[bid]||[]).forEach(function(t){
+      var fields=[t.note,t.notes,t.color,t.aroma,t.flavor,t.finish].filter(Boolean);
+      if(fields.length)docs.push({kind:'tasting',b:b,t:t,fields:fields,hay:fields.join(' · ').toLowerCase()});
+    });
+  });
+  Object.keys(APP.logs||{}).forEach(function(bid){
+    var b=bmap[bid];if(!b)return;
+    (APP.logs[bid]||[]).forEach(function(l){
+      if(l.note)docs.push({kind:'log',b:b,l:l,hay:l.note.toLowerCase()});
+    });
+  });
+  Object.keys(APP.additions||{}).forEach(function(bid){
+    var b=bmap[bid];if(!b)return;
+    (APP.additions[bid]||[]).forEach(function(a){
+      docs.push({kind:'addition',b:b,a:a,hay:((a.item||'')+' '+(a.amount||'')+' '+(a.notes||'')).toLowerCase()});
+    });
+  });
+  (APP.supplies||[]).forEach(function(s){
+    docs.push({kind:'supply',s:s,hay:((s.name||'')+' '+(s.notes||'')+' '+(s.supplier||'')).toLowerCase()});
+  });
+  (APP.recipes||[]).forEach(function(r){
+    docs.push({kind:'recipe',r:r,hay:(r.name+' '+(r.style||'')+' '+(r.difficulty||'')+' '+(r.description||'')+' '+((r.tags||[]).join(' '))).toLowerCase()});
+  });
+  return docs;
+}
+
 function performGlobalSearch(q){
   var hits={batches:[],tastings:[],additions:[],supplies:[],recipes:[],logs:[]};
   if(!q)return hits;
   q=q.toLowerCase();
-  // Batches — name, notes, style, serial
-  (APP.batches||[]).forEach(function(b){
-    var hay=(b.name+' '+(b.serial||'')+' '+(b.notes||'')+' '+(b.style||'')+' '+(b.honeyType||'')+' '+(b.yeast||'')).toLowerCase();
-    if(hay.indexOf(q)>=0)hits.batches.push(b);
-  });
-  // Tastings — any text field
-  Object.keys(APP.tastings||{}).forEach(function(bid){
-    var b=APP.batches.find(function(x){return x.id===bid;});
-    if(!b)return;
-    (APP.tastings[bid]||[]).forEach(function(t){
-      var fields=[t.note,t.notes,t.color,t.aroma,t.flavor,t.finish].filter(Boolean);
-      var combined=fields.join(' · ').toLowerCase();
-      if(combined.indexOf(q)>=0){
-        // Pick the field that contains the match for display
-        var matched=fields.find(function(f){return f.toLowerCase().indexOf(q)>=0;})||fields.join(' · ');
-        hits.tastings.push({batch:b,tasting:t,matchedText:matched});
-      }
-    });
-  });
-  // Log entries — note field
-  Object.keys(APP.logs||{}).forEach(function(bid){
-    var b=APP.batches.find(function(x){return x.id===bid;});
-    if(!b)return;
-    (APP.logs[bid]||[]).forEach(function(l){
-      if(l.note&&l.note.toLowerCase().indexOf(q)>=0)hits.logs.push({batch:b,log:l});
-    });
-  });
-  // Additions
-  Object.keys(APP.additions||{}).forEach(function(bid){
-    var b=APP.batches.find(function(x){return x.id===bid;});
-    if(!b)return;
-    (APP.additions[bid]||[]).forEach(function(a){
-      var hay=((a.item||'')+' '+(a.amount||'')+' '+(a.notes||'')).toLowerCase();
-      if(hay.indexOf(q)>=0)hits.additions.push({batch:b,addition:a});
-    });
-  });
-  // Supplies
-  (APP.supplies||[]).forEach(function(s){
-    var hay=((s.name||'')+' '+(s.notes||'')+' '+(s.supplier||'')).toLowerCase();
-    if(hay.indexOf(q)>=0)hits.supplies.push(s);
-  });
-  // Recipes (built-in + custom)
-  (APP.recipes||[]).forEach(function(r){
-    var hay=(r.name+' '+(r.style||'')+' '+(r.difficulty||'')+' '+(r.description||'')+' '+((r.tags||[]).join(' '))).toLowerCase();
-    if(hay.indexOf(q)>=0)hits.recipes.push(r);
-  });
+  var idx=window._gsIndex||(window._gsIndex=_buildGlobalSearchIndex());
+  for(var i=0;i<idx.length;i++){
+    var d=idx[i];
+    if(d.hay.indexOf(q)<0)continue;
+    if(d.kind==='batch')hits.batches.push(d.b);
+    else if(d.kind==='tasting'){var matched=d.fields.find(function(f){return f.toLowerCase().indexOf(q)>=0;})||d.fields.join(' · ');hits.tastings.push({batch:d.b,tasting:d.t,matchedText:matched});}
+    else if(d.kind==='log')hits.logs.push({batch:d.b,log:d.l});
+    else if(d.kind==='addition')hits.additions.push({batch:d.b,addition:d.a});
+    else if(d.kind==='supply')hits.supplies.push(d.s);
+    else if(d.kind==='recipe')hits.recipes.push(d.r);
+  }
   return hits;
 }
 

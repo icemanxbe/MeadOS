@@ -307,6 +307,25 @@
     ok('downsample: passes small series through', _downsampleLogs(arr.slice(0,50),200).length===50, '');
   })();
 
+  // global search index (scale: single linear scan, no per-entry find)
+  (function(){
+    APP.batches=[{id:'B1',name:'Cherry Bomb',recipeId:'rA',notes:'tart cherry'},{id:'B2',name:'Plain Mead',recipeId:'rA',notes:''}];
+    APP.recipes=[{id:'rA',name:'Trad',style:'Show',difficulty:'Beginner',tags:[]},{id:'rZ',name:'Cherry Melomel Deluxe',style:'Melomel',difficulty:'Beginner',tags:['cherry']}];
+    APP.tastings={B1:[{date:'2026-01-01',note:'bright cherry finish'}]};
+    APP.logs={B1:[{id:'l1',date:'2026-01-02',note:'smells of cherry'}]};
+    APP.additions={};APP.supplies=[{name:'Cherry juice',unit:'L',qty:2}];
+    window._gsIndex=_buildGlobalSearchIndex();
+    ok('search: index built once', Array.isArray(window._gsIndex)&&window._gsIndex.length>=5, window._gsIndex&&window._gsIndex.length);
+    var h=performGlobalSearch('cherry');
+    ok('search: batch match', h.batches.length===1&&h.batches[0].id==='B1', JSON.stringify(h.batches.map(function(b){return b.id;})));
+    ok('search: tasting match', h.tastings.length===1, '');
+    ok('search: log match', h.logs.length===1, '');
+    ok('search: supply match', h.supplies.length===1, '');
+    ok('search: recipe match', h.recipes.some(function(r){return r.id==='rZ';}), '');
+    ok('search: empty query → no hits', performGlobalSearch('').batches.length===0, '');
+    window._gsIndex=null;APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.tastings={};APP.logs={};APP.supplies=[];APP.additions={};
+  })();
+
   var s=document.getElementById('summary');
   s.textContent=(fail===0?'✓ ALL PASS':'✗ '+fail+' FAILED')+'  ('+pass+'/'+(pass+fail)+')';
   s.className=fail===0?'pass':'fail';
