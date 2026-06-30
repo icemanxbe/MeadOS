@@ -86,6 +86,23 @@ def _hist_decode(val):
             return val
     return val  # legacy plaintext TEXT row
 
+
+def merge_patch(target, patch):
+    """RFC 7386 JSON Merge Patch. Used by the delta-save endpoint: the client
+    sends only what changed, the server merges it into the stored state. The
+    client pre-verifies that this exact algorithm reconstructs its state before
+    sending, so a patch can never corrupt the save."""
+    if not isinstance(patch, dict):
+        return patch
+    if not isinstance(target, dict):
+        target = {}
+    for k, v in patch.items():
+        if v is None:
+            target.pop(k, None)
+        else:
+            target[k] = merge_patch(target.get(k), v)
+    return target
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 INDEX_FILE = os.path.join(BASE_DIR, "index.html")
 
@@ -1052,7 +1069,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Expose-Headers", "X-Data-Rev")
+        self.send_header("Access-Control-Expose-Headers", "X-Data-Rev, X-Data-Caps")
         if extra_headers:
             for k, v in extra_headers.items():
                 self.send_header(k, v)
@@ -1472,7 +1489,7 @@ class Handler(BaseHTTPRequestHandler):
             row = db_get_state()
             if row:
                 # X-Data-Rev lets the client detect concurrent edits on save.
-                self._send(200, row[0].encode("utf-8"), extra_headers={"X-Data-Rev": row[2] or ""})
+                self._send(200, row[0].encode("utf-8"), extra_headers={"X-Data-Rev": row[2] or "", "X-Data-Caps": "patch"})
             else:
                 self._send(404, {"ok": False, "error": "no data stored yet"})
         elif path == "/api/ha-config":
@@ -1785,6 +1802,45 @@ class Handler(BaseHTTPRequestHandler):
             updated = db_put_state(data)  # becomes current + a fresh history entry
             audit("history_restore", self._client_ip(), snapshot=hid, bytes=len(data))
             self._send(200, {"ok": True, "updatedAt": updated, "bytes": len(data)})
+            return
+        if path == "/api/data/patch":
+            # Delta save: body is an RFC 7386 merge-patch; merge it into the
+            # stored state. Same X-Base-Rev concurrency guard as a full save.
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > MAX_BODY:
+                self.close_connection = True
+                self._send(413 if length > MAX_BODY else 400,
+                           {"ok": False, "error": "missing or oversized body"})
+                return
+            try:
+                patch = json.loads(self.rfile.read(length).decode("utf-8"))
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "body is not valid JSON"})
+                return
+            if not isinstance(patch, dict):
+                self._send(400, {"ok": False, "error": "patch must be an object"})
+                return
+            cur = db_get_state()
+            if not cur:
+                # No base state to patch — tell the client to do a full save.
+                self._send(409, {"ok": False, "error": "no base state", "currentRev": None})
+                return
+            base_rev = self.headers.get("X-Base-Rev")
+            cur_rev = cur[2] if cur else None
+            if base_rev and base_rev != "*" and cur_rev and base_rev != cur_rev:
+                self._send(409, {"ok": False, "error": "conflict", "currentRev": cur_rev})
+                return
+            try:
+                target = json.loads(cur[0])
+            except ValueError:
+                self._send(500, {"ok": False, "error": "stored state unreadable"})
+                return
+            raw = json.dumps(merge_patch(target, patch))
+            updated = db_put_state(raw)
+            self._send(200, {"ok": True, "bytes": len(raw), "updatedAt": updated})
             return
         if path != "/api/data":
             self._send(404, {"ok": False, "error": "not found"})
