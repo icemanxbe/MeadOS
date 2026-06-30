@@ -361,6 +361,17 @@
     APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.bottling={};APP.tastings={};APP.logs={};
   })();
 
+  // competitions: survive the package→apply round-trip (persistence plumbing)
+  (function(){
+    APP.competitions={bx:[{id:'c1',competition:'State Fair',category:'M1A',award:'gold',score:38,maxScore:50}]};
+    var pkg=packageState();
+    ok('competitions: in packageState', pkg.competitions&&pkg.competitions.bx&&pkg.competitions.bx[0].award==='gold', '');
+    APP.competitions={};
+    applyState({competitions:{by:[{id:'c2',award:'silver'}]},batches:[]});
+    ok('competitions: restored by applyState', APP.competitions.by&&APP.competitions.by[0].award==='silver', '');
+    APP.competitions={};APP.batches=[];
+  })();
+
   var s=document.getElementById('summary');
   s.textContent=(fail===0?'✓ ALL PASS':'✗ '+fail+' FAILED')+'  ('+pass+'/'+(pass+fail)+')';
   s.className=fail===0?'pass':'fail';
