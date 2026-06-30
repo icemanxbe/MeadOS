@@ -37,7 +37,53 @@ function _advItemText(it){
     'on-track':{icon:'✓',
       title:nl?'Gisting verloopt op schema':'Fermentation is on track',
       reason:nl?('~'+d.atten+'% vergist (verwacht eind ~'+d.expected+'%), dichtheid daalt gestaag. Geen actie nodig.')
-              :('~'+d.atten+'% attenuated (target ~'+d.expected+'%), gravity dropping steadily. No action needed.')}
+              :('~'+d.atten+'% attenuated (target ~'+d.expected+'%), gravity dropping steadily. No action needed.')},
+    'aerate-now':{icon:'🌀',
+      title:nl?'Beluchten / ontgassen':'Aerate / degas now',
+      reason:nl?('Je zit nog vóór de 1/3-suikerbreuk ('+(d.sugarBreak||'?')+'). Roer dagelijks om CO₂ te verdrijven en zuurstof in te brengen — precies wanneer de gist het nodig heeft. Stop zodra je de breuk passeert.')
+              :('You\'re still before the 1/3 sugar break ('+(d.sugarBreak||'?')+'). Stir daily to drive off CO₂ and introduce oxygen — exactly when the yeast need it. Stop once you pass the break.')},
+    'stabilise-first':{icon:'🧪',
+      title:nl?'Stabiliseren vóór terugzoeten':'Stabilise before backsweetening',
+      reason:nl?('De gisting is bijna klaar. Wil je terugzoeten, stabiliseer dan eerst met kaliumsorbaat én metabisulfiet samen — sorbaat of metabisulfiet alléén stopt een herstart niet betrouwbaar.')
+              :('Fermentation is nearly done. If you plan to backsweeten, stabilise first with potassium sorbate AND metabisulfite together — either one alone won\'t reliably stop a restart.')},
+    'carbonation':{icon:'🍾',
+      title:nl?'Bubbels: bottelrijping':'Sparkling: bottle-condition',
+      reason:nl?('Dit is een mousserend recept — láát het droog uitgisten en stabiliseer NIET. Voeg bij het bottelen priming-suiker toe in drukbestendige flessen; bereken de dosis met de carbonatietool en let op de flesdruk.')
+              :('This is a sparkling recipe — let it finish dry and do NOT stabilise. Add priming sugar at bottling in pressure-rated bottles; size the dose with the carbonation tool and mind bottle pressure.')},
+    'temp-swing':{icon:'🌡',
+      title:nl?'Temperatuur schommelt':'Temperature is swinging',
+      reason:nl?('De temperatuur ligt in het ideale bereik ('+d.low+'–'+d.high+'°C) maar wisselt sterk tussen metingen. Grote schommelingen stressen de gist en geven bijsmaken — houd hem zo stabiel mogelijk.')
+              :('Temperature is within the ideal range ('+d.low+'–'+d.high+'°C) but swinging between readings. Big swings stress the yeast and add off-flavours — keep it as steady as you can.')},
+    'log-reading':{icon:'📊',
+      title:nl?(d.first?'Log je eerste meting':'Tijd voor een nieuwe meting'):(d.first?'Log your first reading':'Time for a fresh reading'),
+      reason:nl?(d.first?('De partij gist al '+d.days+' dagen zonder dichtheidsmeting. Log er een (en de OG) zodat de adviseur voortgang, prognose en gezondheid kan berekenen.')
+                        :('Laatste meting was '+d.days+' dagen geleden. Een verse dichtheidsmeting houdt de prognose en stalldetectie scherp.'))
+              :(d.first?('This batch has been fermenting '+d.days+' days with no gravity reading. Log one (and the OG) so the advisor can track progress, projection and health.')
+                        :('Last reading was '+d.days+' days ago. A fresh gravity reading keeps the projection and stall detection accurate.'))},
+    'aging-window':{icon:'⌛',
+      title:nl?(d.phase==='peak'?'Voorbij het hoogtepunt':(d.approaching?'Nadert het hoogtepunt':'In het drinkvenster')):(d.phase==='peak'?'Past its peak':(d.approaching?'Approaching peak':'In the drinking window')),
+      reason:nl?(d.phase==='peak'?('Deze mede is ~'+d.aged+' dagen oud, voorbij het geschatte hoogtepunt (~dag '+d.peak+'). Nog prima te drinken, maar wacht niet te lang meer.')
+                        :(d.approaching?('~'+d.aged+' dagen oud — nadert het hoogtepunt rond dag '+d.peak+'. Een mooi moment om te proeven.')
+                                       :('~'+d.aged+' dagen oud — voorbij het drinkpunt vanaf dag '+d.ready+'. Klaar om van te genieten; blijft verbeteren tot ~dag '+d.peak+'.')))
+              :(d.phase==='peak'?('This mead is ~'+d.aged+' days old, past its estimated peak (~day '+d.peak+'). Still fine to drink, but don\'t hold it too much longer.')
+                        :(d.approaching?('~'+d.aged+' days old — approaching peak around day '+d.peak+'. A great time to taste.')
+                                       :('~'+d.aged+' days old — past the drink-from point at day '+d.ready+'. Ready to enjoy; keeps improving toward ~day '+d.peak+'.')))},
+    'fructose-stall-risk':{icon:'🍯',
+      title:nl?'Risico op fructose-stall':'Fructose-stall risk',
+      reason:nl?('Deze honing ('+(d.honey||'?')+') is fructoserijk en je gist is niet fructofiel — de klassieke oorzaak van een late stall vlak vóór het einde. Houd voeding en temperatuur op orde; bij een stall herstart je met een fructofiele gist (bv. K1-V1116).')
+              :('This honey ('+(d.honey||'?')+') is high in fructose and your yeast isn\'t fructophilic — the classic cause of a late stall near the very end. Keep nutrients and temperature on point; if it stalls, restart with a fructophilic yeast (e.g. K1-V1116).')},
+    'record-og':{icon:'📋',
+      title:nl?'Leg de begin-SG (OG) vast':'Record the starting gravity (OG)',
+      reason:nl?('Er is geen OG vastgelegd voor deze partij. Zonder OG kan de adviseur geen vergisting, alcohol of prognose berekenen — vul de OG in bij je eerste meting.')
+              :('No OG is recorded for this batch. Without it the advisor can\'t compute attenuation, ABV or the projection — add the OG with your first reading.')},
+    'headspace':{icon:'🛢',
+      title:nl?'Beperk de kopruimte':'Minimise headspace',
+      reason:nl?('De hoofdgisting is voorbij en de partij rijpt nu rustig. Hevel over op een vat dat tot net onder de stop gevuld is, of top bij — zo beperk je zuurstofcontact en oxidatie tijdens het rijpen.')
+              :('Primary is over and the batch is conditioning quietly. Rack into a vessel filled to just below the bung, or top up — this limits oxygen contact and oxidation during aging.')},
+    'cold-crash':{icon:'🔍',
+      title:nl?'Koud klaren vóór bottelen':'Cold-crash to clear',
+      reason:nl?('De gisting is bijna klaar. Laat de mede klaren — koud wegzetten (cold-crash) of simpelweg tijd trekt gist en fijne deeltjes naar de bodem voor een heldere, schonere mede. Hevel daarna van de droesem.')
+              :('Fermentation is nearly done. Let the mead clear — a cold-crash (or simply time) drops yeast and fine particles to the bottom for a bright, cleaner mead. Then rack off the sediment.')}
   };
   return M[it.id]||{icon:'•',title:it.id,reason:''};
 }
@@ -47,6 +93,14 @@ function _advSeverityMeta(sev){
   if(sev==='critical')return {color:'var(--red2)',bg:'rgba(176,58,46,0.10)',label:nl?'KRITIEK':'CRITICAL'};
   if(sev==='recommended')return {color:'var(--gold2)',bg:'rgba(232,196,106,0.10)',label:nl?'AANBEVOLEN':'RECOMMENDED'};
   return {color:'var(--blue2)',bg:'rgba(90,140,200,0.10)',label:nl?'INFO':'INFO'};
+}
+
+// Category metadata for grouping recommendations (icon + localized label).
+function _advCategoryMeta(cat){
+  var nl=_advNL();
+  var M=nl?{fermentation:{icon:'🫧',label:'Gisting'},nutrition:{icon:'⚗',label:'Voeding'},oxygen:{icon:'🌀',label:'Zuurstof'},temperature:{icon:'🌡',label:'Temperatuur'},stabilisation:{icon:'🧪',label:'Stabilisatie'},clarity:{icon:'🔍',label:'Helderheid'},aging:{icon:'⌛',label:'Rijping'},data:{icon:'📊',label:'Gegevens'}}
+            :{fermentation:{icon:'🫧',label:'Fermentation'},nutrition:{icon:'⚗',label:'Nutrition'},oxygen:{icon:'🌀',label:'Oxygen'},temperature:{icon:'🌡',label:'Temperature'},stabilisation:{icon:'🧪',label:'Stabilisation'},clarity:{icon:'🔍',label:'Clarity'},aging:{icon:'⌛',label:'Aging'},data:{icon:'📊',label:'Data'}};
+  return M[cat]||{icon:'•',label:cat||''};
 }
 
 function _advHealthMeta(band){
@@ -178,13 +232,18 @@ function renderBatchAdvisor(b){
   // ---- Recommendations ----
   var recHtml='';
   if(adv.items.length){
-    recHtml=adv.items.map(function(it){
-      var t=_advItemText(it), sm=_advSeverityMeta(it.severity);
+    // Category summary — a grouped overview without burying critical items, which
+    // stay sorted by severity below. Each card also carries its own category chip.
+    var catCounts={},catOrder=[];
+    adv.items.forEach(function(it){var c=it.category||'data';if(catCounts[c]==null){catCounts[c]=0;catOrder.push(c);}catCounts[c]++;});
+    var catStrip=catOrder.length>1?'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:11px">'+catOrder.map(function(c){var cm=_advCategoryMeta(c);return '<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:2px 9px">'+cm.icon+' '+escHtml(cm.label)+' '+catCounts[c]+'</span>';}).join('')+'</div>':'';
+    recHtml=catStrip+adv.items.map(function(it){
+      var t=_advItemText(it), sm=_advSeverityMeta(it.severity), cm=_advCategoryMeta(it.category);
       var conf=Math.round((it.confidence||0)*100);
       return '<div style="background:'+sm.bg+';border-left:3px solid '+sm.color+';border-radius:var(--radius);padding:11px 13px;margin-bottom:8px">'
         +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:3px">'
         +'<div style="font-family:var(--font-display);font-size:14px;color:'+sm.color+'">'+t.icon+' '+escHtml(t.title)+'</div>'
-        +'<div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:0.5px">'+sm.label+' · '+(nl?'vertrouwen':'confidence')+' '+conf+'%</div></div>'
+        +'<div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:0.5px">'+cm.icon+' '+escHtml(cm.label)+' · '+sm.label+' · '+(nl?'vertrouwen':'confidence')+' '+conf+'%</div></div>'
         +'<div style="font-size:12.5px;color:var(--text2);line-height:1.55">'+escHtml(t.reason)+'</div></div>';
     }).join('');
   }else{
