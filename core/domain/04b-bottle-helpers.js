@@ -332,6 +332,7 @@ function packageState(){
     calendarEvents:(typeof buildCalendarEvents==='function')?buildCalendarEvents():[],
     tasksDone:APP.tasksDone,
     tastings:APP.tastings,
+    competitions:APP.competitions||{},
     bottling:APP.bottling,
     supplies:APP.supplies,
     suppliers:APP.suppliers||[],
@@ -409,6 +410,7 @@ function applyState(d){
   APP.logs=d.logs||{};
   APP.tasksDone=d.tasksDone||{};
   APP.tastings=d.tastings||{};
+  APP.competitions=(d.competitions&&typeof d.competitions==='object')?d.competitions:{};
   APP.bottling=d.bottling||{};
   APP.shareTokens=(d.shareTokens&&typeof d.shareTokens==='object')?d.shareTokens:{};
   // Calendar feed token rides the data blob so the feed URL is stable

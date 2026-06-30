@@ -9,6 +9,31 @@
 // time-to-bottle). Both require enough data to be meaningful — show helpful
 // empty-states when there aren't enough batches yet.
 
+// Trophy shelf: every competition award across all batches, with a medal tally.
+function renderTrophyShelf(){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var bmap={};(APP.batches||[]).forEach(function(b){bmap[b.id]=b;});
+  var entries=[];
+  Object.keys(APP.competitions||{}).forEach(function(bid){
+    var b=bmap[bid];if(!b)return;
+    (APP.competitions[bid]||[]).forEach(function(c){entries.push({b:b,c:c,rank:_compAwardMeta(c.award).rank});});
+  });
+  if(!entries.length)return '';
+  entries.sort(function(a,b){return a.rank-b.rank||(b.c.date||'').localeCompare(a.c.date||'');});
+  var tally={};entries.forEach(function(e){tally[e.c.award]=(tally[e.c.award]||0)+1;});
+  var chips=_compAwards().filter(function(a){return tally[a.k];}).map(function(a){return '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:3px 10px;font-size:12px;color:var(--text2)"><span style="font-size:14px">'+a.icon+'</span>'+tally[a.k]+' '+escHtml(a.l)+'</span>';}).join('');
+  var rows=entries.map(function(e){
+    var am=_compAwardMeta(e.c.award);
+    var score=(e.c.score!==''&&e.c.score!=null&&e.c.score!=='')?(e.c.score+(e.c.maxScore?'/'+e.c.maxScore:'')):'';
+    return '<div onclick="showView(\'batch\',\''+e.b.id+'\')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-left:3px solid '+am.c+';background:var(--bg3);border-radius:var(--radius);margin-bottom:6px;cursor:pointer">'
+      +'<span style="font-size:18px">'+am.icon+'</span>'
+      +'<div style="flex:1;min-width:0"><div style="font-size:13px;color:'+getBatchColor(e.b)+';font-family:var(--font-display)">'+escHtml(e.b.name)+'</div>'
+      +'<div style="font-size:11px;color:var(--text3)">'+escHtml(e.c.competition||'')+(e.c.category?' · '+escHtml(e.c.category):'')+(score?' · '+escHtml(score):'')+'</div></div>'
+      +'<div style="font-family:var(--font-mono);font-size:10px;color:'+am.c+';letter-spacing:0.5px">'+am.l.toUpperCase()+'</div></div>';
+  }).join('');
+  return '<div class="card" style="margin-bottom:16px;border-left:3px solid var(--gold2)"><div class="card-header"><div class="card-title">'+(nl?'🏆 PRIJZENKAST':'🏆 TROPHY SHELF')+'</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+entries.length+(nl?' INZENDINGEN':' ENTRIES')+'</div></div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+chips+'</div>'+rows+'</div>';
+}
 function _insightsTitleBar(){
   var nl=(typeof appLang==='function'&&appLang()==='nl');
   return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
@@ -23,10 +48,12 @@ function renderInsightsView(){
     // Pattern-mining needs more data, but the fun lifetime stats are worth
     // showing from batch one.
     return _insightsTitleBar()+'<div class="page-subtitle">Patterns in your brewing</div>'
+      +renderTrophyShelf()
       +renderFunInsights()
       +'<div class="info-box" style="margin-top:8px"><div style="font-size:13px;color:var(--text2)">📊 Deeper pattern-mining (what your best batches share, trends over time) unlocks at <strong>3 bottled batches</strong> — you\'re at '+bottled.length+'. Keep brewing!</div></div>';
   }
   return _insightsTitleBar()+'<div class="page-subtitle">Patterns in your brewing journey · '+bottled.length+' bottled · '+failed.length+' failed</div>'
+    +renderTrophyShelf()
     +renderFunInsights()
     +renderBestTastingInsights()
     +renderIngredientPerformance()

@@ -806,7 +806,8 @@ function renderBatchDetail(){
       +'<div><div class="card"><div class="card-header"><div class="card-title">TASTING JOURNAL</div>'+(tastings.length>=2?'<button class="btn btn-secondary btn-sm" onclick="openTastingCompareModal(\''+b.id+'\')">📊 Compare</button>':'')+'</div>'+tastingRows+'</div>'
       +renderTastingEvolution(tastings)
       +'</div>'
-      +'</div>';
+      +'</div>'
+      +renderCompetitions(b);
   }
 
   if(activeTab==='photos'){
@@ -909,6 +910,67 @@ function renderBatchDetail(){
     +'</div>'+tabContent;
 }
 
+// ==================== COMPETITIONS / AWARDS ====================
+// Per-batch show entries: competition, category, score, and award. Stored in
+// APP.competitions[batchId][]. Surfaced on the Tasting tab + the Insights
+// trophy shelf.
+function _compAwards(){return [
+  {k:'bos',l:'Best of Show',icon:'🏆',c:'#e8c46a',rank:0},
+  {k:'gold',l:'Gold',icon:'🥇',c:'#d4af37',rank:1},
+  {k:'silver',l:'Silver',icon:'🥈',c:'#c0c4c9',rank:2},
+  {k:'bronze',l:'Bronze',icon:'🥉',c:'#cd7f32',rank:3},
+  {k:'hm',l:'Honorable Mention',icon:'🎗',c:'var(--gold2)',rank:4},
+  {k:'placement',l:'Placement',icon:'🎯',c:'var(--text2)',rank:5},
+  {k:'entered',l:'Entered',icon:'•',c:'var(--text3)',rank:6}
+];}
+function _compAwardMeta(k){var a=_compAwards();for(var i=0;i<a.length;i++)if(a[i].k===k)return a[i];return {k:k,l:k||'Entered',icon:'•',c:'var(--text3)',rank:9};}
+function renderCompetitions(b){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var list=((APP.competitions&&APP.competitions[b.id])||[]).slice().sort(function(a,c){return(c.date||'').localeCompare(a.date||'');});
+  var awardOpts=_compAwards().map(function(a){return '<option value="'+a.k+'">'+a.icon+' '+a.l+'</option>';}).join('');
+  var rows=list.length?list.map(function(c){
+    var am=_compAwardMeta(c.award);
+    var score=(c.score!==''&&c.score!=null)?(c.score+(c.maxScore?'/'+c.maxScore:'')):'';
+    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-left:3px solid '+am.c+';background:var(--bg3);border-radius:var(--radius);margin-bottom:8px">'
+      +'<div style="font-size:20px;line-height:1;flex-shrink:0">'+am.icon+'</div>'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-family:var(--font-display);font-size:14px;color:var(--text)">'+escHtml(c.competition||'')+(c.category?' <span style="font-size:11px;color:var(--text3)">· '+escHtml(c.category)+'</span>':'')+'</div>'
+        +'<div style="font-family:var(--font-mono);font-size:10.5px;color:'+am.c+';letter-spacing:0.5px;margin-top:2px">'+am.l.toUpperCase()+(score?' · '+escHtml(score):'')+(c.date?' · '+fmtDate(c.date):'')+'</div>'
+        +(c.notes?'<div style="font-size:12px;color:var(--text2);font-style:italic;margin-top:4px">'+escHtml(c.notes)+'</div>':'')
+      +'</div>'
+      +'<button class="btn btn-danger btn-sm" onclick="deleteCompetition(\''+b.id+'\',\''+c.id+'\')">✕</button>'
+    +'</div>';
+  }).join(''):'<div style="color:var(--text3);font-style:italic;font-size:13px;padding:12px 0">'+(nl?'Nog geen wedstrijdinzendingen.':'No competition entries yet.')+'</div>';
+  return '<div class="card" style="margin-top:16px"><div class="card-header"><div class="card-title">'+(nl?'🏆 WEDSTRIJDEN &amp; PRIJZEN':'🏆 COMPETITIONS &amp; AWARDS')+'</div></div>'
+    +'<div class="form-row"><div class="form-group"><label class="form-label">'+(nl?'Wedstrijd':'Competition')+'</label><input class="form-input" id="comp-name" placeholder="'+(nl?'bv. NHC, lokale show':'e.g. NHC, local show')+'"></div>'
+    +'<div class="form-group"><label class="form-label">'+(nl?'Categorie':'Category')+'</label><input class="form-input" id="comp-cat" placeholder="'+(nl?'bv. M1A Droge mede':'e.g. M1A Dry Mead')+'"></div></div>'
+    +'<div class="form-row"><div class="form-group"><label class="form-label">'+(nl?'Datum':'Date')+'</label><input class="form-input" type="date" id="comp-date" value="'+today()+'"></div>'
+    +'<div class="form-group"><label class="form-label">'+(nl?'Resultaat':'Award')+'</label><select class="form-select" id="comp-award">'+awardOpts+'</select></div></div>'
+    +'<div class="form-row"><div class="form-group"><label class="form-label">'+(nl?'Score':'Score')+'</label><input class="form-input" type="number" id="comp-score" step="0.5" placeholder="38"></div>'
+    +'<div class="form-group"><label class="form-label">'+(nl?'Max score':'Max score')+'</label><input class="form-input" type="number" id="comp-max" placeholder="50"></div></div>'
+    +'<div class="form-group"><label class="form-label">'+(nl?'Notities van de jury':'Judge notes')+'</label><textarea class="form-textarea" id="comp-notes" placeholder="'+(nl?'Feedback, opmerkingen…':'Feedback, remarks…')+'"></textarea></div>'
+    +'<button class="btn btn-primary" onclick="addCompetition(\''+b.id+'\')">'+(nl?'Inzending toevoegen':'Add Entry')+'</button>'
+    +'<div style="margin-top:14px">'+rows+'</div>'
+    +'</div>';
+}
+function addCompetition(bid){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  function v(id){var e=document.getElementById(id);return e?String(e.value).trim():'';}
+  var comp=v('comp-name');
+  if(!comp){toast(nl?'⚠ Vul een wedstrijdnaam in':'⚠ Enter a competition name');return;}
+  if(!APP.competitions)APP.competitions={};
+  if(!APP.competitions[bid])APP.competitions[bid]=[];
+  APP.competitions[bid].push({id:genId(),date:v('comp-date')||today(),competition:comp,category:v('comp-cat'),
+    score:v('comp-score'),maxScore:v('comp-max'),award:v('comp-award')||'entered',notes:v('comp-notes')});
+  if(typeof saveData==='function')saveData();
+  renderMain();
+  toast(nl?'🏆 Inzending toegevoegd':'🏆 Entry added');
+}
+function deleteCompetition(bid,id){
+  if(APP.competitions&&APP.competitions[bid])APP.competitions[bid]=APP.competitions[bid].filter(function(c){return c.id!==id;});
+  if(typeof saveData==='function')saveData();
+  renderMain();
+}
 function setBatchTab(id,tab){
   if(!window._batchTabs)window._batchTabs={};
   window._batchTabs[id]=tab;
