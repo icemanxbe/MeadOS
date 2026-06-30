@@ -22,8 +22,44 @@ function renderInsightsView(){
   return'<div class="page-title">Insights</div><div class="page-subtitle">Patterns in your brewing journey · '+bottled.length+' bottled · '+failed.length+' failed</div>'
     +renderFunInsights()
     +renderBestTastingInsights()
+    +renderIngredientPerformance()
     +renderFailedBatchInsights()
     +renderPersonalTrends();
+}
+
+// Cross-batch ingredient performance: how each yeast / honey does on average
+// across all your batches (count, avg tasting rating, avg ABV, avg attenuation,
+// failure rate), sorted best-rating-first. Answers "what works best for me".
+function renderIngredientPerformance(){
+  if(typeof mwIngredientStats!=='function')return '';
+  if((APP.batches||[]).length<2)return '';
+  var st=mwIngredientStats();
+  if(!st.byYeast.length&&!st.byHoney.length)return '';
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var ynames={};((typeof YEAST_STRAINS!=='undefined'&&YEAST_STRAINS)||[]).forEach(function(y){ynames[y.id]=y.name;});
+  var H={col:'',batches:nl?'Partijen':'Batches',rating:nl?'Gem. ★':'Avg ★',abv:nl?'Gem. ABV':'Avg ABV',atten:nl?'Gem. vergisting':'Avg atten.',fail:nl?'Mislukt':'Fail',top:nl?'TOP':'TOP'};
+  function tbl(rows,colLabel,labelFn){
+    if(!rows.length)return '';
+    var body=rows.map(function(r,i){
+      var best=(i===0&&r.avgRating!=null&&rows.length>1);
+      return '<tr'+(best?' style="background:rgba(122,160,64,0.08)"':'')+'>'
+        +'<td style="color:var(--text)'+(best?';font-weight:600':'')+'">'+escHtml(labelFn(r.key))+(best?' <span style="font-family:var(--font-mono);font-size:9px;color:var(--green2);letter-spacing:1px">★ '+H.top+'</span>':'')+'</td>'
+        +'<td style="font-family:var(--font-mono);text-align:center">'+r.n+'</td>'
+        +'<td style="font-family:var(--font-mono);text-align:center">'+(r.avgRating!=null?r.avgRating.toFixed(1)+'★':'—')+'</td>'
+        +'<td style="font-family:var(--font-mono);text-align:center">'+(r.avgABV!=null?r.avgABV.toFixed(1)+'%':'—')+'</td>'
+        +'<td style="font-family:var(--font-mono);text-align:center">'+(r.avgAtten!=null?Math.round(r.avgAtten)+'%':'—')+'</td>'
+        +'<td style="font-family:var(--font-mono);text-align:center;color:'+(r.failRate>0?'var(--red2)':'var(--text3)')+'">'+(r.failRate>0?Math.round(r.failRate*100)+'%':'—')+'</td>'
+        +'</tr>';
+    }).join('');
+    return '<table class="data-table" style="font-size:12.5px;margin-bottom:8px"><thead><tr>'
+      +'<th style="text-align:left">'+colLabel+'</th><th style="text-align:center">'+H.batches+'</th><th style="text-align:center">'+H.rating+'</th><th style="text-align:center">'+H.abv+'</th><th style="text-align:center">'+H.atten+'</th><th style="text-align:center">'+H.fail+'</th>'
+      +'</tr></thead><tbody>'+body+'</tbody></table>';
+  }
+  return '<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">'+(nl?'🧪 PRESTATIE PER INGREDIËNT':'🧪 INGREDIENT PERFORMANCE')+'</div></div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:12px;font-style:italic">'+(nl?'Hoe je gisten en honingen het gemiddeld doen over al je partijen — gesorteerd op gemiddelde proefscore.':'How your yeasts and honeys perform on average across all your batches — sorted by average tasting score.')+'</div>'
+    +(st.byYeast.length?'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;margin-bottom:6px">'+(nl?'PER GIST':'BY YEAST')+'</div>'+tbl(st.byYeast,nl?'Gist':'Yeast',function(k){return ynames[k]||k;}):'')
+    +(st.byHoney.length?'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;margin:10px 0 6px">'+(nl?'PER HONING':'BY HONEY')+'</div>'+tbl(st.byHoney,nl?'Honing':'Honey',function(k){return k;}):'')
+    +'</div>';
 }
 
 // Fun + meaningful lifetime insights mined from the whole brewing history.

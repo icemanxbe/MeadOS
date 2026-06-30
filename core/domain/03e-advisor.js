@@ -341,3 +341,43 @@ function mwBatchAdvice(b){
   _mwAdviceMemo[b.id]={sig:sig,val:val};
   return val;
 }
+
+// ---- Cross-batch ingredient performance (power-user analytics) -------------
+// Aggregates outcomes per yeast and per honey across ALL batches: count, avg
+// best-tasting rating, avg final ABV, avg attenuation, and failure rate. Pure
+// read over APP; one pass. Consumed by the Insights view.
+function mwIngredientStats(){
+  var rmap={};((typeof APP!=='undefined'&&APP.recipes)||[]).forEach(function(r){rmap[r.id]=r;});
+  var byY={}, byH={};
+  function bucket(map,key){if(key==null||key==='')return null;if(!map[key])map[key]={key:key,n:0,rsum:0,rn:0,abvsum:0,abvn:0,attsum:0,attn:0,fail:0};return map[key];}
+  ((typeof APP!=='undefined'&&APP.batches)||[]).forEach(function(b){
+    var recipe=rmap[b.recipeId];
+    var bot=(typeof APP!=='undefined'&&APP.bottling&&APP.bottling[b.id])||null;
+    var og=parseFloat(b.og)||(recipe&&recipe.ogTarget)||null;
+    var logs=(typeof APP!=='undefined'&&APP.logs&&APP.logs[b.id])||[];
+    var lastG=null;for(var i=logs.length-1;i>=0;i--){if(logs[i].gravity){lastG=parseFloat(logs[i].gravity);break;}}
+    var finalG=(bot&&parseFloat(bot.fg))||lastG||null;
+    var atten=(og&&og>1&&finalG)?((og-finalG)/(og-1)*100):null;
+    var ts=(typeof APP!=='undefined'&&APP.tastings&&APP.tastings[b.id])||[];
+    var rated=ts.filter(function(t){return t.rating;});
+    var rating=rated.length?Math.max.apply(null,rated.map(function(t){return t.rating;})):null;
+    var abv=bot?parseFloat(bot.abv):null;
+    var failed=b.failed?1:0;
+    [bucket(byY,b.yeast),bucket(byH,b.honeyType)].forEach(function(m){
+      if(!m)return;
+      m.n++;
+      if(rating!=null){m.rsum+=rating;m.rn++;}
+      if(abv!=null&&!isNaN(abv)){m.abvsum+=abv;m.abvn++;}
+      if(atten!=null&&!isNaN(atten)){m.attsum+=atten;m.attn++;}
+      m.fail+=failed;
+    });
+  });
+  function fin(map){return Object.keys(map).map(function(k){var m=map[k];return {
+    key:k,n:m.n,rated:m.rn,
+    avgRating:m.rn?m.rsum/m.rn:null,
+    avgABV:m.abvn?m.abvsum/m.abvn:null,
+    avgAtten:m.attn?m.attsum/m.attn:null,
+    failRate:m.n?m.fail/m.n:0
+  };}).sort(function(a,b){return (b.avgRating||0)-(a.avgRating||0)||b.n-a.n;});}
+  return {byYeast:fin(byY),byHoney:fin(byH)};
+}
