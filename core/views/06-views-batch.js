@@ -370,87 +370,92 @@ function _renderBatchGroup(title,arr){
     }).join('');
 }
 
+var BATCH_PAGE=60;
+
+// Shared filter + sort over all batches. Builds a recipe lookup once so search
+// stays O(batches), not O(batches×recipes), at scale.
+function _batchFilterSort(){
+  var q=(APP.filters.batchSearch||'').toLowerCase().trim();
+  var statusFilter=APP.filters.batchStatus||'all';
+  var sort=APP.filters.batchSort||'newest';
+  var rmap={};(APP.recipes||[]).forEach(function(r){rmap[r.id]=r;});
+  var arr=APP.batches.filter(function(b){
+    if(statusFilter!=='all'){
+      var st=getBatchStatus(b);
+      if(statusFilter==='active'){if(st==='bottled'||st==='complete'||st==='failed')return false;}
+      else if(st!==statusFilter)return false;
+    }
+    if(!q)return true;
+    var r=rmap[b.recipeId];
+    var hay=((b.name||'')+' '+(b.serial||'')+' '+(r?r.name:'')+' '+(r?r.category:'')+' '+(r?r.style:'')+' '+(b.notes||'')).toLowerCase();
+    return hay.indexOf(q)>=0;
+  });
+  arr.sort(function(a,b){
+    if(sort==='name')return (a.name||'').localeCompare(b.name||'');
+    if(sort==='oldest')return (a.startDate||'').localeCompare(b.startDate||'');
+    if(sort==='volume')return (parseFloat(b.volume)||0)-(parseFloat(a.volume)||0);
+    return (b.startDate||'').localeCompare(a.startDate||''); // newest
+  });
+  return arr;
+}
+
+// Window the sorted results (only the first batchLimit cards are built) + group
+// the page + a "show more" footer — so hundreds of batches stay cheap to render.
+function _batchListResultsHtml(){
+  var arr=_batchFilterSort(), total=arr.length;
+  if(total===0)return '<div class="empty-state"><p>No batches match the filters.</p></div>';
+  var limit=APP.filters.batchLimit||BATCH_PAGE;
+  var shown=arr.slice(0,limit);
+  var groups={active:[],bottled:[],complete:[],failed:[]};
+  shown.forEach(function(b){var s=getBatchStatus(b);if(s==='failed')groups.failed.push(b);else if(s==='bottled')groups.bottled.push(b);else if(s==='complete')groups.complete.push(b);else groups.active.push(b);});
+  var html=_renderBatchGroup('Active',groups.active)+_renderBatchGroup('Bottled',groups.bottled)+_renderBatchGroup('Complete',groups.complete)+(groups.failed.length?_renderBatchGroup('Failed (postmortem)',groups.failed):'');
+  if(total>limit)html+='<div style="text-align:center;margin:16px 0"><button class="btn btn-secondary btn-sm" onclick="showMoreBatches()">Show more · '+(total-limit)+' more</button></div>';
+  return html;
+}
+
+function _batchListSubtitle(total){
+  var q=APP.filters.batchSearch,sf=APP.filters.batchStatus;
+  return 'The Meadwright\'s Cellar · '+APP.batches.length+' batch'+(APP.batches.length!==1?'es':'')+((q||sf!=='all')?(' · '+total+' shown'):'');
+}
+
 function renderBatchList(){
   if(!APP.batches.length){
     return'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div class="page-title">My Batches</div><button class="btn btn-primary" onclick="openNewBatchModal()">＋ New Batch</button></div>'
       +'<div class="page-subtitle">The Cellar</div>'
       +'<div class="empty-state"><div class="es-icon">🍯</div><p>Your cellar awaits its first creation.</p><br><button class="btn btn-primary" onclick="openNewBatchModal()">＋ Begin First Batch</button></div>';
   }
-  // Apply filters
-  var q=(APP.filters.batchSearch||'').toLowerCase();
+  var q=(APP.filters.batchSearch||'');
   var statusFilter=APP.filters.batchStatus||'all';
-  var filtered=APP.batches.filter(function(b){
-    if(q){
-      var hay=(b.name+' '+(b.style||'')+' '+(b.notes||'')).toLowerCase();
-      if(hay.indexOf(q)===-1)return false;
-    }
-    if(statusFilter!=='all'){
-      var s=getBatchStatus(b);
-      if(statusFilter==='active'){if(s==='complete'||s==='bottled'||s==='failed')return false;}
-      else if(s!==statusFilter)return false;
-    }
-    return true;
-  });
-  // Group by status — failed get their own bucket at the end
-  var groups={active:[],bottled:[],complete:[],failed:[]};
-  filtered.forEach(function(b){
-    var s=getBatchStatus(b);
-    if(s==='failed')groups.failed.push(b);
-    else if(s==='bottled')groups.bottled.push(b);
-    else if(s==='complete')groups.complete.push(b);
-    else groups.active.push(b);
-  });
+  var sort=APP.filters.batchSort||'newest';
+  var failedCount=APP.batches.filter(function(b){return getBatchStatus(b)==='failed';}).length;
   var statusChips=[['all','All'],['active','Active'],['bottled','Bottled'],['complete','Complete'],['failed','Failed']]
-    .map(function(x){return'<span class="filter-chip '+(statusFilter===x[0]?'active':'')+'" onclick="setBatchFilter(\''+x[0]+'\')">'+x[1]+(x[0]==='failed'&&groups.failed.length?' · '+groups.failed.length:'')+'</span>';}).join('');
-  var resultsHtml=(filtered.length===0?'<div class="empty-state"><p>No batches match the filters.</p></div>':_renderBatchGroup('Active',groups.active)+_renderBatchGroup('Bottled',groups.bottled)+_renderBatchGroup('Complete',groups.complete)+(groups.failed.length?_renderBatchGroup('Failed (postmortem)',groups.failed):''));
+    .map(function(x){return'<span class="filter-chip '+(statusFilter===x[0]?'active':'')+'" onclick="setBatchFilter(\''+x[0]+'\')">'+x[1]+(x[0]==='failed'&&failedCount?' · '+failedCount:'')+'</span>';}).join('');
+  var sortSel='<select class="search-input" style="max-width:180px;flex:0 0 auto" onchange="setBatchSort(this.value)" title="Sort batches">'
+    +[['newest','Newest first'],['oldest','Oldest first'],['name','Name A–Z'],['volume','Volume (high→low)']].map(function(o){return'<option value="'+o[0]+'"'+(sort===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')
+    +'</select>';
   return'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div class="page-title">My Batches</div><button class="btn btn-primary" onclick="openNewBatchModal()">＋ New Batch</button></div>'
-    +'<div class="page-subtitle" id="batch-list-subtitle">The Meadwright\'s Cellar · '+APP.batches.length+' batch'+(APP.batches.length!==1?'es':'')+(q||statusFilter!=='all'?(' · '+filtered.length+' shown'):'')+'</div>'
+    +'<div class="page-subtitle" id="batch-list-subtitle">'+_batchListSubtitle(_batchFilterSort().length)+'</div>'
     +'<div class="search-bar"><input type="text" class="search-input" id="batch-search" placeholder="🔍 Search batches by name, recipe, or notes…" value="'+escHtml(q)+'" oninput="updateBatchSearchResults(this.value)">'
+    +sortSel
     +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+statusChips+'</div></div>'
-    +'<div id="batch-list-results">'+resultsHtml+'</div>';
+    +'<div id="batch-list-results">'+_batchListResultsHtml()+'</div>';
 }
 
-// Update only the search results container (NOT the whole view) so the
-// input keeps focus across keystrokes. Same idea for the recipe search.
-function updateBatchSearchResults(q){
-  APP.filters.batchSearch=q;
-  var container=document.getElementById('batch-list-results');
-  if(!container)return;
-  var qLower=(q||'').toLowerCase().trim();
-  var statusFilter=APP.filters.batchStatus||'all';
-  var filtered=APP.batches.filter(function(b){
-    if(statusFilter!=='all'){
-      var st=getBatchStatus(b);
-      // The 'active' chip is shorthand for "everything pre-bottling" — matches
-      // fermenting / conditioning / aging. Other chips compare exactly.
-      if(statusFilter==='active'){
-        if(st==='bottled'||st==='complete'||st==='failed')return false;
-      }else if(st!==statusFilter){
-        return false;
-      }
-    }
-    if(!qLower)return true;
-    var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
-    var hay=(b.name||'')+' '+(b.serial||'')+' '+(recipe?recipe.name:'')+' '+(recipe?recipe.category:'')+' '+(recipe?recipe.style:'')+' '+(b.notes||'');
-    return hay.toLowerCase().indexOf(qLower)>=0;
-  });
-  var groups={active:[],bottled:[],complete:[],failed:[]};
-  filtered.forEach(function(b){
-    var s=getBatchStatus(b);
-    // getBatchStatus returns fermenting/conditioning/aging/bottled/complete/failed.
-    // The Cellar view collapses everything pre-bottling into 'active' — match
-    // that, otherwise pre-bottling batches silently disappear from search.
-    if(s==='failed')groups.failed.push(b);
-    else if(s==='bottled')groups.bottled.push(b);
-    else if(s==='complete')groups.complete.push(b);
-    else groups.active.push(b);
-  });
-  container.innerHTML=(filtered.length===0?'<div class="empty-state"><p>No batches match the filters.</p></div>':_renderBatchGroup('Active',groups.active)+_renderBatchGroup('Bottled',groups.bottled)+_renderBatchGroup('Complete',groups.complete)+(groups.failed.length?_renderBatchGroup('Failed (postmortem)',groups.failed):''));
+// Re-render only the results container (keeps the search input focused across
+// keystrokes) and re-translate it when the UI is in Dutch.
+function refreshBatchList(){
+  var c=document.getElementById('batch-list-results');
+  if(!c){renderMain();return;}
+  c.innerHTML=_batchListResultsHtml();
   var sub=document.getElementById('batch-list-subtitle');
-  if(sub)sub.textContent='The Meadwright\'s Cellar · '+APP.batches.length+' batch'+(APP.batches.length!==1?'es':'')+(q||statusFilter!=='all'?(' · '+filtered.length+' shown'):'');
+  if(sub)sub.textContent=_batchListSubtitle(_batchFilterSort().length);
+  if(typeof translateChrome==='function'&&typeof appLang==='function'&&appLang()==='nl'){try{translateChrome(c);}catch(e){}}
 }
 
-function setBatchFilter(s){APP.filters.batchStatus=s;renderMain();}
+function updateBatchSearchResults(q){APP.filters.batchSearch=q;APP.filters.batchLimit=BATCH_PAGE;refreshBatchList();}
+function setBatchFilter(s){APP.filters.batchStatus=s;APP.filters.batchLimit=BATCH_PAGE;renderMain();}
+function setBatchSort(s){APP.filters.batchSort=s;APP.filters.batchLimit=BATCH_PAGE;renderMain();}
+function showMoreBatches(){APP.filters.batchLimit=(APP.filters.batchLimit||BATCH_PAGE)+BATCH_PAGE;refreshBatchList();}
 
 // ==================== BATCH DETAIL ====================
 // Project where fermentation is heading from the logged gravity readings:
