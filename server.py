@@ -57,6 +57,35 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 HISTORY_KEEP = 200  # state is a few tens of KB now, so deep undo history is cheap
 MAX_BODY = 64 * 1024 * 1024  # 64 MB — far above any realistic state size
 
+
+# History snapshots are gzip-compressed at rest (200 full-state copies dominate
+# DB size for a power user). New rows are stored as gzipped BLOBs; reads detect
+# the gzip magic and fall back to legacy plaintext rows, so old history (and old
+# backups) still restore. The `bytes` column keeps the *logical* (uncompressed)
+# size so health/history reporting stays meaningful.
+def _hist_encode(raw):
+    try:
+        return gzip.compress(raw.encode("utf-8"), 6)
+    except Exception:
+        return raw
+
+
+def _hist_decode(val):
+    if val is None:
+        return None
+    if isinstance(val, (bytes, bytearray)):
+        b = bytes(val)
+        if len(b) >= 2 and b[0] == 0x1F and b[1] == 0x8B:
+            try:
+                return gzip.decompress(b).decode("utf-8")
+            except Exception:
+                pass
+        try:
+            return b.decode("utf-8")
+        except Exception:
+            return val
+    return val  # legacy plaintext TEXT row
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 INDEX_FILE = os.path.join(BASE_DIR, "index.html")
 
@@ -141,7 +170,7 @@ def referenced_asset_names():
         with db_connect() as conn:
             for (d,) in conn.execute("SELECT data FROM history"):
                 if d:
-                    blobs.append(d)
+                    blobs.append(_hist_decode(d))
     except sqlite3.Error:
         pass
     for b in blobs:
@@ -928,7 +957,7 @@ def db_put_state(raw):
         )
         conn.execute(
             "INSERT INTO history (data, saved_at, updated_at, bytes) VALUES (?, ?, ?, ?)",
-            (raw, saved_at, now, len(raw)),
+            (_hist_encode(raw), saved_at, now, len(raw)),
         )
         conn.execute(
             "DELETE FROM history WHERE id NOT IN "
@@ -949,7 +978,7 @@ def db_history_list():
 def db_history_get(hid):
     with db_connect() as conn:
         row = conn.execute("SELECT data FROM history WHERE id = ?", (hid,)).fetchone()
-    return row[0] if row else None
+    return _hist_decode(row[0]) if row else None
 
 
 def db_health():
