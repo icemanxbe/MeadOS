@@ -33,7 +33,38 @@ function renderBlendingTool(){
     +'<div class="form-group"><label class="form-label">Blend Ratio · A : B = <span id="blend-ratio-display">'+ratioA+' : '+(100-ratioA)+'</span></label>'
     +'<input type="range" min="10" max="90" step="5" value="'+ratioA+'" id="blend-ratio" oninput="window._blendRatio=parseInt(this.value);document.getElementById(\'blend-ratio-display\').textContent=this.value+\' : \'+(100-this.value);updateBlendOutput()" style="width:100%;cursor:pointer"></div>'
     +'<div id="blend-output" style="margin-top:14px">'+initialOutput+'</div>'
+    +'<button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="createBlendedBatch()" title="Commit this blend as a new batch with lineage back to its sources">🥂 '+(appLang()==='nl'?'Maak er een partij van':'Create as a batch')+'</button>'
     +'</div>';
+}
+
+// Commit the current blend selection as a new batch, volume-weighting OG/FG/ABV
+// from the sources and recording lineage in blendOf. ponytail: no auto bottle-
+// deduction from sources — adjust source counts by hand if needed.
+function createBlendedBatch(){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var idA=window._blendA,idB=window._blendB,fa=(window._blendRatio||50)/100,vol=parseFloat(window._blendVol)||5;
+  var bA=APP.batches.find(function(x){return x.id===idA;});
+  if(!bA||!APP.bottling[bA.id]){toast(nl?'⚠ Kies geldige partijen':'⚠ Pick valid batches');return;}
+  var isWater=(idB==='__water'),botA=APP.bottling[bA.id];
+  var bB=isWater?null:APP.batches.find(function(x){return x.id===idB;});
+  if(!isWater&&(!bB||!APP.bottling[bB.id])){toast(nl?'⚠ Kies geldige partijen':'⚠ Pick valid batches');return;}
+  var botB=isWater?null:APP.bottling[bB.id];
+  function abvOf(b,bot){return bot.abv?parseFloat(bot.abv):((b.og&&bot.fg)?parseFloat(calcABV(b.og,bot.fg)):null);}
+  var partA={og:parseFloat(bA.og)||null,fg:parseFloat(botA.fg)||null,abv:abvOf(bA,botA),vol:fa*vol};
+  var partB=isWater?{og:1.000,fg:1.000,abv:0,vol:(1-fa)*vol}:{og:parseFloat(bB.og)||null,fg:parseFloat(botB.fg)||null,abv:abvOf(bB,botB),vol:(1-fa)*vol};
+  var r=mwBlend([partA,partB]);
+  var defName='Blend: '+bA.name+' + '+(isWater?(nl?'water':'water'):bB.name);
+  var name=prompt(nl?'Naam voor de blend:':'Name for the blend:',defName);
+  if(!name||!name.trim())return;
+  var nb={id:genId(),name:name.trim(),recipeId:bA.recipeId,startDate:today(),volume:Math.round(vol*100)/100,
+    og:r.og!=null?Math.round(r.og*1000)/1000:bA.og,yeast:bA.yeast,honeyType:bA.honeyType,
+    blendOf:[{batchId:idA,fraction:Math.round(fa*100)/100},{batchId:isWater?'__water':idB,fraction:Math.round((1-fa)*100)/100}]};
+  APP.batches.push(nb);
+  if(!APP.logs)APP.logs={};
+  APP.logs[nb.id]=[{id:genId(),date:today(),gravity:r.fg!=null?Math.round(r.fg*1000)/1000:null,note:(nl?'Blend samengesteld':'Blend composed')}];
+  if(typeof saveData==='function')saveData();
+  showView('batch',nb.id);
+  toast('🥂 '+(nl?'Blend aangemaakt':'Blend created')+(r.abv!=null?' · '+r.abv.toFixed(1)+'%':''));
 }
 
 // Pure-data version of the blend rendering. Returns HTML string for the

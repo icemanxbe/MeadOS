@@ -544,6 +544,7 @@ function renderBatchDetail(){
     }).join('')+sugarBreakNote(steps);
     var bottling=APP.bottling[b.id];
     tabContent=(typeof renderBatchAdvisorStrip==='function'?renderBatchAdvisorStrip(b):'')
+      +_blendLineageHtml(b)
       +(typeof renderBatchTargets==='function'?renderBatchTargets(b):'')
       +'<div class="grid-2">'
       +'<div><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">BATCH DETAILS</div><button class="btn btn-secondary btn-sm" onclick="openEditBatchModal(\''+b.id+'\')">Edit</button></div>'
@@ -908,6 +909,20 @@ function renderBatchDetail(){
     +'<div class="tab '+(activeTab==='photos'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'photos\')">Photos'+((APP.photos[b.id]||[]).length?' <span style="background:var(--bg4);color:var(--text3);font-size:9px;padding:1px 5px;border-radius:6px;margin-left:2px">'+(APP.photos[b.id]||[]).length+'</span>':'')+'</div>'
     +'<div class="tab '+(activeTab==='bottle'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'bottle\')">Bottling</div>'
     +'</div>'+tabContent;
+}
+
+// Blend lineage badge for the batch Overview (shown when batch.blendOf is set).
+function _blendLineageHtml(b){
+  if(!b||!Array.isArray(b.blendOf)||!b.blendOf.length)return '';
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var parts=b.blendOf.map(function(c){
+    var pct=Math.round((c.fraction||0)*100)+'%';
+    if(c.batchId==='__water')return 'water '+pct;
+    var src=APP.batches.find(function(x){return x.id===c.batchId;});
+    var nm=src?src.name:(nl?'onbekend':'unknown');
+    return '<span style="cursor:pointer;color:var(--gold2)" onclick="showView(\'batch\',\''+c.batchId+'\')">'+escHtml(nm)+'</span> '+pct;
+  }).join(' + ');
+  return '<div class="info-box" style="margin-bottom:16px;border-left-color:var(--gold2)"><div style="font-size:13px;color:var(--text2)">🥂 '+(nl?'Blend van':'Blend of')+': '+parts+'</div></div>';
 }
 
 // ==================== STEP SCHEDULE EDITOR ====================
