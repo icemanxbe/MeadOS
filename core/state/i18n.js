@@ -162,6 +162,9 @@ var UI_PHRASES={
   'Mon':'ma','Tue':'di','Wed':'wo','Thu':'do','Fri':'vr','Sat':'za','Sun':'zo',
   'Tap a day to see its full schedule.':'Tik op een dag voor het volledige schema.',
   'UPCOMING EVENTS':'KOMENDE GEBEURTENISSEN','No upcoming events.':'Geen komende gebeurtenissen.',
+  'This month':'Deze maand','Next up':'Volgende','Active batches':'Actieve partijen',
+  'scheduled steps':'geplande stappen','in your schedule':'in je schema','Nothing scheduled':'Niets gepland',
+  'Tomorrow':'Morgen','Yesterday':'Gisteren',
   // ---- daily coach ----
   'Daily Coach':'Dagelijkse coach','No active batches to coach.':'Geen actieve brouwsels om te coachen.',
   '＋ Start Brewing':'＋ Begin met brouwen','DAILY REMINDERS':'DAGELIJKSE HERINNERINGEN',
@@ -735,6 +738,8 @@ var UI_PATTERNS=[
   [/^\+(\d+) ppm assumed$/, '+$1 ppm aangenomen'],
   [/^([+-][\d.]+) vs typical must$/, '$1 t.o.v. typische most'],
   [/^\+(\d+) more$/, '+$1 meer'],
+  [/^in (\d+) days$/, 'over $1 dagen'],
+  [/^(\d+) days ago$/, '$1 dagen geleden'],
   [/^Choose the honey, shape the mead · (\d+) varieties$/, 'Kies de honing, vorm de mede · $1 variëteiten'],
   // ---- supplies ----
   [/^Inventory of yeast, chemicals, and consumables · (\d+) tracked · stored in the shared server database$/, 'Inventaris van gist, chemicaliën en verbruiksartikelen · $1 bijgehouden · opgeslagen in de gedeelde serverdatabase'],
