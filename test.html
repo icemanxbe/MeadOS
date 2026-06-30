@@ -340,6 +340,27 @@
     ok('patch: explicit-null → full-save fallback fires', !_deepEqual(mergePatchApply({a:1},d2),{a:1,k:null}), JSON.stringify(d2));
   })();
 
+  // cross-batch ingredient performance analytics
+  (function(){
+    APP.recipes=[{id:'rA',ogTarget:1.100,fgTarget:1.010}];
+    APP.batches=[
+      {id:'p1',recipeId:'rA',yeast:'ec1118',honeyType:'Wildflower',og:1.100},
+      {id:'p2',recipeId:'rA',yeast:'ec1118',honeyType:'Acacia',og:1.100,failed:{category:'stuck'}},
+      {id:'p3',recipeId:'rA',yeast:'d47',honeyType:'Wildflower',og:1.100}
+    ];
+    APP.bottling={p1:{fg:1.000,abv:13},p3:{fg:1.010,abv:12}};
+    APP.tastings={p1:[{rating:5}],p3:[{rating:3}]};APP.logs={};
+    var st=mwIngredientStats();
+    var ec=st.byYeast.filter(function(x){return x.key==='ec1118';})[0];
+    ok('analytics: yeast batch count', ec&&ec.n===2, ec&&ec.n);
+    ok('analytics: yeast failure rate', ec&&Math.abs(ec.failRate-0.5)<1e-9, ec&&ec.failRate);
+    ok('analytics: avg rating uses only rated', ec&&Math.abs(ec.avgRating-5)<1e-9, ec&&ec.avgRating);
+    var wf=st.byHoney.filter(function(x){return x.key==='Wildflower';})[0];
+    ok('analytics: honey avg rating (5,3→4)', wf&&Math.abs(wf.avgRating-4)<1e-9, wf&&wf.avgRating);
+    ok('analytics: sorted best-rating first', (st.byHoney[0].avgRating||0)>=(st.byHoney[st.byHoney.length-1].avgRating||0), '');
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.bottling={};APP.tastings={};APP.logs={};
+  })();
+
   var s=document.getElementById('summary');
   s.textContent=(fail===0?'✓ ALL PASS':'✗ '+fail+' FAILED')+'  ('+pass+'/'+(pass+fail)+')';
   s.className=fail===0?'pass':'fail';
