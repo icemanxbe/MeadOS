@@ -162,6 +162,7 @@ var UI_PHRASES={
   'Mon':'ma','Tue':'di','Wed':'wo','Thu':'do','Fri':'vr','Sat':'za','Sun':'zo',
   'Tap a day to see its full schedule.':'Tik op een dag voor het volledige schema.',
   'UPCOMING EVENTS':'KOMENDE GEBEURTENISSEN','No upcoming events.':'Geen komende gebeurtenissen.',
+  'Newest first':'Nieuwste eerst','Oldest first':'Oudste eerst','Name A–Z':'Naam A–Z','Volume (high→low)':'Volume (hoog→laag)',
   'This month':'Deze maand','Next up':'Volgende','Active batches':'Actieve partijen',
   'scheduled steps':'geplande stappen','in your schedule':'in je schema','Nothing scheduled':'Niets gepland',
   'Tomorrow':'Morgen','Yesterday':'Gisteren',
@@ -740,6 +741,7 @@ var UI_PATTERNS=[
   [/^\+(\d+) more$/, '+$1 meer'],
   [/^in (\d+) days$/, 'over $1 dagen'],
   [/^(\d+) days ago$/, '$1 dagen geleden'],
+  [/^Show more · (\d+) more$/, 'Toon meer · $1 meer'],
   [/^Choose the honey, shape the mead · (\d+) varieties$/, 'Kies de honing, vorm de mede · $1 variëteiten'],
   // ---- supplies ----
   [/^Inventory of yeast, chemicals, and consumables · (\d+) tracked · stored in the shared server database$/, 'Inventaris van gist, chemicaliën en verbruiksartikelen · $1 bijgehouden · opgeslagen in de gedeelde serverdatabase'],

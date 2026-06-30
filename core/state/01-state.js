@@ -118,7 +118,7 @@ plannedBatches:[],
 // stage, addedAt}. Images live as files under labels/ (uploaded via
 // /api/asset); only the small URL + metadata rides the state blob.
 photos:{},
-filters:{batchSearch:'',batchStatus:'all',recipeSearch:'',recipeDifficulty:'all',recipeCategory:'all',recipeAge:'all',recipeFavoritesOnly:false}
+filters:{batchSearch:'',batchStatus:'all',batchSort:'newest',batchLimit:60,recipeSearch:'',recipeDifficulty:'all',recipeCategory:'all',recipeAge:'all',recipeFavoritesOnly:false}
 };
 var currentView='dashboard',currentBatchId=null,currentRecipeId=null;
 var saveTimeout=null,syncStatus='local',currentTemp=null,tempPollTimer=null;

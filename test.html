@@ -275,6 +275,29 @@
     APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};APP.additions={};
   })();
 
+  // batch list filter + sort (scale: windowing source)
+  (function(){
+    APP.recipes=[{id:'rA',ogTarget:1.098,fgTarget:1.010,steps:[]}];
+    APP.batches=[
+      {id:'L1',recipeId:'rA',name:'Alpha',startDate:isoAgo(2),volume:3},
+      {id:'L2',recipeId:'rA',name:'Charlie',startDate:isoAgo(10),volume:9},
+      {id:'L3',recipeId:'rA',name:'Bravo',startDate:isoAgo(6),volume:6}
+    ];
+    APP.logs={};APP.bottling={};
+    APP.filters.batchStatus='all';APP.filters.batchSearch='';APP.filters.batchLimit=60;
+    APP.filters.batchSort='newest';
+    ok('batchlist: newest-first sort', _batchFilterSort().map(function(b){return b.id;}).join()==='L1,L3,L2', _batchFilterSort().map(function(b){return b.id;}).join());
+    APP.filters.batchSort='oldest';
+    ok('batchlist: oldest-first sort', _batchFilterSort()[0].id==='L2', '');
+    APP.filters.batchSort='name';
+    ok('batchlist: name A–Z sort', _batchFilterSort().map(function(b){return b.name;}).join()==='Alpha,Bravo,Charlie', '');
+    APP.filters.batchSort='volume';
+    ok('batchlist: volume high→low sort', _batchFilterSort()[0].id==='L2', '');
+    APP.filters.batchSort='newest';APP.filters.batchSearch='bravo';
+    ok('batchlist: search filters to 1', _batchFilterSort().length===1, '');
+    APP.filters.batchSearch='';APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};
+  })();
+
   var s=document.getElementById('summary');
   s.textContent=(fail===0?'✓ ALL PASS':'✗ '+fail+' FAILED')+'  ('+pass+'/'+(pass+fail)+')';
   s.className=fail===0?'pass':'fail';
