@@ -332,6 +332,7 @@ function packageState(){
     calendarEvents:(typeof buildCalendarEvents==='function')?buildCalendarEvents():[],
     tasksDone:APP.tasksDone,
     tastings:APP.tastings,
+    competitions:APP.competitions||{},
     bottling:APP.bottling,
     supplies:APP.supplies,
     suppliers:APP.suppliers||[],
@@ -339,6 +340,7 @@ function packageState(){
     customRecipes:APP.customRecipes,
     notifiedTasks:APP.notifiedTasks,
     templates:APP.templates||[],
+    stepTemplates:APP.stepTemplates||[],
     celebrated:APP.celebrated||{},
     tempAnomalies:APP.tempAnomalies||[],
     fermenters:APP.fermenters||[],
@@ -403,12 +405,14 @@ function applyState(d){
   if(migrationReport)APP._pendingMigrationReport=migrationReport;
   // Also remember templates + celebrated milestones + temp anomalies + custom user data buckets
   APP.templates=d.templates||APP.templates||[];
+  APP.stepTemplates=Array.isArray(d.stepTemplates)?d.stepTemplates:(APP.stepTemplates||[]);
   APP.celebrated=d.celebrated||APP.celebrated||{};
   APP.tempAnomalies=d.tempAnomalies||APP.tempAnomalies||[];
   APP.batches=d.batches||[];
   APP.logs=d.logs||{};
   APP.tasksDone=d.tasksDone||{};
   APP.tastings=d.tastings||{};
+  APP.competitions=(d.competitions&&typeof d.competitions==='object')?d.competitions:{};
   APP.bottling=d.bottling||{};
   APP.shareTokens=(d.shareTokens&&typeof d.shareTokens==='object')?d.shareTokens:{};
   // Calendar feed token rides the data blob so the feed URL is stable

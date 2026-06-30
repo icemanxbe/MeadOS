@@ -211,7 +211,7 @@ function handleHashRoute(){
     // legitimate references depending on which generation of share link or
     // QR code is being used. findBatchByRef tries serial first, falls back.
     var b=findBatchByRef(params.batch);
-    if(b){showView('batch',b.id);return;}
+    if(b){showView('batch',b.id);if(params.tab&&typeof setBatchTab==='function')setBatchTab(b.id,params.tab);return;}
     toast('⚠ Batch not found');
   }
   if(params.recipe){

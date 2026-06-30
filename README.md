@@ -42,10 +42,10 @@ It runs on hardware **you** control and stores your shared brewing data locally 
 ## ✨ What you get
 
 **🧭 A Brewing Advisor, not just a log**
-Every batch gets an **Advisor** that turns your readings into guidance. A weighted **health score** (with a day-over-day trend), a **readiness** gauge that answers *"can I drink it yet?"*, a **predicted finish date** from your gravity drop-rate, and clear **Critical / Recommended / Info** recommendations — each with a confidence level and the reasoning behind it. It knows the **1/3 sugar break** for *your* batch, so it tells you exactly when to add the final nutrient and **stop aerating**, flags a likely stall, a temperature out of the yeast's range, or an approaching alcohol ceiling. All deterministic — a transparent rule engine over your data, no guesswork.
+Every batch gets an **Advisor** that turns your readings into guidance. A weighted **health score** (with a day-over-day trend), a **readiness** gauge that answers *"can I drink it yet?"*, a **predicted finish date** from your gravity drop-rate, and clear **Critical / Recommended / Info** recommendations — each with a confidence level and the reasoning behind it. It knows the **1/3 sugar break** for *your* batch, so it tells you when to **aerate** and when to **stop**, when the final nutrient is due, and when to **stabilise before backsweetening**; it flags a likely stall, an out-of-range or swinging temperature, an approaching alcohol ceiling, a **fructose-stall risk** (high-fructose honey + non-fructophilic yeast), stale readings, and **aging milestones** — all grouped by category (fermentation · nutrition · oxygen · temperature · stabilisation · clarity · aging · data). Deterministic throughout: a transparent rule engine over your data, no guesswork.
 
 **🧪 Batches tracked by reality, not the calendar**
-Log gravity and temperature onto a combined **gravity-&-ABV** chart and a unified **Fermentation Analysis** overlay (SG · temperature · drop-rate on one timeline, so you can *see* a warm spell speed things up). Batches move through *fermenting → conditioning → aging → bottled* based on the steps you actually complete, with a **Target-vs-Actual** read-out on every batch. A guided bottling workflow handles pre-flight checks, the final reading, a sanitiser timer, bottle counts and labels.
+Log gravity and temperature onto a combined **gravity-&-ABV** chart and a unified **Fermentation Analysis** overlay (SG · temperature · drop-rate on one timeline, so you can *see* a warm spell speed things up). Batches move through *fermenting → conditioning → aging → bottled* based on the steps you actually complete, with a **Target-vs-Actual** read-out on every batch. Edit a batch's **step schedule** (and save reusable templates), record **competition entries & awards**, and let a guided bottling workflow handle pre-flight checks, the final reading, a sanitiser timer, bottle counts and labels.
 
 **📜 38 built-in recipes you can configure before you brew**
 Traditionals, melomels, cysers, pyments, metheglins, bochets, braggots, sack & port-style meads, plus five sparkling / bottle-conditioned recipes. Open any recipe and **pick your honey, yeast, nutrient and schedule** — the ingredients **and** the targets (FG / ABV / nutrient grams) recompute live as you drag the scale slider, and it **warns you before you brew** if the yeast can't reach the recipe's target. Every recipe also rates **every honey in the library** for *that* mead — a hand-curated great / good / workable / clash verdict with a note on what each swap does. "Brew This Recipe" carries your exact configuration straight into the new-batch form.
@@ -54,10 +54,16 @@ Traditionals, melomels, cysers, pyments, metheglins, bochets, braggots, sack & p
 The Recipe Designer back-solves honey, OG/FG, a suitable yeast and a nutrient plan from a style, volume, target ABV and sweetness — then hands you an editable recipe.
 
 **🧮 Calculators with context**
-ABV, honey-for-target-gravity, **TOSNA 2.0** scheduling, sulfite (molecular SO₂), acid/TA, backsweetening & stabilisation, **carbonation / priming** with a bottle-pressure safety warning, temperature correction, SG↔Brix, blending and sanitiser dosing.
+ABV, honey-for-target-gravity, **TOSNA 2.0** scheduling, sulfite (molecular SO₂), acid/TA, backsweetening & stabilisation, **carbonation / priming** with a bottle-pressure safety warning, temperature correction, SG↔Brix, sanitiser dosing, and **blending** — combine two finished batches in any ratio and turn the result into a new batch with weighted OG/ABV and lineage back to its sources.
 
 **🍾 Inventory & a cellar that mirror real life**
 Track honey, yeast, nutrients, chemicals and bottles with prices, expiry and restock thresholds; auto-deduct on brew day; see which recipes you can **brew with what you have**; and place finished bottles on real shelves with live drinking windows.
+
+**📊 Analytics & records that compound**
+Insights mines your whole history: **ingredient performance** (which yeast and honey score best for *you*, with their stall/fail rates), year-over-year trends, and a **trophy shelf** of competition results. Export a print-ready **brew logbook** for any batch and a **production & cost report** across the whole operation.
+
+**⚡ Built to scale**
+Stays fast with hundreds of batches and thousands of readings: windowed batch & cellar lists with sort and filter, downsampled charts, an indexed global search, **gzip-compressed** sync and history, and **delta saves** that upload only what changed.
 
 **🎨 Label Studio — design real bottle labels**
 A from-scratch **front & back** bottle-label designer. Start from a premium template or **upload your own art**, then drop live batch data onto it — ABV, net contents, batch №, vintage, a Dry→Sweet meter, ingredients, allergens, and a tasting note drawn from the *honey you actually used*. Pick shapes, fonts and honeycomb theming; **save element layouts** to reuse; design **per-bottle-size variants**; flip the whole label — and the share page — into **English or Nederlands**; and print a sheet that can **match your exact bottle counts per size**, front-only or front + back.
@@ -159,16 +165,18 @@ The complete handbook is in the **[Wiki](https://github.com/icemanxbe/MeadOS/wik
 ## 🏗 How it works
 
 ```
-┌────────────┐     GET /api/data      ┌─────────────┐
-│  Browser A │ ◄──────────────────────│             │
-│  Browser B │ ──────────────────────►│  server.py  │──► meados.db (SQLite)
-│  Phone     │     POST /api/data     │  (stdlib)   │      ├─ state    (current)
-└────────────┘                        └─────────────┘      └─ history  (last 200 saves)
+┌────────────┐   GET /api/data (gzip)   ┌─────────────┐
+│  Browser A │ ◄────────────────────────│             │
+│  Browser B │ ────────────────────────►│  server.py  │──► meados.db (SQLite)
+│  Phone     │  POST /api/data[/patch]  │  (stdlib)   │      ├─ state    (current)
+└────────────┘   full save · or delta   └─────────────┘      └─ history  (gzip, last 200)
 ```
 
 `index.html` is a small shell that loads `app.css` and the app's JavaScript — split into ordered plain `<script>` modules organised into concern folders under `core/` (`data`, `state`, `domain`, `sync`, `views`, `tools`, `features`, `labels`, `share`, `boot`) that share one global scope, with **no build step, no bundler and no Node** — each served as an ETag-cached static asset. The intelligence layer is pure, DOM-free domain code: a mead **model** and an **advisor** (facts → rule engine → health / readiness) that every view reads from, so guidance is consistent everywhere and unit-tested in `test.html`.
 
 `server.py` — **Python standard library only** — serves the app, stores the full state in SQLite, serves the PWA assets, the tokenised share page and the calendar feed, and adds security headers plus request hardening (login throttling, origin/CSRF checks, an audit log) to every response. Every browser reads and writes the **same shared data**; saves are debounced, offline edits re-sync, and every save is appended to a deep history table so an accidental overwrite is recoverable.
+
+**It stays light at scale.** Responses are **gzip-compressed**, history snapshots are stored **compressed**, and a save can be a **delta** — a merge-patch of only what changed (`POST /api/data/patch`) that the client verifies reconstructs the exact state before sending, with a full save as the always-available fallback. On the front end, long batch/cellar lists are windowed and gravity charts are downsampled, so hundreds of batches and thousands of readings stay responsive.
 
 ➡️ More: **[The Brewing Advisor](https://github.com/icemanxbe/MeadOS/wiki/Brewing-Advisor)** · **[Backups & Data](https://github.com/icemanxbe/MeadOS/wiki/Backups-and-Data)** · **[Security & Deployment](https://github.com/icemanxbe/MeadOS/wiki/Security-and-Deployment)**.
 
@@ -210,7 +218,7 @@ MeadOS/
 ├── core/                   # the app's JavaScript: ordered plain scripts in concern folders (no build step)
 │   ├── data/               # honey/yeast/nutrient data, the 38 recipes + Dutch (NL) data maps
 │   ├── state/              # state model, i18n layer, navigation & rendering
-│   ├── domain/             # honey & brew logic, the mead model + batch Advisor (signals → rules → scores)
+│   ├── domain/             # honey & brew logic, the mead model, batch Advisor (signals → rules → scores) + cross-batch analytics & blend math
 │   ├── sync/               # SQLite sync + Home Assistant integration
 │   ├── views/              # page renderers (batches, advisor, cellar, recipes, library, insights…)
 │   ├── tools/              # calculators, mead guide, scanner, search, PDF, BeerXML

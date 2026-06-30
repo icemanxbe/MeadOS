@@ -38,6 +38,7 @@ SQLite client:  sqlite3 meados.db "SELECT saved_at, length(data) FROM history;"
 import argparse
 import base64
 import contextlib
+import gzip
 import re
 import hashlib
 import hmac
@@ -55,6 +56,52 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 HISTORY_KEEP = 200  # state is a few tens of KB now, so deep undo history is cheap
 MAX_BODY = 64 * 1024 * 1024  # 64 MB — far above any realistic state size
+
+
+# History snapshots are gzip-compressed at rest (200 full-state copies dominate
+# DB size for a power user). New rows are stored as gzipped BLOBs; reads detect
+# the gzip magic and fall back to legacy plaintext rows, so old history (and old
+# backups) still restore. The `bytes` column keeps the *logical* (uncompressed)
+# size so health/history reporting stays meaningful.
+def _hist_encode(raw):
+    try:
+        return gzip.compress(raw.encode("utf-8"), 6)
+    except Exception:
+        return raw
+
+
+def _hist_decode(val):
+    if val is None:
+        return None
+    if isinstance(val, (bytes, bytearray)):
+        b = bytes(val)
+        if len(b) >= 2 and b[0] == 0x1F and b[1] == 0x8B:
+            try:
+                return gzip.decompress(b).decode("utf-8")
+            except Exception:
+                pass
+        try:
+            return b.decode("utf-8")
+        except Exception:
+            return val
+    return val  # legacy plaintext TEXT row
+
+
+def merge_patch(target, patch):
+    """RFC 7386 JSON Merge Patch. Used by the delta-save endpoint: the client
+    sends only what changed, the server merges it into the stored state. The
+    client pre-verifies that this exact algorithm reconstructs its state before
+    sending, so a patch can never corrupt the save."""
+    if not isinstance(patch, dict):
+        return patch
+    if not isinstance(target, dict):
+        target = {}
+    for k, v in patch.items():
+        if v is None:
+            target.pop(k, None)
+        else:
+            target[k] = merge_patch(target.get(k), v)
+    return target
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 INDEX_FILE = os.path.join(BASE_DIR, "index.html")
@@ -140,7 +187,7 @@ def referenced_asset_names():
         with db_connect() as conn:
             for (d,) in conn.execute("SELECT data FROM history"):
                 if d:
-                    blobs.append(d)
+                    blobs.append(_hist_decode(d))
     except sqlite3.Error:
         pass
     for b in blobs:
@@ -927,7 +974,7 @@ def db_put_state(raw):
         )
         conn.execute(
             "INSERT INTO history (data, saved_at, updated_at, bytes) VALUES (?, ?, ?, ?)",
-            (raw, saved_at, now, len(raw)),
+            (_hist_encode(raw), saved_at, now, len(raw)),
         )
         conn.execute(
             "DELETE FROM history WHERE id NOT IN "
@@ -948,7 +995,7 @@ def db_history_list():
 def db_history_get(hid):
     with db_connect() as conn:
         row = conn.execute("SELECT data FROM history WHERE id = ?", (hid,)).fetchone()
-    return row[0] if row else None
+    return _hist_decode(row[0]) if row else None
 
 
 def db_health():
@@ -998,12 +1045,31 @@ class Handler(BaseHTTPRequestHandler):
         if isinstance(body, (dict, list)):
             body = json.dumps(body)
         data = body.encode("utf-8") if isinstance(body, str) else body
+        # Transparent gzip for clients that advertise it (every browser does).
+        # Cuts the full-state /api/data transfer on every load and sync; works
+        # both ways (an old client that omits the header just gets plain bytes),
+        # so it's safe to ship before the server is restarted. Skipped for tiny
+        # bodies where the gzip header outweighs the saving.
+        enc = None
+        try:
+            accept_enc = (self.headers.get("Accept-Encoding", "") or "").lower()
+        except Exception:
+            accept_enc = ""
+        if len(data) >= 1024 and "gzip" in accept_enc and getattr(self, "command", "") != "HEAD":
+            try:
+                data = gzip.compress(data, 6)
+                enc = "gzip"
+            except Exception:
+                enc = None
         self.send_response(code)
         self.send_header("Content-Type", ctype)
+        if enc:
+            self.send_header("Content-Encoding", enc)
+            self.send_header("Vary", "Accept-Encoding")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Expose-Headers", "X-Data-Rev")
+        self.send_header("Access-Control-Expose-Headers", "X-Data-Rev, X-Data-Caps")
         if extra_headers:
             for k, v in extra_headers.items():
                 self.send_header(k, v)
@@ -1423,7 +1489,7 @@ class Handler(BaseHTTPRequestHandler):
             row = db_get_state()
             if row:
                 # X-Data-Rev lets the client detect concurrent edits on save.
-                self._send(200, row[0].encode("utf-8"), extra_headers={"X-Data-Rev": row[2] or ""})
+                self._send(200, row[0].encode("utf-8"), extra_headers={"X-Data-Rev": row[2] or "", "X-Data-Caps": "patch"})
             else:
                 self._send(404, {"ok": False, "error": "no data stored yet"})
         elif path == "/api/ha-config":
@@ -1736,6 +1802,45 @@ class Handler(BaseHTTPRequestHandler):
             updated = db_put_state(data)  # becomes current + a fresh history entry
             audit("history_restore", self._client_ip(), snapshot=hid, bytes=len(data))
             self._send(200, {"ok": True, "updatedAt": updated, "bytes": len(data)})
+            return
+        if path == "/api/data/patch":
+            # Delta save: body is an RFC 7386 merge-patch; merge it into the
+            # stored state. Same X-Base-Rev concurrency guard as a full save.
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > MAX_BODY:
+                self.close_connection = True
+                self._send(413 if length > MAX_BODY else 400,
+                           {"ok": False, "error": "missing or oversized body"})
+                return
+            try:
+                patch = json.loads(self.rfile.read(length).decode("utf-8"))
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "body is not valid JSON"})
+                return
+            if not isinstance(patch, dict):
+                self._send(400, {"ok": False, "error": "patch must be an object"})
+                return
+            cur = db_get_state()
+            if not cur:
+                # No base state to patch — tell the client to do a full save.
+                self._send(409, {"ok": False, "error": "no base state", "currentRev": None})
+                return
+            base_rev = self.headers.get("X-Base-Rev")
+            cur_rev = cur[2] if cur else None
+            if base_rev and base_rev != "*" and cur_rev and base_rev != cur_rev:
+                self._send(409, {"ok": False, "error": "conflict", "currentRev": cur_rev})
+                return
+            try:
+                target = json.loads(cur[0])
+            except ValueError:
+                self._send(500, {"ok": False, "error": "stored state unreadable"})
+                return
+            raw = json.dumps(merge_patch(target, patch))
+            updated = db_put_state(raw)
+            self._send(200, {"ok": True, "bytes": len(raw), "updatedAt": updated})
             return
         if path != "/api/data":
             self._send(404, {"ok": False, "error": "not found"})

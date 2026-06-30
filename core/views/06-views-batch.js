@@ -370,87 +370,92 @@ function _renderBatchGroup(title,arr){
     }).join('');
 }
 
+var BATCH_PAGE=60;
+
+// Shared filter + sort over all batches. Builds a recipe lookup once so search
+// stays O(batches), not O(batches×recipes), at scale.
+function _batchFilterSort(){
+  var q=(APP.filters.batchSearch||'').toLowerCase().trim();
+  var statusFilter=APP.filters.batchStatus||'all';
+  var sort=APP.filters.batchSort||'newest';
+  var rmap={};(APP.recipes||[]).forEach(function(r){rmap[r.id]=r;});
+  var arr=APP.batches.filter(function(b){
+    if(statusFilter!=='all'){
+      var st=getBatchStatus(b);
+      if(statusFilter==='active'){if(st==='bottled'||st==='complete'||st==='failed')return false;}
+      else if(st!==statusFilter)return false;
+    }
+    if(!q)return true;
+    var r=rmap[b.recipeId];
+    var hay=((b.name||'')+' '+(b.serial||'')+' '+(r?r.name:'')+' '+(r?r.category:'')+' '+(r?r.style:'')+' '+(b.notes||'')).toLowerCase();
+    return hay.indexOf(q)>=0;
+  });
+  arr.sort(function(a,b){
+    if(sort==='name')return (a.name||'').localeCompare(b.name||'');
+    if(sort==='oldest')return (a.startDate||'').localeCompare(b.startDate||'');
+    if(sort==='volume')return (parseFloat(b.volume)||0)-(parseFloat(a.volume)||0);
+    return (b.startDate||'').localeCompare(a.startDate||''); // newest
+  });
+  return arr;
+}
+
+// Window the sorted results (only the first batchLimit cards are built) + group
+// the page + a "show more" footer — so hundreds of batches stay cheap to render.
+function _batchListResultsHtml(){
+  var arr=_batchFilterSort(), total=arr.length;
+  if(total===0)return '<div class="empty-state"><p>No batches match the filters.</p></div>';
+  var limit=APP.filters.batchLimit||BATCH_PAGE;
+  var shown=arr.slice(0,limit);
+  var groups={active:[],bottled:[],complete:[],failed:[]};
+  shown.forEach(function(b){var s=getBatchStatus(b);if(s==='failed')groups.failed.push(b);else if(s==='bottled')groups.bottled.push(b);else if(s==='complete')groups.complete.push(b);else groups.active.push(b);});
+  var html=_renderBatchGroup('Active',groups.active)+_renderBatchGroup('Bottled',groups.bottled)+_renderBatchGroup('Complete',groups.complete)+(groups.failed.length?_renderBatchGroup('Failed (postmortem)',groups.failed):'');
+  if(total>limit)html+='<div style="text-align:center;margin:16px 0"><button class="btn btn-secondary btn-sm" onclick="showMoreBatches()">Show more · '+(total-limit)+' more</button></div>';
+  return html;
+}
+
+function _batchListSubtitle(total){
+  var q=APP.filters.batchSearch,sf=APP.filters.batchStatus;
+  return 'The Meadwright\'s Cellar · '+APP.batches.length+' batch'+(APP.batches.length!==1?'es':'')+((q||sf!=='all')?(' · '+total+' shown'):'');
+}
+
 function renderBatchList(){
   if(!APP.batches.length){
     return'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div class="page-title">My Batches</div><button class="btn btn-primary" onclick="openNewBatchModal()">＋ New Batch</button></div>'
       +'<div class="page-subtitle">The Cellar</div>'
       +'<div class="empty-state"><div class="es-icon">🍯</div><p>Your cellar awaits its first creation.</p><br><button class="btn btn-primary" onclick="openNewBatchModal()">＋ Begin First Batch</button></div>';
   }
-  // Apply filters
-  var q=(APP.filters.batchSearch||'').toLowerCase();
+  var q=(APP.filters.batchSearch||'');
   var statusFilter=APP.filters.batchStatus||'all';
-  var filtered=APP.batches.filter(function(b){
-    if(q){
-      var hay=(b.name+' '+(b.style||'')+' '+(b.notes||'')).toLowerCase();
-      if(hay.indexOf(q)===-1)return false;
-    }
-    if(statusFilter!=='all'){
-      var s=getBatchStatus(b);
-      if(statusFilter==='active'){if(s==='complete'||s==='bottled'||s==='failed')return false;}
-      else if(s!==statusFilter)return false;
-    }
-    return true;
-  });
-  // Group by status — failed get their own bucket at the end
-  var groups={active:[],bottled:[],complete:[],failed:[]};
-  filtered.forEach(function(b){
-    var s=getBatchStatus(b);
-    if(s==='failed')groups.failed.push(b);
-    else if(s==='bottled')groups.bottled.push(b);
-    else if(s==='complete')groups.complete.push(b);
-    else groups.active.push(b);
-  });
+  var sort=APP.filters.batchSort||'newest';
+  var failedCount=APP.batches.filter(function(b){return getBatchStatus(b)==='failed';}).length;
   var statusChips=[['all','All'],['active','Active'],['bottled','Bottled'],['complete','Complete'],['failed','Failed']]
-    .map(function(x){return'<span class="filter-chip '+(statusFilter===x[0]?'active':'')+'" onclick="setBatchFilter(\''+x[0]+'\')">'+x[1]+(x[0]==='failed'&&groups.failed.length?' · '+groups.failed.length:'')+'</span>';}).join('');
-  var resultsHtml=(filtered.length===0?'<div class="empty-state"><p>No batches match the filters.</p></div>':_renderBatchGroup('Active',groups.active)+_renderBatchGroup('Bottled',groups.bottled)+_renderBatchGroup('Complete',groups.complete)+(groups.failed.length?_renderBatchGroup('Failed (postmortem)',groups.failed):''));
+    .map(function(x){return'<span class="filter-chip '+(statusFilter===x[0]?'active':'')+'" onclick="setBatchFilter(\''+x[0]+'\')">'+x[1]+(x[0]==='failed'&&failedCount?' · '+failedCount:'')+'</span>';}).join('');
+  var sortSel='<select class="search-input" style="max-width:180px;flex:0 0 auto" onchange="setBatchSort(this.value)" title="Sort batches">'
+    +[['newest','Newest first'],['oldest','Oldest first'],['name','Name A–Z'],['volume','Volume (high→low)']].map(function(o){return'<option value="'+o[0]+'"'+(sort===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')
+    +'</select>';
   return'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div class="page-title">My Batches</div><button class="btn btn-primary" onclick="openNewBatchModal()">＋ New Batch</button></div>'
-    +'<div class="page-subtitle" id="batch-list-subtitle">The Meadwright\'s Cellar · '+APP.batches.length+' batch'+(APP.batches.length!==1?'es':'')+(q||statusFilter!=='all'?(' · '+filtered.length+' shown'):'')+'</div>'
+    +'<div class="page-subtitle" id="batch-list-subtitle">'+_batchListSubtitle(_batchFilterSort().length)+'</div>'
     +'<div class="search-bar"><input type="text" class="search-input" id="batch-search" placeholder="🔍 Search batches by name, recipe, or notes…" value="'+escHtml(q)+'" oninput="updateBatchSearchResults(this.value)">'
+    +sortSel
     +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+statusChips+'</div></div>'
-    +'<div id="batch-list-results">'+resultsHtml+'</div>';
+    +'<div id="batch-list-results">'+_batchListResultsHtml()+'</div>';
 }
 
-// Update only the search results container (NOT the whole view) so the
-// input keeps focus across keystrokes. Same idea for the recipe search.
-function updateBatchSearchResults(q){
-  APP.filters.batchSearch=q;
-  var container=document.getElementById('batch-list-results');
-  if(!container)return;
-  var qLower=(q||'').toLowerCase().trim();
-  var statusFilter=APP.filters.batchStatus||'all';
-  var filtered=APP.batches.filter(function(b){
-    if(statusFilter!=='all'){
-      var st=getBatchStatus(b);
-      // The 'active' chip is shorthand for "everything pre-bottling" — matches
-      // fermenting / conditioning / aging. Other chips compare exactly.
-      if(statusFilter==='active'){
-        if(st==='bottled'||st==='complete'||st==='failed')return false;
-      }else if(st!==statusFilter){
-        return false;
-      }
-    }
-    if(!qLower)return true;
-    var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
-    var hay=(b.name||'')+' '+(b.serial||'')+' '+(recipe?recipe.name:'')+' '+(recipe?recipe.category:'')+' '+(recipe?recipe.style:'')+' '+(b.notes||'');
-    return hay.toLowerCase().indexOf(qLower)>=0;
-  });
-  var groups={active:[],bottled:[],complete:[],failed:[]};
-  filtered.forEach(function(b){
-    var s=getBatchStatus(b);
-    // getBatchStatus returns fermenting/conditioning/aging/bottled/complete/failed.
-    // The Cellar view collapses everything pre-bottling into 'active' — match
-    // that, otherwise pre-bottling batches silently disappear from search.
-    if(s==='failed')groups.failed.push(b);
-    else if(s==='bottled')groups.bottled.push(b);
-    else if(s==='complete')groups.complete.push(b);
-    else groups.active.push(b);
-  });
-  container.innerHTML=(filtered.length===0?'<div class="empty-state"><p>No batches match the filters.</p></div>':_renderBatchGroup('Active',groups.active)+_renderBatchGroup('Bottled',groups.bottled)+_renderBatchGroup('Complete',groups.complete)+(groups.failed.length?_renderBatchGroup('Failed (postmortem)',groups.failed):''));
+// Re-render only the results container (keeps the search input focused across
+// keystrokes) and re-translate it when the UI is in Dutch.
+function refreshBatchList(){
+  var c=document.getElementById('batch-list-results');
+  if(!c){renderMain();return;}
+  c.innerHTML=_batchListResultsHtml();
   var sub=document.getElementById('batch-list-subtitle');
-  if(sub)sub.textContent='The Meadwright\'s Cellar · '+APP.batches.length+' batch'+(APP.batches.length!==1?'es':'')+(q||statusFilter!=='all'?(' · '+filtered.length+' shown'):'');
+  if(sub)sub.textContent=_batchListSubtitle(_batchFilterSort().length);
+  if(typeof translateChrome==='function'&&typeof appLang==='function'&&appLang()==='nl'){try{translateChrome(c);}catch(e){}}
 }
 
-function setBatchFilter(s){APP.filters.batchStatus=s;renderMain();}
+function updateBatchSearchResults(q){APP.filters.batchSearch=q;APP.filters.batchLimit=BATCH_PAGE;refreshBatchList();}
+function setBatchFilter(s){APP.filters.batchStatus=s;APP.filters.batchLimit=BATCH_PAGE;renderMain();}
+function setBatchSort(s){APP.filters.batchSort=s;APP.filters.batchLimit=BATCH_PAGE;renderMain();}
+function showMoreBatches(){APP.filters.batchLimit=(APP.filters.batchLimit||BATCH_PAGE)+BATCH_PAGE;refreshBatchList();}
 
 // ==================== BATCH DETAIL ====================
 // Project where fermentation is heading from the logged gravity readings:
@@ -539,6 +544,7 @@ function renderBatchDetail(){
     }).join('')+sugarBreakNote(steps);
     var bottling=APP.bottling[b.id];
     tabContent=(typeof renderBatchAdvisorStrip==='function'?renderBatchAdvisorStrip(b):'')
+      +_blendLineageHtml(b)
       +(typeof renderBatchTargets==='function'?renderBatchTargets(b):'')
       +'<div class="grid-2">'
       +'<div><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">BATCH DETAILS</div><button class="btn btn-secondary btn-sm" onclick="openEditBatchModal(\''+b.id+'\')">Edit</button></div>'
@@ -664,7 +670,7 @@ function renderBatchDetail(){
       +'<div style="max-width:760px;margin:0 auto">'+renderBatchLabel(recipe?recipe.id:'r1',currentABV,{batch:b,maxWidth:'420px'})+'</div>'
       +'<div style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center;font-family:var(--font-mono);letter-spacing:1px">'+escHtml(b.name).toUpperCase()+' · '+fmtDate(b.startDate)+(currentABV!=='—'?' · '+currentABV+'% ABV':'')+'</div>'
       +'</div>'
-      +'<div class="card"><div class="card-header"><div class="card-title">JOURNEY</div></div>'
+      +'<div class="card"><div class="card-header"><div class="card-title">JOURNEY'+(b.customSteps&&b.customSteps.length?' <span style="font-family:var(--font-mono);font-size:9px;color:var(--gold2);letter-spacing:1px">· CUSTOM</span>':'')+'</div><button class="btn btn-secondary btn-sm" onclick="openStepEditor(\''+b.id+'\')">'+(appLang()==='nl'?'✎ Schema':'✎ Edit schedule')+'</button></div>'
       +'<div class="timeline">'+(timelineHtml||'<p style="color:var(--text3);font-style:italic">No recipe steps available.</p>')+'</div></div>'
       +'</div></div>';
   }
@@ -674,7 +680,10 @@ function renderBatchDetail(){
     // clean for users who never log pH while still surfacing it naturally for
     // those who do.
     var anyPH=logs.some(function(l){return l.ph!=null;});
-    var logRows=logs.length?[].concat(logs).reverse().map(function(l){
+    var LOG_CAP=100;
+    var revLogs=[].concat(logs).reverse();
+    var logCapped=(!window._batchLogShowAll&&revLogs.length>LOG_CAP)?revLogs.slice(0,LOG_CAP):revLogs;
+    var logRows=revLogs.length?logCapped.map(function(l){
       var gravCell=l.gravity!=null?'<span style="font-family:var(--font-mono)">'+l.gravity+'</span>'+(l.tempCorrected&&l.gravityRaw?'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-left:6px" title="Raw reading at sample temp">('+l.gravityRaw+' raw)</span>':''):'—';
       var phCell=anyPH?'<td>'+(l.ph!=null?'<span style="font-family:var(--font-mono);color:'+(l.ph<2.9?'var(--red2)':l.ph>3.5?'var(--gold2)':'var(--green2)')+'">'+l.ph.toFixed(2)+'</span>':'<span style="color:var(--text3)">—</span>')+'</td>':'';
       return'<tr><td>'+fmtDate(l.date)+'</td>'
@@ -748,7 +757,9 @@ function renderBatchDetail(){
       }())
       +'</div>'
       +'<div class="card"><div class="card-header"><div class="card-title">READING LOG</div></div>'
-      +'<table class="data-table"><thead><tr><th>Date</th><th>SG</th><th>ABV</th><th>Temp</th>'+(anyPH?'<th>pH</th>':'')+'<th>Airlock</th><th>Notes</th><th></th></tr></thead><tbody>'+logRows+'</tbody></table></div>'
+      +'<table class="data-table"><thead><tr><th>Date</th><th>SG</th><th>ABV</th><th>Temp</th>'+(anyPH?'<th>pH</th>':'')+'<th>Airlock</th><th>Notes</th><th></th></tr></thead><tbody>'+logRows+'</tbody></table>'
+      +(revLogs.length>LOG_CAP?'<div style="text-align:center;margin-top:10px"><button class="btn btn-secondary btn-sm" onclick="toggleBatchLogAll()">'+(window._batchLogShowAll?'Show recent only':('Show all '+revLogs.length+' readings'))+'</button><div style="font-size:11px;color:var(--text3);margin-top:4px">'+(window._batchLogShowAll?('Showing all '+revLogs.length+' readings'):('Showing the latest '+LOG_CAP+' of '+revLogs.length))+'</div></div>':'')
+      +'</div>'
       +'</div></div>';
   }
 
@@ -796,7 +807,8 @@ function renderBatchDetail(){
       +'<div><div class="card"><div class="card-header"><div class="card-title">TASTING JOURNAL</div>'+(tastings.length>=2?'<button class="btn btn-secondary btn-sm" onclick="openTastingCompareModal(\''+b.id+'\')">📊 Compare</button>':'')+'</div>'+tastingRows+'</div>'
       +renderTastingEvolution(tastings)
       +'</div>'
-      +'</div>';
+      +'</div>'
+      +renderCompetitions(b);
   }
 
   if(activeTab==='photos'){
@@ -899,17 +911,190 @@ function renderBatchDetail(){
     +'</div>'+tabContent;
 }
 
+// Blend lineage badge for the batch Overview (shown when batch.blendOf is set).
+function _blendLineageHtml(b){
+  if(!b||!Array.isArray(b.blendOf)||!b.blendOf.length)return '';
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var parts=b.blendOf.map(function(c){
+    var pct=Math.round((c.fraction||0)*100)+'%';
+    if(c.batchId==='__water')return 'water '+pct;
+    var src=APP.batches.find(function(x){return x.id===c.batchId;});
+    var nm=src?src.name:(nl?'onbekend':'unknown');
+    return '<span style="cursor:pointer;color:var(--gold2)" onclick="showView(\'batch\',\''+c.batchId+'\')">'+escHtml(nm)+'</span> '+pct;
+  }).join(' + ');
+  return '<div class="info-box" style="margin-bottom:16px;border-left-color:var(--gold2)"><div style="font-size:13px;color:var(--text2)">🥂 '+(nl?'Blend van':'Blend of')+': '+parts+'</div></div>';
+}
+
+// ==================== STEP SCHEDULE EDITOR ====================
+// Per-batch custom step schedule (batch.customSteps), edited in a modal and
+// reusable as named templates (APP.stepTemplates). getEffectiveSteps honors
+// batch.customSteps when present. Reorder = sort by day on save (no drag-drop).
+// ponytail: native prompt() for the template name; no custom name dialog.
+function _stepEditorRow(s){
+  s=s||{day:0,title:'',desc:''};
+  return '<div data-step-row style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;padding:8px;background:var(--bg3);border-radius:var(--radius)">'
+    +'<input class="form-input" data-step-day type="number" value="'+(s.day!=null?s.day:0)+'" style="width:60px;flex:0 0 auto" title="Day">'
+    +'<div style="flex:1;min-width:0"><input class="form-input" data-step-title value="'+escHtml(s.title||'')+'" placeholder="Title" style="margin-bottom:6px">'
+    +'<textarea class="form-textarea" data-step-desc placeholder="Description" style="min-height:46px">'+escHtml(s.desc||'')+'</textarea></div>'
+    +'<button class="btn btn-danger btn-sm" onclick="this.closest(\'[data-step-row]\').remove()" style="flex:0 0 auto">✕</button>'
+    +'</div>';
+}
+function _readStepEditorRows(){
+  return Array.prototype.map.call(document.querySelectorAll('#step-editor-rows [data-step-row]'),function(row){
+    return {day:parseInt(row.querySelector('[data-step-day]').value,10)||0,
+      title:row.querySelector('[data-step-title]').value.trim(),
+      desc:row.querySelector('[data-step-desc]').value.trim()};
+  }).filter(function(s){return s.title||s.desc;}).sort(function(a,b){return a.day-b.day;});
+}
+function openStepEditor(batchId){
+  var b=APP.batches.find(function(x){return x.id===batchId;});
+  if(!b){toast('⚠ Batch not found');return;}
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+  var steps=(typeof getEffectiveSteps==='function')?getEffectiveSteps(b,recipe):((recipe&&recipe.steps)||[]);
+  var custom=Array.isArray(b.customSteps)&&b.customSteps.length;
+  var tpls=APP.stepTemplates||[];
+  var tplPicker=tpls.length?'<div style="margin-bottom:10px"><select class="form-select" onchange="applyStepTemplate(\''+b.id+'\',this.value)"><option value="">'+(nl?'Sjabloon laden…':'Load template…')+'</option>'+tpls.map(function(t){return '<option value="'+t.id+'">'+escHtml(t.name)+' ('+((t.steps||[]).length)+')</option>';}).join('')+'</select></div>':'';
+  closeModal();
+  document.body.insertAdjacentHTML('beforeend',
+    '<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:700px;max-height:88vh;display:flex;flex-direction:column">'
+    +'<div class="modal-title">✎ '+(nl?'Stappenschema bewerken':'Edit step schedule')+'</div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px">'+(nl?'Pas dagen, titels en omschrijvingen aan. Een opgeslagen schema overschrijft het recept voor déze partij.':'Adjust days, titles and descriptions. A saved schedule overrides the recipe for this batch only.')+(custom?'':' '+(nl?'(Begint vanaf het recept.)':'(Starting from the recipe.)'))+'</div>'
+    +tplPicker
+    +'<div id="step-editor-rows" style="flex:1;overflow-y:auto;min-height:120px">'+steps.map(_stepEditorRow).join('')+'</div>'
+    +'<button class="btn btn-secondary btn-sm" style="margin-top:8px;align-self:flex-start" onclick="stepEditorAddRow()">＋ '+(nl?'Stap toevoegen':'Add step')+'</button>'
+    +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between">'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+        +(custom?'<button class="btn btn-secondary btn-sm" onclick="resetBatchSteps(\''+b.id+'\')">↺ '+(nl?'Terug naar recept':'Reset to recipe')+'</button>':'')
+        +'<button class="btn btn-secondary btn-sm" onclick="saveStepTemplate(\''+b.id+'\')">💾 '+(nl?'Als sjabloon':'Save as template')+'</button>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px"><button class="btn btn-secondary" onclick="closeModal()">'+(nl?'Annuleren':'Cancel')+'</button><button class="btn btn-primary" onclick="saveStepEditor(\''+b.id+'\')">'+(nl?'Opslaan':'Save')+'</button></div>'
+    +'</div></div></div>');
+}
+function stepEditorAddRow(){
+  var c=document.getElementById('step-editor-rows');
+  if(c)c.insertAdjacentHTML('beforeend',_stepEditorRow({day:0,title:'',desc:''}));
+}
+function saveStepEditor(batchId){
+  var b=APP.batches.find(function(x){return x.id===batchId;});if(!b)return;
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var steps=_readStepEditorRows();
+  if(!steps.length){toast(nl?'⚠ Geen stappen om op te slaan':'⚠ No steps to save');return;}
+  b.customSteps=steps;
+  if(typeof saveData==='function')saveData();
+  closeModal();renderMain();
+  toast(nl?'✦ Schema opgeslagen':'✦ Schedule saved');
+}
+function resetBatchSteps(batchId){
+  var b=APP.batches.find(function(x){return x.id===batchId;});if(!b)return;
+  delete b.customSteps;
+  if(typeof saveData==='function')saveData();
+  closeModal();renderMain();
+  toast((typeof appLang==='function'&&appLang()==='nl')?'↺ Terug naar recept':'↺ Reset to recipe schedule');
+}
+function saveStepTemplate(batchId){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var steps=_readStepEditorRows();
+  if(!steps.length){toast(nl?'⚠ Geen stappen':'⚠ No steps');return;}
+  var name=prompt(nl?'Naam voor dit sjabloon:':'Name for this step template:');
+  if(!name||!name.trim())return;
+  if(!APP.stepTemplates)APP.stepTemplates=[];
+  APP.stepTemplates.push({id:genId(),name:name.trim(),steps:steps});
+  if(typeof saveData==='function')saveData();
+  toast('💾 '+(nl?'Sjabloon opgeslagen':'Template saved'));
+}
+function applyStepTemplate(batchId,tplId){
+  if(!tplId)return;
+  var t=(APP.stepTemplates||[]).find(function(x){return x.id===tplId;});if(!t)return;
+  var c=document.getElementById('step-editor-rows');
+  if(c)c.innerHTML=(t.steps||[]).map(_stepEditorRow).join('');  // load for review; Save commits it
+}
+
+// ==================== COMPETITIONS / AWARDS ====================
+// Per-batch show entries: competition, category, score, and award. Stored in
+// APP.competitions[batchId][]. Surfaced on the Tasting tab + the Insights
+// trophy shelf.
+function _compAwards(){return [
+  {k:'bos',l:'Best of Show',icon:'🏆',c:'#e8c46a',rank:0},
+  {k:'gold',l:'Gold',icon:'🥇',c:'#d4af37',rank:1},
+  {k:'silver',l:'Silver',icon:'🥈',c:'#c0c4c9',rank:2},
+  {k:'bronze',l:'Bronze',icon:'🥉',c:'#cd7f32',rank:3},
+  {k:'hm',l:'Honorable Mention',icon:'🎗',c:'var(--gold2)',rank:4},
+  {k:'placement',l:'Placement',icon:'🎯',c:'var(--text2)',rank:5},
+  {k:'entered',l:'Entered',icon:'•',c:'var(--text3)',rank:6}
+];}
+function _compAwardMeta(k){var a=_compAwards();for(var i=0;i<a.length;i++)if(a[i].k===k)return a[i];return {k:k,l:k||'Entered',icon:'•',c:'var(--text3)',rank:9};}
+function renderCompetitions(b){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var list=((APP.competitions&&APP.competitions[b.id])||[]).slice().sort(function(a,c){return(c.date||'').localeCompare(a.date||'');});
+  var awardOpts=_compAwards().map(function(a){return '<option value="'+a.k+'">'+a.icon+' '+a.l+'</option>';}).join('');
+  var rows=list.length?list.map(function(c){
+    var am=_compAwardMeta(c.award);
+    var score=(c.score!==''&&c.score!=null)?(c.score+(c.maxScore?'/'+c.maxScore:'')):'';
+    return '<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;border-left:3px solid '+am.c+';background:var(--bg3);border-radius:var(--radius);margin-bottom:8px">'
+      +'<div style="font-size:20px;line-height:1;flex-shrink:0">'+am.icon+'</div>'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-family:var(--font-display);font-size:14px;color:var(--text)">'+escHtml(c.competition||'')+(c.category?' <span style="font-size:11px;color:var(--text3)">· '+escHtml(c.category)+'</span>':'')+'</div>'
+        +'<div style="font-family:var(--font-mono);font-size:10.5px;color:'+am.c+';letter-spacing:0.5px;margin-top:2px">'+am.l.toUpperCase()+(score?' · '+escHtml(score):'')+(c.date?' · '+fmtDate(c.date):'')+'</div>'
+        +(c.notes?'<div style="font-size:12px;color:var(--text2);font-style:italic;margin-top:4px">'+escHtml(c.notes)+'</div>':'')
+      +'</div>'
+      +'<button class="btn btn-danger btn-sm" onclick="deleteCompetition(\''+b.id+'\',\''+c.id+'\')">✕</button>'
+    +'</div>';
+  }).join(''):'<div style="color:var(--text3);font-style:italic;font-size:13px;padding:12px 0">'+(nl?'Nog geen wedstrijdinzendingen.':'No competition entries yet.')+'</div>';
+  return '<div class="card" style="margin-top:16px"><div class="card-header"><div class="card-title">'+(nl?'🏆 WEDSTRIJDEN &amp; PRIJZEN':'🏆 COMPETITIONS &amp; AWARDS')+'</div></div>'
+    +'<div class="form-row"><div class="form-group"><label class="form-label">'+(nl?'Wedstrijd':'Competition')+'</label><input class="form-input" id="comp-name" placeholder="'+(nl?'bv. NHC, lokale show':'e.g. NHC, local show')+'"></div>'
+    +'<div class="form-group"><label class="form-label">'+(nl?'Categorie':'Category')+'</label><input class="form-input" id="comp-cat" placeholder="'+(nl?'bv. M1A Droge mede':'e.g. M1A Dry Mead')+'"></div></div>'
+    +'<div class="form-row"><div class="form-group"><label class="form-label">'+(nl?'Datum':'Date')+'</label><input class="form-input" type="date" id="comp-date" value="'+today()+'"></div>'
+    +'<div class="form-group"><label class="form-label">'+(nl?'Resultaat':'Award')+'</label><select class="form-select" id="comp-award">'+awardOpts+'</select></div></div>'
+    +'<div class="form-row"><div class="form-group"><label class="form-label">'+(nl?'Score':'Score')+'</label><input class="form-input" type="number" id="comp-score" step="0.5" placeholder="38"></div>'
+    +'<div class="form-group"><label class="form-label">'+(nl?'Max score':'Max score')+'</label><input class="form-input" type="number" id="comp-max" placeholder="50"></div></div>'
+    +'<div class="form-group"><label class="form-label">'+(nl?'Notities van de jury':'Judge notes')+'</label><textarea class="form-textarea" id="comp-notes" placeholder="'+(nl?'Feedback, opmerkingen…':'Feedback, remarks…')+'"></textarea></div>'
+    +'<button class="btn btn-primary" onclick="addCompetition(\''+b.id+'\')">'+(nl?'Inzending toevoegen':'Add Entry')+'</button>'
+    +'<div style="margin-top:14px">'+rows+'</div>'
+    +'</div>';
+}
+function addCompetition(bid){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  function v(id){var e=document.getElementById(id);return e?String(e.value).trim():'';}
+  var comp=v('comp-name');
+  if(!comp){toast(nl?'⚠ Vul een wedstrijdnaam in':'⚠ Enter a competition name');return;}
+  if(!APP.competitions)APP.competitions={};
+  if(!APP.competitions[bid])APP.competitions[bid]=[];
+  APP.competitions[bid].push({id:genId(),date:v('comp-date')||today(),competition:comp,category:v('comp-cat'),
+    score:v('comp-score'),maxScore:v('comp-max'),award:v('comp-award')||'entered',notes:v('comp-notes')});
+  if(typeof saveData==='function')saveData();
+  renderMain();
+  toast(nl?'🏆 Inzending toegevoegd':'🏆 Entry added');
+}
+function deleteCompetition(bid,id){
+  if(APP.competitions&&APP.competitions[bid])APP.competitions[bid]=APP.competitions[bid].filter(function(c){return c.id!==id;});
+  if(typeof saveData==='function')saveData();
+  renderMain();
+}
 function setBatchTab(id,tab){
   if(!window._batchTabs)window._batchTabs={};
   window._batchTabs[id]=tab;
+  window._batchLogShowAll=false;  // reading log starts capped each time you enter the tab
   renderMain();
+}
+function toggleBatchLogAll(){window._batchLogShowAll=!window._batchLogShowAll;renderMain();}
+
+// Evenly thin a long reading series to ~max points (keeping the first and last)
+// so a batch with thousands of readings still charts fast and legibly.
+function _downsampleLogs(arr,max){
+  max=max||200;
+  if(!arr||arr.length<=max)return arr||[];
+  var n=arr.length,step=(n-1)/(max-1),out=[];
+  for(var i=0;i<max;i++)out.push(arr[Math.round(i*step)]);
+  out[out.length-1]=arr[n-1];
+  return out;
 }
 
 function initBatchCharts(){
   setTimeout(function(){
     var b=APP.batches.find(function(x){return x.id===currentBatchId;});
     if(!b)return;
-    var logs=APP.logs[b.id]||[];
+    var logs=_downsampleLogs(APP.logs[b.id]||[],200);
     var color=getBatchColor(b);
     var og=b.og||1.095;
     var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
@@ -987,6 +1172,7 @@ function initBatchCharts(){
       var nlA=(typeof appLang==='function'&&appLang()==='nl');
       var aRead=(APP.logs[b.id]||[]).filter(function(l){return l.gravity!=null;}).slice()
         .sort(function(x,y){return(x.date||'').localeCompare(y.date||'');});
+      aRead=_downsampleLogs(aRead,200);
       if(aRead.length>1){
         var aLabels=aRead.map(function(l){return fmtDateShort(l.date);});
         var aSG=aRead.map(function(l){return l.gravity;});

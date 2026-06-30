@@ -247,7 +247,153 @@
       var r=mwReadiness(bb);
       ok('readiness: long-aged near peak', r && r.pct>=100, JSON.stringify(r));
     })();
+    // pre-break fermenting → aerate-now, and every item carries a category
+    (function(){
+      var bp={id:'adv4',recipeId:'rA',startDate:isoAgo(2),og:1.098,yeast:'ec1118'};
+      APP.batches=[bp];APP.logs={adv4:[{date:isoAgo(2),gravity:1.098,temp:19},{date:isoAgo(0),gravity:1.090,temp:19}]};APP.bottling={};
+      var a4=mwBatchAdvice(bp);
+      ok('advice: pre-break → aerate-now', a4.items.some(function(i){return i.id==='aerate-now';}), JSON.stringify(a4.items.map(function(i){return i.id;})));
+      ok('advice: every item has a category', a4.items.length>0&&a4.items.every(function(i){return typeof i.category==='string'&&i.category;}), JSON.stringify(a4.items.map(function(i){return i.id+':'+i.category;})));
+    })();
+    // bottled & inside drinking window → aging-window info milestone
+    (function(){
+      var bw={id:'adv6',recipeId:'rA',startDate:isoAgo(120),og:1.098,yeast:'ec1118'};
+      APP.batches=[bw];APP.logs={adv6:[{date:isoAgo(120),gravity:1.098},{date:isoAgo(100),gravity:1.005}]};
+      APP.bottling={adv6:{date:isoAgo(90),fg:1.005,abv:12,countsAtBottling:{750:6},locations:{cellar:{750:6}}}};
+      var a6=mwBatchAdvice(bw);
+      ok('advice: in-window → aging-window info', a6.items.some(function(i){return i.id==='aging-window'&&i.severity==='info';}), JSON.stringify(a6.items.map(function(i){return i.id;})));
+    })();
+    // high-fructose honey + non-fructophilic yeast → fructose-stall-risk warning
+    (function(){
+      var bf={id:'adv7',recipeId:'rA',startDate:isoAgo(3),og:1.098,yeast:'ec1118',honeyType:'Acacia'};
+      APP.batches=[bf];APP.logs={adv7:[{date:isoAgo(3),gravity:1.098,temp:19},{date:isoAgo(0),gravity:1.085,temp:19}]};APP.bottling={};
+      var sf=mwBatchSignals(bf);
+      ok('signals: fructose-stall risk detected', sf && sf.fructoseStallRisk===true, JSON.stringify({honey:sf&&sf.honeyName,risk:sf&&sf.honeyFructoseRisk,fp:sf&&sf.yeastFructophilic}));
+      var a7=mwBatchAdvice(bf);
+      ok('advice: fructose honey → fructose-stall-risk', a7.items.some(function(i){return i.id==='fructose-stall-risk';}), JSON.stringify(a7.items.map(function(i){return i.id;})));
+    })();
     APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};APP.additions={};
+  })();
+
+  // batch list filter + sort (scale: windowing source)
+  (function(){
+    APP.recipes=[{id:'rA',ogTarget:1.098,fgTarget:1.010,steps:[]}];
+    APP.batches=[
+      {id:'L1',recipeId:'rA',name:'Alpha',startDate:isoAgo(2),volume:3},
+      {id:'L2',recipeId:'rA',name:'Charlie',startDate:isoAgo(10),volume:9},
+      {id:'L3',recipeId:'rA',name:'Bravo',startDate:isoAgo(6),volume:6}
+    ];
+    APP.logs={};APP.bottling={};
+    APP.filters.batchStatus='all';APP.filters.batchSearch='';APP.filters.batchLimit=60;
+    APP.filters.batchSort='newest';
+    ok('batchlist: newest-first sort', _batchFilterSort().map(function(b){return b.id;}).join()==='L1,L3,L2', _batchFilterSort().map(function(b){return b.id;}).join());
+    APP.filters.batchSort='oldest';
+    ok('batchlist: oldest-first sort', _batchFilterSort()[0].id==='L2', '');
+    APP.filters.batchSort='name';
+    ok('batchlist: name A–Z sort', _batchFilterSort().map(function(b){return b.name;}).join()==='Alpha,Bravo,Charlie', '');
+    APP.filters.batchSort='volume';
+    ok('batchlist: volume high→low sort', _batchFilterSort()[0].id==='L2', '');
+    APP.filters.batchSort='newest';APP.filters.batchSearch='bravo';
+    ok('batchlist: search filters to 1', _batchFilterSort().length===1, '');
+    APP.filters.batchSearch='';APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};
+  })();
+
+  // chart downsampling (scale: long reading series)
+  (function(){
+    var arr=[];for(var i=0;i<1000;i++)arr.push({date:'d'+i,gravity:1.1-i*0.0001});
+    var ds=_downsampleLogs(arr,200);
+    ok('downsample: caps to <=200', ds.length>0&&ds.length<=200, ds.length);
+    ok('downsample: keeps first & last point', ds[0]===arr[0]&&ds[ds.length-1]===arr[arr.length-1], '');
+    ok('downsample: passes small series through', _downsampleLogs(arr.slice(0,50),200).length===50, '');
+  })();
+
+  // global search index (scale: single linear scan, no per-entry find)
+  (function(){
+    APP.batches=[{id:'B1',name:'Cherry Bomb',recipeId:'rA',notes:'tart cherry'},{id:'B2',name:'Plain Mead',recipeId:'rA',notes:''}];
+    APP.recipes=[{id:'rA',name:'Trad',style:'Show',difficulty:'Beginner',tags:[]},{id:'rZ',name:'Cherry Melomel Deluxe',style:'Melomel',difficulty:'Beginner',tags:['cherry']}];
+    APP.tastings={B1:[{date:'2026-01-01',note:'bright cherry finish'}]};
+    APP.logs={B1:[{id:'l1',date:'2026-01-02',note:'smells of cherry'}]};
+    APP.additions={};APP.supplies=[{name:'Cherry juice',unit:'L',qty:2}];
+    window._gsIndex=_buildGlobalSearchIndex();
+    ok('search: index built once', Array.isArray(window._gsIndex)&&window._gsIndex.length>=5, window._gsIndex&&window._gsIndex.length);
+    var h=performGlobalSearch('cherry');
+    ok('search: batch match', h.batches.length===1&&h.batches[0].id==='B1', JSON.stringify(h.batches.map(function(b){return b.id;})));
+    ok('search: tasting match', h.tastings.length===1, '');
+    ok('search: log match', h.logs.length===1, '');
+    ok('search: supply match', h.supplies.length===1, '');
+    ok('search: recipe match', h.recipes.some(function(r){return r.id==='rZ';}), '');
+    ok('search: empty query → no hits', performGlobalSearch('').batches.length===0, '');
+    window._gsIndex=null;APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.tastings={};APP.logs={};APP.supplies=[];APP.additions={};
+  })();
+
+  // delta-save merge-patch (round-trip fidelity = the no-data-loss guarantee)
+  (function(){
+    function rt(base,nw){var d=mergePatchDiff(base,nw);if(d===undefined)return _deepEqual(base,nw);return _deepEqual(mergePatchApply(JSON.parse(JSON.stringify(base)),d),nw);}
+    var base={batches:[{id:'b1',n:'x'}],logs:{b1:[{g:1.09}]},settings:{name:'Kim',u:'L'}};
+    ok('patch: add batch + change + grow nested log arrays', rt(base,{batches:[{id:'b1',n:'y'},{id:'b2'}],logs:{b1:[{g:1.09},{g:1.05}],b2:[{g:1.1}]},settings:{name:'Kim',u:'L'}}), '');
+    ok('patch: remove a key', rt(base,{batches:[{id:'b1',n:'x'}],logs:{b1:[{g:1.09}]},settings:{name:'Kim'}}), '');
+    ok('patch: no change → undefined diff', mergePatchDiff(base,JSON.parse(JSON.stringify(base)))===undefined, '');
+    ok('patch: array reorder reproduced', rt(base,{batches:[{id:'b1',n:'x'}],logs:{b1:[{g:1.05},{g:1.09}]},settings:{name:'Kim',u:'L'}}), '');
+    // explicit-null is the one case merge-patch can't represent (null = delete);
+    // the round-trip check must FAIL so saveData falls back to a full save.
+    var d2=mergePatchDiff({a:1},{a:1,k:null});
+    ok('patch: explicit-null → full-save fallback fires', !_deepEqual(mergePatchApply({a:1},d2),{a:1,k:null}), JSON.stringify(d2));
+  })();
+
+  // cross-batch ingredient performance analytics
+  (function(){
+    APP.recipes=[{id:'rA',ogTarget:1.100,fgTarget:1.010}];
+    APP.batches=[
+      {id:'p1',recipeId:'rA',yeast:'ec1118',honeyType:'Wildflower',og:1.100},
+      {id:'p2',recipeId:'rA',yeast:'ec1118',honeyType:'Acacia',og:1.100,failed:{category:'stuck'}},
+      {id:'p3',recipeId:'rA',yeast:'d47',honeyType:'Wildflower',og:1.100}
+    ];
+    APP.bottling={p1:{fg:1.000,abv:13},p3:{fg:1.010,abv:12}};
+    APP.tastings={p1:[{rating:5}],p3:[{rating:3}]};APP.logs={};
+    var st=mwIngredientStats();
+    var ec=st.byYeast.filter(function(x){return x.key==='ec1118';})[0];
+    ok('analytics: yeast batch count', ec&&ec.n===2, ec&&ec.n);
+    ok('analytics: yeast failure rate', ec&&Math.abs(ec.failRate-0.5)<1e-9, ec&&ec.failRate);
+    ok('analytics: avg rating uses only rated', ec&&Math.abs(ec.avgRating-5)<1e-9, ec&&ec.avgRating);
+    var wf=st.byHoney.filter(function(x){return x.key==='Wildflower';})[0];
+    ok('analytics: honey avg rating (5,3→4)', wf&&Math.abs(wf.avgRating-4)<1e-9, wf&&wf.avgRating);
+    ok('analytics: sorted best-rating first', (st.byHoney[0].avgRating||0)>=(st.byHoney[st.byHoney.length-1].avgRating||0), '');
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.bottling={};APP.tastings={};APP.logs={};
+  })();
+
+  // competitions: survive the package→apply round-trip (persistence plumbing)
+  (function(){
+    APP.competitions={bx:[{id:'c1',competition:'State Fair',category:'M1A',award:'gold',score:38,maxScore:50}]};
+    var pkg=packageState();
+    ok('competitions: in packageState', pkg.competitions&&pkg.competitions.bx&&pkg.competitions.bx[0].award==='gold', '');
+    APP.competitions={};
+    applyState({competitions:{by:[{id:'c2',award:'silver'}]},batches:[]});
+    ok('competitions: restored by applyState', APP.competitions.by&&APP.competitions.by[0].award==='silver', '');
+    APP.competitions={};APP.batches=[];
+  })();
+
+  // custom step schedules: per-batch override + template persistence
+  (function(){
+    APP.recipes=[{id:'rA',steps:[{day:0,title:'Brew',desc:'x'},{day:14,title:'Rack',desc:'y'}]}];
+    var b={id:'bb',recipeId:'rA',customSteps:[{day:5,title:'Nutrient',desc:'z'},{day:1,title:'Aerate',desc:'q'}]};
+    var es=getEffectiveSteps(b,APP.recipes[0]);
+    ok('steps: customSteps override + sort by day', es.length===2&&es[0].title==='Aerate'&&es[1].title==='Nutrient', es.map(function(s){return s.title;}).join());
+    ok('steps: no override falls back to recipe', getEffectiveSteps({id:'bc',recipeId:'rA'},APP.recipes[0]).length===2, '');
+    APP.stepTemplates=[{id:'t1',name:'My TOSNA',steps:[{day:1,title:'Dose 1',desc:''}]}];
+    ok('stepTemplates: in packageState', packageState().stepTemplates[0].name==='My TOSNA', '');
+    APP.stepTemplates=[];
+    applyState({stepTemplates:[{id:'t2',name:'Restored',steps:[]}],batches:[]});
+    ok('stepTemplates: restored by applyState', APP.stepTemplates[0]&&APP.stepTemplates[0].name==='Restored', '');
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.stepTemplates=[];
+  })();
+
+  // blend math (volume-weighted)
+  (function(){
+    var r=mwBlend([{og:1.100,fg:1.000,abv:13,vol:3},{og:1.000,fg:1.000,abv:0,vol:1}]);
+    ok('blend: volume-weighted ABV (13×3/4)', Math.abs(r.abv-9.75)<1e-9, r.abv);
+    ok('blend: weighted OG (1.075)', Math.abs(r.og-1.075)<1e-9, r.og);
+    ok('blend: total volume', r.vol===4, r.vol);
+    ok('blend: empty → zero volume', mwBlend([]).vol===0, '');
   })();
 
   var s=document.getElementById('summary');

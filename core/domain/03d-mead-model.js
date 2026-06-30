@@ -58,3 +58,17 @@ function mwExpectedAttenuation(og,fg){
   if(!(og>1)||fg==null)return 0;
   return mwAttenuation(og,fg);
 }
+
+// Volume-weighted blend of N parts. Each part: {og,fg,abv,vol}. Returns
+// {og,fg,abv,vol} — used by the blend-into-a-batch action and solera top-ups.
+// A field is null in the result only if no part supplied it.
+function mwBlend(parts){
+  parts=(parts||[]).filter(function(p){return p&&(p.vol||0)>0;});
+  var tot=parts.reduce(function(s,p){return s+(p.vol||0);},0);
+  if(tot<=0)return {og:null,fg:null,abv:null,vol:0};
+  function w(key){
+    if(!parts.some(function(p){return p[key]!=null;}))return null;
+    return parts.reduce(function(s,p){return s+((p[key]!=null?p[key]:0)*(p.vol||0));},0)/tot;
+  }
+  return {og:w('og'),fg:w('fg'),abv:w('abv'),vol:tot};
+}

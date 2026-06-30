@@ -9,21 +9,91 @@
 // time-to-bottle). Both require enough data to be meaningful — show helpful
 // empty-states when there aren't enough batches yet.
 
+// Trophy shelf: every competition award across all batches, with a medal tally.
+function renderTrophyShelf(){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var bmap={};(APP.batches||[]).forEach(function(b){bmap[b.id]=b;});
+  var entries=[];
+  Object.keys(APP.competitions||{}).forEach(function(bid){
+    var b=bmap[bid];if(!b)return;
+    (APP.competitions[bid]||[]).forEach(function(c){entries.push({b:b,c:c,rank:_compAwardMeta(c.award).rank});});
+  });
+  if(!entries.length)return '';
+  entries.sort(function(a,b){return a.rank-b.rank||(b.c.date||'').localeCompare(a.c.date||'');});
+  var tally={};entries.forEach(function(e){tally[e.c.award]=(tally[e.c.award]||0)+1;});
+  var chips=_compAwards().filter(function(a){return tally[a.k];}).map(function(a){return '<span style="display:inline-flex;align-items:center;gap:5px;background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:3px 10px;font-size:12px;color:var(--text2)"><span style="font-size:14px">'+a.icon+'</span>'+tally[a.k]+' '+escHtml(a.l)+'</span>';}).join('');
+  var rows=entries.map(function(e){
+    var am=_compAwardMeta(e.c.award);
+    var score=(e.c.score!==''&&e.c.score!=null&&e.c.score!=='')?(e.c.score+(e.c.maxScore?'/'+e.c.maxScore:'')):'';
+    return '<div onclick="showView(\'batch\',\''+e.b.id+'\')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-left:3px solid '+am.c+';background:var(--bg3);border-radius:var(--radius);margin-bottom:6px;cursor:pointer">'
+      +'<span style="font-size:18px">'+am.icon+'</span>'
+      +'<div style="flex:1;min-width:0"><div style="font-size:13px;color:'+getBatchColor(e.b)+';font-family:var(--font-display)">'+escHtml(e.b.name)+'</div>'
+      +'<div style="font-size:11px;color:var(--text3)">'+escHtml(e.c.competition||'')+(e.c.category?' · '+escHtml(e.c.category):'')+(score?' · '+escHtml(score):'')+'</div></div>'
+      +'<div style="font-family:var(--font-mono);font-size:10px;color:'+am.c+';letter-spacing:0.5px">'+am.l.toUpperCase()+'</div></div>';
+  }).join('');
+  return '<div class="card" style="margin-bottom:16px;border-left:3px solid var(--gold2)"><div class="card-header"><div class="card-title">'+(nl?'🏆 PRIJZENKAST':'🏆 TROPHY SHELF')+'</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+entries.length+(nl?' INZENDINGEN':' ENTRIES')+'</div></div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'+chips+'</div>'+rows+'</div>';
+}
+function _insightsTitleBar(){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+    +'<div class="page-title" style="margin-bottom:0">Insights</div>'
+    +((APP.batches||[]).length?'<button class="btn btn-secondary btn-sm" onclick="openProductionReport()" title="Print a production &amp; cost report across all batches">'+(nl?'📊 Productierapport':'📊 Production Report')+'</button>':'')
+    +'</div>';
+}
 function renderInsightsView(){
   var bottled=APP.batches.filter(function(b){return APP.bottling[b.id];});
   var failed=APP.batches.filter(function(b){return b.failed;});
   if(bottled.length<3&&!failed.length){
     // Pattern-mining needs more data, but the fun lifetime stats are worth
     // showing from batch one.
-    return'<div class="page-title">Insights</div><div class="page-subtitle">Patterns in your brewing</div>'
+    return _insightsTitleBar()+'<div class="page-subtitle">Patterns in your brewing</div>'
+      +renderTrophyShelf()
       +renderFunInsights()
       +'<div class="info-box" style="margin-top:8px"><div style="font-size:13px;color:var(--text2)">📊 Deeper pattern-mining (what your best batches share, trends over time) unlocks at <strong>3 bottled batches</strong> — you\'re at '+bottled.length+'. Keep brewing!</div></div>';
   }
-  return'<div class="page-title">Insights</div><div class="page-subtitle">Patterns in your brewing journey · '+bottled.length+' bottled · '+failed.length+' failed</div>'
+  return _insightsTitleBar()+'<div class="page-subtitle">Patterns in your brewing journey · '+bottled.length+' bottled · '+failed.length+' failed</div>'
+    +renderTrophyShelf()
     +renderFunInsights()
     +renderBestTastingInsights()
+    +renderIngredientPerformance()
     +renderFailedBatchInsights()
     +renderPersonalTrends();
+}
+
+// Cross-batch ingredient performance: how each yeast / honey does on average
+// across all your batches (count, avg tasting rating, avg ABV, avg attenuation,
+// failure rate), sorted best-rating-first. Answers "what works best for me".
+function renderIngredientPerformance(){
+  if(typeof mwIngredientStats!=='function')return '';
+  if((APP.batches||[]).length<2)return '';
+  var st=mwIngredientStats();
+  if(!st.byYeast.length&&!st.byHoney.length)return '';
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var ynames={};((typeof YEAST_STRAINS!=='undefined'&&YEAST_STRAINS)||[]).forEach(function(y){ynames[y.id]=y.name;});
+  var H={col:'',batches:nl?'Partijen':'Batches',rating:nl?'Gem. ★':'Avg ★',abv:nl?'Gem. ABV':'Avg ABV',atten:nl?'Gem. vergisting':'Avg atten.',fail:nl?'Mislukt':'Fail',top:nl?'TOP':'TOP'};
+  function tbl(rows,colLabel,labelFn){
+    if(!rows.length)return '';
+    var body=rows.map(function(r,i){
+      var best=(i===0&&r.avgRating!=null&&rows.length>1);
+      return '<tr'+(best?' style="background:rgba(122,160,64,0.08)"':'')+'>'
+        +'<td style="color:var(--text)'+(best?';font-weight:600':'')+'">'+escHtml(labelFn(r.key))+(best?' <span style="font-family:var(--font-mono);font-size:9px;color:var(--green2);letter-spacing:1px">★ '+H.top+'</span>':'')+'</td>'
+        +'<td style="font-family:var(--font-mono);text-align:center">'+r.n+'</td>'
+        +'<td style="font-family:var(--font-mono);text-align:center">'+(r.avgRating!=null?r.avgRating.toFixed(1)+'★':'—')+'</td>'
+        +'<td style="font-family:var(--font-mono);text-align:center">'+(r.avgABV!=null?r.avgABV.toFixed(1)+'%':'—')+'</td>'
+        +'<td style="font-family:var(--font-mono);text-align:center">'+(r.avgAtten!=null?Math.round(r.avgAtten)+'%':'—')+'</td>'
+        +'<td style="font-family:var(--font-mono);text-align:center;color:'+(r.failRate>0?'var(--red2)':'var(--text3)')+'">'+(r.failRate>0?Math.round(r.failRate*100)+'%':'—')+'</td>'
+        +'</tr>';
+    }).join('');
+    return '<table class="data-table" style="font-size:12.5px;margin-bottom:8px"><thead><tr>'
+      +'<th style="text-align:left">'+colLabel+'</th><th style="text-align:center">'+H.batches+'</th><th style="text-align:center">'+H.rating+'</th><th style="text-align:center">'+H.abv+'</th><th style="text-align:center">'+H.atten+'</th><th style="text-align:center">'+H.fail+'</th>'
+      +'</tr></thead><tbody>'+body+'</tbody></table>';
+  }
+  return '<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">'+(nl?'🧪 PRESTATIE PER INGREDIËNT':'🧪 INGREDIENT PERFORMANCE')+'</div></div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:12px;font-style:italic">'+(nl?'Hoe je gisten en honingen het gemiddeld doen over al je partijen — gesorteerd op gemiddelde proefscore.':'How your yeasts and honeys perform on average across all your batches — sorted by average tasting score.')+'</div>'
+    +(st.byYeast.length?'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;margin-bottom:6px">'+(nl?'PER GIST':'BY YEAST')+'</div>'+tbl(st.byYeast,nl?'Gist':'Yeast',function(k){return ynames[k]||k;}):'')
+    +(st.byHoney.length?'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;margin:10px 0 6px">'+(nl?'PER HONING':'BY HONEY')+'</div>'+tbl(st.byHoney,nl?'Honing':'Honey',function(k){return k;}):'')
+    +'</div>';
 }
 
 // Fun + meaningful lifetime insights mined from the whole brewing history.

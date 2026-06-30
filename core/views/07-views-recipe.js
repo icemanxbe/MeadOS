@@ -1039,6 +1039,7 @@ function renderRecipeDetail(){
     +'<div class="ra-extra">'+renderRecipeSuccessTracker(r)
     +(r.notes?'<div class="info-box" style="border-left-color:'+r.brandColor+'"><div style="font-size:13px;color:var(--text2);font-style:italic">'+escHtml(r.notes)+'</div></div>':'')
     +'</div>'
+    +'<div class="ra-side">'
     +'<div class="ra-targets"><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">TARGETS</div></div>'
     +'<div class="grid-3" id="recipe-targets-live">'+((typeof recipeConfigTargetsHtml==='function')?recipeConfigTargetsHtml(r,scaleVol,ensureRecipeConfig(r)):'')+'</div>'
     +'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'
@@ -1052,7 +1053,7 @@ function renderRecipeDetail(){
       return dsteps.map(function(s){return'<div class="tl-item"><div class="tl-dot future"></div><div class="tl-day">Day '+s.day+'</div><div class="tl-title">'+escHtml(s.title)+'</div><div class="tl-desc">'+escHtml(annotateNutrientDesc(s.desc))+'</div></div>';}).join('')
         +sugarBreakNote(dsteps);
     }())
-    +'</div></div></div></div>';
+    +'</div></div></div></div></div>';
 }
 
 // Brew-session planner — opens a print-ready pre-brew checklist for a recipe
@@ -1218,6 +1219,23 @@ function renderRecipeSuccessTracker(recipe){
 }
 
 // ==================== CALENDAR ====================
+// Calendar helpers. English literals only — the i18n layer (i18n.js) maps the
+// relative-day phrases to Dutch ('Today' and the '+N more' pattern already exist).
+function calRelDays(ds){var a=new Date(today()+'T00:00:00'),b=new Date(ds+'T00:00:00');return Math.round((b-a)/86400000);}
+function calRelLabel(n){if(n===0)return'Today';if(n===1)return'Tomorrow';if(n===-1)return'Yesterday';if(n>1)return'in '+n+' days';return Math.abs(n)+' days ago';}
+// At-a-glance icon per step type, derived from the step title.
+function calEventIcon(title){var t=(title||'').toLowerCase();
+  if(/bottl/.test(t))return'🍾';
+  if(/rack|secondary|transfer|siphon/.test(t))return'⤵';
+  if(/nutrient|tosna|\bsna\b|fermaid|\bdap\b|energizer|go-?ferm/.test(t))return'⚗';
+  if(/stabil|sorbate|metabisulf|campden|k-?meta|sulfite/.test(t))return'🧪';
+  if(/back-?sweeten|sweeten/.test(t))return'🥄';
+  if(/aerat|degas|stir|punch|rouse/.test(t))return'🌀';
+  if(/gravity|hydrometer|reading|\bsg\b|check|measure/.test(t))return'📊';
+  if(/taste|sample|tasting/.test(t))return'🍷';
+  if(/pitch|brew day|\bmust\b|start|primary/.test(t))return'🍯';
+  if(/age|condition|bulk|wait|clear/.test(t))return'⌛';
+  return'◆';}
 function renderCalendar(){
   // Persist viewed month across re-renders. window._calOffset is months from current.
   if(window._calOffset==null)window._calOffset=0;
@@ -1248,31 +1266,51 @@ function renderCalendar(){
     var ds=year+'-'+String(month+1).padStart(2,'0')+'-'+String(dd).padStart(2,'0');
     cells.push({day:dd,dateStr:ds,events:events[ds]||[],isToday:ds===today()});
   }
-  var calCells=cells.map(function(c){
-    if(!c.day)return'<div class="cal-day other-month"></div>';
-    var evHtml=(c.events||[]).slice(0,2).map(function(e){return'<div class="cal-event" style="background:'+e.color+'22;color:'+e.color+';border:1px solid '+e.color+'44" title="'+escHtml(e.name)+': '+escHtml(e.title)+'">'+escHtml(e.title.substring(0,12))+'</div>';}).join('');
-    var clickHandler=c.events&&c.events.length?'onclick="showCalDayModal(\''+c.dateStr+'\')"':'';
-    return'<div class="cal-day '+(c.isToday?'today':'')+' '+(c.events&&c.events.length?'has-event':'')+'" '+clickHandler+' style="'+(c.events&&c.events.length?'cursor:pointer':'')+'">'
-      +'<div>'+c.day+'</div>'+evHtml
-      +(c.events&&c.events.length>2?'<div style="font-size:9px;color:var(--text3)">+'+(c.events.length-2)+' more</div>':'')+'</div>';
+  var calCells=cells.map(function(c,idx){
+    var weekend=(idx%7)>=5?' weekend':'';
+    if(!c.day)return'<div class="cal-day other-month'+weekend+'"></div>';
+    var n=(c.events||[]).length;
+    var evHtml=(c.events||[]).slice(0,2).map(function(e){return'<div class="cal-event" style="background:linear-gradient(90deg,'+e.color+'33,'+e.color+'12);border-left:2px solid '+e.color+'" title="'+escHtml(e.name)+': '+escHtml(e.title)+'"><span class="cal-ev-ic">'+calEventIcon(e.title)+'</span><span class="cal-ev-tx">'+escHtml(e.title)+'</span></div>';}).join('');
+    var clickHandler=n?'onclick="showCalDayModal(\''+c.dateStr+'\')"':'';
+    return'<div class="cal-day'+(c.isToday?' today':'')+(n?' has-event':'')+weekend+'" '+clickHandler+'>'
+      +'<div class="cal-num">'+c.day+'</div>'+evHtml
+      +(n>2?'<div class="cal-more">+'+(n-2)+' more</div>':'')+'</div>';
   }).join('');
   // Upcoming: from today forward — independent of the viewed month
   var upcoming=Object.entries(events).filter(function(x){return x[0]>=today();}).sort(function(a,b){return a[0].localeCompare(b[0]);}).slice(0,8);
+  // Premium summary strip + legend, derived from the same event set.
+  var legendSeen={},legend=[];
+  Object.keys(events).forEach(function(d){(events[d]||[]).forEach(function(e){if(!legendSeen[e.name]){legendSeen[e.name]=1;legend.push({name:e.name,color:e.color});}});});
+  var mp=year+'-'+String(month+1).padStart(2,'0')+'-';
+  var monthCount=Object.keys(events).filter(function(d){return d.indexOf(mp)===0;}).reduce(function(s,d){return s+(events[d]?events[d].length:0);},0);
+  var heroNext=upcoming.length
+    ?'<div class="cs-value">'+calRelLabel(calRelDays(upcoming[0][0]))+'</div><div class="cs-sub">'+escHtml(upcoming[0][1][0].name)+' · '+escHtml(upcoming[0][1][0].title)+'</div>'
+    :'<div class="cs-value">—</div><div class="cs-sub">Nothing scheduled</div>';
+  var hero='<div class="cal-hero">'
+    +'<div class="cal-stat"><div class="cs-label">This month</div><div class="cs-value">'+monthCount+'</div><div class="cs-sub">scheduled steps</div></div>'
+    +'<div class="cal-stat"><div class="cs-label">Next up</div>'+heroNext+'</div>'
+    +'<div class="cal-stat"><div class="cs-label">Active batches</div><div class="cs-value">'+legend.length+'</div><div class="cs-sub">in your schedule</div></div>'
+    +'</div>';
+  var legendHtml=legend.length?'<div class="cal-legend">'+legend.map(function(l){return'<span class="cal-leg"><span class="dot" style="background:'+l.color+'"></span>'+escHtml(l.name)+'</span>';}).join('')+'</div>':'';
   var navHeader='<div class="card-header" style="display:flex;align-items:center;justify-content:space-between"><button class="btn btn-secondary btn-sm" onclick="navCalMonth(-1)" title="Previous month">←</button>'
     +'<div class="card-title" style="text-align:center;flex:1">'+monthName.toUpperCase()+(window._calOffset!==0?' <button class="btn-icon" onclick="navCalToToday()" title="Jump to current month" style="font-size:11px;color:var(--text3);margin-left:6px;padding:0 6px">↺ today</button>':'')+'</div>'
     +'<button class="btn btn-secondary btn-sm" onclick="navCalMonth(1)" title="Next month">→</button></div>';
   return'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:8px"><div class="page-title" style="margin-bottom:0">Calendar</div><button class="btn btn-secondary btn-sm" onclick="exportCalendarICS()" title="Download .ics file to subscribe in Google/Apple Calendar">📅 Export to Calendar (.ics)</button></div><div class="page-subtitle">Brewing Schedule &amp; Upcoming Steps</div>'
+    +hero
     +'<div class="grid-2">'
     +'<div class="card">'+navHeader
     +'<div class="cal-header">'+['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].map(function(d){return'<div class="cal-dh">'+d+'</div>';}).join('')+'</div>'
     +'<div class="cal-grid">'+calCells+'</div>'
-    +'<div style="font-size:11px;color:var(--text3);margin-top:8px;font-style:italic">Tap a day to see its full schedule.</div></div>'
+    +legendHtml
+    +'<div style="font-size:11px;color:var(--text3);margin-top:10px;font-style:italic">Tap a day to see its full schedule.</div></div>'
     +'<div class="card"><div class="card-header"><div class="card-title">UPCOMING EVENTS</div></div>'
     +(upcoming.length?upcoming.map(function(x){
-      return'<div style="padding:10px 0;border-bottom:1px solid var(--border)">'
-        +'<div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-bottom:6px">'+fmtDate(x[0])+(x[0]===today()?' · <span style="color:var(--gold)">TODAY</span>':'')+'</div>'
-        +x[1].map(function(e){return'<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px"><div style="width:6px;height:6px;border-radius:50%;background:'+e.color+';flex-shrink:0"></div><span style="font-size:13px;color:var(--text2)">'+escHtml(e.name)+'</span><span style="font-size:12px;color:var(--text3)">→ '+escHtml(e.title)+'</span></div>';}).join('')
-        +'</div>';
+      var dObj=new Date(x[0]+'T00:00:00'),rel=calRelDays(x[0]),accent=x[1][0].color;
+      return'<div class="cal-up-item" onclick="showCalDayModal(\''+x[0]+'\')">'
+        +'<div class="cal-up-date" style="border-top-color:'+accent+'"><div class="cal-up-d">'+dObj.getDate()+'</div><div class="cal-up-m">'+dObj.toLocaleDateString(_dloc(),{month:'short'})+'</div></div>'
+        +'<div class="cal-up-body"><div class="cal-up-rel">'+(rel===0?'<span class="now">Today</span>':calRelLabel(rel))+'</div>'
+        +x[1].map(function(e){return'<div class="cal-up-ev"><span class="ic">'+calEventIcon(e.title)+'</span><span class="nm" style="color:'+e.color+'">'+escHtml(e.name)+'</span><span class="ti">→ '+escHtml(e.title)+'</span></div>';}).join('')
+        +'</div></div>';
     }).join(''):'<p style="color:var(--text3);font-style:italic;font-size:13px;padding:16px 0">No upcoming events.</p>')
     +'</div></div>';
 }
@@ -1306,7 +1344,7 @@ function showCalDayModal(dateStr){
   var rows=items.length?items.map(function(it){
     return'<div style="padding:14px;border-left:3px solid '+it.color+';background:var(--bg3);border-radius:6px;margin-bottom:10px;cursor:pointer" onclick="closeModal();showView(\'batch\',\''+it.batch.id+'\')">'
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="font-family:var(--font-display);font-size:15px;color:'+it.color+'">'+escHtml(it.batch.name)+'</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px">DAY '+it.step.day+'</div></div>'
-      +'<div style="font-size:14px;color:var(--gold2);margin-bottom:4px;font-weight:500">'+escHtml(it.step.title)+'</div>'
+      +'<div style="font-size:14px;color:var(--gold2);margin-bottom:4px;font-weight:500">'+calEventIcon(it.step.title)+' '+escHtml(it.step.title)+'</div>'
       +'<div style="font-size:12.5px;color:var(--text2);font-style:italic;line-height:1.5">'+escHtml(it.step.desc||'')+'</div>'
       +'</div>';
   }).join(''):'<div style="text-align:center;color:var(--text3);font-style:italic;padding:20px">Nothing scheduled for this day.</div>';
