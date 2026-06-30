@@ -326,6 +326,20 @@
     window._gsIndex=null;APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.tastings={};APP.logs={};APP.supplies=[];APP.additions={};
   })();
 
+  // delta-save merge-patch (round-trip fidelity = the no-data-loss guarantee)
+  (function(){
+    function rt(base,nw){var d=mergePatchDiff(base,nw);if(d===undefined)return _deepEqual(base,nw);return _deepEqual(mergePatchApply(JSON.parse(JSON.stringify(base)),d),nw);}
+    var base={batches:[{id:'b1',n:'x'}],logs:{b1:[{g:1.09}]},settings:{name:'Kim',u:'L'}};
+    ok('patch: add batch + change + grow nested log arrays', rt(base,{batches:[{id:'b1',n:'y'},{id:'b2'}],logs:{b1:[{g:1.09},{g:1.05}],b2:[{g:1.1}]},settings:{name:'Kim',u:'L'}}), '');
+    ok('patch: remove a key', rt(base,{batches:[{id:'b1',n:'x'}],logs:{b1:[{g:1.09}]},settings:{name:'Kim'}}), '');
+    ok('patch: no change → undefined diff', mergePatchDiff(base,JSON.parse(JSON.stringify(base)))===undefined, '');
+    ok('patch: array reorder reproduced', rt(base,{batches:[{id:'b1',n:'x'}],logs:{b1:[{g:1.05},{g:1.09}]},settings:{name:'Kim',u:'L'}}), '');
+    // explicit-null is the one case merge-patch can't represent (null = delete);
+    // the round-trip check must FAIL so saveData falls back to a full save.
+    var d2=mergePatchDiff({a:1},{a:1,k:null});
+    ok('patch: explicit-null → full-save fallback fires', !_deepEqual(mergePatchApply({a:1},d2),{a:1,k:null}), JSON.stringify(d2));
+  })();
+
   var s=document.getElementById('summary');
   s.textContent=(fail===0?'✓ ALL PASS':'✗ '+fail+' FAILED')+'  ('+pass+'/'+(pass+fail)+')';
   s.className=fail===0?'pass':'fail';

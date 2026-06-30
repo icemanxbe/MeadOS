@@ -206,34 +206,94 @@ async function haTestConnection(){
   return{ok:false,msg:'✗ No response from the MeadOS server.'};
 }
 
+// ---- Merge-patch (RFC 7386) for delta saves. The client only ever sends a
+// patch it has PROVEN reconstructs the exact state (see saveData), and the
+// server applies the identical algorithm to the same base rev — so a delta save
+// can never corrupt or lose data; the full save is always the fallback. --------
+function _deepEqual(a,b){
+  if(a===b)return true;
+  if(typeof a!==typeof b)return false;
+  if(a===null||b===null)return a===b;
+  if(typeof a!=='object')return a===b;
+  var aArr=Array.isArray(a),bArr=Array.isArray(b);
+  if(aArr!==bArr)return false;
+  if(aArr){if(a.length!==b.length)return false;for(var i=0;i<a.length;i++)if(!_deepEqual(a[i],b[i]))return false;return true;}
+  var ak=Object.keys(a),bk=Object.keys(b);
+  if(ak.length!==bk.length)return false;
+  for(var j=0;j<ak.length;j++){var k=ak[j];if(!Object.prototype.hasOwnProperty.call(b,k)||!_deepEqual(a[k],b[k]))return false;}
+  return true;
+}
+function _isPlainObj(x){return x&&typeof x==='object'&&!Array.isArray(x);}
+// Diff old→new into a merge-patch (changed keys → value, removed keys → null,
+// arrays/primitives replaced wholesale). undefined when nothing changed.
+function mergePatchDiff(o,n){
+  if(!_isPlainObj(o)||!_isPlainObj(n))return _deepEqual(o,n)?undefined:(n===undefined?null:n);
+  var p={},changed=false,k;
+  for(k in o)if(Object.prototype.hasOwnProperty.call(o,k)&&!Object.prototype.hasOwnProperty.call(n,k)){p[k]=null;changed=true;}
+  for(k in n)if(Object.prototype.hasOwnProperty.call(n,k)){var s=mergePatchDiff(o[k],n[k]);if(s!==undefined){p[k]=s;changed=true;}}
+  return changed?p:undefined;
+}
+function mergePatchApply(target,patch){
+  if(!_isPlainObj(patch))return patch;
+  if(!_isPlainObj(target))target={};
+  for(var k in patch)if(Object.prototype.hasOwnProperty.call(patch,k)){
+    if(patch[k]===null)delete target[k];
+    else target[k]=mergePatchApply(target[k],patch[k]);
+  }
+  return target;
+}
+
 async function saveData(force){
   var data=packageState();
   var json=JSON.stringify(data);
   // Always cache locally
   try{localStorage.setItem('meadows_data',json);}catch(e){}
-  lastSyncMeta.bytes=json.length;
   setSyncStatus('syncing');
-  var res=await apiFetch('/api/data',{
-    method:'POST',
-    // X-Base-Rev is the rev we last loaded; the server rejects (409) if the
-    // stored state moved on since — so a second device can't be clobbered.
-    // '*' forces an overwrite (used by the conflict resolver).
-    headers:{'Content-Type':'application/json','X-Base-Rev':force?'*':(window._dataRev||'')},
-    body:json
-  });
+
+  // Try a delta (merge-patch) save: only when the server advertises support, we
+  // have a known base rev + baseline, it's not a forced overwrite, AND applying
+  // the patch to the baseline provably reproduces the exact state. Otherwise we
+  // send the full state. This guarantees a patch can never lose data.
+  var usePatch=false,patch=null,res=null,wireBytes=json.length;
+  if(!force&&window._dataRev&&window._lastSavedState!=null&&(window._dataCaps||'').indexOf('patch')>=0){
+    try{
+      var diff=mergePatchDiff(JSON.parse(window._lastSavedState),data);
+      if(diff===undefined){setSyncStatus('synced');return true;}  // nothing changed
+      var rebuilt=mergePatchApply(JSON.parse(window._lastSavedState),diff);
+      if(_deepEqual(rebuilt,data)){usePatch=true;patch=diff;}
+    }catch(e){usePatch=false;}
+  }
+
+  if(usePatch){
+    var pjson=JSON.stringify(patch);wireBytes=pjson.length;
+    res=await apiFetch('/api/data/patch',{method:'POST',
+      headers:{'Content-Type':'application/json','X-Base-Rev':window._dataRev||''},body:pjson});
+    // Endpoint absent (older server somehow) → disable patch + fall back to full.
+    if(res&&(res.status===404||res.status===501)){window._dataCaps='';res=null;}
+  }
+  if(!res){
+    wireBytes=json.length;
+    res=await apiFetch('/api/data',{method:'POST',
+      // X-Base-Rev is the rev we last loaded; the server rejects (409) if the
+      // stored state moved on since. '*' forces overwrite (conflict resolver).
+      headers:{'Content-Type':'application/json','X-Base-Rev':force?'*':(window._dataRev||'')},body:json});
+  }
+  lastSyncMeta.bytes=wireBytes;
+
   // Conflict — another device saved newer data. Don't retry-clobber; ask.
   if(res&&res.status===409){
     setSyncStatus('error');
-    lastSyncMeta={ts:new Date(),bytes:json.length,mode:'server',ok:false,detail:'conflict — newer data on server'};
+    lastSyncMeta={ts:new Date(),bytes:wireBytes,mode:'server',ok:false,detail:'conflict — newer data on server'};
     if(typeof onSaveConflict==='function')onSaveConflict();
     return false;
   }
   var ok=!!(res&&res.ok);
-  lastSyncMeta={ts:new Date(),bytes:json.length,mode:'server',ok:ok,detail:ok?'saved to server (SQLite)':'server unreachable'};
+  lastSyncMeta={ts:new Date(),bytes:wireBytes,mode:'server',ok:ok,detail:ok?('saved to server'+(usePatch?' (delta)':'')):'server unreachable'};
   setSyncStatus(ok?'synced':'error');
   if(ok){
-    // Success — capture the new rev, clear any pending state, record timestamp
+    // Success — capture the new rev, update the delta baseline, clear pending.
     try{var b=await res.json();if(b&&b.updatedAt)window._dataRev=b.updatedAt;}catch(e){}
+    window._lastSavedState=json;  // server now holds exactly this — next diff is against it
     pendingSync=false;
     try{
       localStorage.removeItem('meadows_pendingSync');
@@ -539,10 +599,18 @@ async function loadData(){
   var res=await apiFetch(APP._shareMode?'/api/share':'/api/data');
   if(res&&res.status===200){
     try{
-      // Capture the rev so the next save can detect concurrent edits.
-      if(res.headers&&res.headers.get)window._dataRev=res.headers.get('X-Data-Rev')||null;
+      // Capture the rev so the next save can detect concurrent edits, and the
+      // server's delta-save capability so saveData() can send merge-patches.
+      if(res.headers&&res.headers.get){
+        window._dataRev=res.headers.get('X-Data-Rev')||null;
+        window._dataCaps=res.headers.get('X-Data-Caps')||'';
+      }
       var parsed=await res.json();
       if(parsed){
+        // Baseline for delta saves = the server's ACTUAL stored state (before any
+        // client-side migration below), so a patch always merges onto what the
+        // server really holds.
+        if(!APP._shareMode)window._lastSavedState=JSON.stringify(parsed);
         applyState(parsed);
         setSyncStatus('synced');
         // Self-heal: migrate any embedded label images to /assets/ references so
