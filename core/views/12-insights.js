@@ -9,17 +9,24 @@
 // time-to-bottle). Both require enough data to be meaningful — show helpful
 // empty-states when there aren't enough batches yet.
 
+function _insightsTitleBar(){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
+    +'<div class="page-title" style="margin-bottom:0">Insights</div>'
+    +((APP.batches||[]).length?'<button class="btn btn-secondary btn-sm" onclick="openProductionReport()" title="Print a production &amp; cost report across all batches">'+(nl?'📊 Productierapport':'📊 Production Report')+'</button>':'')
+    +'</div>';
+}
 function renderInsightsView(){
   var bottled=APP.batches.filter(function(b){return APP.bottling[b.id];});
   var failed=APP.batches.filter(function(b){return b.failed;});
   if(bottled.length<3&&!failed.length){
     // Pattern-mining needs more data, but the fun lifetime stats are worth
     // showing from batch one.
-    return'<div class="page-title">Insights</div><div class="page-subtitle">Patterns in your brewing</div>'
+    return _insightsTitleBar()+'<div class="page-subtitle">Patterns in your brewing</div>'
       +renderFunInsights()
       +'<div class="info-box" style="margin-top:8px"><div style="font-size:13px;color:var(--text2)">📊 Deeper pattern-mining (what your best batches share, trends over time) unlocks at <strong>3 bottled batches</strong> — you\'re at '+bottled.length+'. Keep brewing!</div></div>';
   }
-  return'<div class="page-title">Insights</div><div class="page-subtitle">Patterns in your brewing journey · '+bottled.length+' bottled · '+failed.length+' failed</div>'
+  return _insightsTitleBar()+'<div class="page-subtitle">Patterns in your brewing journey · '+bottled.length+' bottled · '+failed.length+' failed</div>'
     +renderFunInsights()
     +renderBestTastingInsights()
     +renderIngredientPerformance()
