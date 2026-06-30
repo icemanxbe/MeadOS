@@ -679,7 +679,10 @@ function renderBatchDetail(){
     // clean for users who never log pH while still surfacing it naturally for
     // those who do.
     var anyPH=logs.some(function(l){return l.ph!=null;});
-    var logRows=logs.length?[].concat(logs).reverse().map(function(l){
+    var LOG_CAP=100;
+    var revLogs=[].concat(logs).reverse();
+    var logCapped=(!window._batchLogShowAll&&revLogs.length>LOG_CAP)?revLogs.slice(0,LOG_CAP):revLogs;
+    var logRows=revLogs.length?logCapped.map(function(l){
       var gravCell=l.gravity!=null?'<span style="font-family:var(--font-mono)">'+l.gravity+'</span>'+(l.tempCorrected&&l.gravityRaw?'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-left:6px" title="Raw reading at sample temp">('+l.gravityRaw+' raw)</span>':''):'—';
       var phCell=anyPH?'<td>'+(l.ph!=null?'<span style="font-family:var(--font-mono);color:'+(l.ph<2.9?'var(--red2)':l.ph>3.5?'var(--gold2)':'var(--green2)')+'">'+l.ph.toFixed(2)+'</span>':'<span style="color:var(--text3)">—</span>')+'</td>':'';
       return'<tr><td>'+fmtDate(l.date)+'</td>'
@@ -753,7 +756,9 @@ function renderBatchDetail(){
       }())
       +'</div>'
       +'<div class="card"><div class="card-header"><div class="card-title">READING LOG</div></div>'
-      +'<table class="data-table"><thead><tr><th>Date</th><th>SG</th><th>ABV</th><th>Temp</th>'+(anyPH?'<th>pH</th>':'')+'<th>Airlock</th><th>Notes</th><th></th></tr></thead><tbody>'+logRows+'</tbody></table></div>'
+      +'<table class="data-table"><thead><tr><th>Date</th><th>SG</th><th>ABV</th><th>Temp</th>'+(anyPH?'<th>pH</th>':'')+'<th>Airlock</th><th>Notes</th><th></th></tr></thead><tbody>'+logRows+'</tbody></table>'
+      +(revLogs.length>LOG_CAP?'<div style="text-align:center;margin-top:10px"><button class="btn btn-secondary btn-sm" onclick="toggleBatchLogAll()">'+(window._batchLogShowAll?'Show recent only':('Show all '+revLogs.length+' readings'))+'</button><div style="font-size:11px;color:var(--text3);margin-top:4px">'+(window._batchLogShowAll?('Showing all '+revLogs.length+' readings'):('Showing the latest '+LOG_CAP+' of '+revLogs.length))+'</div></div>':'')
+      +'</div>'
       +'</div></div>';
   }
 
@@ -907,14 +912,27 @@ function renderBatchDetail(){
 function setBatchTab(id,tab){
   if(!window._batchTabs)window._batchTabs={};
   window._batchTabs[id]=tab;
+  window._batchLogShowAll=false;  // reading log starts capped each time you enter the tab
   renderMain();
+}
+function toggleBatchLogAll(){window._batchLogShowAll=!window._batchLogShowAll;renderMain();}
+
+// Evenly thin a long reading series to ~max points (keeping the first and last)
+// so a batch with thousands of readings still charts fast and legibly.
+function _downsampleLogs(arr,max){
+  max=max||200;
+  if(!arr||arr.length<=max)return arr||[];
+  var n=arr.length,step=(n-1)/(max-1),out=[];
+  for(var i=0;i<max;i++)out.push(arr[Math.round(i*step)]);
+  out[out.length-1]=arr[n-1];
+  return out;
 }
 
 function initBatchCharts(){
   setTimeout(function(){
     var b=APP.batches.find(function(x){return x.id===currentBatchId;});
     if(!b)return;
-    var logs=APP.logs[b.id]||[];
+    var logs=_downsampleLogs(APP.logs[b.id]||[],200);
     var color=getBatchColor(b);
     var og=b.og||1.095;
     var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
@@ -992,6 +1010,7 @@ function initBatchCharts(){
       var nlA=(typeof appLang==='function'&&appLang()==='nl');
       var aRead=(APP.logs[b.id]||[]).filter(function(l){return l.gravity!=null;}).slice()
         .sort(function(x,y){return(x.date||'').localeCompare(y.date||'');});
+      aRead=_downsampleLogs(aRead,200);
       if(aRead.length>1){
         var aLabels=aRead.map(function(l){return fmtDateShort(l.date);});
         var aSG=aRead.map(function(l){return l.gravity;});

@@ -298,6 +298,15 @@
     APP.filters.batchSearch='';APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};
   })();
 
+  // chart downsampling (scale: long reading series)
+  (function(){
+    var arr=[];for(var i=0;i<1000;i++)arr.push({date:'d'+i,gravity:1.1-i*0.0001});
+    var ds=_downsampleLogs(arr,200);
+    ok('downsample: caps to <=200', ds.length>0&&ds.length<=200, ds.length);
+    ok('downsample: keeps first & last point', ds[0]===arr[0]&&ds[ds.length-1]===arr[arr.length-1], '');
+    ok('downsample: passes small series through', _downsampleLogs(arr.slice(0,50),200).length===50, '');
+  })();
+
   var s=document.getElementById('summary');
   s.textContent=(fail===0?'✓ ALL PASS':'✗ '+fail+' FAILED')+'  ('+pass+'/'+(pass+fail)+')';
   s.className=fail===0?'pass':'fail';
