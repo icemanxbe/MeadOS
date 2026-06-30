@@ -340,6 +340,7 @@ function packageState(){
     customRecipes:APP.customRecipes,
     notifiedTasks:APP.notifiedTasks,
     templates:APP.templates||[],
+    stepTemplates:APP.stepTemplates||[],
     celebrated:APP.celebrated||{},
     tempAnomalies:APP.tempAnomalies||[],
     fermenters:APP.fermenters||[],
@@ -404,6 +405,7 @@ function applyState(d){
   if(migrationReport)APP._pendingMigrationReport=migrationReport;
   // Also remember templates + celebrated milestones + temp anomalies + custom user data buckets
   APP.templates=d.templates||APP.templates||[];
+  APP.stepTemplates=Array.isArray(d.stepTemplates)?d.stepTemplates:(APP.stepTemplates||[]);
   APP.celebrated=d.celebrated||APP.celebrated||{};
   APP.tempAnomalies=d.tempAnomalies||APP.tempAnomalies||[];
   APP.batches=d.batches||[];

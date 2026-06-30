@@ -372,6 +372,21 @@
     APP.competitions={};APP.batches=[];
   })();
 
+  // custom step schedules: per-batch override + template persistence
+  (function(){
+    APP.recipes=[{id:'rA',steps:[{day:0,title:'Brew',desc:'x'},{day:14,title:'Rack',desc:'y'}]}];
+    var b={id:'bb',recipeId:'rA',customSteps:[{day:5,title:'Nutrient',desc:'z'},{day:1,title:'Aerate',desc:'q'}]};
+    var es=getEffectiveSteps(b,APP.recipes[0]);
+    ok('steps: customSteps override + sort by day', es.length===2&&es[0].title==='Aerate'&&es[1].title==='Nutrient', es.map(function(s){return s.title;}).join());
+    ok('steps: no override falls back to recipe', getEffectiveSteps({id:'bc',recipeId:'rA'},APP.recipes[0]).length===2, '');
+    APP.stepTemplates=[{id:'t1',name:'My TOSNA',steps:[{day:1,title:'Dose 1',desc:''}]}];
+    ok('stepTemplates: in packageState', packageState().stepTemplates[0].name==='My TOSNA', '');
+    APP.stepTemplates=[];
+    applyState({stepTemplates:[{id:'t2',name:'Restored',steps:[]}],batches:[]});
+    ok('stepTemplates: restored by applyState', APP.stepTemplates[0]&&APP.stepTemplates[0].name==='Restored', '');
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.stepTemplates=[];
+  })();
+
   var s=document.getElementById('summary');
   s.textContent=(fail===0?'✓ ALL PASS':'✗ '+fail+' FAILED')+'  ('+pass+'/'+(pass+fail)+')';
   s.className=fail===0?'pass':'fail';

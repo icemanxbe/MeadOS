@@ -669,7 +669,7 @@ function renderBatchDetail(){
       +'<div style="max-width:760px;margin:0 auto">'+renderBatchLabel(recipe?recipe.id:'r1',currentABV,{batch:b,maxWidth:'420px'})+'</div>'
       +'<div style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center;font-family:var(--font-mono);letter-spacing:1px">'+escHtml(b.name).toUpperCase()+' · '+fmtDate(b.startDate)+(currentABV!=='—'?' · '+currentABV+'% ABV':'')+'</div>'
       +'</div>'
-      +'<div class="card"><div class="card-header"><div class="card-title">JOURNEY</div></div>'
+      +'<div class="card"><div class="card-header"><div class="card-title">JOURNEY'+(b.customSteps&&b.customSteps.length?' <span style="font-family:var(--font-mono);font-size:9px;color:var(--gold2);letter-spacing:1px">· CUSTOM</span>':'')+'</div><button class="btn btn-secondary btn-sm" onclick="openStepEditor(\''+b.id+'\')">'+(appLang()==='nl'?'✎ Schema':'✎ Edit schedule')+'</button></div>'
       +'<div class="timeline">'+(timelineHtml||'<p style="color:var(--text3);font-style:italic">No recipe steps available.</p>')+'</div></div>'
       +'</div></div>';
   }
@@ -908,6 +908,91 @@ function renderBatchDetail(){
     +'<div class="tab '+(activeTab==='photos'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'photos\')">Photos'+((APP.photos[b.id]||[]).length?' <span style="background:var(--bg4);color:var(--text3);font-size:9px;padding:1px 5px;border-radius:6px;margin-left:2px">'+(APP.photos[b.id]||[]).length+'</span>':'')+'</div>'
     +'<div class="tab '+(activeTab==='bottle'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'bottle\')">Bottling</div>'
     +'</div>'+tabContent;
+}
+
+// ==================== STEP SCHEDULE EDITOR ====================
+// Per-batch custom step schedule (batch.customSteps), edited in a modal and
+// reusable as named templates (APP.stepTemplates). getEffectiveSteps honors
+// batch.customSteps when present. Reorder = sort by day on save (no drag-drop).
+// ponytail: native prompt() for the template name; no custom name dialog.
+function _stepEditorRow(s){
+  s=s||{day:0,title:'',desc:''};
+  return '<div data-step-row style="display:flex;gap:8px;align-items:flex-start;margin-bottom:8px;padding:8px;background:var(--bg3);border-radius:var(--radius)">'
+    +'<input class="form-input" data-step-day type="number" value="'+(s.day!=null?s.day:0)+'" style="width:60px;flex:0 0 auto" title="Day">'
+    +'<div style="flex:1;min-width:0"><input class="form-input" data-step-title value="'+escHtml(s.title||'')+'" placeholder="Title" style="margin-bottom:6px">'
+    +'<textarea class="form-textarea" data-step-desc placeholder="Description" style="min-height:46px">'+escHtml(s.desc||'')+'</textarea></div>'
+    +'<button class="btn btn-danger btn-sm" onclick="this.closest(\'[data-step-row]\').remove()" style="flex:0 0 auto">✕</button>'
+    +'</div>';
+}
+function _readStepEditorRows(){
+  return Array.prototype.map.call(document.querySelectorAll('#step-editor-rows [data-step-row]'),function(row){
+    return {day:parseInt(row.querySelector('[data-step-day]').value,10)||0,
+      title:row.querySelector('[data-step-title]').value.trim(),
+      desc:row.querySelector('[data-step-desc]').value.trim()};
+  }).filter(function(s){return s.title||s.desc;}).sort(function(a,b){return a.day-b.day;});
+}
+function openStepEditor(batchId){
+  var b=APP.batches.find(function(x){return x.id===batchId;});
+  if(!b){toast('⚠ Batch not found');return;}
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+  var steps=(typeof getEffectiveSteps==='function')?getEffectiveSteps(b,recipe):((recipe&&recipe.steps)||[]);
+  var custom=Array.isArray(b.customSteps)&&b.customSteps.length;
+  var tpls=APP.stepTemplates||[];
+  var tplPicker=tpls.length?'<div style="margin-bottom:10px"><select class="form-select" onchange="applyStepTemplate(\''+b.id+'\',this.value)"><option value="">'+(nl?'Sjabloon laden…':'Load template…')+'</option>'+tpls.map(function(t){return '<option value="'+t.id+'">'+escHtml(t.name)+' ('+((t.steps||[]).length)+')</option>';}).join('')+'</select></div>':'';
+  closeModal();
+  document.body.insertAdjacentHTML('beforeend',
+    '<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:700px;max-height:88vh;display:flex;flex-direction:column">'
+    +'<div class="modal-title">✎ '+(nl?'Stappenschema bewerken':'Edit step schedule')+'</div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px">'+(nl?'Pas dagen, titels en omschrijvingen aan. Een opgeslagen schema overschrijft het recept voor déze partij.':'Adjust days, titles and descriptions. A saved schedule overrides the recipe for this batch only.')+(custom?'':' '+(nl?'(Begint vanaf het recept.)':'(Starting from the recipe.)'))+'</div>'
+    +tplPicker
+    +'<div id="step-editor-rows" style="flex:1;overflow-y:auto;min-height:120px">'+steps.map(_stepEditorRow).join('')+'</div>'
+    +'<button class="btn btn-secondary btn-sm" style="margin-top:8px;align-self:flex-start" onclick="stepEditorAddRow()">＋ '+(nl?'Stap toevoegen':'Add step')+'</button>'
+    +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between">'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+        +(custom?'<button class="btn btn-secondary btn-sm" onclick="resetBatchSteps(\''+b.id+'\')">↺ '+(nl?'Terug naar recept':'Reset to recipe')+'</button>':'')
+        +'<button class="btn btn-secondary btn-sm" onclick="saveStepTemplate(\''+b.id+'\')">💾 '+(nl?'Als sjabloon':'Save as template')+'</button>'
+      +'</div>'
+      +'<div style="display:flex;gap:8px"><button class="btn btn-secondary" onclick="closeModal()">'+(nl?'Annuleren':'Cancel')+'</button><button class="btn btn-primary" onclick="saveStepEditor(\''+b.id+'\')">'+(nl?'Opslaan':'Save')+'</button></div>'
+    +'</div></div></div>');
+}
+function stepEditorAddRow(){
+  var c=document.getElementById('step-editor-rows');
+  if(c)c.insertAdjacentHTML('beforeend',_stepEditorRow({day:0,title:'',desc:''}));
+}
+function saveStepEditor(batchId){
+  var b=APP.batches.find(function(x){return x.id===batchId;});if(!b)return;
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var steps=_readStepEditorRows();
+  if(!steps.length){toast(nl?'⚠ Geen stappen om op te slaan':'⚠ No steps to save');return;}
+  b.customSteps=steps;
+  if(typeof saveData==='function')saveData();
+  closeModal();renderMain();
+  toast(nl?'✦ Schema opgeslagen':'✦ Schedule saved');
+}
+function resetBatchSteps(batchId){
+  var b=APP.batches.find(function(x){return x.id===batchId;});if(!b)return;
+  delete b.customSteps;
+  if(typeof saveData==='function')saveData();
+  closeModal();renderMain();
+  toast((typeof appLang==='function'&&appLang()==='nl')?'↺ Terug naar recept':'↺ Reset to recipe schedule');
+}
+function saveStepTemplate(batchId){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var steps=_readStepEditorRows();
+  if(!steps.length){toast(nl?'⚠ Geen stappen':'⚠ No steps');return;}
+  var name=prompt(nl?'Naam voor dit sjabloon:':'Name for this step template:');
+  if(!name||!name.trim())return;
+  if(!APP.stepTemplates)APP.stepTemplates=[];
+  APP.stepTemplates.push({id:genId(),name:name.trim(),steps:steps});
+  if(typeof saveData==='function')saveData();
+  toast('💾 '+(nl?'Sjabloon opgeslagen':'Template saved'));
+}
+function applyStepTemplate(batchId,tplId){
+  if(!tplId)return;
+  var t=(APP.stepTemplates||[]).find(function(x){return x.id===tplId;});if(!t)return;
+  var c=document.getElementById('step-editor-rows');
+  if(c)c.innerHTML=(t.steps||[]).map(_stepEditorRow).join('');  // load for review; Save commits it
 }
 
 // ==================== COMPETITIONS / AWARDS ====================
