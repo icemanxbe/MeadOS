@@ -38,6 +38,7 @@ SQLite client:  sqlite3 meados.db "SELECT saved_at, length(data) FROM history;"
 import argparse
 import base64
 import contextlib
+import gzip
 import re
 import hashlib
 import hmac
@@ -998,8 +999,27 @@ class Handler(BaseHTTPRequestHandler):
         if isinstance(body, (dict, list)):
             body = json.dumps(body)
         data = body.encode("utf-8") if isinstance(body, str) else body
+        # Transparent gzip for clients that advertise it (every browser does).
+        # Cuts the full-state /api/data transfer on every load and sync; works
+        # both ways (an old client that omits the header just gets plain bytes),
+        # so it's safe to ship before the server is restarted. Skipped for tiny
+        # bodies where the gzip header outweighs the saving.
+        enc = None
+        try:
+            accept_enc = (self.headers.get("Accept-Encoding", "") or "").lower()
+        except Exception:
+            accept_enc = ""
+        if len(data) >= 1024 and "gzip" in accept_enc and getattr(self, "command", "") != "HEAD":
+            try:
+                data = gzip.compress(data, 6)
+                enc = "gzip"
+            except Exception:
+                enc = None
         self.send_response(code)
         self.send_header("Content-Type", ctype)
+        if enc:
+            self.send_header("Content-Encoding", enc)
+            self.send_header("Vary", "Accept-Encoding")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
         self.send_header("Access-Control-Allow-Origin", "*")
