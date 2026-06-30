@@ -387,6 +387,15 @@
     APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.stepTemplates=[];
   })();
 
+  // blend math (volume-weighted)
+  (function(){
+    var r=mwBlend([{og:1.100,fg:1.000,abv:13,vol:3},{og:1.000,fg:1.000,abv:0,vol:1}]);
+    ok('blend: volume-weighted ABV (13×3/4)', Math.abs(r.abv-9.75)<1e-9, r.abv);
+    ok('blend: weighted OG (1.075)', Math.abs(r.og-1.075)<1e-9, r.og);
+    ok('blend: total volume', r.vol===4, r.vol);
+    ok('blend: empty → zero volume', mwBlend([]).vol===0, '');
+  })();
+
   var s=document.getElementById('summary');
   s.textContent=(fail===0?'✓ ALL PASS':'✗ '+fail+' FAILED')+'  ('+pass+'/'+(pass+fail)+')';
   s.className=fail===0?'pass':'fail';
