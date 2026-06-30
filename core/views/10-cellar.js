@@ -180,7 +180,13 @@ function renderCellar(){
   },0);
   var hasCostData=bottled.some(function(b){return b.cost;});
 
-  var cards=bottled.map(function(b){
+  // Window the cards (stats above still count the full set) so a large cellar
+  // renders only a page of cards at a time.
+  var CELLAR_PAGE=48;
+  if(window._cellarLimit==null)window._cellarLimit=CELLAR_PAGE;
+  var _rmap={};(APP.recipes||[]).forEach(function(r){_rmap[r.id]=r;});
+  var shownBottled=bottled.slice(0,window._cellarLimit);
+  var cards=shownBottled.map(function(b){
     var bot=APP.bottling[b.id];
     // bot.locations is guaranteed to be present and properly size-keyed by
     // applyState's normalization. Earlier this had a defensive fallback that
@@ -189,7 +195,7 @@ function renderCellar(){
     var aged=bottleDaysAged(b);
     var profile=getAgingProfile(b);
     var status=getAgingStatus(aged,profile);
-    var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+    var recipe=_rmap[b.recipeId];
     var color=getBatchColor(b);
     var pct=Math.min(100,(aged/profile.maxDays)*100);
     var minPct=(profile.minDays/profile.maxDays)*100;
@@ -364,6 +370,7 @@ function renderCellar(){
     +'</div>'
     +(atPeak>0?'<div class="info-box" style="border-left-color:var(--gold2);margin-bottom:16px"><div style="font-size:14px;color:var(--gold2)"><strong>🏆 '+atPeak+' batch'+(atPeak!==1?'es':'')+' at peak drinking window.</strong> Now is the perfect time to taste, share, and savor.</div></div>':'')
     +cards
+    +(bottled.length>window._cellarLimit?'<div style="text-align:center;margin:16px 0"><button class="btn btn-secondary btn-sm" onclick="showMoreCellar()">Show more · '+(bottled.length-window._cellarLimit)+' more</button></div>':'')
     // ponytail: analytics merged into one collapsed <details> at the bottom — native, no JS.
     +(function(){var a=renderCellarInventoryByStyle()+renderYeastAnalytics();
       return a?'<details class="card" style="margin-top:16px;background:var(--bg2)"><summary style="cursor:pointer;font-family:var(--font-display);font-size:12px;color:var(--text3);letter-spacing:2px">CELLAR ANALYTICS</summary><div style="margin-top:14px">'+a+'</div></details>':'';}());
@@ -1733,6 +1740,8 @@ function cellarExpandAll(open){
 // Persist the chosen cellar sort in window memory and re-render.
 function setCellarSort(key){
   window._cellarSort=key||'status';
+  window._cellarLimit=48;  // back to page one when the order changes
   renderMain();
 }
+function showMoreCellar(){window._cellarLimit=(window._cellarLimit||48)+48;renderMain();}
 
