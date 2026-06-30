@@ -247,6 +247,31 @@
       var r=mwReadiness(bb);
       ok('readiness: long-aged near peak', r && r.pct>=100, JSON.stringify(r));
     })();
+    // pre-break fermenting → aerate-now, and every item carries a category
+    (function(){
+      var bp={id:'adv4',recipeId:'rA',startDate:isoAgo(2),og:1.098,yeast:'ec1118'};
+      APP.batches=[bp];APP.logs={adv4:[{date:isoAgo(2),gravity:1.098,temp:19},{date:isoAgo(0),gravity:1.090,temp:19}]};APP.bottling={};
+      var a4=mwBatchAdvice(bp);
+      ok('advice: pre-break → aerate-now', a4.items.some(function(i){return i.id==='aerate-now';}), JSON.stringify(a4.items.map(function(i){return i.id;})));
+      ok('advice: every item has a category', a4.items.length>0&&a4.items.every(function(i){return typeof i.category==='string'&&i.category;}), JSON.stringify(a4.items.map(function(i){return i.id+':'+i.category;})));
+    })();
+    // bottled & inside drinking window → aging-window info milestone
+    (function(){
+      var bw={id:'adv6',recipeId:'rA',startDate:isoAgo(120),og:1.098,yeast:'ec1118'};
+      APP.batches=[bw];APP.logs={adv6:[{date:isoAgo(120),gravity:1.098},{date:isoAgo(100),gravity:1.005}]};
+      APP.bottling={adv6:{date:isoAgo(90),fg:1.005,abv:12,countsAtBottling:{750:6},locations:{cellar:{750:6}}}};
+      var a6=mwBatchAdvice(bw);
+      ok('advice: in-window → aging-window info', a6.items.some(function(i){return i.id==='aging-window'&&i.severity==='info';}), JSON.stringify(a6.items.map(function(i){return i.id;})));
+    })();
+    // high-fructose honey + non-fructophilic yeast → fructose-stall-risk warning
+    (function(){
+      var bf={id:'adv7',recipeId:'rA',startDate:isoAgo(3),og:1.098,yeast:'ec1118',honeyType:'Acacia'};
+      APP.batches=[bf];APP.logs={adv7:[{date:isoAgo(3),gravity:1.098,temp:19},{date:isoAgo(0),gravity:1.085,temp:19}]};APP.bottling={};
+      var sf=mwBatchSignals(bf);
+      ok('signals: fructose-stall risk detected', sf && sf.fructoseStallRisk===true, JSON.stringify({honey:sf&&sf.honeyName,risk:sf&&sf.honeyFructoseRisk,fp:sf&&sf.yeastFructophilic}));
+      var a7=mwBatchAdvice(bf);
+      ok('advice: fructose honey → fructose-stall-risk', a7.items.some(function(i){return i.id==='fructose-stall-risk';}), JSON.stringify(a7.items.map(function(i){return i.id;})));
+    })();
     APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};APP.additions={};
   })();
 
