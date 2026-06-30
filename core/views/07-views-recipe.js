@@ -1039,6 +1039,7 @@ function renderRecipeDetail(){
     +'<div class="ra-extra">'+renderRecipeSuccessTracker(r)
     +(r.notes?'<div class="info-box" style="border-left-color:'+r.brandColor+'"><div style="font-size:13px;color:var(--text2);font-style:italic">'+escHtml(r.notes)+'</div></div>':'')
     +'</div>'
+    +'<div class="ra-side">'
     +'<div class="ra-targets"><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">TARGETS</div></div>'
     +'<div class="grid-3" id="recipe-targets-live">'+((typeof recipeConfigTargetsHtml==='function')?recipeConfigTargetsHtml(r,scaleVol,ensureRecipeConfig(r)):'')+'</div>'
     +'<div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">'
@@ -1052,7 +1053,7 @@ function renderRecipeDetail(){
       return dsteps.map(function(s){return'<div class="tl-item"><div class="tl-dot future"></div><div class="tl-day">Day '+s.day+'</div><div class="tl-title">'+escHtml(s.title)+'</div><div class="tl-desc">'+escHtml(annotateNutrientDesc(s.desc))+'</div></div>';}).join('')
         +sugarBreakNote(dsteps);
     }())
-    +'</div></div></div></div>';
+    +'</div></div></div></div></div>';
 }
 
 // Brew-session planner — opens a print-ready pre-brew checklist for a recipe
