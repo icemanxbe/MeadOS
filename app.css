@@ -73,20 +73,24 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
    pair up) and a wider right track for targets, cost and the step timeline. A real
    grid (not multicol) — so the nested honey grid can't overlap-glitch. */
 .recipe-layout{display:grid;grid-template-columns:1fr;column-gap:16px;row-gap:0;align-items:start;
-  grid-template-areas:"scale" "targets" "ingredients" "cost" "steps" "honey" "yeast" "nutrient" "fruit" "dial" "extra";}
+  grid-template-areas:"scale" "ingredients" "side" "honey" "yeast" "nutrient" "fruit" "dial" "extra";}
 @media(min-width:1024px){
   .recipe-layout{grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.5fr);
     grid-template-areas:
-      "scale       scale       targets"
-      "ingredients ingredients cost"
-      "honey       honey       steps"
-      "yeast       nutrient    steps"
-      "fruit       dial        steps"
-      "extra       extra       steps";}
+      "scale       scale       side"
+      "ingredients ingredients side"
+      "honey       honey       side"
+      "yeast       nutrient    side"
+      "fruit       dial        side"
+      "extra       extra       side";}
 }
-.ra-scale{grid-area:scale;min-width:0}.ra-targets{grid-area:targets;min-width:0}
-.ra-ingredients{grid-area:ingredients;min-width:0}.ra-cost{grid-area:cost;min-width:0}
-.ra-steps{grid-area:steps;min-width:0}.ra-honey{grid-area:honey;min-width:0}
+/* Right column is one area spanning every row: targets + cost + steps stack
+   naturally inside it, so a tall left card (e.g. SCALE + CONFIGURE) can't open
+   a vacuum beside a short right card. */
+.ra-side{grid-area:side;min-width:0}
+.ra-scale{grid-area:scale;min-width:0}.ra-targets{min-width:0}
+.ra-ingredients{grid-area:ingredients;min-width:0}.ra-cost{min-width:0}
+.ra-steps{min-width:0}.ra-honey{grid-area:honey;min-width:0}
 .ra-yeast{grid-area:yeast;min-width:0}.ra-nutrient{grid-area:nutrient;min-width:0}
 .ra-fruit{grid-area:fruit;min-width:0}.ra-dial{grid-area:dial;min-width:0}.ra-extra{grid-area:extra;min-width:0}
 /* Honey fit list: two columns on desktop, one on mobile (full-width rows read
