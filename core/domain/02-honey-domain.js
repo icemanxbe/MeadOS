@@ -440,6 +440,11 @@ function getBatchProtocol(batch){
 // are removed and replaced with 4 organic-nitrogen doses on the canonical
 // TOSNA schedule (day 1, 2, 3, and 7-or-1/3-break).
 function getEffectiveSteps(batch,recipe){
+  // A per-batch custom schedule (set in the step editor) takes precedence over
+  // the recipe + protocol logic — the brewer has taken manual control.
+  if(batch&&Array.isArray(batch.customSteps)&&batch.customSteps.length){
+    return batch.customSteps.slice().sort(function(a,b){return(a.day||0)-(b.day||0);});
+  }
   if(!recipe||!recipe.steps)return[];
   var protocol=getBatchProtocol(batch);
   if(protocol!=='tosna')return recipe.steps;
