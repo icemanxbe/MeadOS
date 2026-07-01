@@ -42,6 +42,10 @@ function mwBatchSignals(b){
 
   // Temperature: latest logged temp + the active yeast's optimal range.
   var latestTemp=null;for(var i=logs.length-1;i>=0;i--){if(logs[i].temp!=null&&logs[i].temp!==''){latestTemp=parseFloat(logs[i].temp);break;}}
+  // pH: latest logged reading. Healthy mead ferment pH is ~3.0–3.4 (the app's own
+  // logging help text); below 2.9 signals yeast stress, above 3.5 a contamination
+  // risk. Optional — most brewers never log it, so this stays null until they do.
+  var latestPH=null;for(var ip=logs.length-1;ip>=0;ip--){if(logs[ip].ph!=null&&logs[ip].ph!==''){latestPH=parseFloat(logs[ip].ph);break;}}
   var y=(typeof YEAST_STRAINS!=='undefined'&&b.yeast)?YEAST_STRAINS.filter(function(x){return x.id===b.yeast;})[0]:null;
   var tLow=(y&&y.optimalTempLow!=null)?y.optimalTempLow:16, tHigh=(y&&y.optimalTempHigh!=null)?y.optimalTempHigh:24;
   var tempInRange=(latestTemp!=null)?(latestTemp>=tLow-0.5&&latestTemp<=tHigh+0.5):null;
@@ -73,13 +77,30 @@ function mwBatchSignals(b){
   // backsweetens (detected from a sorbate/stabilise step in the recipe).
   var sparkling=!!(recipe&&(recipe.category==='Sparkling'||recipe.style==='Sparkling'||(recipe.tags&&(recipe.tags.indexOf('Sparkling')>=0||recipe.tags.indexOf('Carbonated')>=0))));
   var recipeBacksweetens=!sparkling&&!!(recipe&&recipe.steps&&recipe.steps.some(function(st){return /back-?sweeten|sorbate|stabili/i.test((st.title||'')+' '+(st.desc||''));}));
-  // Aging model (shared with readiness): days since bottling (or start) vs ready→peak.
+  // Aging model (shared with readiness): days since bottling vs ready→peak.
+  // NOTE: getBatchStatus() can return 'aging' for a batch that was NEVER
+  // bottled — its calendar-fallback branch labels any untouched batch past
+  // day 42 as 'aging' even with zero readings/steps logged. So "bottled" must
+  // key off an ACTUAL bottling record, never the status string, or a merely
+  // neglected batch would be misread as being in its post-bottling drink window.
   var bottling=(typeof APP!=='undefined'&&APP.bottling)?APP.bottling[b.id]:null;
-  var bottled=(status==='bottled'||status==='aging'||status==='complete'||!!bottling);
+  var bottled=!!bottling;
   var ageAnchor=(bottling&&bottling.date)||b.startDate;
   var agedDays=(typeof daysSince==='function'&&ageAnchor)?daysSince(ageAnchor):null;
   var readyDays=(recipe&&recipe.minAgeDays)||60, peakDays=(recipe&&recipe.peakAgeDays)||240;
   var agePhase=(bottled&&agedDays!=null)?(agedDays>=peakDays?'peak':(agedDays>=readyDays?'ready':'aging')):null;
+
+  // Equipment: the fermenter actually assigned to this batch, if any — enables
+  // a headspace / blow-off-risk check during vigorous primary fermentation.
+  var volume=parseFloat(b.volume)||null;
+  var fermenter=(b.fermenterId&&typeof getFermenter==='function')?getFermenter(b.fermenterId):null;
+  var fermenterCapacity=(fermenter&&parseFloat(fermenter.capacity))||null;
+  var headspaceFrac=(fermenterCapacity&&volume)?((fermenterCapacity-volume)/fermenterCapacity):null;
+  var recipeFermentDays=(recipe&&recipe.fermentDays)||null;
+  // Expectations Engine (v1, fermentation duration): a real yeast-speed-aware
+  // range instead of a single flat day count — "18-30 days" beats a lone "24".
+  var yeastSpeed=(y&&y.speed)||null;
+  var expectedFermentRange=(recipeFermentDays&&typeof mwExpectedFermentDuration==='function')?mwExpectedFermentDuration(recipeFermentDays,yeastSpeed):null;
 
   return {
     recipeId:b.recipeId, status:status, active:active, fermenting:fermenting,
@@ -91,12 +112,14 @@ function mwBatchSignals(b){
     stalled:proj?proj.stalled:false, nearFG:proj?proj.nearFG:false,
     sugarBreak:sugarBreak, passedSugarBreak:passedSugarBreak,
     nutrientsDone:nut.done, nutrientsExpected:nut.expected, nutrientsComplete:nutrientsComplete,
-    latestTemp:latestTemp, tempLow:tLow, tempHigh:tHigh, tempInRange:tempInRange, tempStable:tempStable,
+    latestTemp:latestTemp, tempLow:tLow, tempHigh:tHigh, tempInRange:tempInRange, tempStable:tempStable, latestPH:latestPH,
     abvMax:abvMax, nearTolerance:nearTolerance, yeastId:b.yeast||null,
     daysSinceLastReading:daysSinceLastReading,
     honeyName:honeyName, honeyFructoseRisk:honeyFructoseRisk, yeastFructophilic:yeastFructophilic, fructoseStallRisk:fructoseStallRisk,
     sparkling:sparkling, recipeBacksweetens:recipeBacksweetens,
-    bottled:bottled, agedDays:agedDays, readyDays:readyDays, peakDays:peakDays, agePhase:agePhase
+    bottled:bottled, agedDays:agedDays, readyDays:readyDays, peakDays:peakDays, agePhase:agePhase,
+    volume:volume, fermenterCapacity:fermenterCapacity, headspaceFrac:headspaceFrac, recipeFermentDays:recipeFermentDays,
+    yeastSpeed:yeastSpeed, expectedFermentRange:expectedFermentRange
   };
 }
 
@@ -122,8 +145,16 @@ function _advRules(){
   return [
     function stalled(s){
       if(!s.active||!s.stalled)return null;
+      // Likely-cause diagnosis: check the classic culprits in the order a real
+      // troubleshooting pass would (see the Troubleshoot guide) — under-nutrition
+      // first (most common), then honey/yeast mismatch, tolerance, temperature.
+      var cause='unknown';
+      if(!s.nutrientsComplete)cause='nutrition';
+      else if(s.fructoseStallRisk)cause='fructose';
+      else if(s.nearTolerance)cause='tolerance';
+      else if(s.tempInRange===false)cause='temperature';
       return {id:'stalled',severity:'critical',category:'fermentation',
-        data:{atten:Math.round(s.attenuation*100),days:s.daysSinceStart,temp:s.latestTemp},
+        data:{atten:Math.round(s.attenuation*100),days:s.daysSinceStart,temp:s.latestTemp,cause:cause,honey:s.honeyName,yeast:s.yeastId},
         reasons:['rate-flat','below-target']};
     },
     function finalNutrient(s){
@@ -174,7 +205,7 @@ function _advRules(){
       if(s.tempInRange!==false)return null;
       var cold=s.latestTemp<s.tempLow;
       return {id:'temperature',severity:s.fermenting?'recommended':'info',category:'temperature',
-        data:{temp:s.latestTemp,low:s.tempLow,high:s.tempHigh,cold:cold},
+        data:{temp:s.latestTemp,low:s.tempLow,high:s.tempHigh,cold:cold,yeast:s.yeastId},
         reasons:['out-of-range']};
     },
     function tempSwing(s){
@@ -187,8 +218,18 @@ function _advRules(){
     function tolerance(s){
       if(!s.fermenting||!s.nearTolerance||s.nearFG)return null;
       return {id:'abv-ceiling',severity:'info',category:'fermentation',
-        data:{abv:s.currentABV,max:s.abvMax},
+        data:{abv:s.currentABV,max:s.abvMax,yeast:s.yeastId},
         reasons:['near-tolerance']};
+    },
+    function phRange(s){
+      // Optional signal — most brewers never log pH. Relevant throughout active
+      // life, not just fermentation (a spoilage-risk pH doesn't fix itself).
+      if(!s.active||s.latestPH==null)return null;
+      if(s.latestPH<2.9)return {id:'ph-low',severity:s.fermenting?'recommended':'info',category:'fermentation',
+        data:{ph:s.latestPH},reasons:['ph-low']};
+      if(s.latestPH>3.5)return {id:'ph-high',severity:'info',category:'fermentation',
+        data:{ph:s.latestPH},reasons:['ph-high']};
+      return null;
     },
     function logReading(s){
       if(!s.fermenting)return null;
@@ -245,6 +286,51 @@ function _advRules(){
       if(s.status==='bottled'||s.status==='complete')return null;
       return {id:'cold-crash',severity:'info',category:'clarity',
         data:{},reasons:['clear-before-bottling']};
+    },
+    function carbonationDeveloping(s){
+      // Sparkling + freshly bottled: bottle-conditioning is still building — a
+      // reminder to store upright and warm, distinct from the pre-bottling
+      // 'carbonation' rule (which only fires before bottling).
+      if(!s.sparkling||!s.bottled||s.agedDays==null||s.agedDays>21)return null;
+      return {id:'carbonation-developing',severity:'info',category:'stabilisation',
+        data:{aged:s.agedDays},reasons:['bottle-conditioning']};
+    },
+    function blowoffRisk(s){
+      // Equipment knowledge: too little headspace in a vigorous primary risks a
+      // blow-off (krausen/foam pushed out the airlock). Only while genuinely
+      // vigorous — before the sugar break, not yet stalled or near done.
+      if(!s.fermenting||s.passedSugarBreak||s.stalled||s.nearFG)return null;
+      if(s.headspaceFrac==null)return null;
+      if(s.headspaceFrac<0.08)return {id:'blowoff-risk',severity:'critical',category:'equipment',
+        data:{headspacePct:Math.round(s.headspaceFrac*100),capacity:s.fermenterCapacity,volume:s.volume},reasons:['headspace-critical']};
+      if(s.headspaceFrac<0.15)return {id:'blowoff-risk',severity:'recommended',category:'equipment',
+        data:{headspacePct:Math.round(s.headspaceFrac*100),capacity:s.fermenterCapacity,volume:s.volume},reasons:['headspace-tight']};
+      return null;
+    },
+    function fermentingLong(s){
+      // Reassuring/informational: running past the expected range isn't
+      // necessarily wrong (many meads legitimately take longer), but it's
+      // worth naming so the brewer isn't left guessing. Yields to 'stalled' —
+      // that's the actionable version of "taking too long". Uses the yeast-
+      // speed-aware expected range (Expectations Engine) rather than a flat
+      // recipe-day multiplier, so a slow strain isn't flagged prematurely and
+      // a fast one isn't given too much slack.
+      if(!s.fermenting||s.stalled||s.nearFG)return null;
+      if(!s.expectedFermentRange||s.daysSinceStart==null)return null;
+      if(s.daysSinceStart<=s.expectedFermentRange.high)return null;
+      return {id:'fermenting-long',severity:'info',category:'fermentation',
+        data:{days:s.daysSinceStart,low:s.expectedFermentRange.low,high:s.expectedFermentRange.high,expected:s.expectedFermentRange.expected,yeast:s.yeastId},
+        reasons:['past-expected-range']};
+    },
+    function extendedBulkAging(s){
+      // A batch held in 'conditioning'/'aging' a long time WITHOUT ever being
+      // bottled means repeated headspace/oxygen exposure the whole time — bottling
+      // (even if still young) removes that risk. Uses the corrected s.bottled
+      // signal so this can't confuse itself with genuine post-bottling aging.
+      if(s.bottled||(s.status!=='conditioning'&&s.status!=='aging'))return null;
+      if(s.daysSinceStart==null||s.daysSinceStart<270)return null;
+      return {id:'extended-bulk-aging',severity:'info',category:'oxygen',
+        data:{days:s.daysSinceStart},reasons:['long-unbottled']};
     }
   ];
 }
@@ -252,29 +338,56 @@ function _advRules(){
 // ---- Health score: weighted 0..100 with a breakdown -----------------------
 function mwBatchHealth(s){
   if(!s)return null;
-  function comp(known,val){return {known:known,val:known?Math.max(0,Math.min(100,Math.round(val))):null};}
-  // Temperature
-  var temp=comp(s.tempInRange!=null, s.tempInRange? (s.tempStable===false?85:100) : 55);
-  // Nutrition
-  var nutr=comp(s.nutrientsExpected>0||s.nutrientsDone>0, s.nutrientsExpected>0?(s.nutrientsDone/s.nutrientsExpected*100):100);
-  // Gravity progress: on track vs expected attenuation (only meaningful while active)
+  function comp(known,val,code,data){return {known:known,val:known?Math.max(0,Math.min(100,Math.round(val))):null,code:code,data:data||{}};}
+
+  // Temperature: known once a temp's been logged; otherwise the axis is
+  // excluded rather than guessed at.
+  var temp;
+  if(s.tempInRange==null)temp=comp(false,null,'no-data');
+  else if(!s.tempInRange)temp=comp(true,55,'out-of-range',{temp:s.latestTemp,low:s.tempLow,high:s.tempHigh,cold:s.latestTemp<s.tempLow});
+  else if(s.tempStable===false)temp=comp(true,85,'in-range-unstable',{low:s.tempLow,high:s.tempHigh});
+  else temp=comp(true,100,'in-range-stable',{low:s.tempLow,high:s.tempHigh});
+
+  // Nutrition: doses actually added vs the schedule's expected count.
+  var nutr;
+  if(s.nutrientsExpected>0)nutr=comp(true,(s.nutrientsDone/s.nutrientsExpected*100),
+    s.nutrientsDone>=s.nutrientsExpected?'doses-complete':'doses-partial',{done:s.nutrientsDone,expected:s.nutrientsExpected});
+  else if(s.nutrientsDone>0)nutr=comp(true,100,'doses-logged',{done:s.nutrientsDone});
+  else nutr=comp(false,null,'no-data');
+
+  // Gravity progress: on track vs expected attenuation (only meaningful while active).
   var grav;
   if(s.active&&s.og){
-    if(s.stalled)grav=comp(true,40);
-    else if(s.nearFG)grav=comp(true,100);
-    else{var ratio=s.expectedAttenuation>0?(s.attenuation/s.expectedAttenuation):1;grav=comp(true,60+Math.min(40,ratio*40));}
-  }else grav=comp(false,null);
-  // Oxygen management: penalised only if past break and still actively fermenting (aeration risk window)
-  var oxy=comp(s.sugarBreak!=null, s.passedSugarBreak&&s.fermenting?90:100);
-  // Yeast health: stall / tolerance pressure
-  var yeast=comp(s.og!=null, s.stalled?45:(s.nearTolerance&&!s.nearFG?75:100));
+    if(s.stalled)grav=comp(true,40,'stalled',{atten:Math.round(s.attenuation*100)});
+    else if(s.nearFG)grav=comp(true,100,'near-target',{});
+    else{var ratio=s.expectedAttenuation>0?(s.attenuation/s.expectedAttenuation):1;
+      grav=comp(true,60+Math.min(40,ratio*40),'on-track',{pct:Math.round(Math.min(1,ratio)*100)});}
+  }else grav=comp(false,null,'no-data');
+
+  // Oxygen management: penalised only if past the break and still actively
+  // fermenting (the window where aeration actively risks oxidation).
+  var oxy;
+  if(s.sugarBreak==null)oxy=comp(false,null,'no-data');
+  else if(s.passedSugarBreak&&s.fermenting)oxy=comp(true,90,'past-break-fermenting',{});
+  else oxy=comp(true,100,'ok',{});
+
+  // Yeast health: stall / tolerance pressure.
+  var yeast;
+  if(s.og==null)yeast=comp(false,null,'no-data');
+  else if(s.stalled)yeast=comp(true,45,'stress-stalled',{});
+  else if(s.nearTolerance&&!s.nearFG)yeast=comp(true,75,'near-tolerance',{max:s.abvMax});
+  else yeast=comp(true,100,'ok',{});
 
   var parts=[{k:'temperature',w:0.25,c:temp},{k:'nutrition',w:0.2,c:nutr},{k:'gravity',w:0.3,c:grav},{k:'oxygen',w:0.12,c:oxy},{k:'yeast',w:0.13,c:yeast}];
-  var sw=0,acc=0,breakdown={};
-  parts.forEach(function(p){breakdown[p.k]=p.c.val;if(p.c.known){sw+=p.w;acc+=p.w*p.c.val;}});
+  var sw=0,acc=0,breakdown={},axisReasons={};
+  parts.forEach(function(p){
+    breakdown[p.k]=p.c.val;
+    axisReasons[p.k]={code:p.c.code,data:p.c.data,weight:p.w,known:p.c.known};
+    if(p.c.known){sw+=p.w;acc+=p.w*p.c.val;}
+  });
   var score=sw>0?Math.round(acc/sw):null;
   var band=score==null?'unknown':(score>=90?'excellent':score>=75?'good':score>=55?'fair':'attention');
-  return {score:score,band:band,breakdown:breakdown};
+  return {score:score,band:band,breakdown:breakdown,axisReasons:axisReasons};
 }
 
 // ---- Readiness: "can I drink it yet?" 0..100, tied to the aging model ------
@@ -283,8 +396,11 @@ function mwReadiness(b){
   var s=mwBatchSignals(b);
   if(!s)return null;
   if(s.status==='failed')return {pct:0,phase:'failed'};
-  // Pre-bottling: readiness tracks fermentation progress, capped low (not drinkable yet).
-  if(s.status==='fermenting'||s.status==='conditioning'){
+  // Pre-bottling: readiness tracks fermentation progress, capped low (not drinkable
+  // yet). Gate on s.bottled (an actual bottling record), not the status string —
+  // getBatchStatus()'s calendar fallback can label a neglected, never-bottled batch
+  // 'aging', which must NOT fall through to the post-bottling drink-window math below.
+  if(!s.bottled){
     return {pct:Math.round(Math.min(0.30,(s.attenuation||0)*0.30)*100),phase:'fermenting'};
   }
   // Bottled / aging: drive off elapsed aging vs the recipe's ready→peak window
