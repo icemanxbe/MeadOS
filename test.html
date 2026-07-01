@@ -272,6 +272,112 @@
       var a7=mwBatchAdvice(bf);
       ok('advice: fructose honey → fructose-stall-risk', a7.items.some(function(i){return i.id==='fructose-stall-risk';}), JSON.stringify(a7.items.map(function(i){return i.id;})));
     })();
+    // mwBatchSignals(): dedicated fact test — OG/target fallback, honey-name
+    // resolution from the recipe, and pH (last non-blank reading).
+    (function(){
+      APP.recipes=[{id:'rP',ogTarget:1.100,fgTarget:1.010,abvTarget:12.0,fermentDays:30,minAgeDays:60,peakAgeDays:240,
+        ingredients:[{item:'Wildflower Honey',amount:'1.7 kg'}],steps:[]}];
+      var bNoOg={id:'sp1',recipeId:'rP',startDate:isoAgo(5)};
+      APP.batches=[bNoOg];APP.logs={};APP.bottling={};
+      var s1=mwBatchSignals(bNoOg);
+      ok('signals: OG falls back to recipe ogTarget', s1&&s1.og===1.100, s1&&s1.og);
+      ok('signals: targetFG falls back to recipe fgTarget with no yeast', s1&&s1.targetFG===1.010, s1&&s1.targetFG);
+      ok('signals: honeyName resolves from the recipe when batch has none', s1&&s1.honeyName==='Wildflower', s1&&s1.honeyName);
+
+      var bPh={id:'sp2',recipeId:'rP',startDate:isoAgo(5),og:1.100,yeast:'ec1118'};
+      APP.batches=[bPh];APP.logs={sp2:[{date:isoAgo(5),gravity:1.100,ph:3.4},{date:isoAgo(2),gravity:1.050,ph:''},{date:isoAgo(0),gravity:1.020,ph:3.15}]};
+      var s2=mwBatchSignals(bPh);
+      ok('signals: latestPH is the last non-blank reading', s2&&Math.abs(s2.latestPH-3.15)<1e-9, s2&&s2.latestPH);
+      ok('signals: targetFG follows the yeast when set (EC-1118 overrides recipe)', s2&&s2.targetFG===1.005, s2&&s2.targetFG);
+    })();
+    // Individual rules, tested in isolation against hand-built signal objects —
+    // exercises branches (stalled cause, pH bands, post-bottling carbonation)
+    // that would need elaborate batch/log fixtures to reach end-to-end.
+    (function(){
+      var rules=_advRules();
+      function ruleByName(n){return rules.filter(function(r){return r.name===n;})[0];}
+
+      var stalledRule=ruleByName('stalled');
+      var base={active:true,stalled:true,attenuation:0.3,daysSinceStart:20,latestTemp:19,
+        nutrientsComplete:true,fructoseStallRisk:false,nearTolerance:false,tempInRange:true,honeyName:'Acacia',yeastId:'ec1118'};
+      ok('rules: stalled cause=nutrition when nutrients incomplete', stalledRule(Object.assign({},base,{nutrientsComplete:false})).data.cause==='nutrition', '');
+      ok('rules: stalled cause=fructose when nutrients OK but fructose risk', stalledRule(Object.assign({},base,{fructoseStallRisk:true})).data.cause==='fructose', '');
+      ok('rules: stalled cause=tolerance', stalledRule(Object.assign({},base,{nearTolerance:true})).data.cause==='tolerance', '');
+      ok('rules: stalled cause=temperature', stalledRule(Object.assign({},base,{tempInRange:false})).data.cause==='temperature', '');
+      ok('rules: stalled cause=unknown when nothing else fits', stalledRule(base).data.cause==='unknown', '');
+
+      var phRule=ruleByName('phRange');
+      ok('rules: ph-low fires below 2.9', phRule({active:true,latestPH:2.5,fermenting:true}).id==='ph-low', '');
+      ok('rules: ph-high fires above 3.5', phRule({active:true,latestPH:3.8,fermenting:false}).id==='ph-high', '');
+      ok('rules: pH in healthy band → no rec', phRule({active:true,latestPH:3.2,fermenting:true})===null, '');
+      ok('rules: no pH logged → no rec', phRule({active:true,latestPH:null,fermenting:true})===null, '');
+
+      var carbRule=ruleByName('carbonationDeveloping');
+      ok('rules: carbonation-developing fires within 21 days of bottling', carbRule({sparkling:true,bottled:true,agedDays:10}).id==='carbonation-developing', '');
+      ok('rules: carbonation-developing stops after 21 days', carbRule({sparkling:true,bottled:true,agedDays:30})===null, '');
+      ok('rules: carbonation-developing skips still meads', carbRule({sparkling:false,bottled:true,agedDays:5})===null, '');
+
+      var blowoffRule=ruleByName('blowoffRisk');
+      ok('rules: blowoff-risk critical under 8% headspace', blowoffRule({fermenting:true,passedSugarBreak:false,stalled:false,nearFG:false,headspaceFrac:0.05,fermenterCapacity:5,volume:4.75}).severity==='critical', '');
+      ok('rules: blowoff-risk recommended under 15% headspace', blowoffRule({fermenting:true,passedSugarBreak:false,stalled:false,nearFG:false,headspaceFrac:0.10,fermenterCapacity:5,volume:4.5}).severity==='recommended', '');
+      ok('rules: blowoff-risk silent with ample headspace', blowoffRule({fermenting:true,passedSugarBreak:false,stalled:false,nearFG:false,headspaceFrac:0.3,fermenterCapacity:9,volume:6.3})===null, '');
+      ok('rules: blowoff-risk silent past the sugar break (no longer vigorous)', blowoffRule({fermenting:true,passedSugarBreak:true,stalled:false,nearFG:false,headspaceFrac:0.05})===null, '');
+      ok('rules: blowoff-risk silent with no fermenter assigned', blowoffRule({fermenting:true,passedSugarBreak:false,stalled:false,nearFG:false,headspaceFrac:null})===null, '');
+
+      var longRule=ruleByName('fermentingLong');
+      ok('rules: fermenting-long fires past 1.5x the recipe timeline', longRule({fermenting:true,stalled:false,nearFG:false,recipeFermentDays:20,daysSinceStart:35}).id==='fermenting-long', '');
+      ok('rules: fermenting-long silent within the typical timeline', longRule({fermenting:true,stalled:false,nearFG:false,recipeFermentDays:20,daysSinceStart:25})===null, '');
+      ok('rules: fermenting-long yields to a real stall', longRule({fermenting:true,stalled:true,nearFG:false,recipeFermentDays:20,daysSinceStart:35})===null, '');
+
+      var bulkRule=ruleByName('extendedBulkAging');
+      ok('rules: extended-bulk-aging fires past 270 unbottled days', bulkRule({bottled:false,status:'conditioning',daysSinceStart:300}).id==='extended-bulk-aging', '');
+      ok('rules: extended-bulk-aging silent once actually bottled', bulkRule({bottled:true,status:'aging',daysSinceStart:300})===null, '');
+      ok('rules: extended-bulk-aging silent for a young batch', bulkRule({bottled:false,status:'conditioning',daysSinceStart:60})===null, '');
+    })();
+    // mwBatchHealth(): per-axis explainability — each axis reports WHY it
+    // scored what it did (code + supporting data + its weight), not just a bare
+    // number, so the view can render a plain-language reason under each bar.
+    (function(){
+      var base={active:true,og:1.100,fermenting:true,stalled:false,nearFG:false,
+        tempInRange:true,tempStable:true,tempLow:16,tempHigh:24,latestTemp:20,
+        nutrientsDone:2,nutrientsExpected:4,
+        attenuation:0.5,expectedAttenuation:0.6,
+        sugarBreak:1.070,passedSugarBreak:false,
+        nearTolerance:false,abvMax:18};
+      var h1=mwBatchHealth(base);
+      ok('health: every axis carries a weight summing toward 100%', h1&&Math.abs(Object.keys(h1.axisReasons).reduce(function(s,k){return s+h1.axisReasons[k].weight;},0)-1)<1e-9, '');
+      ok('health: temperature in-range-stable', h1.axisReasons.temperature.code==='in-range-stable', h1.axisReasons.temperature.code);
+      ok('health: nutrition doses-partial with counts', h1.axisReasons.nutrition.code==='doses-partial'&&h1.axisReasons.nutrition.data.done===2&&h1.axisReasons.nutrition.data.expected===4, JSON.stringify(h1.axisReasons.nutrition));
+      ok('health: gravity on-track (not stalled, not near FG)', h1.axisReasons.gravity.code==='on-track', h1.axisReasons.gravity.code);
+      ok('health: oxygen ok before the sugar break', h1.axisReasons.oxygen.code==='ok', h1.axisReasons.oxygen.code);
+      ok('health: yeast ok with no stall/tolerance pressure', h1.axisReasons.yeast.code==='ok', h1.axisReasons.yeast.code);
+
+      var h2=mwBatchHealth(Object.assign({},base,{tempInRange:false,latestTemp:9,stalled:true,passedSugarBreak:true,nearTolerance:true}));
+      ok('health: temperature out-of-range names cold/temp', h2.axisReasons.temperature.code==='out-of-range'&&h2.axisReasons.temperature.data.cold===true, JSON.stringify(h2.axisReasons.temperature));
+      ok('health: gravity stalled', h2.axisReasons.gravity.code==='stalled', '');
+      ok('health: oxygen past-break-fermenting', h2.axisReasons.oxygen.code==='past-break-fermenting', '');
+      ok('health: yeast stress-stalled takes priority over near-tolerance', h2.axisReasons.yeast.code==='stress-stalled', h2.axisReasons.yeast.code);
+
+      var h3=mwBatchHealth({active:false,og:null,fermenting:false,tempInRange:null,nutrientsDone:0,nutrientsExpected:0,sugarBreak:null});
+      ok('health: unknown axes report known=false, not a guessed number', !h3.axisReasons.temperature.known&&!h3.axisReasons.gravity.known&&!h3.axisReasons.oxygen.known&&!h3.axisReasons.yeast.known&&!h3.axisReasons.nutrition.known, JSON.stringify(h3.axisReasons));
+      ok('health: unknown axes carry no-data code', h3.axisReasons.temperature.code==='no-data', '');
+      ok('health: overall score is null when nothing is known', h3.score===null, h3.score);
+    })();
+    // Correctness fix: getBatchStatus()'s calendar fallback can label a batch
+    // 'aging' well before it's ever bottled (anyone not using the coach/logs).
+    // mwBatchSignals().bottled and mwReadiness() must NOT treat that as a real
+    // post-bottling drink-window — only an actual bottling record counts.
+    (function(){
+      APP.recipes=[{id:'rN',ogTarget:1.098,fgTarget:1.010,fermentDays:42,minAgeDays:60,peakAgeDays:240,steps:[]}];
+      var neglected={id:'neg1',recipeId:'rN',startDate:isoAgo(90)};  // untouched, 90 days old, never bottled
+      APP.batches=[neglected];APP.logs={};APP.bottling={};
+      ok('signals: fallback "aging" status without a bottling record', getBatchStatus(neglected)==='aging', getBatchStatus(neglected));
+      var sN=mwBatchSignals(neglected);
+      ok('signals: bottled=false for a never-bottled batch, despite status="aging"', sN&&sN.bottled===false, sN&&sN.bottled);
+      var rN=mwReadiness(neglected);
+      ok('readiness: never-bottled batch stays in the low fermenting-style band, not a drink-window %', rN&&rN.pct<=30&&rN.phase==='fermenting', JSON.stringify(rN));
+      APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};
+    })();
     APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};APP.additions={};
   })();
 
