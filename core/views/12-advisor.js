@@ -6,14 +6,35 @@
 
 function _advNL(){return typeof appLang==='function'&&appLang()==='nl';}
 
+// Resolve a yeast id to its display name (e.g. 'ec1118' → 'EC-1118') for
+// ingredient-aware recommendation text. Falls back to the raw id if unknown —
+// never silently substitutes a different strain.
+function _advYeastName(id){
+  if(!id)return null;
+  var y=(typeof YEAST_STRAINS!=='undefined'?YEAST_STRAINS:[]).filter(function(x){return x.id===id;})[0];
+  return y?y.name:id;
+}
+
 // Per-recommendation localized text. Returns {icon,title,reason}.
 function _advItemText(it){
   var nl=_advNL(), d=it.data||{};
   var M={
-    'stalled':{icon:'🧊',
-      title:nl?'Gisting lijkt stil te vallen':'Fermentation appears stalled',
-      reason:nl?('De dichtheid is nauwelijks bewogen en zit nog op ~'+d.atten+'% vergisting, ver van het doel. Controleer temperatuur en voeding; overweeg een herstart-gist (zie Problemen oplossen).')
-              :('Gravity has barely moved and is still ~'+d.atten+'% attenuated, well short of target. Check temperature and nutrients; consider a restart yeast (see Troubleshoot).')},
+    'stalled':(function(){
+      var yn=_advYeastName(d.yeast);
+      var causeTxt={
+        nutrition:nl?'Er ontbreken nog voedingsgiften — de meest voorkomende oorzaak van een stall.':'Nutrient doses are still missing — the most common cause of a stall.',
+        fructose:nl?('De honing ('+(d.honey||'?')+') is fructoserijk en '+(yn||'deze gist')+' is niet fructofiel — een klassieke late stall. Herstart met een fructofiele gist (bv. K1-V1116).')
+                   :('The honey ('+(d.honey||'?')+') is high in fructose and '+(yn||'this yeast')+' isn\'t fructophilic — a classic late stall. Restart with a fructophilic yeast (e.g. K1-V1116).'),
+        tolerance:nl?((yn||'De gist')+' nadert mogelijk haar alcoholtolerantie — de gisting kan hier gewoon stoppen in plaats van vastzitten.')
+                    :((yn||'The yeast')+' may be nearing its alcohol tolerance — fermentation may simply be finished rather than stuck.'),
+        temperature:nl?'De laatste temperatuur ligt buiten het ideale bereik — te koud vertraagt of stalt de gisting.':'The last temperature reading is outside the ideal range — too cold slows or stalls fermentation.',
+        unknown:''
+      }[d.cause]||'';
+      return {icon:'🧊',
+        title:nl?'Gisting lijkt stil te vallen':'Fermentation appears stalled',
+        reason:nl?('De dichtheid is nauwelijks bewogen en zit nog op ~'+d.atten+'% vergisting, ver van het doel. '+(causeTxt||'Controleer temperatuur en voeding.')+' Overweeg anders een herstart-gist (zie Problemen oplossen).')
+                :('Gravity has barely moved and is still ~'+d.atten+'% attenuated, well short of target. '+(causeTxt||'Check temperature and nutrients.')+' Otherwise consider a restart yeast (see Troubleshoot).')};
+    })(),
     'nutrient-final':{icon:'⚗',
       title:nl?'Laatste voedingsgift is nodig':'Final nutrient addition due',
       reason:nl?('Je hebt '+d.done+' van '+d.expected+' voedingsgiften gedaan. '+(d.past?'Je bent voorbij de 1/3-suikerbreuk — voeg de laatste dosis nu toe; daarna helpt voeding niet meer en kan ze bederf voeden.':'Je nadert de 1/3-suikerbreuk ('+ (d.sugarBreak||'?') +') — voeg de laatste dosis vóór de breuk toe.'))
@@ -28,12 +49,12 @@ function _advItemText(it){
               :('Gravity ('+(d.sg!=null?d.sg.toFixed(3):'?')+') is at or near target ('+(d.targetFG!=null?d.targetFG.toFixed(3):'?')+') at ~'+d.atten+'% attenuation. Confirm with two stable readings a few days apart, then rack / bottle.')},
     'temperature':{icon:'🌡',
       title:nl?(d.cold?'Temperatuur te laag':'Temperatuur te hoog'):(d.cold?'Temperature too low':'Temperature too high'),
-      reason:nl?('Laatste meting '+(d.temp!=null?d.temp+'°C':'?')+' ligt buiten het ideale bereik voor deze gist ('+d.low+'–'+d.high+'°C). '+(d.cold?'Te koud vertraagt of stalt de gisting.':'Te warm geeft fusels en scherpe smaken.'))
-              :('Last reading '+(d.temp!=null?d.temp+'°C':'?')+' is outside this yeast\'s ideal range ('+d.low+'–'+d.high+'°C). '+(d.cold?'Too cold slows or stalls fermentation.':'Too warm drives fusels and harsh flavours.'))},
+      reason:nl?('Laatste meting '+(d.temp!=null?d.temp+'°C':'?')+' ligt buiten het ideale bereik voor '+(_advYeastName(d.yeast)||'deze gist')+' ('+d.low+'–'+d.high+'°C). '+(d.cold?'Te koud vertraagt of stalt de gisting.':'Te warm geeft fusels en scherpe smaken.'))
+              :('Last reading '+(d.temp!=null?d.temp+'°C':'?')+' is outside '+(_advYeastName(d.yeast)||'this yeast')+'\'s ideal range ('+d.low+'–'+d.high+'°C). '+(d.cold?'Too cold slows or stalls fermentation.':'Too warm drives fusels and harsh flavours.'))},
     'abv-ceiling':{icon:'⚠',
       title:nl?'Nadert alcoholtolerantie':'Approaching alcohol tolerance',
-      reason:nl?('Het huidige alcohol (~'+(d.abv!=null?d.abv.toFixed(1):'?')+'%) nadert de tolerantie van de gist ('+d.max+'%). De gisting kan boven het doel stoppen — plan eventueel een hogertolerante gist of stapvoeding.')
-              :('Current ABV (~'+(d.abv!=null?d.abv.toFixed(1):'?')+'%) is nearing the yeast\'s tolerance ('+d.max+'%). Fermentation may stop above target — consider a higher-tolerance yeast or step feeding.')},
+      reason:nl?('Het huidige alcohol (~'+(d.abv!=null?d.abv.toFixed(1):'?')+'%) nadert de tolerantie van '+(_advYeastName(d.yeast)||'de gist')+' ('+d.max+'%). Verwacht dat de gisting hier vanzelf vertraagt — plan eventueel een hogertolerante gist of stapvoeding.')
+              :('Current ABV (~'+(d.abv!=null?d.abv.toFixed(1):'?')+'%) is nearing the tolerance of '+(_advYeastName(d.yeast)||'the yeast')+' ('+d.max+'%). Expect fermentation to slow naturally here — consider a higher-tolerance yeast or step feeding for next time.')},
     'on-track':{icon:'✓',
       title:nl?'Gisting verloopt op schema':'Fermentation is on track',
       reason:nl?('~'+d.atten+'% vergist (verwacht eind ~'+d.expected+'%), dichtheid daalt gestaag. Geen actie nodig.')
@@ -83,7 +104,31 @@ function _advItemText(it){
     'cold-crash':{icon:'🔍',
       title:nl?'Koud klaren vóór bottelen':'Cold-crash to clear',
       reason:nl?('De gisting is bijna klaar. Laat de mede klaren — koud wegzetten (cold-crash) of simpelweg tijd trekt gist en fijne deeltjes naar de bodem voor een heldere, schonere mede. Hevel daarna van de droesem.')
-              :('Fermentation is nearly done. Let the mead clear — a cold-crash (or simply time) drops yeast and fine particles to the bottom for a bright, cleaner mead. Then rack off the sediment.')}
+              :('Fermentation is nearly done. Let the mead clear — a cold-crash (or simply time) drops yeast and fine particles to the bottom for a bright, cleaner mead. Then rack off the sediment.')},
+    'ph-low':{icon:'🧪',
+      title:nl?'pH is laag — gist onder stress':'pH is low — yeast under stress',
+      reason:nl?('Laatste pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' ligt onder de gezonde bandbreedte (3,0–3,4). Onder 2,9 raakt de gist gestrest, wat tot een trage of vastgelopen gisting kan leiden. Overweeg de pH te verhogen met kaliumcarbonaat.')
+              :('Last pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' is below the healthy band (3.0–3.4). Below 2.9, yeast becomes stressed, which can slow or stall fermentation. Consider raising pH with potassium carbonate.')},
+    'ph-high':{icon:'🧪',
+      title:nl?'pH is hoog — besmettingsrisico':'pH is high — contamination risk',
+      reason:nl?('Laatste pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' ligt boven de gezonde bandbreedte (3,0–3,4). Boven 3,5 wordt de mede kwetsbaarder voor ongewenste micro-organismen. Overweeg bij te sturen met wijnzuur.')
+              :('Last pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' is above the healthy band (3.0–3.4). Above 3.5, the mead becomes more vulnerable to unwanted microorganisms. Consider adjusting with tartaric or citric acid.')},
+    'carbonation-developing':{icon:'🫧',
+      title:nl?'Carbonatie bouwt zich op':'Carbonation is developing',
+      reason:nl?('Gebotteld ~'+d.aged+' dagen geleden. Bottelrijping duurt doorgaans 2–3 weken — bewaar de flessen rechtop op kamertemperatuur zodat de gist de priming-suiker kan vergisten. Koel pas vlak voor het proeven.')
+              :('Bottled ~'+d.aged+' days ago. Bottle-conditioning typically takes 2–3 weeks — store the bottles upright at room temperature so the yeast can ferment the priming sugar. Chill only just before tasting.')},
+    'blowoff-risk':{icon:'🪣',
+      title:nl?'Weinig ruimte boven de must — blow-off-risico':'Little headspace above the must — blow-off risk',
+      reason:nl?('Deze partij ('+(d.volume||'?')+' L) laat maar ~'+d.headspacePct+'% lucht over in het vat ('+(d.capacity||'?')+' L). Tijdens de krachtigste fase van de gisting kan schuim/krausen via het waterslot naar buiten geduwd worden. Overweeg een groter vat, of leg een schaal onder het waterslot.')
+              :('This batch ('+(d.volume||'?')+' L) leaves only ~'+d.headspacePct+'% air space in the vessel ('+(d.capacity||'?')+' L). During the most vigorous phase of fermentation, foam/krausen can push out through the airlock. Consider a larger vessel, or set a tray underneath to catch any blow-off.')},
+    'fermenting-long':{icon:'⏳',
+      title:nl?'Duurt langer dan gebruikelijk':'Taking longer than typical',
+      reason:nl?('Deze partij gist al '+d.days+' dagen, tegenover de ~'+d.typical+' dagen die dit recept doorgaans nodig heeft. Dat is niet per se een probleem — sommige mede rijpt gewoon trager — maar het is de moeite waard om temperatuur en voeding nog eens te checken als dit je verrast.')
+              :('This batch has been fermenting for '+d.days+' days, against the ~'+d.typical+' days this recipe typically takes. That\'s not necessarily a problem — some meads simply run slower — but worth double-checking temperature and nutrients if this surprises you.')},
+    'extended-bulk-aging':{icon:'🛢',
+      title:nl?'Al lang niet gebotteld':'Sitting unbottled a long time',
+      reason:nl?('Deze partij zit al ~'+d.days+' dagen in bulkrijping zonder gebotteld te zijn. Elke keer dat het vat geopend of verplaatst wordt, is er kans op zuurstofcontact — bottelen (ook al is de mede nog jong) sluit dat risico af. Overweeg binnenkort te bottelen.')
+              :('This batch has been sitting in bulk aging for ~'+d.days+' days without being bottled. Every time the vessel is opened or moved there\'s a chance of oxygen exposure — bottling (even if the mead is still young) closes off that risk. Consider bottling soon.')}
   };
   return M[it.id]||{icon:'•',title:it.id,reason:''};
 }
@@ -98,8 +143,8 @@ function _advSeverityMeta(sev){
 // Category metadata for grouping recommendations (icon + localized label).
 function _advCategoryMeta(cat){
   var nl=_advNL();
-  var M=nl?{fermentation:{icon:'🫧',label:'Gisting'},nutrition:{icon:'⚗',label:'Voeding'},oxygen:{icon:'🌀',label:'Zuurstof'},temperature:{icon:'🌡',label:'Temperatuur'},stabilisation:{icon:'🧪',label:'Stabilisatie'},clarity:{icon:'🔍',label:'Helderheid'},aging:{icon:'⌛',label:'Rijping'},data:{icon:'📊',label:'Gegevens'}}
-            :{fermentation:{icon:'🫧',label:'Fermentation'},nutrition:{icon:'⚗',label:'Nutrition'},oxygen:{icon:'🌀',label:'Oxygen'},temperature:{icon:'🌡',label:'Temperature'},stabilisation:{icon:'🧪',label:'Stabilisation'},clarity:{icon:'🔍',label:'Clarity'},aging:{icon:'⌛',label:'Aging'},data:{icon:'📊',label:'Data'}};
+  var M=nl?{fermentation:{icon:'🫧',label:'Gisting'},nutrition:{icon:'⚗',label:'Voeding'},oxygen:{icon:'🌀',label:'Zuurstof'},temperature:{icon:'🌡',label:'Temperatuur'},stabilisation:{icon:'🧪',label:'Stabilisatie'},clarity:{icon:'🔍',label:'Helderheid'},aging:{icon:'⌛',label:'Rijping'},data:{icon:'📊',label:'Gegevens'},equipment:{icon:'🪣',label:'Uitrusting'}}
+            :{fermentation:{icon:'🫧',label:'Fermentation'},nutrition:{icon:'⚗',label:'Nutrition'},oxygen:{icon:'🌀',label:'Oxygen'},temperature:{icon:'🌡',label:'Temperature'},stabilisation:{icon:'🧪',label:'Stabilisation'},clarity:{icon:'🔍',label:'Clarity'},aging:{icon:'⌛',label:'Aging'},data:{icon:'📊',label:'Data'},equipment:{icon:'🪣',label:'Equipment'}};
   return M[cat]||{icon:'•',label:cat||''};
 }
 
@@ -109,6 +154,45 @@ function _advHealthMeta(band){
     fair:{c:'var(--gold2)',l:nl?'Redelijk':'Fair'},attention:{c:'var(--red2)',l:nl?'Aandacht nodig':'Needs attention'},
     unknown:{c:'var(--text3)',l:nl?'Onbekend':'Unknown'}};
   return M[band]||M.unknown;
+}
+
+// Plain-language explanation for one health axis: why it scored what it did.
+// `ar` is {code,data,weight,known} from mwBatchHealth()'s axisReasons. Every
+// numeric field is guarded — this map is evaluated for every axis regardless
+// of which code actually applies (same eager-object-literal gotcha as the
+// recommendation text map), so an unguarded d.field.method() here would crash
+// the whole card the moment any OTHER axis hits this branch.
+function _advAxisReasonText(axisKey,ar){
+  var nl=_advNL(), d=(ar&&ar.data)||{};
+  if(!ar||!ar.known)return nl?'Nog geen gegevens om dit te beoordelen.':'No data yet to judge this.';
+  var M={
+    temperature:{
+      'in-range-stable':nl?('Blijft stabiel binnen '+d.low+'–'+d.high+'°C.'):('Staying steady within '+d.low+'–'+d.high+'°C.'),
+      'in-range-unstable':nl?('Binnen '+d.low+'–'+d.high+'°C, maar wisselt tussen metingen.'):('Within '+d.low+'–'+d.high+'°C, but swinging between readings.'),
+      'out-of-range':nl?('Laatste meting '+(d.temp!=null?d.temp+'°C':'?')+' ligt buiten '+d.low+'–'+d.high+'°C ('+(d.cold?'te koud':'te warm')+').'):('Last reading '+(d.temp!=null?d.temp+'°C':'?')+' is outside '+d.low+'–'+d.high+'°C (too '+(d.cold?'cold':'warm')+').')
+    },
+    nutrition:{
+      'doses-complete':nl?('Alle '+d.expected+' voedingsgiften zijn toegevoegd.'):('All '+d.expected+' nutrient doses have been added.'),
+      'doses-partial':nl?(d.done+' van '+d.expected+' voedingsgiften tot nu toe.'):(d.done+' of '+d.expected+' nutrient doses so far.'),
+      'doses-logged':nl?(d.done+' voedingsgift(en) gelogd (geen vast schema voor dit recept).'):(d.done+' nutrient dose(s) logged (no fixed schedule for this recipe).')
+    },
+    gravity:{
+      'stalled':nl?('Vergisting hangt vast op ~'+d.atten+'%, ver onder verwachting.'):('Fermentation is stuck at ~'+d.atten+'%, well below expected.'),
+      'near-target':nl?'Dichtheid is op of nabij het doel.':'Gravity is at or near target.',
+      'on-track':nl?('Daalt gestaag — op ~'+d.pct+'% van het verwachte tempo.'):('Dropping steadily — at ~'+d.pct+'% of the expected pace.')
+    },
+    oxygen:{
+      'past-break-fermenting':nl?'Voorbij de 1/3-suikerbreuk terwijl nog actief gist — beperk beluchten.':'Past the 1/3 sugar break while still actively fermenting — minimise aeration.',
+      'ok':nl?'Geen verhoogd oxidatierisico op dit moment.':'No elevated oxidation risk right now.'
+    },
+    yeast:{
+      'stress-stalled':nl?'Toont stress door een vastgelopen gisting.':'Showing stress from a stalled fermentation.',
+      'near-tolerance':nl?('Nadert de alcoholtolerantie ('+(d.max!=null?d.max+'%':'?')+') — kan hier vanzelf vertragen.'):('Nearing its alcohol tolerance ('+(d.max!=null?d.max+'%':'?')+') — may naturally slow here.'),
+      'ok':nl?'Geen tekenen van stress of tolerantiedruk.':'No signs of stress or tolerance pressure.'
+    }
+  };
+  var group=M[axisKey]||{};
+  return group[ar.code]||(nl?'Geen bijzonderheden.':'Nothing notable.');
 }
 
 // Compact health + top-recommendation strip for the batch Overview tab. Links
@@ -188,11 +272,17 @@ function renderBatchAdvisor(b){
     var axes=[['temperature',nl?'Temperatuur':'Temperature'],['nutrition',nl?'Voeding':'Nutrition'],['gravity',nl?'Dichtheid':'Gravity'],['oxygen',nl?'Zuurstof':'Oxygen'],['yeast',nl?'Gist':'Yeast']];
     bars=axes.map(function(a){
       var v=h.breakdown[a[0]];
-      var txt=(v==null)?(nl?'—':'—'):v;
+      var ar=h.axisReasons&&h.axisReasons[a[0]];
+      var txt=(v==null)?'—':v;
       var col=(v==null)?'var(--bg4)':(v>=90?'var(--green2)':v>=70?'var(--gold2)':'var(--red2)');
-      return '<div style="display:flex;align-items:center;gap:8px;margin:3px 0"><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);width:90px">'+a[1]+'</div>'
+      var pctOfScore=ar?Math.round(ar.weight*100):null;
+      return '<div style="margin:7px 0">'
+        +'<div style="display:flex;align-items:center;gap:8px">'
+        +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);width:90px">'+a[1]+(pctOfScore!=null?' <span style="opacity:.6">· '+pctOfScore+'%</span>':'')+'</div>'
         +'<div style="flex:1;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+(v==null?0:v)+'%;background:'+col+'"></div></div>'
-        +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);width:30px;text-align:right">'+txt+'</div></div>';
+        +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);width:30px;text-align:right">'+txt+'</div></div>'
+        +'<div style="font-size:11px;color:var(--text3);margin:2px 0 0 98px;line-height:1.4">'+escHtml(_advAxisReasonText(a[0],ar))+'</div>'
+        +'</div>';
     }).join('');
   }
   var confTxt=_advConfidenceText(adv.confidenceReasons);

@@ -16,7 +16,6 @@ __pycache__/
 
 # user-uploaded images (per-install content, not part of the repo).
 # assets/icons + assets/vendor ARE tracked (bundled app assets).
-labels/
 assets/labels/
 assets/photos/
 assets/brand/
