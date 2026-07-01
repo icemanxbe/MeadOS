@@ -72,3 +72,22 @@ function mwBlend(parts){
   }
   return {og:w('og'),fg:w('fg'),abv:w('abv'),vol:tot};
 }
+
+// Expected fermentation-duration RANGE for this recipe+yeast, not just a flat
+// number. recipe.fermentDays is the app's baseline estimate (assumes a
+// middling-pace yeast); a yeast's own `speed` rating (very-fast..slow, a real
+// field on YEAST_STRAINS) shifts and widens that estimate — a fast strain
+// finishes sooner with less spread, a slow one takes longer and varies more.
+// Honest about being a heuristic: always returns a band, never a false-precise
+// single day.
+var MW_SPEED_CENTER={'very-fast':0.75,'fast':0.85,'medium-fast':0.95,'medium':1.0,'slow':1.3};
+var MW_SPEED_BAND={'very-fast':0.30,'fast':0.32,'medium-fast':0.34,'medium':0.35,'slow':0.40};
+function mwExpectedFermentDuration(fermentDays,yeastSpeed){
+  if(!(fermentDays>0))return null;
+  var centerMult=MW_SPEED_CENTER[yeastSpeed]||MW_SPEED_CENTER.medium;
+  var band=MW_SPEED_BAND[yeastSpeed]||MW_SPEED_BAND.medium;
+  var expected=fermentDays*centerMult;
+  var low=Math.max(3,Math.round(expected*(1-band)));
+  var high=Math.round(expected*(1+band));
+  return {low:low,expected:Math.round(expected),high:high};
+}

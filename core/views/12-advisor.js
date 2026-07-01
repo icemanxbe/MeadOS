@@ -122,9 +122,9 @@ function _advItemText(it){
       reason:nl?('Deze partij ('+(d.volume||'?')+' L) laat maar ~'+d.headspacePct+'% lucht over in het vat ('+(d.capacity||'?')+' L). Tijdens de krachtigste fase van de gisting kan schuim/krausen via het waterslot naar buiten geduwd worden. Overweeg een groter vat, of leg een schaal onder het waterslot.')
               :('This batch ('+(d.volume||'?')+' L) leaves only ~'+d.headspacePct+'% air space in the vessel ('+(d.capacity||'?')+' L). During the most vigorous phase of fermentation, foam/krausen can push out through the airlock. Consider a larger vessel, or set a tray underneath to catch any blow-off.')},
     'fermenting-long':{icon:'⏳',
-      title:nl?'Duurt langer dan gebruikelijk':'Taking longer than typical',
-      reason:nl?('Deze partij gist al '+d.days+' dagen, tegenover de ~'+d.typical+' dagen die dit recept doorgaans nodig heeft. Dat is niet per se een probleem — sommige mede rijpt gewoon trager — maar het is de moeite waard om temperatuur en voeding nog eens te checken als dit je verrast.')
-              :('This batch has been fermenting for '+d.days+' days, against the ~'+d.typical+' days this recipe typically takes. That\'s not necessarily a problem — some meads simply run slower — but worth double-checking temperature and nutrients if this surprises you.')},
+      title:nl?'Duurt langer dan verwacht':'Taking longer than expected',
+      reason:nl?((_advYeastName(d.yeast)||'Deze gist')+' gist doorgaans in '+d.low+'–'+d.high+' dagen voor dit recept; deze partij zit al op dag '+d.days+'. Dat is niet per se een probleem — sommige mede rijpt gewoon trager — maar het is de moeite waard om temperatuur en voeding nog eens te checken als dit je verrast.')
+              :((_advYeastName(d.yeast)||'This yeast')+' typically finishes in '+d.low+'–'+d.high+' days for this recipe; this batch is at day '+d.days+'. That\'s not necessarily a problem — some meads simply run slower — but worth double-checking temperature and nutrients if this surprises you.')},
     'extended-bulk-aging':{icon:'🛢',
       title:nl?'Al lang niet gebotteld':'Sitting unbottled a long time',
       reason:nl?('Deze partij zit al ~'+d.days+' dagen in bulkrijping zonder gebotteld te zijn. Elke keer dat het vat geopend of verplaatst wordt, is er kans op zuurstofcontact — bottelen (ook al is de mede nog jong) sluit dat risico af. Overweeg binnenkort te bottelen.')
@@ -227,21 +227,35 @@ function renderBatchTargets(b){
   var ogA=s.og, ogT=recipe&&recipe.ogTarget;
   var fgT=s.targetFG, fgA=(s.status==='fermenting')?(s.estFG!=null?s.estFG:s.lastG):s.lastG;
   var abvT=s.targetABV, abvA=s.currentABV;
-  // predicted finish day vs recipe ferment days
-  var predDay=(s.daysSinceStart!=null&&s.daysToFG!=null)?(s.daysSinceStart+s.daysToFG):null;
-  var fermT=recipe&&recipe.fermentDays;
   function row(label,actual,target,state,fmt){
     return '<tr><td style="color:var(--text3)">'+label+'</td>'
       +'<td style="font-family:var(--font-mono)">'+(actual!=null?fmt(actual):'—')+'</td>'
       +'<td style="font-family:var(--font-mono);color:var(--text3)">'+(target!=null?fmt(target):'—')+' '+ind(state)+'</td></tr>';
   }
   var g=function(x){return (+x).toFixed(3);}, p1=function(x){return (+x).toFixed(1)+'%';}, dd=function(x){return '~'+Math.round(x)+(nl?'d':'d');};
+  // Predicted finish day vs the expected RANGE (Expectations Engine) — falls
+  // back to a flat ±5-day tolerance around recipe.fermentDays if the range
+  // isn't available (e.g. no yeast selected yet). A range target can't reuse
+  // the single-value row() helper, so it gets its own markup.
+  var predDay=(s.daysSinceStart!=null&&s.daysToFG!=null)?(s.daysSinceStart+s.daysToFG):null;
+  var fr=s.expectedFermentRange;
+  var fermRow='';
+  if(s.status==='fermenting'){
+    if(fr){
+      var fermState=predDay==null?null:(predDay<fr.low?'under':(predDay>fr.high?'over':'on'));
+      fermRow='<tr><td style="color:var(--text3)">'+(nl?'Klaar (dag)':'Finish (day)')+'</td>'
+        +'<td style="font-family:var(--font-mono)">'+(predDay!=null?dd(predDay):'—')+'</td>'
+        +'<td style="font-family:var(--font-mono);color:var(--text3)">'+fr.low+'–'+fr.high+(nl?'d':'d')+' '+ind(fermState)+'</td></tr>';
+    }else{
+      fermRow=row(nl?'Klaar (dag)':'Finish (day)',predDay,recipe&&recipe.fermentDays,cmp(predDay,recipe&&recipe.fermentDays,5),dd);
+    }
+  }
   return '<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">'+(nl?'🎯 DOEL vs ACTUEEL':'🎯 TARGET vs ACTUAL')+'</div></div>'
     +'<table class="data-table"><tr><td></td><td style="color:var(--text3);font-family:var(--font-mono);font-size:10px;letter-spacing:1px">'+(nl?'ACTUEEL':'ACTUAL')+'</td><td style="color:var(--text3);font-family:var(--font-mono);font-size:10px;letter-spacing:1px">'+(nl?'DOEL':'TARGET')+'</td></tr>'
     +row('OG',ogA,ogT,cmp(ogA,ogT,0.003),g)
     +row(nl?'FG (prognose)':'FG (proj.)',fgA,fgT,cmp(fgA,fgT,0.004),g)
     +row(nl?'Alcohol':'ABV',abvA,abvT,cmp(abvA,abvT,0.6),p1)
-    +(s.status==='fermenting'?row(nl?'Klaar (dag)':'Finish (day)',predDay,fermT,cmp(predDay,fermT,5),dd):'')
+    +fermRow
     +'</table></div>';
 }
 
