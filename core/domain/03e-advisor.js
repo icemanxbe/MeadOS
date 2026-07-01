@@ -97,6 +97,10 @@ function mwBatchSignals(b){
   var fermenterCapacity=(fermenter&&parseFloat(fermenter.capacity))||null;
   var headspaceFrac=(fermenterCapacity&&volume)?((fermenterCapacity-volume)/fermenterCapacity):null;
   var recipeFermentDays=(recipe&&recipe.fermentDays)||null;
+  // Expectations Engine (v1, fermentation duration): a real yeast-speed-aware
+  // range instead of a single flat day count — "18-30 days" beats a lone "24".
+  var yeastSpeed=(y&&y.speed)||null;
+  var expectedFermentRange=(recipeFermentDays&&typeof mwExpectedFermentDuration==='function')?mwExpectedFermentDuration(recipeFermentDays,yeastSpeed):null;
 
   return {
     recipeId:b.recipeId, status:status, active:active, fermenting:fermenting,
@@ -114,7 +118,8 @@ function mwBatchSignals(b){
     honeyName:honeyName, honeyFructoseRisk:honeyFructoseRisk, yeastFructophilic:yeastFructophilic, fructoseStallRisk:fructoseStallRisk,
     sparkling:sparkling, recipeBacksweetens:recipeBacksweetens,
     bottled:bottled, agedDays:agedDays, readyDays:readyDays, peakDays:peakDays, agePhase:agePhase,
-    volume:volume, fermenterCapacity:fermenterCapacity, headspaceFrac:headspaceFrac, recipeFermentDays:recipeFermentDays
+    volume:volume, fermenterCapacity:fermenterCapacity, headspaceFrac:headspaceFrac, recipeFermentDays:recipeFermentDays,
+    yeastSpeed:yeastSpeed, expectedFermentRange:expectedFermentRange
   };
 }
 
@@ -303,15 +308,19 @@ function _advRules(){
       return null;
     },
     function fermentingLong(s){
-      // Reassuring/informational: running well past the recipe's typical timeline
-      // isn't necessarily wrong (many meads legitimately take longer), but it's
+      // Reassuring/informational: running past the expected range isn't
+      // necessarily wrong (many meads legitimately take longer), but it's
       // worth naming so the brewer isn't left guessing. Yields to 'stalled' —
-      // that's the actionable version of "taking too long".
+      // that's the actionable version of "taking too long". Uses the yeast-
+      // speed-aware expected range (Expectations Engine) rather than a flat
+      // recipe-day multiplier, so a slow strain isn't flagged prematurely and
+      // a fast one isn't given too much slack.
       if(!s.fermenting||s.stalled||s.nearFG)return null;
-      if(!s.recipeFermentDays||s.daysSinceStart==null)return null;
-      if(s.daysSinceStart<=s.recipeFermentDays*1.5)return null;
+      if(!s.expectedFermentRange||s.daysSinceStart==null)return null;
+      if(s.daysSinceStart<=s.expectedFermentRange.high)return null;
       return {id:'fermenting-long',severity:'info',category:'fermentation',
-        data:{days:s.daysSinceStart,typical:s.recipeFermentDays},reasons:['past-typical-timeline']};
+        data:{days:s.daysSinceStart,low:s.expectedFermentRange.low,high:s.expectedFermentRange.high,expected:s.expectedFermentRange.expected,yeast:s.yeastId},
+        reasons:['past-expected-range']};
     },
     function extendedBulkAging(s){
       // A batch held in 'conditioning'/'aging' a long time WITHOUT ever being
