@@ -142,6 +142,17 @@ python3 server.py --db /path/meados.db   # a different database location
 python3 server.py --host 127.0.0.1       # local-only; don't expose on the LAN
 ```
 
+**Want it running in the background, starting on login and restarting itself if it ever crashes?** Use the install script for your OS — no extra dependencies either way:
+
+```sh
+./install.sh install     # macOS (launchd) / Linux (systemd --user)
+```
+```powershell
+.\install.ps1 install    # Windows (Task Scheduler)
+```
+
+Both take `install | update | start | stop | restart | status | uninstall | run`, with `update` doing a `git pull` and restarting for you. See **[Installation](https://github.com/icemanxbe/MeadOS/wiki/Installation)** for the full command reference.
+
 ➡️ Full install options, always-on service setup, and your first batch: **[Installation](https://github.com/icemanxbe/MeadOS/wiki/Installation)** · **[Getting Started](https://github.com/icemanxbe/MeadOS/wiki/Getting-Started)**.
 
 ---
@@ -227,6 +238,8 @@ MeadOS/
 │   ├── share/              # public share view + HA media
 │   └── boot/               # schema, storage budget, modal handlers, init (loads last)
 ├── server.py               # zero-dependency Python server + SQLite storage
+├── install.sh              # background-service install/update/run — macOS (launchd) + Linux (systemd --user)
+├── install.ps1             # same, for Windows (Task Scheduler)
 ├── test.html               # zero-dependency unit checks (model, advisor, calculators)
 ├── sw.js                   # service worker (offline shell)
 ├── meados.db               # created on first save (gitignored)
