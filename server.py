@@ -409,9 +409,17 @@ def db_init():
                    data       TEXT NOT NULL,
                    saved_at   TEXT,
                    updated_at TEXT NOT NULL,
-                   bytes      INTEGER NOT NULL
+                   bytes      INTEGER NOT NULL,
+                   summary    TEXT
                )"""
         )
+        # Existing databases predate the summary column — add it if missing.
+        # SQLite has no "ADD COLUMN IF NOT EXISTS", so probe and ignore the
+        # duplicate-column error on DBs that already have it.
+        try:
+            conn.execute("ALTER TABLE history ADD COLUMN summary TEXT")
+        except sqlite3.OperationalError:
+            pass
         conn.execute(
             """CREATE TABLE IF NOT EXISTS config (
                    key   TEXT PRIMARY KEY,
@@ -951,13 +959,44 @@ def db_get_state():
     return row
 
 
+def _hist_summary(parsed):
+    # A one-line fingerprint of a snapshot's shape — batches/logs/bottles
+    # counts — so the restore list tells you what's different at a glance
+    # instead of every row looking like an identical opaque blob+timestamp.
+    # Best-effort: any missing/malformed field just contributes 0, never errors.
+    try:
+        n_batches = len(parsed.get("batches") or [])
+        logs = parsed.get("logs") or {}
+        n_logs = sum(len(v or []) for v in logs.values()) if isinstance(logs, dict) else 0
+        bottling = parsed.get("bottling") or {}
+        n_bottles = 0
+        if isinstance(bottling, dict):
+            for bot in bottling.values():
+                if isinstance(bot, dict):
+                    n_bottles += int(bot.get("bottleCount") or bot.get("bottlesAtBottling") or 0)
+
+        def count(n, singular, plural):
+            return "%d %s" % (n, singular if n == 1 else plural)
+
+        return "%s · %s · %s" % (
+            count(n_batches, "batch", "batches"),
+            count(n_logs, "log", "logs"),
+            count(n_bottles, "bottle", "bottles"),
+        )
+    except Exception:
+        return None
+
+
 def db_put_state(raw):
     # A stale (SW-cached) client could still ship the HA token inside the state
     # blob — relocate it to config so it never lands in the DB or history.
     raw = extract_ha_token(raw)
     saved_at = None
+    summary = None
     try:
-        saved_at = json.loads(raw).get("savedAt")
+        parsed = json.loads(raw)
+        saved_at = parsed.get("savedAt")
+        summary = _hist_summary(parsed)
     except (ValueError, AttributeError):
         pass
     now = utcnow()
@@ -973,8 +1012,8 @@ def db_put_state(raw):
             (raw, saved_at, now, len(raw)),
         )
         conn.execute(
-            "INSERT INTO history (data, saved_at, updated_at, bytes) VALUES (?, ?, ?, ?)",
-            (_hist_encode(raw), saved_at, now, len(raw)),
+            "INSERT INTO history (data, saved_at, updated_at, bytes, summary) VALUES (?, ?, ?, ?, ?)",
+            (_hist_encode(raw), saved_at, now, len(raw), summary),
         )
         conn.execute(
             "DELETE FROM history WHERE id NOT IN "
@@ -987,9 +1026,12 @@ def db_put_state(raw):
 def db_history_list():
     with db_connect() as conn:
         rows = conn.execute(
-            "SELECT id, saved_at, updated_at, bytes FROM history ORDER BY id DESC"
+            "SELECT id, saved_at, updated_at, bytes, summary FROM history ORDER BY id DESC"
         ).fetchall()
-    return [{"id": r[0], "savedAt": r[1], "updatedAt": r[2], "bytes": r[3]} for r in rows]
+    return [
+        {"id": r[0], "savedAt": r[1], "updatedAt": r[2], "bytes": r[3], "summary": r[4]}
+        for r in rows
+    ]
 
 
 def db_history_get(hid):
