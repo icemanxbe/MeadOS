@@ -3,6 +3,7 @@ meados.db
 *.db
 *.db-wal
 *.db-shm
+.backups/
 
 # macOS
 .DS_Store
