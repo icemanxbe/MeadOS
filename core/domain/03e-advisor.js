@@ -24,6 +24,11 @@ function mwBatchSignals(b){
   var lastG=logs.length?parseFloat(logs[logs.length-1].gravity):null;
   var readings=logs.length;
   var daysSinceStart=(typeof daysSince==='function'&&b.startDate)?daysSince(b.startDate):null;
+  // Needed early: temperature resolution below depends on knowing WHERE the
+  // batch physically is right now (its fermenter, or its bottled cellar shelf).
+  var bottling=(typeof APP!=='undefined'&&APP.bottling)?APP.bottling[b.id]:null;
+  var bottled=!!bottling;
+  var fermenter=(b.fermenterId&&typeof getFermenter==='function')?getFermenter(b.fermenterId):null;
 
   // Targets: prefer the batch's actual yeast, fall back to recipe targets.
   var yt=(og&&b.yeast&&typeof mwYeastTargets==='function')?mwYeastTargets(og,b.yeast):null;
@@ -35,13 +40,39 @@ function mwBatchSignals(b){
   var expectedAttenuation=(og)?mwAttenuation(og,targetFG):0;
   var sugarBreak=(og)?mwSugarBreak(og,targetFG):null;
   var passedSugarBreak=(sugarBreak!=null&&lastG!=null)?(lastG<=sugarBreak):false;
+  // Timeline: the SHAPE of the reading history (plateau, early-vs-recent pace),
+  // not just the latest value — see mwFermentTimeline's own comment.
+  var timeline=(typeof mwFermentTimeline==='function')?mwFermentTimeline(logs,sugarBreak):null;
+  // Milestone ETA: predict WHEN (days out) the batch will likely cross the
+  // sugar break, from the same recent rate the projection already computes —
+  // proactive ("day 3") beats reactive ("hasn't crossed it yet").
+  var daysToSugarBreak=(!passedSugarBreak&&sugarBreak!=null&&lastG!=null&&proj&&proj.ratePerDay>0)
+    ?Math.ceil((lastG-sugarBreak)/proj.ratePerDay):null;
 
   // Nutrients
   var nut=(recipe&&typeof getNutrientStatus==='function')?getNutrientStatus(b,recipe):{done:0,expected:0};
   var nutrientsComplete=nut.expected>0?(nut.done>=nut.expected):(nut.total>0);
 
-  // Temperature: latest logged temp + the active yeast's optimal range.
-  var latestTemp=null;for(var i=logs.length-1;i>=0;i--){if(logs[i].temp!=null&&logs[i].temp!==''){latestTemp=parseFloat(logs[i].temp);break;}}
+  // Temperature: prefer a LIVE sensor bound to where the batch physically is
+  // right now — the assigned fermenter while active, the cellar cabinet it's
+  // shelved in once bottled — over a hand-logged gravity-reading temp, which
+  // goes stale the moment the batch moves on (and stops being taken at all
+  // once bottled). Falls back to the last logged temp when no live sensor is
+  // bound/available — Home Assistant is optional throughout this app.
+  var liveTempReading=null;
+  if(bottled){
+    var shelfHit=(bottling&&bottling.cellarShelfId&&typeof findShelfById==='function')?findShelfById(bottling.cellarShelfId):null;
+    liveTempReading=(typeof getCellarLiveTemp==='function')?getCellarLiveTemp(shelfHit&&shelfHit.cabinet):null;
+  }else{
+    liveTempReading=(fermenter&&typeof getFermenterLiveTemp==='function')?getFermenterLiveTemp(fermenter):null;
+  }
+  var latestTemp=null, tempSource=null;
+  if(liveTempReading&&liveTempReading.value!=null){
+    latestTemp=parseFloat(liveTempReading.value);
+    tempSource='live';
+  }else{
+    for(var i=logs.length-1;i>=0;i--){if(logs[i].temp!=null&&logs[i].temp!==''){latestTemp=parseFloat(logs[i].temp);tempSource='logged';break;}}
+  }
   // pH: latest logged reading. Healthy mead ferment pH is ~3.0–3.4 (the app's own
   // logging help text); below 2.9 signals yeast stress, above 3.5 a contamination
   // risk. Optional — most brewers never log it, so this stays null until they do.
@@ -78,29 +109,39 @@ function mwBatchSignals(b){
   var sparkling=!!(recipe&&(recipe.category==='Sparkling'||recipe.style==='Sparkling'||(recipe.tags&&(recipe.tags.indexOf('Sparkling')>=0||recipe.tags.indexOf('Carbonated')>=0))));
   var recipeBacksweetens=!sparkling&&!!(recipe&&recipe.steps&&recipe.steps.some(function(st){return /back-?sweeten|sorbate|stabili/i.test((st.title||'')+' '+(st.desc||''));}));
   // Aging model (shared with readiness): days since bottling vs ready→peak.
-  // NOTE: getBatchStatus() can return 'aging' for a batch that was NEVER
-  // bottled — its calendar-fallback branch labels any untouched batch past
-  // day 42 as 'aging' even with zero readings/steps logged. So "bottled" must
-  // key off an ACTUAL bottling record, never the status string, or a merely
-  // neglected batch would be misread as being in its post-bottling drink window.
-  var bottling=(typeof APP!=='undefined'&&APP.bottling)?APP.bottling[b.id]:null;
-  var bottled=!!bottling;
+  // (bottling/bottled were resolved earlier — needed there for temperature source.)
   var ageAnchor=(bottling&&bottling.date)||b.startDate;
   var agedDays=(typeof daysSince==='function'&&ageAnchor)?daysSince(ageAnchor):null;
-  var readyDays=(recipe&&recipe.minAgeDays)||60, peakDays=(recipe&&recipe.peakAgeDays)||240;
-  var agePhase=(bottled&&agedDays!=null)?(agedDays>=peakDays?'peak':(agedDays>=readyDays?'ready':'aging')):null;
+  // Custom/wizard-built recipes historically saved minDays/peakDays/maxDays
+  // (no "Age") while built-in recipes use minAgeDays/peakAgeDays/maxAgeDays —
+  // fall back to the older name so a custom recipe's own values are used
+  // instead of silently defaulting for every non-built-in recipe.
+  var readyDays=(recipe&&(recipe.minAgeDays||recipe.minDays))||60, peakDays=(recipe&&(recipe.peakAgeDays||recipe.peakDays))||240;
+  // E6: the recipe's own maxAgeDays (real data, not invented) adds a fourth
+  // phase — 'declining' — that mwReadiness() previously had no way to reach
+  // (it capped at 'peak' forever). Worded honestly elsewhere as "typically",
+  // not false-precise per-batch chemistry.
+  var maxAgeDays=(recipe&&(recipe.maxAgeDays||recipe.maxDays))||null;
+  var agePhase=(bottled&&agedDays!=null)?
+    (maxAgeDays&&agedDays>=maxAgeDays?'declining':agedDays>=peakDays?'peak':(agedDays>=readyDays?'ready':'aging')):null;
 
   // Equipment: the fermenter actually assigned to this batch, if any — enables
   // a headspace / blow-off-risk check during vigorous primary fermentation.
+  // (fermenter itself was resolved earlier — needed there for temperature source.)
   var volume=parseFloat(b.volume)||null;
-  var fermenter=(b.fermenterId&&typeof getFermenter==='function')?getFermenter(b.fermenterId):null;
   var fermenterCapacity=(fermenter&&parseFloat(fermenter.capacity))||null;
   var headspaceFrac=(fermenterCapacity&&volume)?((fermenterCapacity-volume)/fermenterCapacity):null;
   var recipeFermentDays=(recipe&&recipe.fermentDays)||null;
+  // Recipe's own target for bulk/secondary aging BEFORE bottling — distinct
+  // from minAgeDays/peakAgeDays/maxAgeDays, which are POST-bottling. Used by
+  // extendedBulkAging below instead of a flat one-size-fits-all day count.
+  var recipeBulkAgeDays=(recipe&&recipe.bulkAgeDays)||null;
   // Expectations Engine (v1, fermentation duration): a real yeast-speed-aware
   // range instead of a single flat day count — "18-30 days" beats a lone "24".
   var yeastSpeed=(y&&y.speed)||null;
   var expectedFermentRange=(recipeFermentDays&&typeof mwExpectedFermentDuration==='function')?mwExpectedFermentDuration(recipeFermentDays,yeastSpeed):null;
+  // Historical learning (E3): the brewer's OWN past batches, not generic lore.
+  var historical=(typeof mwHistoricalComparison==='function')?mwHistoricalComparison(b):null;
 
   return {
     recipeId:b.recipeId, status:status, active:active, fermenting:fermenting,
@@ -110,17 +151,57 @@ function mwBatchSignals(b){
     ratePerDay:proj?proj.ratePerDay:null, daysToFG:proj?proj.daysToFG:null,
     doneMs:proj?proj.doneMs:null, estFG:proj?proj.estFG:null,
     stalled:proj?proj.stalled:false, nearFG:proj?proj.nearFG:false,
-    sugarBreak:sugarBreak, passedSugarBreak:passedSugarBreak,
+    sugarBreak:sugarBreak, passedSugarBreak:passedSugarBreak, daysToSugarBreak:daysToSugarBreak,
+    timeline:timeline,
     nutrientsDone:nut.done, nutrientsExpected:nut.expected, nutrientsComplete:nutrientsComplete,
-    latestTemp:latestTemp, tempLow:tLow, tempHigh:tHigh, tempInRange:tempInRange, tempStable:tempStable, latestPH:latestPH,
+    latestTemp:latestTemp, tempSource:tempSource, tempLow:tLow, tempHigh:tHigh, tempInRange:tempInRange, tempStable:tempStable, latestPH:latestPH,
     abvMax:abvMax, nearTolerance:nearTolerance, yeastId:b.yeast||null,
     daysSinceLastReading:daysSinceLastReading,
     honeyName:honeyName, honeyFructoseRisk:honeyFructoseRisk, yeastFructophilic:yeastFructophilic, fructoseStallRisk:fructoseStallRisk,
     sparkling:sparkling, recipeBacksweetens:recipeBacksweetens,
-    bottled:bottled, agedDays:agedDays, readyDays:readyDays, peakDays:peakDays, agePhase:agePhase,
-    volume:volume, fermenterCapacity:fermenterCapacity, headspaceFrac:headspaceFrac, recipeFermentDays:recipeFermentDays,
-    yeastSpeed:yeastSpeed, expectedFermentRange:expectedFermentRange
+    bottled:bottled, agedDays:agedDays, readyDays:readyDays, peakDays:peakDays, maxAgeDays:maxAgeDays, agePhase:agePhase,
+    volume:volume, fermenterCapacity:fermenterCapacity, headspaceFrac:headspaceFrac, recipeFermentDays:recipeFermentDays, recipeBulkAgeDays:recipeBulkAgeDays,
+    yeastSpeed:yeastSpeed, expectedFermentRange:expectedFermentRange,
+    historical:historical
   };
+}
+
+// ---- Batch narrative (E5): a chronological story built ONLY from real
+// logged events — start, sugar-break crossing, actual logged additions, a
+// real plateau (reusing the same timeline analyzer the signals pipeline
+// uses), a real bottling record. Never invented beats. Each item is
+// {type,date,data} — the view (12-advisor.js) is the only place a type
+// becomes a sentence, same contract as the rules above.
+function mwBatchNarrative(b){
+  if(!b)return [];
+  var beats=[];
+  if(b.startDate)beats.push({type:'started',date:b.startDate,data:{og:parseFloat(b.og)||null,yeast:b.yeast||null}});
+
+  var logs=((typeof APP!=='undefined'&&APP.logs&&APP.logs[b.id])||[]).filter(function(l){return l.gravity!=null&&l.gravity!=='';})
+    .slice().sort(function(a,c){return(a.date||'').localeCompare(c.date||'');});
+
+  var og=parseFloat(b.og)||null;
+  var recipe=(typeof APP!=='undefined'&&APP.recipes)?APP.recipes.find(function(r){return r.id===b.recipeId;}):null;
+  var yt=(og&&b.yeast&&typeof mwYeastTargets==='function')?mwYeastTargets(og,b.yeast):null;
+  var targetFG=(yt&&yt.fg)||(recipe&&recipe.fgTarget)||1.000;
+  var sugarBreak=(og&&typeof mwSugarBreak==='function')?mwSugarBreak(og,targetFG):null;
+  if(sugarBreak!=null){
+    var crossed=logs.filter(function(l){return parseFloat(l.gravity)<=sugarBreak;})[0];
+    if(crossed)beats.push({type:'sugar-break',date:crossed.date,data:{gravity:parseFloat(crossed.gravity),sugarBreak:sugarBreak}});
+  }
+
+  ((typeof APP!=='undefined'&&APP.additions&&APP.additions[b.id])||[]).slice()
+    .sort(function(a,c){return(a.date||'').localeCompare(c.date||'');})
+    .forEach(function(a){beats.push({type:'addition',date:a.date,data:{item:a.item,amount:a.amount}});});
+
+  var timeline=(typeof mwFermentTimeline==='function')?mwFermentTimeline(logs,sugarBreak):null;
+  if(timeline&&timeline.plateaued)beats.push({type:'plateau',date:timeline.plateauSince,data:{days:timeline.plateauDays,beforeBreak:timeline.stalledBeforeBreak}});
+
+  var bottling=(typeof APP!=='undefined'&&APP.bottling)?APP.bottling[b.id]:null;
+  if(bottling&&bottling.date)beats.push({type:'bottled',date:bottling.date,data:{fg:bottling.fg,abv:bottling.abv}});
+
+  beats.sort(function(x,y){return(x.date||'').localeCompare(y.date||'');});
+  return beats;
 }
 
 // ---- Confidence: honest, derived from how much signal we actually have, and
@@ -138,6 +219,31 @@ function mwConfidence(s){
   return {value:Math.min(0.99,Math.round(c*100)/100),reasons:reasons};
 }
 
+// ---- Weighted multi-cause diagnosis (stalled fermentation) ----------------
+// A real stall is often more than one thing at once (under-nutrition AND a
+// touch cold) — a ranked list of {cause,weight,evidence} beats a single
+// first-match guess. Base weights follow the troubleshooting-guide priority
+// order (under-nutrition is the most common culprit); the timeline signal
+// (mwFermentTimeline) then nudges every candidate: a plateau that started
+// BEFORE the sugar break is more clearly a real problem, one that started
+// at/after the break reads more like a normal end-of-ferment tail-off.
+function mwStalledCauses(s){
+  var causes=[];
+  if(!s.nutrientsComplete)causes.push({cause:'nutrition',weight:0.75,evidence:['nutrients-incomplete']});
+  if(s.fructoseStallRisk)causes.push({cause:'fructose',weight:0.55,evidence:['high-fructose-honey','non-fructophilic-yeast']});
+  if(s.nearTolerance)causes.push({cause:'tolerance',weight:0.7,evidence:['near-abv-tolerance']});
+  if(s.tempInRange===false)causes.push({cause:'temperature',weight:0.5,evidence:['temp-out-of-range']});
+  var t=s.timeline;
+  if(t&&t.stalledBeforeBreak){
+    causes.forEach(function(c){c.weight=Math.min(0.95,mwRound(c.weight+0.1,2));c.evidence.push('stalled-before-break');});
+  }else if(t&&t.slowedNearFinish){
+    causes.forEach(function(c){c.weight=Math.max(0.15,mwRound(c.weight-0.15,2));c.evidence.push('slowed-near-finish');});
+  }
+  if(!causes.length)causes.push({cause:'unknown',weight:0.3,evidence:['no-specific-cause-matched']});
+  causes.sort(function(a,b){return b.weight-a.weight;});
+  return causes;
+}
+
 // ---- Rules: each reads signals, returns a recommendation or null ----------
 // Every recommendation carries a `category` (fermentation · nutrition · oxygen ·
 // temperature · stabilisation · aging · data) so the view can group them.
@@ -145,16 +251,11 @@ function _advRules(){
   return [
     function stalled(s){
       if(!s.active||!s.stalled)return null;
-      // Likely-cause diagnosis: check the classic culprits in the order a real
-      // troubleshooting pass would (see the Troubleshoot guide) — under-nutrition
-      // first (most common), then honey/yeast mismatch, tolerance, temperature.
-      var cause='unknown';
-      if(!s.nutrientsComplete)cause='nutrition';
-      else if(s.fructoseStallRisk)cause='fructose';
-      else if(s.nearTolerance)cause='tolerance';
-      else if(s.tempInRange===false)cause='temperature';
+      var causes=(typeof mwStalledCauses==='function')?mwStalledCauses(s):[{cause:'unknown',weight:0.3,evidence:[]}];
       return {id:'stalled',severity:'critical',category:'fermentation',
-        data:{atten:Math.round(s.attenuation*100),days:s.daysSinceStart,temp:s.latestTemp,cause:cause,honey:s.honeyName,yeast:s.yeastId},
+        data:{atten:Math.round(s.attenuation*100),days:s.daysSinceStart,temp:s.latestTemp,
+          cause:causes[0].cause,causes:causes,honey:s.honeyName,yeast:s.yeastId,
+          plateauDays:(s.timeline&&s.timeline.plateauDays)||null},
         reasons:['rate-flat','below-target']};
     },
     function finalNutrient(s){
@@ -250,8 +351,8 @@ function _advRules(){
       if(!s.bottled||s.agedDays==null||s.agePhase==null||s.agePhase==='aging')return null;
       var approaching=(s.agePhase==='ready'&&s.peakDays&&s.agedDays>=s.peakDays-Math.max(14,Math.round(s.peakDays*0.12)));
       return {id:'aging-window',severity:'info',category:'aging',
-        data:{phase:s.agePhase,aged:s.agedDays,ready:s.readyDays,peak:s.peakDays,approaching:approaching},
-        reasons:[s.agePhase==='peak'?'past-peak':approaching?'approaching-peak':'in-window']};
+        data:{phase:s.agePhase,aged:s.agedDays,ready:s.readyDays,peak:s.peakDays,max:s.maxAgeDays,approaching:approaching},
+        reasons:[s.agePhase==='declining'?'past-max':s.agePhase==='peak'?'past-peak':approaching?'approaching-peak':'in-window']};
     },
     function onSchedule(s){
       // Reassuring "all good" note once past the break (before it, aerate-now leads).
@@ -267,6 +368,17 @@ function _advRules(){
       return {id:'fructose-stall-risk',severity:'info',category:'fermentation',
         data:{honey:s.honeyName,risk:s.honeyFructoseRisk,yeast:s.yeastId},
         reasons:['high-fructose-honey']};
+    },
+    function ingredientNotes(s){
+      // E9: pragmatic honey×yeast relationship facts beyond the fructose case
+      // above (which already has its own dedicated rule). Silent when there's
+      // nothing notable — not meant to praise every combination.
+      if(!s.active||!s.honeyName||!s.yeastId)return null;
+      var notes=(typeof mwIngredientRelationship==='function')?mwIngredientRelationship(s.honeyName,s.yeastId):[];
+      if(!notes.length)return null;
+      return {id:'ingredient-notes',severity:'info',category:'fermentation',
+        data:{notes:notes,honey:s.honeyName,yeast:s.yeastId},
+        reasons:['honey-yeast-pairing']};
     },
     function recordOg(s){
       // Can't project anything without a starting gravity.
@@ -322,15 +434,30 @@ function _advRules(){
         data:{days:s.daysSinceStart,low:s.expectedFermentRange.low,high:s.expectedFermentRange.high,expected:s.expectedFermentRange.expected,yeast:s.yeastId},
         reasons:['past-expected-range']};
     },
+    function historicalPace(s){
+      // Compares THIS batch to the brewer's OWN past batches (E3) — not
+      // generic brewing lore. Needs at least 2 real comparable past batches;
+      // mwHistoricalComparison() returns null rather than guess otherwise.
+      if(!s.fermenting||!s.historical||s.historical.avgDaysToFinish==null||s.daysSinceStart==null)return null;
+      return {id:'historical-pace',severity:'info',category:'fermentation',
+        data:{daysSoFar:s.daysSinceStart,avgDays:s.historical.avgDaysToFinish,avgRating:s.historical.avgRating,
+          sampleSize:s.historical.sampleSize,matchedOn:s.historical.matchedOn},
+        reasons:['own-history']};
+    },
     function extendedBulkAging(s){
       // A batch held in 'conditioning'/'aging' a long time WITHOUT ever being
       // bottled means repeated headspace/oxygen exposure the whole time — bottling
       // (even if still young) removes that risk. Uses the corrected s.bottled
       // signal so this can't confuse itself with genuine post-bottling aging.
+      // Threshold follows the recipe's OWN bulk-aging target (1.5x it) when
+      // set — a bochet meant to sit for a year shouldn't be flagged at the
+      // same 270-day mark as a quick traditional — falling back to the old
+      // flat 270 days for recipes that don't have one set.
       if(s.bottled||(s.status!=='conditioning'&&s.status!=='aging'))return null;
-      if(s.daysSinceStart==null||s.daysSinceStart<270)return null;
+      var threshold=s.recipeBulkAgeDays?Math.round(s.recipeBulkAgeDays*1.5):270;
+      if(s.daysSinceStart==null||s.daysSinceStart<threshold)return null;
       return {id:'extended-bulk-aging',severity:'info',category:'oxygen',
-        data:{days:s.daysSinceStart},reasons:['long-unbottled']};
+        data:{days:s.daysSinceStart,target:s.recipeBulkAgeDays},reasons:['long-unbottled']};
     }
   ];
 }
@@ -410,7 +537,10 @@ function mwReadiness(b){
   if(aged>=peak)pct=100;
   else if(aged>=ready)pct=70+Math.round((aged-ready)/Math.max(1,(peak-ready))*30);  // 70→100 across ready→peak
   else pct=30+Math.round(aged/Math.max(1,ready)*40);                                 // 30→70 across 0→ready
-  return {pct:Math.max(0,Math.min(100,pct)),phase:aged>=peak?'peak':(aged>=ready?'ready':'aging'),readyDays:ready,peakDays:peak,agedDays:aged};
+  // Phase comes straight from the signal (s.agePhase) rather than being
+  // re-derived here — one source of truth, and it's the only place that
+  // knows about the 'declining' (past maxAgeDays) stage.
+  return {pct:Math.max(0,Math.min(100,pct)),phase:s.agePhase||(aged>=peak?'peak':(aged>=ready?'ready':'aging')),readyDays:ready,peakDays:peak,agedDays:aged};
 }
 
 // ---- Ephemeral memo: version the INPUTS, memoise the OUTPUT, never persist --
@@ -432,7 +562,7 @@ function _mwAdviceSig(b){
   // ages, with no midnight-boundary artifact.
   var ageF=(typeof daysSince==='function'&&b.startDate)?daysSince(b.startDate):0;
   var ageB=(typeof daysSince==='function'&&bot&&bot.date)?daysSince(bot.date):0;
-  return [b.id,b.recipeId,b.og,b.yeast,b.startDate,b.failed?1:0,logs.length,last.date,last.gravity,last.temp,doneN,bot?bot.date:0,adds,ageF,ageB].join('|');
+  return [b.id,b.recipeId,b.og,b.yeast,b.startDate,b.failed?1:0,logs.length,last.date,last.gravity,last.temp,last.ph,doneN,bot?bot.date:0,adds,ageF,ageB].join('|');
 }
 
 // ---- The single snapshot every view consumes ------------------------------
@@ -456,6 +586,29 @@ function mwBatchAdvice(b){
   var val={signals:s, items:items, health:health, readiness:mwReadiness(b), confidence:conf, confidenceReasons:cf.reasons};
   _mwAdviceMemo[b.id]={sig:sig,val:val};
   return val;
+}
+
+// ---- What-if simulator (E7): re-run the EXISTING signals→rules pipeline
+// with one signal hypothetically overridden — "if X were already true, what
+// would the advisor say?" No invented physics, no new numeric precision:
+// the exact same pure rule functions run against a real signal object with
+// one or more fields swapped, same as they run against the real one.
+function mwWhatIf(b,overrides){
+  var s=mwBatchSignals(b);
+  if(!s)return null;
+  var s2=Object.assign({},s,overrides||{});
+  var rules=_advRules();
+  function run(sig){return rules.map(function(rule){return rule(sig);}).filter(Boolean);}
+  var before=run(s), after=run(s2);
+  var beforeById={};before.forEach(function(i){beforeById[i.id]=i;});
+  var afterById={};after.forEach(function(i){afterById[i.id]=i;});
+  return {
+    before:before, after:after,
+    resolved:before.filter(function(i){return !afterById[i.id];}).map(function(i){return i.id;}),
+    newlyAppeared:after.filter(function(i){return !beforeById[i.id];}).map(function(i){return i.id;}),
+    changed:after.filter(function(i){return beforeById[i.id]&&beforeById[i.id].severity!==i.severity;})
+      .map(function(i){return {id:i.id,from:beforeById[i.id].severity,to:i.severity};})
+  };
 }
 
 // ---- Cross-batch ingredient performance (power-user analytics) -------------
@@ -496,4 +649,75 @@ function mwIngredientStats(){
     failRate:m.n?m.fail/m.n:0
   };}).sort(function(a,b){return (b.avgRating||0)-(a.avgRating||0)||b.n-a.n;});}
   return {byYeast:fin(byY),byHoney:fin(byH)};
+}
+
+// ---- Historical learning (E3): compare THIS batch to the brewer's OWN past
+// batches — not generic brewing lore. Prefers other batches of the same
+// recipe; falls back to same yeast if there aren't at least 2 of those.
+// Honest about needing real history: null (not a guess) with fewer than 2
+// comparable past batches.
+function mwHistoricalComparison(b){
+  if(!b)return null;
+  var all=(typeof APP!=='undefined'&&APP.batches)||[];
+  var pool=all.filter(function(o){return o.id!==b.id&&o.recipeId===b.recipeId;});
+  var matchedOn='recipe';
+  if(pool.length<2){
+    var byYeast=b.yeast?all.filter(function(o){return o.id!==b.id&&o.yeast===b.yeast;}):[];
+    if(byYeast.length>=2){pool=byYeast;matchedOn='yeast';}
+  }
+  if(pool.length<2)return null;
+
+  function statsFor(o){
+    var recipe=(typeof APP!=='undefined'&&APP.recipes)?APP.recipes.find(function(r){return r.id===o.recipeId;}):null;
+    var og=parseFloat(o.og)||(recipe&&recipe.ogTarget)||null;
+    var logs=((typeof APP!=='undefined'&&APP.logs&&APP.logs[o.id])||[]).filter(function(l){return l.gravity;})
+      .slice().sort(function(a,c){return(a.date||'').localeCompare(c.date||'');});
+    var bot=(typeof APP!=='undefined'&&APP.bottling&&APP.bottling[o.id])||null;
+    var lastG=logs.length?parseFloat(logs[logs.length-1].gravity):null;
+    var finalG=(bot&&parseFloat(bot.fg))||lastG||null;
+    var atten=(og&&finalG!=null)?mwAttenuation(og,finalG)*100:null;
+    // Only bottled batches give a fair "days to finish" — an in-progress one
+    // hasn't finished yet, so counting it would bias the average short.
+    var daysToFinish=(o.startDate&&bot&&bot.date)?Math.round((new Date(bot.date)-new Date(o.startDate))/86400000):null;
+    var ts=(typeof APP!=='undefined'&&APP.tastings&&APP.tastings[o.id])||[];
+    var rated=ts.filter(function(t){return t.rating;});
+    var rating=rated.length?Math.max.apply(null,rated.map(function(t){return t.rating;})):null;
+    return {daysToFinish:daysToFinish,atten:atten,rating:rating};
+  }
+  var stats=pool.map(statsFor);
+  function avg(arr){var v=arr.filter(function(x){return x!=null;});return v.length?mwRound(v.reduce(function(s,x){return s+x;},0)/v.length,1):null;}
+  return {
+    matchedOn:matchedOn, sampleSize:pool.length,
+    avgDaysToFinish:avg(stats.map(function(s){return s.daysToFinish;})),
+    avgAttenuation:avg(stats.map(function(s){return s.atten;})),
+    avgRating:avg(stats.map(function(s){return s.rating;}))
+  };
+}
+
+// ---- Ingredient relationship notes (E9): pragmatic, non-abstract facts for
+// a honey+yeast PAIR — reuses existing, already-authored data fields
+// (HONEY_PROFILES.tech, YEAST_STRAINS) rather than a generic graph/new
+// numbers. Deliberately does NOT repeat the fructose-risk interaction —
+// that already has its own dedicated signal/rule (fructoseStallRisk).
+// Returns [] when there's nothing notable — this isn't meant to praise
+// every combination, only flag real interactions worth knowing about.
+function mwIngredientRelationship(honeyName,yeastId){
+  var h=(typeof HONEY_PROFILES!=='undefined')?HONEY_PROFILES[honeyName]:null;
+  var y=(typeof YEAST_STRAINS!=='undefined'&&yeastId)?YEAST_STRAINS.filter(function(x){return x.id===yeastId;})[0]:null;
+  if(!h||!y)return [];
+  var notes=[];
+  var ht=h.tech||{};
+  // Flavor balance: an expressive yeast can mask a delicate honey's own
+  // character; the reverse (neutral yeast, bold honey) is fine either way
+  // so it isn't flagged — only the mismatch is worth naming.
+  if(y.flavorImpact==='expressive'&&h.intensity==='light'){
+    notes.push({type:'flavor-mismatch',data:{honey:honeyName,yeastImpact:y.flavorImpact,honeyIntensity:h.intensity}});
+  }
+  // Nitrogen contribution: some honeys carry meaningfully more of their own
+  // available nitrogen than others (yanOffset, ppm) — worth naming once it's
+  // large enough to matter, not for every honey with a nonzero value.
+  if(ht.yanOffset>=10){
+    notes.push({type:'nitrogen-contribution',data:{honey:honeyName,yanOffset:ht.yanOffset}});
+  }
+  return notes;
 }

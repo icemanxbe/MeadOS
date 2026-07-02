@@ -309,9 +309,9 @@ function renderPublicShareView(b){
   if(recipeName.indexOf('·')>0)recipeName=recipeName.split('·')[0].trim();
 
   // Aging window
-  var minDays=recipe?(recipe.minAgeDays||30):30;
-  var peakDays=recipe?(recipe.peakAgeDays||180):180;
-  var maxDays=recipe?(recipe.maxAgeDays||peakDays*3):peakDays*3;
+  var minDays=recipe?(recipe.minAgeDays||recipe.minDays||30):30;
+  var peakDays=recipe?(recipe.peakAgeDays||recipe.peakDays||180):180;
+  var maxDays=recipe?(recipe.maxAgeDays||recipe.maxDays||peakDays*3):peakDays*3;
 
   // Gravity chart data: build a list of [days_from_start, gravity]
   var startDate=b.startDate?new Date(b.startDate):null;
