@@ -90,15 +90,15 @@ function _advItemText(it){
               :(d.first?('This batch has been fermenting '+d.days+' days with no gravity reading. Log one (and the OG) so the advisor can track progress, projection and health.')
                         :('Last reading was '+d.days+' days ago. A fresh gravity reading keeps the projection and stall detection accurate.'))},
     'aging-window':{icon:'⌛',
-      title:nl?(d.phase==='declining'?'Ruim voorbij het typische venster':d.phase==='peak'?'Voorbij het hoogtepunt':(d.approaching?'Nadert het hoogtepunt':'In het drinkvenster'))
-             :(d.phase==='declining'?'Well past the typical window':d.phase==='peak'?'Past its peak':(d.approaching?'Approaching peak':'In the drinking window')),
+      title:nl?(d.phase==='declining'?'Voorbij de piek':d.phase==='peak'?'In het piekvenster':(d.approaching?'Nadert het piekvenster':'Klaar om te drinken'))
+             :(d.phase==='declining'?'Past peak':d.phase==='peak'?'In its peak window':(d.approaching?'Approaching peak window':'Drink now')),
       reason:nl?(d.phase==='declining'?('~'+d.aged+' dagen oud — dit type mede is typisch op zijn best vóór ~dag '+d.max+'. Geen garantie dat de kwaliteit terugloopt, maar dit is een goed moment om te proeven en niet veel langer te wachten.')
-                        :d.phase==='peak'?('Deze mede is ~'+d.aged+' dagen oud, voorbij het geschatte hoogtepunt (~dag '+d.peak+'). Nog prima te drinken, maar wacht niet te lang meer.')
-                        :(d.approaching?('~'+d.aged+' dagen oud — nadert het hoogtepunt rond dag '+d.peak+'. Een mooi moment om te proeven.')
+                        :d.phase==='peak'?('Deze mede is ~'+d.aged+' dagen oud — dit is naar verwachting het piekvenster (~dag '+d.peak+' tot '+d.max+'). Dit is het beste moment om ervan te genieten.')
+                        :(d.approaching?('~'+d.aged+' dagen oud — nadert het piekvenster rond dag '+d.peak+'. Een mooi moment om te proeven.')
                                        :('~'+d.aged+' dagen oud — voorbij het drinkpunt vanaf dag '+d.ready+'. Klaar om van te genieten; blijft verbeteren tot ~dag '+d.peak+'.')))
               :(d.phase==='declining'?('~'+d.aged+' days old — this style is typically best before ~day '+d.max+'. No guarantee quality is dropping, but it\'s a good time to taste and not wait much longer.')
-                        :d.phase==='peak'?('This mead is ~'+d.aged+' days old, past its estimated peak (~day '+d.peak+'). Still fine to drink, but don\'t hold it too much longer.')
-                        :(d.approaching?('~'+d.aged+' days old — approaching peak around day '+d.peak+'. A great time to taste.')
+                        :d.phase==='peak'?('This mead is ~'+d.aged+' days old — this is its expected peak window (~day '+d.peak+' to '+d.max+'). This is the best time to enjoy it.')
+                        :(d.approaching?('~'+d.aged+' days old — approaching its peak window around day '+d.peak+'. A great time to taste.')
                                        :('~'+d.aged+' days old — past the drink-from point at day '+d.ready+'. Ready to enjoy; keeps improving toward ~day '+d.peak+'.')))},
     'fructose-stall-risk':{icon:'🍯',
       title:nl?'Risico op fructose-stall':'Fructose-stall risk',
@@ -150,12 +150,16 @@ function _advItemText(it){
       reason:nl?((_advYeastName(d.yeast)||'Deze gist')+' gist doorgaans in '+d.low+'–'+d.high+' dagen voor dit recept; deze partij zit al op dag '+d.days+'. Dat is niet per se een probleem — sommige mede rijpt gewoon trager — maar het is de moeite waard om temperatuur en voeding nog eens te checken als dit je verrast.')
               :((_advYeastName(d.yeast)||'This yeast')+' typically finishes in '+d.low+'–'+d.high+' days for this recipe; this batch is at day '+d.days+'. That\'s not necessarily a problem — some meads simply run slower — but worth double-checking temperature and nutrients if this surprises you.')},
     'historical-pace':(function(){
-      var matchTxt=d.matchedOn==='recipe'?(nl?'dit recept':'this recipe'):(nl?'deze gist':'this yeast');
+      var yn=_advYeastName(d.yeast);
+      var matchTxt=d.matchedOn==='recipe'?(nl?'dit recept':'this recipe')
+        :d.matchedOn==='yeast-honey'?((yn||(nl?'deze gist':'this yeast'))+' + '+(d.honey||(nl?'deze honing':'this honey')))
+        :(nl?'deze gist':'this yeast');
       var ratingTxt=(d.avgRating!=null)?(nl?(' en gemiddeld beoordeeld met '+d.avgRating+'/5'):(' and rated ~'+d.avgRating+'/5 on average')):'';
+      var pctTxt=(d.avgDays>0)?(nl?(' ('+Math.round((d.daysSoFar/d.avgDays-1)*100)+'% t.o.v. gemiddeld)'):(' ('+Math.round((d.daysSoFar/d.avgDays-1)*100)+'% vs. average)')):'';
       return {icon:'📊',
         title:nl?'Vergeleken met je eigen partijen':'Compared to your own batches',
-        reason:nl?('Je vorige '+d.sampleSize+' partijen met '+matchTxt+' deden er gemiddeld ~'+d.avgDays+' dagen over'+ratingTxt+'. Deze partij zit nu op dag '+d.daysSoFar+'.')
-                  :('Your last '+d.sampleSize+' batches with '+matchTxt+' took ~'+d.avgDays+' days on average'+ratingTxt+'. This batch is currently at day '+d.daysSoFar+'.')};
+        reason:nl?('Je vorige '+d.sampleSize+' partijen met '+matchTxt+' deden er gemiddeld ~'+d.avgDays+' dagen over'+ratingTxt+'. Deze partij zit nu op dag '+d.daysSoFar+pctTxt+'.')
+                  :('Your last '+d.sampleSize+' batches with '+matchTxt+' took ~'+d.avgDays+' days on average'+ratingTxt+'. This batch is currently at day '+d.daysSoFar+pctTxt+'.')};
     })(),
     'extended-bulk-aging':{icon:'🛢',
       title:nl?'Al lang niet gebotteld':'Sitting unbottled a long time',
@@ -298,6 +302,18 @@ function _advConfidenceText(reasons){
             :{'readings-many':'many readings','readings-several':'several readings','readings-few':'a few readings','readings-one':'only one reading','rate-steady':'steady drop rate','temp-stable':'stable temperature','known-yeast':'known yeast attenuation'};
   return (reasons||[]).map(function(c){return M[c]||c;}).join(' · ');
 }
+
+// "Evidence", not "confidence" — a rule-based advisor isn't estimating a
+// probability, it's reporting how much signal backs a conclusion. A numeric
+// percentage ("83%") implies precision this system doesn't have; a band
+// backed by the actual reasons (_advConfidenceText) is the honest version.
+function _advEvidenceBand(value){
+  var nl=_advNL();
+  var v=value||0;
+  if(v>=0.75)return nl?'Sterk':'Strong';
+  if(v>=0.55)return nl?'Redelijk':'Moderate';
+  return nl?'Beperkt':'Limited';
+}
 // Small ↑/↓ trend chip for the health score (vs the previous reading).
 function _advTrendChip(trend){
   if(trend==null||trend===0)return '';
@@ -353,7 +369,10 @@ function _advWhyMatters(id){
     'record-og':{benefit:'Met een OG kan de adviseur al het overige doorrekenen.',downside:'Zonder OG blijft de adviseur blind voor vergisting, alcohol en prognose.'},
     'log-reading':{benefit:'Een nieuwe meting houdt het advies scherp.',downside:'Te lang niet meten laat problemen ongemerkt doorlopen.'},
     'blowoff-risk':{benefit:'Nu voorzorg nemen voorkomt een rommelige overloop.',downside:'Negeren kan schuim/most naar buiten drukken en een besmettingsrisico geven.'},
-    'ferment-complete':{benefit:'Op tijd rackken/bottelen beperkt verdere zuurstofblootstelling.',downside:'Te lang wachten verlengt onnodig luchtcontact in het vat.'}
+    'ferment-complete':{benefit:'Op tijd rackken/bottelen beperkt verdere zuurstofblootstelling.',downside:'Te lang wachten verlengt onnodig luchtcontact in het vat.',
+      considerWaitingIf:'je hem bewust nog even op de gistdroesem laat liggen voor extra body of mondgevoel.'},
+    'extended-bulk-aging':{benefit:'Binnenkort bottelen sluit verder zuurstofcontact bij het openen/verplaatsen van het vat af.',downside:'Langer wachten herhaalt dat oxidatierisico elke keer dat het vat verstoord wordt.',
+      considerWaitingIf:'je bewust een langere bulk- of vatrijping aanhoudt die bij deze stijl hoort.'}
   }:{
     stalled:{benefit:'Acting now can rescue the fermentation.',downside:'Waiting risks a permanently stuck fermentation or spoilage.'},
     'nutrient-final':{benefit:'Feeding on time keeps the yeast population healthy.',downside:'Feeding too late causes yeast stress (fusel alcohols); feeding after the sugar break instead feeds spoilage organisms rather than the yeast.'},
@@ -365,7 +384,10 @@ function _advWhyMatters(id){
     'record-og':{benefit:'With an OG, the advisor can compute everything else.',downside:'Without it, the advisor stays blind to attenuation, ABV and the projection.'},
     'log-reading':{benefit:'A fresh reading keeps the advice sharp.',downside:'Going too long without one lets problems go unnoticed.'},
     'blowoff-risk':{benefit:'Taking precaution now avoids a messy blow-off.',downside:'Ignoring it can push foam/must out and risk contamination.'},
-    'ferment-complete':{benefit:'Racking/bottling promptly limits further oxygen exposure.',downside:'Waiting too long extends unnecessary air contact in the vessel.'}
+    'ferment-complete':{benefit:'Racking/bottling promptly limits further oxygen exposure.',downside:'Waiting too long extends unnecessary air contact in the vessel.',
+      considerWaitingIf:'you\'re intentionally leaving it on the yeast lees a while longer for extra body or mouthfeel.'},
+    'extended-bulk-aging':{benefit:'Bottling soon closes off further oxygen exposure from opening or moving the vessel.',downside:'Waiting longer repeats that oxidation risk every time the vessel is disturbed.',
+      considerWaitingIf:'you\'re deliberately doing an extended bulk- or barrel-aging style that calls for more time before bottling.'}
   };
   return M[id]||null;
 }
@@ -439,6 +461,18 @@ function renderBatchAdvisor(b){
     }).join('');
   }
   var confTxt=_advConfidenceText(adv.confidenceReasons);
+  // ---- Overall summary: the "at a glance" line every other section elaborates
+  // on. Counts by severity, not raw item text — this is the one line meant to
+  // answer "what should I do next?" in a few seconds.
+  var sevCounts={critical:0,recommended:0,info:0};
+  adv.items.forEach(function(it){sevCounts[it.severity]=(sevCounts[it.severity]||0)+1;});
+  var sumParts=[];
+  if(sevCounts.critical)sumParts.push(sevCounts.critical+' '+(nl?(sevCounts.critical>1?'acties':'actie'):(sevCounts.critical>1?'actions':'action')));
+  if(sevCounts.recommended)sumParts.push(sevCounts.recommended+' '+(nl?'om te volgen':'to watch'));
+  if(sevCounts.info)sumParts.push(sevCounts.info+' '+(nl?(sevCounts.info>1?'inzichten':'inzicht'):(sevCounts.info>1?'insights':'insight')));
+  var summaryLine=sumParts.length
+    ?('<div style="font-size:13.5px;color:var(--text2);margin-top:10px">'+sumParts.join(' · ')+'</div>')
+    :('<div style="font-size:13.5px;color:var(--green2);margin-top:10px">✓ '+(nl?'Alles ziet er goed uit':'Everything looks good')+'</div>');
   var healthCard='<div class="card" style="margin-bottom:16px;border-left:3px solid '+hm.c+'">'
     +'<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">'
     +'<div style="text-align:center;min-width:96px"><div style="font-family:var(--font-display);font-size:42px;line-height:1;color:'+hm.c+'">'+(h&&h.score!=null?h.score:'—')+_advTrendChip(h&&h.trend)+'</div>'
@@ -446,13 +480,14 @@ function renderBatchAdvisor(b){
     +'<div style="font-family:var(--font-display);font-size:14px;color:'+hm.c+';margin-top:2px">'+hm.l+'</div></div>'
     +'<div style="flex:1;min-width:220px">'+bars+'</div>'
     +'</div>'
-    +(confTxt?'<div style="font-size:11px;color:var(--text3);margin-top:10px;font-style:italic">'+(nl?'Vertrouwen ':'Confidence ')+Math.round((adv.confidence||0)*100)+'% — '+(nl?'op basis van':'based on')+' '+escHtml(confTxt)+'</div>':'')
+    +summaryLine
+    +(confTxt?'<div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">'+(nl?'Bewijs: ':'Evidence: ')+_advEvidenceBand(adv.confidence)+' — '+(nl?'op basis van':'based on')+' '+escHtml(confTxt)+'</div>':'')
     +'</div>';
 
   // ---- Readiness ("can I drink it yet?") ----
   var readyCard='';
   if(r){
-    var phaseL={fermenting:nl?'Gistend':'Fermenting',aging:nl?'Rijpend':'Aging',ready:nl?'Klaar om te drinken':'Ready to drink',peak:nl?'Op hoogtepunt':'At peak',declining:nl?'Voorbij typisch venster':'Past typical window',failed:nl?'Mislukt':'Failed'}[r.phase]||r.phase;
+    var phaseL={fermenting:nl?'Gistend':'Fermenting',aging:nl?'Verbetert nog':'Improving',ready:nl?'Klaar om te drinken':'Drink now',peak:nl?'Piekvenster':'Peak window',declining:nl?'Voorbij de piek':'Past peak',failed:nl?'Mislukt':'Failed'}[r.phase]||r.phase;
     var rc=r.pct>=100?'var(--green2)':r.pct>=70?'var(--gold2)':'var(--text3)';
     var sub=(r.phase==='aging'&&r.readyDays!=null)?(nl?('Drinkvenster begint rond dag '+r.readyDays+' · hoogtepunt ~dag '+r.peakDays):('Drink window opens ~day '+r.readyDays+' · peak ~day '+r.peakDays))
       :(r.phase==='fermenting'?(nl?'Nog aan het gisten — nog niet drinkbaar.':'Still fermenting — not drinkable yet.'):'');
@@ -472,54 +507,83 @@ function renderBatchAdvisor(b){
       +'</div></div>';
   }
 
-  // ---- Recommendations ----
+  // ---- Progress band: where THIS batch's elapsed days sit vs. the expected
+  // range — a position, not a modeled curve. Deliberately never claims a
+  // single "correct" day (brewing varies too much for that); it only ever
+  // reports ahead/on-track/watch/behind against a real low-high range.
+  var progressCard='';
+  if(s&&s.fermentProgress){
+    var fp=s.fermentProgress;
+    var bandMeta={
+      ahead:{c:'var(--green2)',l:nl?'Vroeg — nog niets om je zorgen over te maken':'Early — nothing to flag yet'},
+      'on-track':{c:'var(--green2)',l:nl?'Binnen het verwachte bereik':'Within the expected range'},
+      watch:{c:'var(--gold2)',l:nl?'Iets trager dan verwacht — het in de gaten houden waard':'A bit slower than expected — worth watching'},
+      behind:{c:'var(--red2)',l:nl?'Buiten het verwachte bereik — check temperatuur en voeding':'Outside the expected range — check temperature and nutrients'}
+    }[fp.phase];
+    var scale=Math.max(fp.high*1.15,fp.days)*1.1||1;
+    var lowPct=Math.min(100,fp.low/scale*100), highPct=Math.min(100,fp.high/scale*100), markerPct=Math.min(100,fp.days/scale*100);
+    progressCard='<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">'+(nl?'📈 VOORTGANG':'📈 PROGRESS')+'</div>'
+      +'<div style="font-family:var(--font-display);font-size:14px;color:'+bandMeta.c+'">'+(nl?'Dag ':'Day ')+fp.days+'</div></div>'
+      +'<div style="position:relative;height:10px;background:var(--bg4);border-radius:5px;margin:8px 0 8px">'
+      +'<div style="position:absolute;left:'+lowPct+'%;width:'+(highPct-lowPct)+'%;height:100%;background:rgba(122,184,130,0.35);border-radius:5px" title="'+(nl?'Verwacht bereik':'Expected range')+'"></div>'
+      +'<div style="position:absolute;left:calc('+markerPct+'% - 4px);top:-3px;width:8px;height:16px;background:'+bandMeta.c+';border-radius:3px" title="'+(nl?'Nu':'Now')+'"></div>'
+      +'</div>'
+      +'<div style="font-size:12px;color:var(--text3)">'+(nl?'Verwacht ':'Expected ')+fp.low+'–'+fp.high+(nl?' dagen (typisch ~':' days (typical ~')+fp.expected+(nl?')':')')+'</div>'
+      +'<div style="font-size:12px;margin-top:4px"><strong style="color:'+bandMeta.c+'">'+bandMeta.l+'</strong></div>'
+      +'</div>';
+  }
+
+  // ---- Recommendations: Actions / Watch / Insights (E13 information
+  // hierarchy) — grouped by severity instead of a flat list + arbitrary cap.
+  // Actions and Watch stay fully visible (that's what the summary line above
+  // just counted); Insights collapses by default since it's reassurance/
+  // context, not something waiting on the brewer.
   var recHtml='';
   if(adv.items.length){
-    // Category summary — a grouped overview without burying critical items, which
-    // stay sorted by severity below. Each card also carries its own category chip.
     var catCounts={},catOrder=[];
     adv.items.forEach(function(it){var c=it.category||'data';if(catCounts[c]==null){catCounts[c]=0;catOrder.push(c);}catCounts[c]++;});
     var catStrip=catOrder.length>1?'<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:11px">'+catOrder.map(function(c){var cm=_advCategoryMeta(c);return '<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:2px 9px">'+cm.icon+' '+escHtml(cm.label)+' '+catCounts[c]+'</span>';}).join('')+'</div>':'';
-    // E8: default triage — show every critical plus up to 2 recommended;
-    // collapse the rest behind a native <details> (no JS needed to expand).
-    // "If every observation becomes a recommendation, people stop reading."
-    var shownItems=[], hiddenItems=[], recShown=0;
-    adv.items.forEach(function(it){
-      if(it.severity==='critical')shownItems.push(it);
-      else if(it.severity==='recommended'&&recShown<2){shownItems.push(it);recShown++;}
-      else hiddenItems.push(it);
-    });
+    var actionItems=adv.items.filter(function(i){return i.severity==='critical';});
+    var watchItems=adv.items.filter(function(i){return i.severity==='recommended';});
+    var insightItems=adv.items.filter(function(i){return i.severity==='info';});
     // E8: verbosity persona controls density — 'pro' drops the prose (title +
     // chips only), 'beginner' always gets the why-it-matters line (not just
     // for critical/recommended), 'experienced' (default) is today's behaviour.
     var verbosity=(APP.settings&&APP.settings.advisorVerbosity)||'experienced';
     function itemCard(it){
       var t=_advItemText(it), sm=_advSeverityMeta(it.severity), cm=_advCategoryMeta(it.category);
-      var conf=Math.round((it.confidence||0)*100);
+      var evidence=_advEvidenceBand(it.confidence);
       var showProse=verbosity!=='pro';
       // E12: only actionable severities get a "why it matters" line by default
       // — an info note doesn't need one — except the 'beginner' persona, which
       // always wants the extra context.
       var wantsWhy=verbosity==='beginner'||it.severity==='critical'||it.severity==='recommended';
       var why=(showProse&&wantsWhy)?_advWhyMatters(it.id):null;
+      // E13: "consider waiting if" is optional by design — only ids with a
+      // genuine legitimate opposite case carry it (see _advWhyMatters). Most
+      // actionable items correctly render nothing here.
+      var waitHtml=(why&&why.considerWaitingIf)?('<div style="font-size:11.5px;color:var(--text3);margin-top:4px">'
+        +'<span style="color:var(--gold2)">'+(nl?'Overweeg te wachten als':'Consider waiting if')+':</span> '+escHtml(why.considerWaitingIf)+'</div>'):'';
       var whyHtml=why?('<div style="font-size:11.5px;color:var(--text3);margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06)">'
         +'<span style="color:var(--green2)">✓ '+(nl?'Waarom het uitmaakt':'Why it matters')+':</span> '+escHtml(why.benefit)+' '
-        +'<span style="color:var(--red2)">'+(nl?'Bij negeren':'If ignored')+':</span> '+escHtml(why.downside)+'</div>'):'';
+        +'<span style="color:var(--red2)">'+(nl?'Bij negeren':'If ignored')+':</span> '+escHtml(why.downside)+'</div>'+waitHtml):'';
       return '<div style="background:'+sm.bg+';border-left:3px solid '+sm.color+';border-radius:var(--radius);padding:11px 13px;margin-bottom:8px">'
         +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:3px">'
         +'<div style="font-family:var(--font-display);font-size:14px;color:'+sm.color+'">'+t.icon+' '+escHtml(t.title)+'</div>'
-        +'<div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:0.5px">'+cm.icon+' '+escHtml(cm.label)+' · '+sm.label+' · '+(nl?'vertrouwen':'confidence')+' '+conf+'%</div></div>'
+        +'<div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:0.5px">'+cm.icon+' '+escHtml(cm.label)+' · '+sm.label+' · '+(nl?'bewijs':'evidence')+' '+evidence+'</div></div>'
         +(showProse?'<div style="font-size:12.5px;color:var(--text2);line-height:1.55">'+escHtml(t.reason)+'</div>'+whyHtml:'')+'</div>';
     }
-    var hiddenHtml=hiddenItems.length?('<details style="margin-top:2px"><summary style="cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text3);padding:4px 0;user-select:none">'
-      +(nl?('+ '+hiddenItems.length+' meer'):('+ '+hiddenItems.length+' more'))+'</summary>'+hiddenItems.map(itemCard).join('')+'</details>'):'';
-    recHtml=catStrip+shownItems.map(itemCard).join('')+hiddenHtml;
+    var actionsSection=actionItems.length?('<div class="micro-label" style="color:var(--red2);margin-bottom:6px">'+(nl?'ACTIES':'ACTIONS')+'</div>'+actionItems.map(itemCard).join('')):'';
+    var watchSection=watchItems.length?('<div class="micro-label" style="color:var(--gold2);margin:'+(actionItems.length?'14px':'0')+' 0 6px">'+(nl?'OM TE VOLGEN':'WATCH')+'</div>'+watchItems.map(itemCard).join('')):'';
+    var insightsSection=insightItems.length?('<details style="margin-top:'+(actionItems.length||watchItems.length?'14px':'0')+'"><summary style="cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text3);padding:4px 0;user-select:none">'
+      +'💡 '+insightItems.length+' '+(nl?(insightItems.length>1?'inzichten':'inzicht'):(insightItems.length>1?'insights':'insight'))+'</summary>'+insightItems.map(itemCard).join('')+'</details>'):'';
+    recHtml=catStrip+actionsSection+watchSection+insightsSection;
   }else{
     recHtml='<div class="info-box green"><div style="font-size:13px;color:var(--green2)">'+(nl?'✓ Geen actie nodig — alles ziet er goed uit.':'✓ No action needed — everything looks good.')+'</div></div>';
   }
   var recCard='<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">'+(nl?'🧭 ADVIES':'🧭 RECOMMENDATIONS')+'</div></div>'+recHtml+'</div>';
 
-  // ---- Folded-in Brew Coach: today's actions + upcoming + wisdom ----
+  // ---- Folded-in Brew Coach: today's actions + upcoming ----
   var d=(typeof daysSince==='function')?daysSince(b.startDate):0;
   var tasks=(typeof getTasksForBatch==='function')?getTasksForBatch(b):[];
   var todayTasks=tasks.filter(function(t){return t.isDue||t.isOverdue||t.doneToday;});
@@ -539,6 +603,14 @@ function renderBatchAdvisor(b){
   var wisdomHtml=wisdom.length?'<div class="card"><div class="card-header"><div class="card-title">'+(nl?'WIJSHEID VAN DE MEADMAKER':'MEADWRIGHT\'S WISDOM')+'</div></div><div class="ornament">— ⬡ —</div>'
     +wisdom.map(function(tip){return '<div class="info-box" style="margin-bottom:8px"><div style="font-size:13px;color:var(--text2)">'+tip+'</div></div>';}).join('')+'</div>':'';
 
-  return healthCard+readyCard+finishCard+recCard+renderWhatIfCard(b)+renderBatchNarrative(b)
-    +'<div class="grid-2"><div>'+actionsHtml+upcomingHtml+'</div><div>'+wisdomHtml+'</div></div>';
+  // ---- Deep diagnostics (E13): the what-if simulator and general brewing
+  // wisdom are exploratory/reference material, not something the brewer needs
+  // to see on every visit — collapsed behind one expander rather than two
+  // more always-open cards.
+  var deepDiagBody=renderWhatIfCard(b)+wisdomHtml;
+  var deepDiagHtml=deepDiagBody?('<details style="margin-bottom:16px"><summary style="cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text3);padding:6px 0;user-select:none">'
+    +(nl?'🔬 DIEPGAANDE DIAGNOSTIEK':'🔬 DEEP DIAGNOSTICS')+'</summary>'+deepDiagBody+'</details>'):'';
+
+  return healthCard+readyCard+progressCard+finishCard+recCard+renderBatchNarrative(b)
+    +actionsHtml+upcomingHtml+deepDiagHtml;
 }

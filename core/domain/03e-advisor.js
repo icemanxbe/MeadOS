@@ -140,6 +140,18 @@ function mwBatchSignals(b){
   // range instead of a single flat day count — "18-30 days" beats a lone "24".
   var yeastSpeed=(y&&y.speed)||null;
   var expectedFermentRange=(recipeFermentDays&&typeof mwExpectedFermentDuration==='function')?mwExpectedFermentDuration(recipeFermentDays,yeastSpeed):null;
+  // Progress band: where THIS batch's elapsed days sit relative to the
+  // expected range, as a banded status rather than a modeled curve — a
+  // fermentation doesn't follow one "correct" line, so this only ever claims
+  // a position (ahead/on-track/watch/behind), never a precise expected value.
+  // 'watch' is a 15%-over-range pre-warning zone, ahead of the 'fermenting-long'
+  // rule's harder threshold at expectedFermentRange.high.
+  var fermentProgress=(fermenting&&expectedFermentRange&&daysSinceStart!=null)?(function(){
+    var lo=expectedFermentRange.low,hi=expectedFermentRange.high,exp=expectedFermentRange.expected;
+    var watchEdge=Math.round(hi*1.15);
+    var phase=daysSinceStart<lo?'ahead':daysSinceStart<=hi?'on-track':daysSinceStart<=watchEdge?'watch':'behind';
+    return {phase:phase,pct:exp>0?Math.round(daysSinceStart/exp*100):null,days:daysSinceStart,low:lo,high:hi,expected:exp};
+  })():null;
   // Historical learning (E3): the brewer's OWN past batches, not generic lore.
   var historical=(typeof mwHistoricalComparison==='function')?mwHistoricalComparison(b):null;
 
@@ -161,7 +173,7 @@ function mwBatchSignals(b){
     sparkling:sparkling, recipeBacksweetens:recipeBacksweetens,
     bottled:bottled, agedDays:agedDays, readyDays:readyDays, peakDays:peakDays, maxAgeDays:maxAgeDays, agePhase:agePhase,
     volume:volume, fermenterCapacity:fermenterCapacity, headspaceFrac:headspaceFrac, recipeFermentDays:recipeFermentDays, recipeBulkAgeDays:recipeBulkAgeDays,
-    yeastSpeed:yeastSpeed, expectedFermentRange:expectedFermentRange,
+    yeastSpeed:yeastSpeed, expectedFermentRange:expectedFermentRange, fermentProgress:fermentProgress,
     historical:historical
   };
 }
@@ -441,7 +453,7 @@ function _advRules(){
       if(!s.fermenting||!s.historical||s.historical.avgDaysToFinish==null||s.daysSinceStart==null)return null;
       return {id:'historical-pace',severity:'info',category:'fermentation',
         data:{daysSoFar:s.daysSinceStart,avgDays:s.historical.avgDaysToFinish,avgRating:s.historical.avgRating,
-          sampleSize:s.historical.sampleSize,matchedOn:s.historical.matchedOn},
+          sampleSize:s.historical.sampleSize,matchedOn:s.historical.matchedOn,yeast:s.historical.yeast,honey:s.historical.honey},
         reasons:['own-history']};
     },
     function extendedBulkAging(s){
@@ -659,11 +671,25 @@ function mwIngredientStats(){
 function mwHistoricalComparison(b){
   if(!b)return null;
   var all=(typeof APP!=='undefined'&&APP.batches)||[];
+  // Honey resolves the same way mwBatchSignals() does: explicit batch field,
+  // else the recipe's first honey — so batches sharing a recipe still match.
+  function honeyOf(o){
+    if(o.honeyType)return o.honeyType;
+    var r=(typeof APP!=='undefined'&&APP.recipes)?APP.recipes.filter(function(rr){return rr.id===o.recipeId;})[0]:null;
+    return (r&&typeof honeyTypesInRecipe==='function')?((honeyTypesInRecipe(r)||[])[0]||null):null;
+  }
+  var bHoney=honeyOf(b);
   var pool=all.filter(function(o){return o.id!==b.id&&o.recipeId===b.recipeId;});
   var matchedOn='recipe';
   if(pool.length<2){
-    var byYeast=b.yeast?all.filter(function(o){return o.id!==b.id&&o.yeast===b.yeast;}):[];
-    if(byYeast.length>=2){pool=byYeast;matchedOn='yeast';}
+    // Same yeast+honey combo (e.g. every EC-1118 orange-blossom batch you've
+    // made, regardless of recipe tweaks) is a closer match than yeast alone.
+    var byYeastHoney=(b.yeast&&bHoney)?all.filter(function(o){return o.id!==b.id&&o.yeast===b.yeast&&honeyOf(o)===bHoney;}):[];
+    if(byYeastHoney.length>=2){pool=byYeastHoney;matchedOn='yeast-honey';}
+    else{
+      var byYeast=b.yeast?all.filter(function(o){return o.id!==b.id&&o.yeast===b.yeast;}):[];
+      if(byYeast.length>=2){pool=byYeast;matchedOn='yeast';}
+    }
   }
   if(pool.length<2)return null;
 
@@ -687,7 +713,7 @@ function mwHistoricalComparison(b){
   var stats=pool.map(statsFor);
   function avg(arr){var v=arr.filter(function(x){return x!=null;});return v.length?mwRound(v.reduce(function(s,x){return s+x;},0)/v.length,1):null;}
   return {
-    matchedOn:matchedOn, sampleSize:pool.length,
+    matchedOn:matchedOn, sampleSize:pool.length, yeast:b.yeast||null, honey:bHoney,
     avgDaysToFinish:avg(stats.map(function(s){return s.daysToFinish;})),
     avgAttenuation:avg(stats.map(function(s){return s.atten;})),
     avgRating:avg(stats.map(function(s){return s.rating;}))
