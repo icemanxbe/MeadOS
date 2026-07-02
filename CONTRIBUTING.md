@@ -42,6 +42,29 @@ tag in the right place in `index.html`.
 Because the app relies on inline `onclick` handlers, **functions must stay
 global** — don't wrap modules in IIFEs or convert them to ES modules.
 
+## Architecture principles
+
+A few rules the codebase already follows — keep following them:
+
+- **Signals contain facts only.** `mwBatchSignals()` (`core/domain/03e-advisor.js`)
+  never contains advice text or i18n strings — just derived numbers and booleans.
+  Rules read signals and emit recommendations; the view layer (`12-advisor.js`)
+  is the only place recommendation strings live.
+- **Views never calculate.** If a number can be derived from a batch/recipe
+  (honey kg, attenuation, sugar break, nutrient grams…), there should be exactly
+  **one** function that derives it (`core/domain/03d-mead-model.js`), called from
+  everywhere that needs it — not re-derived inline per call site. Two duplicate
+  copies of the same formula is a bug waiting to happen the moment one gets fixed
+  and the other doesn't.
+- **The advisor stays deterministic.** No LLM calls in the reasoning path —
+  brewers troubleshooting a stuck fermentation want repeatable answers. Use AI
+  (if ever) for docs/help text, not for "is my fermentation stuck?".
+  Every recommendation should carry `reasons` a view can render as "why" —
+  don't ship a recommendation you can't explain.
+- **Prefer functions over classes, explicit control flow over clever one-liners**
+  — matches the ES5-flavoured style above; a `for` loop that's obviously correct
+  beats a chained `reduce()` that isn't.
+
 ## Making a change
 
 1. Edit the relevant `core/*.js`, `app.css`, `index.html`, or `server.py`.

@@ -409,7 +409,7 @@ function labelStudioBottled(ctx){
 }
 function labelStudioWindow(ctx){
   var T=LSTR(),M=T.months,bot=ctx.bot,r=ctx.recipe||{};
-  var minD=r.minAgeDays||30,maxD=r.maxAgeDays||(r.peakAgeDays?r.peakAgeDays*2:365);
+  var minD=r.minAgeDays||r.minDays||30,maxD=r.maxAgeDays||r.maxDays||((r.peakAgeDays||r.peakDays)?(r.peakAgeDays||r.peakDays)*2:365);
   if(bot&&bot.date){
     var d=new Date(bot.date);
     if(!isNaN(d.getTime())){

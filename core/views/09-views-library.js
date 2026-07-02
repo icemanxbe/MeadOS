@@ -939,6 +939,11 @@ function renderSettings(){
     +'<div style="font-size:11.5px;color:var(--text3);margin-top:2px;line-height:1.5">When you create a new batch, MeadOS will automatically subtract the honey (matched by variety), 1 yeast packet, and the nutrient amount from your tracked supplies. Skipped silently if no matching supply exists.</div></span></label>'
     +'</div>'
     +'</div>'
+    +'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">🧭 ADVISOR</div></div>'
+    +'<div class="form-group"><label class="form-label">Explanation level</label><select class="form-select" id="set-advisor-verbosity" onchange="saveAdvisorVerbosity()">'
+    +[['beginner','Beginner — explain everything'],['experienced','Experienced (default)'],['pro','Pro — headlines only']].map(function(o){return'<option value="'+o[0]+'"'+((APP.settings.advisorVerbosity||'experienced')===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')
+    +'</select><div style="font-size:12px;color:var(--text3);margin-top:4px">Beginner always explains why a recommendation matters; Pro shows just the headline. Either way, only the top few recommendations show by default — the rest sit behind a "+N more" toggle.</div></div>'
+    +'</div>'
     +renderFermentersCard()
     +'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">🏠 HA COMPANION CARD</div></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:6px">A rich Lovelace card you can paste into any HA dashboard. Shows your active batches, fermenter status, drinking-window alerts, next milestone, and a button to open MeadOS — all reading from <code style="background:var(--bg);padding:1px 4px;border-radius:3px;font-size:11px">sensor.meadows_data</code> attributes that MeadOS publishes on every save — requires the Home Assistant connection above with “Publish status summary” enabled.</div>'
@@ -993,8 +998,50 @@ function renderSettings(){
     +'<div class="card"><div class="card-header"><div class="card-title">DANGER ZONE</div></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:16px">Permanently delete all batches, logs, and settings. Cannot be undone.</div>'
     +'<button class="btn btn-danger" onclick="resetAllData()">Reset All Data</button></div>'
+    +renderSourcesCard()
     +'</div></div>'
     +'<div style="text-align:center;font-size:11px;color:var(--text3);margin:26px 0 6px;line-height:1.8">MEADŌS · © 2026 <a href="https://github.com/icemanxbe/MeadOS" target="_blank" rel="noopener" style="color:var(--gold2);text-decoration:none">icemanxbe</a><br><a href="https://github.com/icemanxbe/MeadOS/blob/main/LICENSE" target="_blank" rel="noopener" style="color:var(--text3)">PolyForm Noncommercial License 1.0.0</a> — free to use &amp; modify, not to sell</div>';
+}
+
+// ==================== SOURCES & CREDITS (Settings card) ====================
+// None of MeadOS's brewing maths was invented from scratch — every formula
+// traces back to a public reference or another project's published work.
+// Listed here (and mirrored in the wiki's Formulas & Methods page) so credit
+// goes where it's due, not just buried in code comments.
+function renderSourcesCard(){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  function row(title,body){
+    return '<div style="padding:10px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="font-family:var(--font-display);font-size:13.5px;color:var(--gold2);margin-bottom:3px">'+title+'</div>'
+      +'<div style="font-size:12.5px;color:var(--text2);line-height:1.6">'+body+'</div></div>';
+  }
+  var link=function(url,label){return '<a href="'+url+'" target="_blank" rel="noopener" style="color:var(--gold2)">'+label+'</a>';};
+  var rows=[
+    row(nl?'Honing-, gist- en voedingsbibliotheek':'Honey, yeast &amp; nutrient library data',
+      (nl?'Onze profielen zijn ter controle vergeleken met de gepubliceerde honing-, gist- en voedingskennis van ':'Our profiles were cross-referenced for parity against the published honey, yeast and nutrient knowledge from ')
+        +link('https://www.wyvernmeadery.com/','Wyvern Meadery')+(nl?', inclusief hun TOSCA 2.0-voedingsconstanten.':', including their TOSCA 2.0 nutrient-dosing constants.')),
+    row(nl?'Kernformules (bierpunten, ABV, vergisting)':'Core brewing maths (gravity points, ABV, attenuation)',
+      (nl?'Standaard homebrouw-formules, zoals beschreven door':'Standard homebrewing formulas, as described by')+' John Palmer, <em>'+link('https://www.howtobrew.com/','How to Brew')+'</em>.'),
+    row('TOSNA 2.0',
+      (nl?'Het gefaseerde, organische voedingsprotocol, gepopulariseerd door':'The staggered, organic-only nutrient protocol, popularised by')+' Matt Williams / '+link('https://meadmakr.com/','MeadMakr')+'.'),
+    row(nl?'Honing/vrucht-°Brix zwaartekrachtmodel &amp; gistafhankelijke stikstofschaal':'Honey/fruit °Brix gravity model &amp; yeast-tier nutrient scaling',
+      (nl?'Het idee om elk ingrediënt zijn eigen °Brix-bijdrage te geven (in plaats van aan te nemen dat honing alles levert), en om de gist\'s eigen stikstofbehoefte de voedingsdosis te laten sturen, is geïnspireerd op ':'The approach of giving every ingredient its own °Brix contribution (rather than assuming honey supplies all of it), and letting the yeast\'s own nitrogen demand drive the nutrient dose, is inspired by ')
+        +link('https://meadtools.com/','MeadTools')+' (open-source: '+link('https://github.com/ljreaux/MeadTools','github.com/ljreaux/MeadTools')+'). '
+        +(nl?'Hun eigen ingrediëntendatabase put op zijn beurt uit de ':'Their own ingredient database in turn draws on the ')+link('https://fdc.nal.usda.gov/','USDA FoodData Central')+(nl?' data van de Amerikaanse overheid.':' public database.')),
+    row(nl?'Moleculaire SO₂':'Molecular SO₂',
+      (nl?'De pH-afhankelijke dissociatie van zwaveligzuur (pKa₁ ≈ 1,81), zoals gebruikt in wijnbouwreferenties.':'The pH-dependent dissociation of sulfurous acid (pKa₁ ≈ 1.81), as used across winemaking references.')),
+    row(nl?'SG ↔ Brix &amp; hydrometer-temperatuurcorrectie':'SG ↔ Brix &amp; hydrometer temperature correction',
+      (nl?'De standaard NIST-dichtheids- en refractometrie-polynomen.':'The standard NIST density and refractometry polynomials.')),
+    row(nl?'Refractometer-alcoholcorrectie':'Refractometer alcohol correction',
+      'Sean Terrill\'s cubic fit.'),
+    row(nl?'Restkoolzuur bij bottelen (priming)':'Priming-sugar residual CO₂',
+      (nl?'Het standaard temperatuurpolynoom dat vrijwel elke priming-calculator gebruikt.':'The standard temperature polynomial used by nearly every priming calculator.'))
+  ].join('');
+  return '<div class="card"><div class="card-header"><div class="card-title">📚 '+(nl?'BRONNEN &amp; DANK':'SOURCES &amp; CREDITS')+'</div></div>'
+    +'<div style="font-size:12.5px;color:var(--text3);font-style:italic;margin-bottom:4px;line-height:1.55">'
+    +(nl?'Geen van de rekenmodellen hieronder is door MeadOS zelf bedacht — elk bouwt voort op gepubliceerd werk. Zie ook de ':'None of the maths below is original to MeadOS — every model builds on published work. See also the ')
+    +link('https://github.com/icemanxbe/MeadOS/wiki/Formulas-and-Methods',(nl?'wiki (Formules &amp; Methoden)':'wiki (Formulas &amp; Methods)'))+(nl?' voor de volledige, uitgewerkte wiskunde.':' for the full worked maths.')
+    +'</div>'+rows+'</div>';
 }
 
 // ==================== FERMENTERS MANAGEMENT (Settings card) ====================

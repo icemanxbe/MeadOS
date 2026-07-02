@@ -1278,9 +1278,9 @@ function getDrinkingTasks(){
     if(!recipe)return;
     if(typeof bottlesOnHand==='function'&&bottlesOnHand(bot)<=0)return;
     var aged=daysSince(bot.date);
-    var minD=recipe.minAgeDays||30;
-    var peakD=recipe.peakAgeDays||(minD*3);
-    var maxD=recipe.maxAgeDays||(peakD*2);
+    var minD=recipe.minAgeDays||recipe.minDays||30;
+    var peakD=recipe.peakAgeDays||recipe.peakDays||(minD*3);
+    var maxD=recipe.maxAgeDays||recipe.maxDays||(peakD*2);
     var color=getBatchColor(b);
     // Entering window (one-time near minAge)
     if(aged>=minD-2&&aged<=minD+5){

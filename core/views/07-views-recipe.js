@@ -21,7 +21,7 @@ function toggleFavoriteRecipe(rid,ev){
 // Classify a recipe by total time from brew day to ready-to-drink window
 // (fermentDays + minAgeDays). Buckets: quick (<90d), medium (90-365), long (>365)
 function recipeAgeCategory(r){
-  var totalToReady=(r.fermentDays||42)+(r.minAgeDays||60);
+  var totalToReady=(r.fermentDays||42)+(r.minAgeDays||r.minDays||60);
   if(totalToReady<90)return'quick';
   if(totalToReady<365)return'medium';
   return'long';
@@ -509,7 +509,7 @@ function recipeConfigTargetsHtml(r,vol,cfg){
   var yt=(typeof mwYeastTargets==='function')?mwYeastTargets(og,cfg.yeast):null;
   var fg=yt?yt.fg:(r.fgTarget||1.000);
   var abv=yt?yt.abv:(r.abvTarget||parseFloat(calcABV(og,fg)));
-  var nut=(typeof mwNutrientGrams==='function')?mwNutrientGrams(vol,og,cfg.schedule):null;
+  var nut=(typeof mwNutrientGrams==='function')?mwNutrientGrams(vol,og,cfg.schedule,cfg.yeast):null;
   // Inner stat-cards only (no wrapper) so it can fill the existing TARGETS card
   // (#recipe-targets-live) live. OG is the recipe's spec; FG/ABV follow the yeast;
   // nutrient follows volume + schedule.
@@ -821,9 +821,18 @@ function renderRecipeComboBlock(r){
 function renderRecipeCostEstimate(r,scaleVol){
   var honeyPrice=parseFloat(APP.settings.honeyPricePerKg)||0;
   var currency=APP.settings.currency||'€';
-  // Honey kg from OG (rough rule: 292 SG points per kg of honey diluted in 1L)
-  var sgPoints=(r.ogTarget-1)*1000;
-  var honeyKg=sgPoints*scaleVol/292;
+  // Fruit/juice ingredients already supply part of that OG — credit it back
+  // against honey, or a melomel/cyser gets charged for its fruit's sugar
+  // twice (once via a full-OG honey estimate, once via "extras" below).
+  var linearFactor=scaleVol/(r.volume||5);
+  var adjunctHoneyEquivKg=0;
+  (r.ingredients||[]).forEach(function(ing){
+    var am=(ing.amount||'').match(/^~?\s*([0-9]+(?:\.[0-9]+)?)\s*(kg|g|L|ml)\b/i);
+    if(!am)return;
+    var kg=parseFloat(am[1])*(/^g$|^ml$/i.test(am[2])?0.001:1)*linearFactor;
+    adjunctHoneyEquivKg+=(typeof mwAdjunctHoneyEquivalentKg==='function')?mwAdjunctHoneyEquivalentKg(ing.item,kg):0;
+  });
+  var honeyKg=Math.max(0,(typeof mwHoneyKg==='function'?mwHoneyKg(r.ogTarget,scaleVol):(r.ogTarget-1)*1000*scaleVol/292)-adjunctHoneyEquivKg);
   // Look up per-supply prices. We use the first priced supply of each type.
   function firstPricedSupplyByType(type){
     if(!APP.supplies)return null;
