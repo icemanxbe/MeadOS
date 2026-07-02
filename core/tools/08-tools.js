@@ -180,6 +180,16 @@ function renderTools(){
     +'<div style="text-align:center;padding:16px;background:var(--bg3);border-radius:var(--radius);margin-top:8px"><div style="font-family:var(--font-display);font-size:26px;color:var(--gold2)" id="ta-result">—</div><div class="micro-label" id="ta-result-label">ACID TO ADD</div></div>'
     +'<div style="margin-top:10px;padding:10px;background:var(--bg4);border-radius:var(--radius);font-family:var(--font-mono);font-size:12px;color:var(--text2);line-height:1.7" id="ta-detail">—</div>'
     +'</div>'
+    +'<div class="card"><div class="card-header"><div class="card-title">🥄 BENCH TRIAL SCALER</div></div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.55">Dissolve an additive (acid, tannin, oak extract, backsweetening syrup…) into a small stock solution so you can dose tiny test glasses precisely. Once a trial wins on taste, scale that exact dose up to the full batch.</div>'
+    +'<div class="form-row-3"><div class="form-group"><label class="form-label">Additive in stock (g)</label><input class="form-input" id="bt-stockg" type="number" value="1" step="0.1" oninput="calcBenchTrial()"></div>'
+    +'<div class="form-group"><label class="form-label">Dissolved into (mL)</label><input class="form-input" id="bt-stockml" type="number" value="100" step="1" oninput="calcBenchTrial()"></div>'
+    +'<div class="form-group"><label class="form-label">Winning dose (mL stock)</label><input class="form-input" id="bt-dosed" type="number" value="5" step="0.1" oninput="calcBenchTrial()"></div></div>'
+    +'<div class="form-row"><div class="form-group"><label class="form-label">Trial sample size (mL mead)</label><input class="form-input" id="bt-sample" type="number" value="100" step="1" oninput="calcBenchTrial()"></div>'
+    +'<div class="form-group"><label class="form-label">Full batch size (L)</label><input class="form-input" id="bt-batch" type="number" value="5" step="0.1" oninput="calcBenchTrial()"></div></div>'
+    +'<div style="text-align:center;padding:16px;background:var(--bg3);border-radius:var(--radius);margin-top:8px"><div style="font-family:var(--font-display);font-size:26px;color:var(--gold2)" id="bt-result">—</div><div class="micro-label">ADDITIVE FOR FULL BATCH</div></div>'
+    +'<div style="margin-top:10px;padding:10px;background:var(--bg4);border-radius:var(--radius);font-family:var(--font-mono);font-size:12px;color:var(--text2);line-height:1.7" id="bt-detail">—</div>'
+    +'</div>'
     +renderBlendingTool()
     +'</div>';
 }
@@ -196,6 +206,7 @@ function initTools(){
   calcPitch();
   if(typeof calcSO2==='function')calcSO2();
   if(typeof calcAcid==='function')calcAcid();
+  if(typeof calcBenchTrial==='function')calcBenchTrial();
   if(typeof renderTOSNAPlan==='function')renderTOSNAPlan();
 }
 
@@ -264,6 +275,27 @@ function calcAcid(){
   }
 }
 
+// Bench-trial scaler: a stock solution (stockG dissolved in stockMl water) lets
+// you dose small trial glasses precisely. Once a dose wins on taste, scale it
+// to the batch: rate = (stock concentration × winning dose) / trial volume.
+function calcBenchTrial(){
+  var stockG=parseFloat(document.getElementById('bt-stockg').value);
+  var stockMl=parseFloat(document.getElementById('bt-stockml').value);
+  var dosedMl=parseFloat(document.getElementById('bt-dosed').value);
+  var sampleMl=parseFloat(document.getElementById('bt-sample').value);
+  var batchL=parseFloat(document.getElementById('bt-batch').value);
+  var resEl=document.getElementById('bt-result'),detEl=document.getElementById('bt-detail');
+  if(!stockG||!stockMl||!dosedMl||!sampleMl||!batchL){resEl.textContent='—';detEl.textContent='Fill in the stock solution, the winning trial dose, sample size and batch volume.';return;}
+  var stockConc=stockG/stockMl;
+  var gInTrial=stockConc*dosedMl;
+  var trialVol=sampleMl+dosedMl;
+  var totalG=(gInTrial/trialVol)*batchL*1000;
+  var stockMlForBatch=totalG/stockConc;
+  resEl.textContent=totalG.toFixed(2)+' g';
+  detEl.innerHTML='Stock solution: '+stockConc.toFixed(3)+' g/mL. Winning trial used '+dosedMl+' mL stock in '+sampleMl+' mL mead.'
+    +'<br>Scaled to '+batchL+' L: <strong>'+totalG.toFixed(2)+' g</strong> additive'
+    +' — measure it out as <strong>'+stockMlForBatch.toFixed(1)+' mL</strong> of the same stock solution (more precise than weighing a tiny amount directly).';
+}
 function calcPitch(){
   var yeastId=document.getElementById('pc-yeast').value;
   var vol=parseFloat(document.getElementById('pc-vol').value);
