@@ -592,9 +592,9 @@ function getDrinkingWindowStatus(batch){
   if(!bot||!bot.date)return null;
   var recipe=APP.recipes.find(function(r){return r.id===batch.recipeId;});
   if(!recipe)return null;
-  var minD=recipe.minAgeDays||30;
-  var peakD=recipe.peakAgeDays||(minD*3);
-  var maxD=recipe.maxAgeDays||(peakD*2);
+  var minD=recipe.minAgeDays||recipe.minDays||30;
+  var peakD=recipe.peakAgeDays||recipe.peakDays||(minD*3);
+  var maxD=recipe.maxAgeDays||recipe.maxDays||(peakD*2);
   var aged=daysSince(bot.date);
   var status;
   if(aged<minD-30)status='pre-window';

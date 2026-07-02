@@ -86,9 +86,9 @@ function buildBestDrinkBoxSVG(batch,cfg){
   if(!bot||!bot.date)return'';
   var recipe=APP.recipes.find(function(r){return r.id===batch.recipeId;});
   if(!recipe)return'';
-  var minD=recipe.minAgeDays||30;
-  var peakD=recipe.peakAgeDays||(minD*3);
-  var maxD=recipe.maxAgeDays||(peakD*2);
+  var minD=recipe.minAgeDays||recipe.minDays||30;
+  var peakD=recipe.peakAgeDays||recipe.peakDays||(minD*3);
+  var maxD=recipe.maxAgeDays||recipe.maxDays||(peakD*2);
   var botDate=new Date(bot.date);
   if(isNaN(botDate.getTime()))return'';
   function fmtShort(d){

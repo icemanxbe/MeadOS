@@ -10,9 +10,13 @@ function bottleDaysAged(b){
 }
 
 function getAgingProfile(b){
-  // Returns { minDays, peakDays, maxDays } pulled from recipe or sensible defaults
+  // Returns { minDays, peakDays, maxDays } pulled from recipe or sensible
+  // defaults. Custom/wizard-built recipes historically saved minDays/
+  // peakDays/maxDays (no "Age") while built-ins use minAgeDays/peakAgeDays/
+  // maxAgeDays — check both so a custom recipe's own values are used.
   var r=APP.recipes.find(function(x){return x.id===b.recipeId;});
-  if(r&&r.peakAgeDays)return{minDays:r.minAgeDays||30,peakDays:r.peakAgeDays,maxDays:r.maxAgeDays||(r.peakAgeDays*3)};
+  var peak=r&&(r.peakAgeDays||r.peakDays);
+  if(peak)return{minDays:(r.minAgeDays||r.minDays)||30,peakDays:peak,maxDays:(r.maxAgeDays||r.maxDays)||(peak*3)};
   return{minDays:60,peakDays:180,maxDays:730};
 }
 

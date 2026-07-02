@@ -41,20 +41,20 @@ It runs on hardware **you** control and stores your shared brewing data locally 
 
 ## ✨ What you get
 
-**🧭 A Brewing Advisor, not just a log**
-Every batch gets an **Advisor** that turns your readings into guidance. A weighted **health score** (with a day-over-day trend), a **readiness** gauge that answers *"can I drink it yet?"*, a **predicted finish date** from your gravity drop-rate, and clear **Critical / Recommended / Info** recommendations — each with a confidence level and the reasoning behind it. It knows the **1/3 sugar break** for *your* batch, so it tells you when to **aerate** and when to **stop**, when the final nutrient is due, and when to **stabilise before backsweetening**; it flags a likely stall, an out-of-range or swinging temperature, an approaching alcohol ceiling, a **fructose-stall risk** (high-fructose honey + non-fructophilic yeast), stale readings, and **aging milestones** — all grouped by category (fermentation · nutrition · oxygen · temperature · stabilisation · clarity · aging · data). Deterministic throughout: a transparent rule engine over your data, no guesswork.
+**🧭 A Brewing Advisor that reasons, not just a log**
+Every batch gets an **Advisor** that turns your readings into guidance — and it reads the *shape* of your history, not just the latest number. A **timeline analyzer** spots a real plateau and knows whether it started before or after the sugar break (an abnormal early stall vs. a normal end-of-ferment tail-off); a **weighted multi-cause diagnosis** ranks *several* possible reasons for a stall at once instead of guessing one; and it predicts *when* you'll likely cross the sugar break, not just whether you have. A weighted **health score** (with a day-over-day trend), a **readiness** gauge that answers *"can I drink it yet?"* in brewer language — Improving → Drink now → Peak window → Past peak — and a **progress band** showing whether elapsed fermentation days are ahead, on-track, or behind the expected range for this recipe/yeast, as a position, never a fake-precise curve. The tab opens with a one-line summary — *"2 to watch · 1 insight"* — then groups recommendations into **Actions / Watch / Insights**, each with a plain-language reason, an **evidence level** (Strong / Moderate / Limited — never a made-up percentage), and for the ones that matter a **"why this matters"** line, occasionally paired with a **"consider waiting if…"** note where a genuine trade-off exists. A **batch story** stitches your real logged events — start, sugar-break crossing, nutrient additions, a plateau, bottling — into one timeline, and a **"what if?"** simulator re-runs the same real rules with one thing hypothetically fixed ("what if nutrients were complete?") to show what would change. It compares this batch to **your own past batches** — same recipe, then same yeast+honey combination, then same yeast — not generic lore, and surfaces honey×yeast pairing notes pulled from data already in the libraries. The temperature it reasons from is a **live sensor bound to wherever the batch actually is** — its fermenter while active, the specific cellar cabinet once bottled — not a stale hand-logged reading. Pick **beginner / experienced / pro** explanation density in Settings. Deterministic throughout: a transparent rule engine over your data, no LLM in the loop, no guesswork.
 
 **🧪 Batches tracked by reality, not the calendar**
 Log gravity and temperature onto a combined **gravity-&-ABV** chart and a unified **Fermentation Analysis** overlay (SG · temperature · drop-rate on one timeline, so you can *see* a warm spell speed things up). Batches move through *fermenting → conditioning → aging → bottled* based on the steps you actually complete, with a **Target-vs-Actual** read-out on every batch. Edit a batch's **step schedule** (and save reusable templates), record **competition entries & awards**, and let a guided bottling workflow handle pre-flight checks, the final reading, a sanitiser timer, bottle counts and labels.
 
 **📜 38 built-in recipes you can configure before you brew**
-Traditionals, melomels, cysers, pyments, metheglins, bochets, braggots, sack & port-style meads, plus five sparkling / bottle-conditioned recipes. Open any recipe and **pick your honey, yeast, nutrient and schedule** — the ingredients **and** the targets (FG / ABV / nutrient grams) recompute live as you drag the scale slider, and it **warns you before you brew** if the yeast can't reach the recipe's target. Every recipe also rates **every honey in the library** for *that* mead — a hand-curated great / good / workable / clash verdict with a note on what each swap does. "Brew This Recipe" carries your exact configuration straight into the new-batch form.
+Traditionals, melomels, cysers, pyments, metheglins, bochets, braggots, sack & port-style meads, plus five sparkling / bottle-conditioned recipes. Open any recipe and **pick your honey, yeast, nutrient and schedule** — the ingredients **and** the targets (FG / ABV / nutrient grams) recompute live as you drag the scale slider, and it **warns you before you brew** if the yeast can't reach the recipe's target. A melomel or cyser's **fruit and juice sugar counts toward the gravity math**, so the Designer doesn't quietly call for more honey than the batch needs; nutrient dosing scales with **your yeast's own nitrogen demand**, not a flat number regardless of strain. Every recipe also rates **every honey in the library** for *that* mead — a hand-curated great / good / workable / clash verdict with a note on what each swap does. "Brew This Recipe" carries your exact configuration straight into the new-batch form.
 
 **✦ Design without doing the maths**
 The Recipe Designer back-solves honey, OG/FG, a suitable yeast and a nutrient plan from a style, volume, target ABV and sweetness — then hands you an editable recipe.
 
 **🧮 Calculators with context**
-ABV, honey-for-target-gravity, **TOSNA 2.0** scheduling, sulfite (molecular SO₂), acid/TA, backsweetening & stabilisation, **carbonation / priming** with a bottle-pressure safety warning, temperature correction, SG↔Brix, sanitiser dosing, and **blending** — combine two finished batches in any ratio and turn the result into a new batch with weighted OG/ABV and lineage back to its sources.
+ABV, honey-for-target-gravity, **TOSNA 2.0** scheduling, sulfite (molecular SO₂), acid/TA, backsweetening & stabilisation, a **bench trial scaler** (dose a stock solution precisely, then scale the winning trial to the full batch), **carbonation / priming** with a bottle-pressure safety warning, temperature correction, SG↔Brix, sanitiser dosing, and **blending** — combine two finished batches in any ratio and turn the result into a new batch with weighted OG/ABV and lineage back to its sources.
 
 **🍾 Inventory & a cellar that mirror real life**
 Track honey, yeast, nutrients, chemicals and bottles with prices, expiry and restock thresholds; auto-deduct on brew day; see which recipes you can **brew with what you have**; and place finished bottles on real shelves with live drinking windows.
@@ -142,6 +142,17 @@ python3 server.py --db /path/meados.db   # a different database location
 python3 server.py --host 127.0.0.1       # local-only; don't expose on the LAN
 ```
 
+**Want it running in the background, starting on login and restarting itself if it ever crashes?** Use the install script for your OS — no extra dependencies either way:
+
+```sh
+./install.sh install     # macOS (launchd) / Linux (systemd --user)
+```
+```powershell
+.\install.ps1 install    # Windows (Task Scheduler)
+```
+
+Both take `install | update | start | stop | restart | status | uninstall | run`, with `update` doing a `git pull` and restarting for you. See **[Installation](https://github.com/icemanxbe/MeadOS/wiki/Installation)** for the full command reference.
+
 ➡️ Full install options, always-on service setup, and your first batch: **[Installation](https://github.com/icemanxbe/MeadOS/wiki/Installation)** · **[Getting Started](https://github.com/icemanxbe/MeadOS/wiki/Getting-Started)**.
 
 ---
@@ -191,7 +202,7 @@ Free to use, modify and share for any **noncommercial** purpose. Selling it or u
 Just Python 3.8+. No packages, no Node, no build step, no separate database.
 
 **Is the Advisor "AI"?**
-No — it's a transparent, deterministic rule engine over your batch data, so every recommendation comes with its reasoning and a confidence you can trust. (It's designed so an optional AI *explainer* could be added later, but it never makes the safety-critical calls.)
+No — it's a transparent, deterministic rule engine over your batch data, so every recommendation comes with its reasoning and an evidence level you can trust. (It's designed so an optional AI *explainer* could be added later, but it never makes the safety-critical calls.)
 
 **Where's my data, and how do I back it up?**
 Everything is in one file, `meados.db` (plus uploaded images under `assets/`). Copy it — safe even while running. The last 200 saves are kept for recovery. → [Backups & Data](https://github.com/icemanxbe/MeadOS/wiki/Backups-and-Data).
@@ -227,6 +238,8 @@ MeadOS/
 │   ├── share/              # public share view + HA media
 │   └── boot/               # schema, storage budget, modal handlers, init (loads last)
 ├── server.py               # zero-dependency Python server + SQLite storage
+├── install.sh              # background-service install/update/run — macOS (launchd) + Linux (systemd --user)
+├── install.ps1             # same, for Windows (Task Scheduler)
 ├── test.html               # zero-dependency unit checks (model, advisor, calculators)
 ├── sw.js                   # service worker (offline shell)
 ├── meados.db               # created on first save (gitignored)

@@ -8,7 +8,7 @@ var DEFAULT_RECIPE_TEMPLATE={
   name:'',style:'Traditional Mead',difficulty:'Intermediate',
   description:'',brandColor:'#c9a84c',
   volume:5,ogTarget:1.095,fgTarget:1.010,abvTarget:11.5,fermentDays:42,
-  minDays:60,peakDays:180,maxDays:730,
+  bulkAgeDays:90,minAgeDays:60,peakAgeDays:180,maxAgeDays:730,
   tags:['custom'],
   ingredients:[{item:'Honey',amount:'1.7 kg',notes:'Wildflower or local'},
                {item:'Spring water',amount:'4.5 L',notes:'Top up to 5L total'},
@@ -49,8 +49,21 @@ function wizComputeMath(w){
   var abv=parseFloat(w.abv)||12;
   var vol=parseFloat(w.volume)||5;
   var og=fg+abv/131.25;
-  var honeyKg=(og-1)*1000*vol/292;
-  return{fg:fg,og:Math.round(og*1000)/1000,abv:abv,vol:vol,honeyKg:Math.round(honeyKg*100)/100};
+  var st=WIZ_STYLES.find(function(s){return s.key===w.style;})||WIZ_STYLES[0];
+  // Fruit/juice brings its own fermentable sugar — a melomel/cyser sized as if
+  // honey supplied 100% of the OG always calls for more honey than it needs.
+  // Falls back to the wizard's own default adjunct amount (same one the
+  // ingredient list uses) when the user hasn't typed a quantity yet.
+  var adjunctAmount='',adjunctKg=0,adjunctHoneyEquivKg=0;
+  if(st.adjunct==='fruit'||st.adjunct==='juice'){
+    var typed=parseFloat(w.adjunctAmount)||0;
+    if(typed>0){adjunctKg=typed;adjunctAmount=w.adjunctAmount;}
+    else{adjunctKg=st.adjunct==='fruit'?Math.round(vol*0.3*10)/10:Math.round(vol*0.5*10)/10;adjunctAmount=adjunctKg+(st.adjunct==='fruit'?' kg':' L');}
+    adjunctHoneyEquivKg=(typeof mwAdjunctHoneyEquivalentKg==='function')?mwAdjunctHoneyEquivalentKg(w.adjunctName,adjunctKg,MW_ADJUNCT_BRIX_DEFAULT):0;
+  }
+  var honeyKg=Math.max(0,(typeof mwHoneyKg==='function'?mwHoneyKg(og,vol):(og-1)*1000*vol/292)-adjunctHoneyEquivKg);
+  return{fg:fg,og:Math.round(og*1000)/1000,abv:abv,vol:vol,honeyKg:Math.round(honeyKg*100)/100,
+    adjunctAmount:adjunctAmount,adjunctHoneyEquivKg:adjunctHoneyEquivKg};
 }
 function wizRecommendYeasts(targetAbv){
   // Strains that can comfortably finish the target, sorted by headroom then
@@ -102,7 +115,7 @@ function wizBuildRecipe(){
     {item:'Honey',amount:m.honeyKg+' kg',notes:st.key==='Bochet'?'Caramelise before fermenting':'Best quality you can source'}
   ];
   if(st.adjunct==='juice'){
-    ingredients.push({item:w.adjunctName||'Juice',amount:(w.adjunctAmount||Math.round(m.vol*0.5*10)/10+' L'),notes:'Replaces part of the water'});
+    ingredients.push({item:w.adjunctName||'Juice',amount:m.adjunctAmount,notes:'Replaces part of the water'});
     ingredients.push({item:'Spring water',amount:'to '+m.vol+' L total',notes:'Top up after honey + juice'});
   }else{
     ingredients.push({item:'Spring water',amount:'to '+m.vol+' L total',notes:'Chlorine-free; top up to volume'});
@@ -111,7 +124,7 @@ function wizBuildRecipe(){
   var nutLabel=(w.nutrient==='sna'||w.nutrient==='sna-high')?'Mead Yeast Nutrient':'Fermaid-O';
   ingredients.push({item:nutLabel,amount:Math.round(m.vol*2.5)+' g total',notes:(w.nutrient==='tosca2'?'TOSCA 2.0':w.nutrient==='tosna2'?'TOSNA':w.nutrient==='tiosna'?'TiOSNA':w.nutrient==='sna-high'?'SNA, 3 doses':'SNA, 2 doses')+' schedule'});
   if(st.adjunct==='fruit'||st.adjunct==='spice'){
-    ingredients.push({item:w.adjunctName||(st.adjunct==='fruit'?'Fruit':'Spices'),amount:w.adjunctAmount||(st.adjunct==='fruit'?Math.round(m.vol*0.3*10)/10+' kg':'to taste'),notes:'Add in secondary'});
+    ingredients.push({item:w.adjunctName||(st.adjunct==='fruit'?'Fruit':'Spices'),amount:st.adjunct==='fruit'?m.adjunctAmount:(w.adjunctAmount||'to taste'),notes:'Add in secondary'});
   }
   var organic=(w.nutrient!=='sna'&&w.nutrient!=='sna-high');
   var steps=[
@@ -133,7 +146,7 @@ function wizBuildRecipe(){
     description:'Designed for '+m.abv+'% ABV, '+(WIZ_SWEETNESS.find(function(s){return s.key===w.sweetness;})||{}).label.toLowerCase()+'. '+st.desc,
     brandColor:st.color,
     volume:m.vol,ogTarget:m.og,fgTarget:m.fg,abvTarget:m.abv,fermentDays:fermDays,
-    minDays:minDays,peakDays:minDays+120,maxDays:minDays+700,
+    minAgeDays:minDays,peakAgeDays:minDays+120,maxAgeDays:minDays+700,
     tags:['custom','designed',st.label.split(' ')[0].toLowerCase()],
     ingredients:ingredients,steps:steps
   };
@@ -241,7 +254,9 @@ function wizMathCells(m){
   }).join('');
 }
 function wizMathNote(m){
-  return'Need <strong>~'+m.honeyKg+' kg honey</strong> in '+m.vol+' L to hit OG '+m.og+', finishing near FG '+m.fg.toFixed(3)+' for ~'+m.abv+'% ABV.';
+  var base='Need <strong>~'+m.honeyKg+' kg honey</strong> in '+m.vol+' L to hit OG '+m.og+', finishing near FG '+m.fg.toFixed(3)+' for ~'+m.abv+'% ABV.';
+  if(m.adjunctHoneyEquivKg>0)base+=' Already counts ~'+m.adjunctHoneyEquivKg+' kg of that OG as coming from the '+m.adjunctAmount+' of fruit/juice, not honey.';
+  return base;
 }
 // Live-update only the math box without re-rendering the whole modal (keeps
 // focus in the number inputs on step 0).
@@ -277,8 +292,9 @@ function renderRecipeEditor(){
     +'<div class="form-group"><label class="form-label">Target OG</label><input class="form-input" id="cr-og" type="number" step="0.001" value="'+r.ogTarget+'"></div>'
     +'<div class="form-group"><label class="form-label">Target FG</label><input class="form-input" id="cr-fg" type="number" step="0.001" value="'+r.fgTarget+'"></div></div>'
     +'<div class="form-row-3"><div class="form-group"><label class="form-label">Target ABV %</label><input class="form-input" id="cr-abv" type="number" step="0.1" value="'+r.abvTarget+'"></div>'
-    +'<div class="form-group"><label class="form-label">Ready (days)</label><input class="form-input" id="cr-min" type="number" value="'+r.minDays+'"></div>'
-    +'<div class="form-group"><label class="form-label">Peak (days)</label><input class="form-input" id="cr-peak" type="number" value="'+r.peakDays+'"></div></div>'
+    +'<div class="form-group"><label class="form-label">Bulk Age (days)<span style="font-weight:400;color:var(--text3);font-size:10px;margin-left:4px">before bottling</span></label><input class="form-input" id="cr-bulk" type="number" value="'+(r.bulkAgeDays||90)+'"></div>'
+    +'<div class="form-group"><label class="form-label">Ready (days)</label><input class="form-input" id="cr-min" type="number" value="'+(r.minAgeDays||r.minDays||60)+'"></div></div>'
+    +'<div class="form-row"><div class="form-group"><label class="form-label">Peak (days)</label><input class="form-input" id="cr-peak" type="number" value="'+(r.peakAgeDays||r.peakDays||180)+'"></div></div>'
     +'<div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="cr-desc" rows="2">'+escHtml(r.description)+'</textarea></div>'
     +'<div class="form-group"><label class="form-label">Tags (comma-separated)</label><input class="form-input" id="cr-tags" value="'+escHtml((r.tags||[]).join(', '))+'" placeholder="cherry, autumn, sweet"></div>'
     +'<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px"><div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase">Ingredients</div><button class="btn btn-secondary btn-sm" onclick="addRecipeIngredient()">＋ Add Row</button></div>'
@@ -319,9 +335,14 @@ function saveCustomRecipe(){
   r.ogTarget=parseFloat(document.getElementById('cr-og').value)||1.095;
   r.fgTarget=parseFloat(document.getElementById('cr-fg').value)||1.010;
   r.abvTarget=parseFloat(document.getElementById('cr-abv').value)||11;
-  r.minDays=parseInt(document.getElementById('cr-min').value)||60;
-  r.peakDays=parseInt(document.getElementById('cr-peak').value)||180;
-  r.maxDays=Math.max(r.peakDays+90,parseInt(r.maxDays)||730);
+  r.bulkAgeDays=parseInt(document.getElementById('cr-bulk').value)||90;
+  r.minAgeDays=parseInt(document.getElementById('cr-min').value)||60;
+  r.peakAgeDays=parseInt(document.getElementById('cr-peak').value)||180;
+  r.maxAgeDays=Math.max(r.peakAgeDays+90,parseInt(r.maxAgeDays||r.maxDays)||730);
+  // Drop the old pre-"Age" field names once migrated to the built-in-recipe
+  // naming (minAgeDays/peakAgeDays/maxAgeDays) — every read site now checks
+  // both, but there's no reason for a freshly-saved recipe to carry both.
+  delete r.minDays;delete r.peakDays;delete r.maxDays;
   r.description=document.getElementById('cr-desc').value.trim();
   r.tags=document.getElementById('cr-tags').value.split(',').map(function(t){return t.trim();}).filter(Boolean);
   r.ingredients=Array.from(document.querySelectorAll('#cr-ingredients [data-ing-row]')).map(function(row){

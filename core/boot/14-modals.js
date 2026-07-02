@@ -1067,6 +1067,17 @@ function saveCostsSettings(){
   toast('✓ Saved');
 }
 
+// E8: advisor explanation-density persona. View-layer only — renderBatchAdvisor
+// reads APP.settings.advisorVerbosity directly, no other state depends on it.
+function saveAdvisorVerbosity(){
+  var el=document.getElementById('set-advisor-verbosity');
+  if(!el||!/^(beginner|experienced|pro)$/.test(el.value))return;
+  APP.settings.advisorVerbosity=el.value;
+  saveSettings();
+  if(typeof renderMain==='function')renderMain();
+  toast('✓ Saved');
+}
+
 function forceSyncNow_button(){
   // Thin wrapper kept for backward compatibility with onclick handlers that
   // may have referenced this name; delegates to the canonical forceSyncNow.

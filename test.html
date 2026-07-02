@@ -211,6 +211,20 @@
     eq('attenuation 1.098→1.069 ≈ 0.30', Math.round(mwAttenuation(1.098,1.069)*100)/100, 0.30);
     (function(){var n=mwNutrientGrams(5,1.098,'tosna');ok('nutrient tosna = 4 doses', n.doses===4&&n.total>0, JSON.stringify(n));})();
     (function(){var n=mwNutrientGrams(5,1.098,'sna');ok('nutrient sna = 2 doses', n.doses===2, JSON.stringify(n));})();
+    // Nutrient dosing must scale with the YEAST's own nitrogen demand — a
+    // low-N strain (EC-1118) needs meaningfully less than a high-N one
+    // (Wyeast 4184) at the same OG/volume, not a flat one-size-fits-all gram total.
+    (function(){
+      var lowN=mwNutrientGrams(5,1.098,'sna','ec1118');
+      var medN=mwNutrientGrams(5,1.098,'sna','m05');
+      var highN=mwNutrientGrams(5,1.098,'sna','wyeast4184');
+      var noId=mwNutrientGrams(5,1.098,'sna');
+      ok('nutrientGrams: low-N yeast needs less total than medium', lowN.total<medN.total, JSON.stringify({low:lowN.total,med:medN.total}));
+      ok('nutrientGrams: high-N yeast needs more total than medium', highN.total>medN.total, JSON.stringify({high:highN.total,med:medN.total}));
+      ok('nutrientGrams: omitting yeastId keeps the old medium-only behaviour', noId.total===medN.total, JSON.stringify({noId:noId.total,med:medN.total}));
+      ok('nutrientGrams: unknown yeastId falls back to medium, not a crash', mwNutrientGrams(5,1.098,'sna','not-a-real-yeast').total===medN.total, '');
+      ok('nutrientGrams: reports which tier drove the total', lowN.yeastNitrogenNeed==='low'&&highN.yeastNitrogenNeed==='high', JSON.stringify({low:lowN.yeastNitrogenNeed,high:highN.yeastNitrogenNeed}));
+    })();
     ok('yeastTargets null on bad OG', mwYeastTargets(0.9,'m05')===null);
     // Expectations Engine: yeast-speed-aware fermentation-duration range
     (function(){
@@ -222,6 +236,82 @@
       ok('expectedFermentDuration: null on no fermentDays', mwExpectedFermentDuration(0,'fast')===null, '');
       ok('expectedFermentDuration: low bound never goes below the 3-day floor', mwExpectedFermentDuration(1,'very-fast').low>=3, JSON.stringify(mwExpectedFermentDuration(1,'very-fast')));
     })();
+    // Fruit/juice sugar must count toward OG — a melomel calculated as if
+    // honey supplied 100% of the gravity always overshoots on honey.
+    (function(){
+      ok('adjunctHoneyEquiv: known fruit (blueberry) returns a positive honey-equivalent', mwAdjunctHoneyEquivalentKg('Blueberries',2)>0, mwAdjunctHoneyEquivalentKg('Blueberries',2));
+      ok('adjunctHoneyEquiv: more sugary fruit (cherry) credits more than a milder one (blueberry) for the same kg', mwAdjunctHoneyEquivalentKg('Cherries',2)>mwAdjunctHoneyEquivalentKg('Blueberries',2), JSON.stringify({cherry:mwAdjunctHoneyEquivalentKg('Cherries',2),blueberry:mwAdjunctHoneyEquivalentKg('Blueberries',2)}));
+      ok('adjunctHoneyEquiv: unrecognised name with no fallback contributes nothing (spice/oak stay honey-neutral)', mwAdjunctHoneyEquivalentKg('Cinnamon sticks',0.1)===0, mwAdjunctHoneyEquivalentKg('Cinnamon sticks',0.1));
+      ok('adjunctHoneyEquiv: unrecognised name WITH an explicit fallback (wizard case) still credits something', mwAdjunctHoneyEquivalentKg('Dragonfruit',2,9)>0, mwAdjunctHoneyEquivalentKg('Dragonfruit',2,9));
+      ok('adjunctHoneyEquiv: zero/negative kg contributes nothing', mwAdjunctHoneyEquivalentKg('Blueberries',0)===0, '');
+      ok('adjunctHoneyEquiv: "pineapple" resolves to its own rate, not the generic "apple" one', mwAdjunctHoneyEquivalentKg('Pineapple',2)!==mwAdjunctHoneyEquivalentKg('Apple',2), JSON.stringify({pineapple:mwAdjunctHoneyEquivalentKg('Pineapple',2),apple:mwAdjunctHoneyEquivalentKg('Apple',2)}));
+    })();
+    // Timeline analyzer (E10): reads the SHAPE of the reading history, not
+    // just the latest value — plateau detection, early-vs-recent pace, and
+    // whether a plateau sits before or after the sugar break.
+    (function(){
+      ok('fermentTimeline: null with fewer than 3 readings', mwFermentTimeline([{date:isoAgo(3),gravity:1.10},{date:isoAgo(0),gravity:1.08}],1.069)===null, '');
+      // Normal tail-off: drops hard early, then flattens AT/after the sugar break.
+      var tailOff=[
+        {date:isoAgo(18),gravity:1.1000},{date:isoAgo(15),gravity:1.0700},{date:isoAgo(12),gravity:1.0500},
+        {date:isoAgo(9),gravity:1.0490},{date:isoAgo(6),gravity:1.0485},{date:isoAgo(3),gravity:1.0483},{date:isoAgo(0),gravity:1.0482}
+      ];
+      var tTail=mwFermentTimeline(tailOff,1.069);
+      ok('fermentTimeline: detects a plateau once the tail flattens out', tTail&&tTail.plateaued===true&&tTail.plateauDays>=9, JSON.stringify(tTail));
+      ok('fermentTimeline: a plateau AT/after the sugar break reads as a normal finish, not a stall', tTail&&tTail.slowedNearFinish===true&&tTail.stalledBeforeBreak===false, JSON.stringify(tTail));
+      ok('fermentTimeline: recent pace is much slower than the early pace', tTail&&tTail.slowedDown===true&&tTail.recentRatePerDay<tTail.earlyRatePerDay, JSON.stringify({early:tTail&&tTail.earlyRatePerDay,recent:tTail&&tTail.recentRatePerDay}));
+      // Abnormal early stall: flattens out WELL ABOVE the sugar break.
+      var earlyStall=[
+        {date:isoAgo(12),gravity:1.1000},{date:isoAgo(9),gravity:1.0800},{date:isoAgo(6),gravity:1.0795},
+        {date:isoAgo(3),gravity:1.0792},{date:isoAgo(0),gravity:1.0790}
+      ];
+      var tEarly=mwFermentTimeline(earlyStall,1.069);
+      ok('fermentTimeline: a plateau well above the sugar break flags as an abnormal early stall', tEarly&&tEarly.stalledBeforeBreak===true&&tEarly.slowedNearFinish===false, JSON.stringify(tEarly));
+      // Steadily dropping, no plateau at all yet.
+      var steady=[{date:isoAgo(9),gravity:1.100},{date:isoAgo(6),gravity:1.080},{date:isoAgo(3),gravity:1.060},{date:isoAgo(0),gravity:1.040}];
+      ok('fermentTimeline: no plateau while gravity is still dropping steadily', mwFermentTimeline(steady,1.069).plateaued===false, JSON.stringify(mwFermentTimeline(steady,1.069)));
+    })();
+    // Weighted multi-cause stall diagnosis (E2): several ranked causes with
+    // evidence, not a single first-match guess — and the timeline signal
+    // should shift confidence, not just gate a boolean.
+    (function(){
+      var base={nutrientsComplete:true,fructoseStallRisk:false,nearTolerance:false,tempInRange:true,timeline:null};
+      ok('stalledCauses: falls back to "unknown" (low confidence) when nothing matches', function(){var c=mwStalledCauses(base);return c.length===1&&c[0].cause==='unknown'&&c[0].weight<0.5;}(), JSON.stringify(mwStalledCauses(base)));
+      var multi=Object.assign({},base,{nutrientsComplete:false,tempInRange:false});
+      var mc=mwStalledCauses(multi);
+      ok('stalledCauses: surfaces BOTH matching causes, ranked by weight', mc.length===2&&mc[0].cause==='nutrition'&&mc[1].cause==='temperature', JSON.stringify(mc));
+      var withEarlyStall=Object.assign({},multi,{timeline:{stalledBeforeBreak:true,slowedNearFinish:false}});
+      var withTailOff=Object.assign({},multi,{timeline:{stalledBeforeBreak:false,slowedNearFinish:true}});
+      ok('stalledCauses: an early-stall timeline boosts confidence in every candidate cause', mwStalledCauses(withEarlyStall)[0].weight>mc[0].weight, JSON.stringify({boosted:mwStalledCauses(withEarlyStall)[0].weight,base:mc[0].weight}));
+      ok('stalledCauses: a normal tail-off timeline REDUCES confidence — it may just be finishing', mwStalledCauses(withTailOff)[0].weight<mc[0].weight, JSON.stringify({reduced:mwStalledCauses(withTailOff)[0].weight,base:mc[0].weight}));
+    })();
+  })();
+
+  // ---- recipe designer wizard: honey math must account for fruit/juice ----
+  (function(){
+    window._wiz={step:0,name:'',style:'Traditional Mead',volume:5,abv:12,sweetness:'semi',yeast:'m05',nutrient:'tosca2',adjunctName:'',adjunctAmount:''};
+    var trad=wizComputeMath(window._wiz);
+    ok('wizComputeMath: Traditional (no adjunct) contributes no honey credit', trad.adjunctHoneyEquivKg===0, JSON.stringify(trad));
+
+    window._wiz.style='Melomel';window._wiz.adjunctName='Raspberries';window._wiz.adjunctAmount='';
+    var melNoAmt=wizComputeMath(window._wiz);
+    ok('wizComputeMath: Melomel with no typed amount still falls back to the wizard\'s own default fruit quantity', melNoAmt.adjunctHoneyEquivKg>0&&/kg/.test(melNoAmt.adjunctAmount), JSON.stringify(melNoAmt));
+    ok('wizComputeMath: Melomel needs LESS honey than the same target with no fruit', melNoAmt.honeyKg<trad.honeyKg, JSON.stringify({melon:melNoAmt.honeyKg,trad:trad.honeyKg}));
+
+    window._wiz.adjunctAmount='2 kg';
+    var melTyped=wizComputeMath(window._wiz);
+    ok('wizComputeMath: a typed fruit amount overrides the default and changes the honey credit', melTyped.adjunctHoneyEquivKg!==melNoAmt.adjunctHoneyEquivKg, JSON.stringify({typed:melTyped.adjunctHoneyEquivKg,def:melNoAmt.adjunctHoneyEquivKg}));
+    ok('wizMathNote: mentions the fruit credit when one applies', /fruit\/juice/.test(wizMathNote(melTyped)), wizMathNote(melTyped));
+    ok('wizMathNote: says nothing extra for a Traditional recipe', !/fruit\/juice/.test(wizMathNote(trad)), wizMathNote(trad));
+
+    window._wiz.style='Cyser';window._wiz.adjunctName='Fresh apple juice';window._wiz.adjunctAmount='';
+    var cyser=wizComputeMath(window._wiz);
+    ok('wizComputeMath: Cyser (juice adjunct) also credits honey and defaults to a litre amount', cyser.adjunctHoneyEquivKg>0&&/L/.test(cyser.adjunctAmount), JSON.stringify(cyser));
+
+    var built=wizBuildRecipe();
+    var honeyLine=built.ingredients.filter(function(i){return i.item==='Honey';})[0];
+    ok('wizBuildRecipe: the built recipe\'s honey line matches the netted honeyKg (no drift between math box and ingredient list)', honeyLine&&honeyLine.amount===cyser.honeyKg+' kg', JSON.stringify(honeyLine));
+    window._wiz=null;
   })();
 
   // ---- advisor: signals + rules + health + readiness ----
@@ -249,6 +339,41 @@
       var a2=mwBatchAdvice(bs);
       ok('advice: stalled → critical item', a2.items.some(function(i){return i.id==='stalled'&&i.severity==='critical';}), JSON.stringify(a2.items.map(function(i){return i.id;})));
     })();
+    // stalled batch with a real plateau in its history → the item's data
+    // carries a ranked causes[] and a plateauDays fact end-to-end (E2+E10).
+    (function(){
+      var bp2={id:'adv2b',recipeId:'rA',startDate:isoAgo(24),og:1.098,yeast:'ec1118'};
+      APP.batches=[bp2];APP.logs={adv2b:[
+        {date:isoAgo(24),gravity:1.098},{date:isoAgo(20),gravity:1.070},{date:isoAgo(16),gravity:1.0620},
+        {date:isoAgo(12),gravity:1.0618},{date:isoAgo(8),gravity:1.0616},{date:isoAgo(4),gravity:1.0615},{date:isoAgo(0),gravity:1.0614}
+      ]};
+      var a2b=mwBatchAdvice(bp2);
+      var stalledItem=a2b.items.filter(function(i){return i.id==='stalled';})[0];
+      ok('advice: stalled item carries a ranked causes[] array', stalledItem&&Array.isArray(stalledItem.data.causes)&&stalledItem.data.causes.length>0&&stalledItem.data.cause===stalledItem.data.causes[0].cause, JSON.stringify(stalledItem&&stalledItem.data));
+      ok('advice: stalled item reports how long the plateau has run', stalledItem&&stalledItem.data.plateauDays>=8, JSON.stringify(stalledItem&&stalledItem.data.plateauDays));
+    })();
+    // Batch narrative (E5): a chronological story built ONLY from real
+    // logged events — start, sugar-break crossing, logged additions,
+    // a real plateau, a real bottling record. All in one batch's history.
+    (function(){
+      ok('narrative: [] for no batch', JSON.stringify(mwBatchNarrative(null))==='[]', '');
+      var bn={id:'nar1',recipeId:'rA',startDate:isoAgo(30),og:1.098,yeast:'ec1118'};
+      APP.batches=[bn];
+      APP.logs={nar1:[
+        {date:isoAgo(30),gravity:1.098},{date:isoAgo(26),gravity:1.070},{date:isoAgo(22),gravity:1.0620},
+        {date:isoAgo(18),gravity:1.0618},{date:isoAgo(14),gravity:1.0616},{date:isoAgo(10),gravity:1.0615},{date:isoAgo(6),gravity:1.0614}
+      ]};
+      APP.additions={nar1:[{id:'ad2',date:isoAgo(20),item:'Fermaid-O',amount:'6g'},{id:'ad1',date:isoAgo(29),item:'Fermaid-O',amount:'6g'}]};
+      APP.bottling={nar1:{date:isoAgo(2),fg:1.006,abv:12.5,countsAtBottling:{750:6},locations:{cellar:{750:6}}}};
+      var beats=mwBatchNarrative(bn);
+      ok('narrative: opens with the real start date/OG/yeast', beats[0]&&beats[0].type==='started'&&beats[0].date===isoAgo(30)&&beats[0].data.og===1.098&&beats[0].data.yeast==='ec1118', JSON.stringify(beats[0]));
+      ok('narrative: includes the real sugar-break crossing', beats.some(function(x){return x.type==='sugar-break';}), JSON.stringify(beats.map(function(x){return x.type;})));
+      ok('narrative: includes BOTH real logged additions', beats.filter(function(x){return x.type==='addition';}).length===2, JSON.stringify(beats.filter(function(x){return x.type==='addition';})));
+      ok('narrative: includes the real plateau, with how long it ran', beats.some(function(x){return x.type==='plateau'&&x.data.days>=8;}), JSON.stringify(beats.filter(function(x){return x.type==='plateau';})));
+      ok('narrative: includes the real bottling record', beats.some(function(x){return x.type==='bottled'&&x.data.abv===12.5;}), JSON.stringify(beats.filter(function(x){return x.type==='bottled';})));
+      ok('narrative: every beat is in chronological order', beats.every(function(x,i){return i===0||x.date>=beats[i-1].date;}), JSON.stringify(beats.map(function(x){return x.date;})));
+      APP.additions={};APP.bottling={};
+    })();
     // readiness for a bottled, well-aged batch → high
     (function(){
       var bb={id:'adv3',recipeId:'rA',startDate:isoAgo(400),og:1.098,yeast:'ec1118'};
@@ -265,6 +390,45 @@
       ok('advice: pre-break → aerate-now', a4.items.some(function(i){return i.id==='aerate-now';}), JSON.stringify(a4.items.map(function(i){return i.id;})));
       ok('advice: every item has a category', a4.items.length>0&&a4.items.every(function(i){return typeof i.category==='string'&&i.category;}), JSON.stringify(a4.items.map(function(i){return i.id+':'+i.category;})));
     })();
+    // Regression: mwBatchAdvice() memoizes on a signature of the batch's
+    // inputs — found while building E8 that the signature didn't include the
+    // last reading's pH, so editing ONLY pH (gravity/temp/date unchanged)
+    // silently returned a stale cached snapshot missing the ph-low rule.
+    (function(){
+      var bph={id:'adv4b',recipeId:'rA',startDate:isoAgo(5),og:1.098,yeast:'ec1118'};
+      APP.batches=[bph];APP.logs={adv4b:[{date:isoAgo(5),gravity:1.098,temp:19,ph:3.2}]};APP.bottling={};
+      var before=mwBatchAdvice(bph);
+      ok('advice: no ph-low item with a normal pH', !before.items.some(function(i){return i.id==='ph-low';}), JSON.stringify(before.items.map(function(i){return i.id;})));
+      APP.logs.adv4b[0].ph=2.5; // ONLY the pH changes — same date/gravity/temp
+      var after=mwBatchAdvice(bph);
+      ok('advice: changing ONLY pH invalidates the memo and surfaces ph-low', after.items.some(function(i){return i.id==='ph-low';}), JSON.stringify(after.items.map(function(i){return i.id;})));
+    })();
+    // What-if simulator (E7): re-runs the REAL rules against a hypothetically
+    // overridden signal — no invented physics, just the existing pure
+    // functions with one field swapped.
+    (function(){
+      APP.recipes=[{id:'rWi',ogTarget:1.098,fgTarget:1.010,abvTarget:11.5,fermentDays:42,
+        steps:[{day:1,title:'First Nutrient',desc:'Add nutrient dose 1'},{day:3,title:'Second Nutrient',desc:'Add nutrient dose 2'}]}];
+      var bw={id:'wi1',recipeId:'rWi',startDate:isoAgo(10),og:1.098,yeast:'ec1118'};
+      APP.batches=[bw];APP.logs={wi1:[{date:isoAgo(10),gravity:1.098,temp:5},{date:isoAgo(0),gravity:1.060,temp:5}]};APP.bottling={};APP.additions={};
+      var real=mwBatchAdvice(bw).items.map(function(i){return i.id;});
+      ok('what-if: sanity — real advice includes both nutrient-final and temperature', real.indexOf('nutrient-final')>=0&&real.indexOf('temperature')>=0, JSON.stringify(real));
+
+      var wiNutrients=mwWhatIf(bw,{nutrientsComplete:true});
+      ok('what-if: completing nutrients would resolve nutrient-final', wiNutrients.resolved.indexOf('nutrient-final')>=0, JSON.stringify(wiNutrients.resolved));
+      ok('what-if: completing nutrients leaves temperature untouched', wiNutrients.resolved.indexOf('temperature')<0, JSON.stringify(wiNutrients));
+
+      var wiTemp=mwWhatIf(bw,{tempInRange:true});
+      ok('what-if: fixing temperature would resolve the temperature item', wiTemp.resolved.indexOf('temperature')>=0, JSON.stringify(wiTemp.resolved));
+
+      var wiTolerance=mwWhatIf(bw,{nearTolerance:true});
+      ok('what-if: a hypothetical near-tolerance signal makes abv-ceiling newly appear', wiTolerance.newlyAppeared.indexOf('abv-ceiling')>=0, JSON.stringify(wiTolerance.newlyAppeared));
+
+      var wiNoop=mwWhatIf(bw,{});
+      ok('what-if: no override → no resolved/newly-appeared/changed items', wiNoop.resolved.length===0&&wiNoop.newlyAppeared.length===0&&wiNoop.changed.length===0, JSON.stringify(wiNoop));
+      ok('what-if: null for a missing batch', mwWhatIf(null,{})===null, '');
+      APP.recipes=BUILTIN_RECIPES();APP.additions={};
+    })();
     // bottled & inside drinking window → aging-window info milestone
     (function(){
       var bw={id:'adv6',recipeId:'rA',startDate:isoAgo(120),og:1.098,yeast:'ec1118'};
@@ -272,6 +436,56 @@
       APP.bottling={adv6:{date:isoAgo(90),fg:1.005,abv:12,countsAtBottling:{750:6},locations:{cellar:{750:6}}}};
       var a6=mwBatchAdvice(bw);
       ok('advice: in-window → aging-window info', a6.items.some(function(i){return i.id==='aging-window'&&i.severity==='info';}), JSON.stringify(a6.items.map(function(i){return i.id;})));
+    })();
+    // Aging intelligence (E6): a batch aged well past the recipe's OWN
+    // maxAgeDays reaches a 4th 'declining' phase — mwReadiness() previously
+    // had no way past 'peak', however old the batch actually was.
+    (function(){
+      APP.recipes=[{id:'rMax',ogTarget:1.098,fgTarget:1.010,abvTarget:11.5,fermentDays:30,minAgeDays:30,peakAgeDays:90,maxAgeDays:365,steps:[]}];
+      var bd={id:'adv6b',recipeId:'rMax',startDate:isoAgo(500),og:1.098,yeast:'ec1118'};
+      APP.batches=[bd];APP.logs={adv6b:[{date:isoAgo(500),gravity:1.098},{date:isoAgo(480),gravity:1.005}]};
+      APP.bottling={adv6b:{date:isoAgo(400),fg:1.005,abv:12,countsAtBottling:{750:6},locations:{cellar:{750:6}}}};
+      var sD=mwBatchSignals(bd);
+      ok('signals: agePhase reaches "declining" past the recipe\'s own maxAgeDays', sD&&sD.agePhase==='declining', sD&&sD.agePhase);
+      var rD=mwReadiness(bd);
+      ok('readiness: phase comes from the SAME signal, not a re-derived duplicate', rD&&rD.phase==='declining', JSON.stringify(rD));
+      var aD=mwBatchAdvice(bd);
+      var winItem=aD.items.filter(function(i){return i.id==='aging-window';})[0];
+      ok('advice: aging-window fires with the past-max reason once declining', winItem&&winItem.data.phase==='declining'&&winItem.data.max===365, JSON.stringify(winItem&&winItem.data));
+      // A recipe with no maxAgeDays set (real data may simply be missing it)
+      // must never fabricate a "declining" phase — stays capped at 'peak'.
+      APP.recipes=[{id:'rNoMax',ogTarget:1.098,fgTarget:1.010,minAgeDays:30,peakAgeDays:90,steps:[]}];
+      var bNoMax={id:'adv6c',recipeId:'rNoMax',startDate:isoAgo(500),og:1.098,yeast:'ec1118'};
+      APP.batches=[bNoMax];APP.logs={adv6c:[{date:isoAgo(500),gravity:1.098},{date:isoAgo(480),gravity:1.005}]};
+      APP.bottling={adv6c:{date:isoAgo(400),fg:1.005,abv:12,countsAtBottling:{750:6},locations:{cellar:{750:6}}}};
+      ok('signals: no maxAgeDays on the recipe → stays "peak", never fabricates "declining"', mwBatchSignals(bNoMax).agePhase==='peak', mwBatchSignals(bNoMax).agePhase);
+    })();
+    // Regression: custom/wizard recipes historically saved minDays/peakDays/
+    // maxDays (no "Age") while built-ins use minAgeDays/peakAgeDays/
+    // maxAgeDays — every aging feature must fall back to the old name so a
+    // custom recipe's own values are used instead of silently defaulting.
+    (function(){
+      APP.recipes=[{id:'rCustomAge',ogTarget:1.098,fgTarget:1.010,fermentDays:30,minDays:45,peakDays:150,maxDays:400,steps:[]}];
+      var bc={id:'aging-custom1',recipeId:'rCustomAge',startDate:isoAgo(500),og:1.098,yeast:'ec1118'};
+      APP.batches=[bc];APP.logs={'aging-custom1':[{date:isoAgo(500),gravity:1.098},{date:isoAgo(480),gravity:1.005}]};
+      APP.bottling={'aging-custom1':{date:isoAgo(400),fg:1.005,abv:12,countsAtBottling:{750:6},locations:{cellar:{750:6}}}};
+      var sc=mwBatchSignals(bc);
+      ok('signals: falls back to minDays/peakDays/maxDays for a custom recipe', sc.readyDays===45&&sc.peakDays===150&&sc.maxAgeDays===400, JSON.stringify({ready:sc.readyDays,peak:sc.peakDays,max:sc.maxAgeDays}));
+      ok('signals: a custom recipe past its OWN maxDays still reaches "declining"', sc.agePhase==='declining', sc.agePhase);
+      var profile=getAgingProfile(bc);
+      ok('getAgingProfile: also falls back to minDays/peakDays/maxDays for a custom recipe', profile.minDays===45&&profile.peakDays===150&&profile.maxDays===400, JSON.stringify(profile));
+      APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.bottling={};APP.logs={};
+    })();
+    // Bulk-aging duration field: the recipe's OWN pre-bottling bulk-age
+    // target (distinct from minAgeDays/peakAgeDays/maxAgeDays, which are
+    // POST-bottling) resolves through the signals pipeline. The threshold
+    // math itself is covered by the isolated extendedBulkAging rule tests.
+    (function(){
+      APP.recipes=[{id:'rBulk',ogTarget:1.098,fgTarget:1.010,fermentDays:30,bulkAgeDays:600,steps:[]}];
+      var bb={id:'bulk1',recipeId:'rBulk',startDate:isoAgo(10),og:1.098,yeast:'ec1118'};
+      APP.batches=[bb];APP.logs={bulk1:[{date:isoAgo(10),gravity:1.098},{date:isoAgo(0),gravity:1.070}]};APP.bottling={};
+      ok('signals: recipeBulkAgeDays resolves from the recipe', mwBatchSignals(bb).recipeBulkAgeDays===600, mwBatchSignals(bb).recipeBulkAgeDays);
+      APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.bottling={};APP.logs={};
     })();
     // high-fructose honey + non-fructophilic yeast → fructose-stall-risk warning
     (function(){
@@ -302,6 +516,50 @@
       // Expectations Engine flows through the full signals pipeline
       ok('signals: yeastSpeed resolves from the yeast library', s2&&s2.yeastSpeed==='very-fast', s2&&s2.yeastSpeed);
       ok('signals: expectedFermentRange is a real low<high band, not the flat recipe day', s2&&s2.expectedFermentRange&&s2.expectedFermentRange.low<s2.expectedFermentRange.high&&s2.expectedFermentRange.expected!==30, JSON.stringify(s2&&s2.expectedFermentRange));
+
+      // Milestone ETA (E11): predict WHEN (days) the batch will cross the sugar
+      // break, from the existing rate — proactive, not just reactive.
+      var bEta={id:'sp3',recipeId:'rP',startDate:isoAgo(6),og:1.100};
+      APP.batches=[bEta];APP.logs={sp3:[{date:isoAgo(6),gravity:1.100},{date:isoAgo(3),gravity:1.085},{date:isoAgo(0),gravity:1.075}]};
+      var s3=mwBatchSignals(bEta);
+      ok('signals: daysToSugarBreak predicts a positive ETA while still above the break', s3&&s3.daysToSugarBreak>0, JSON.stringify(s3&&{eta:s3.daysToSugarBreak,lastG:s3.lastG,sugarBreak:s3.sugarBreak}));
+      ok('signals: daysToSugarBreak is null once already past the break', s2&&s2.daysToSugarBreak===null, s2&&s2.daysToSugarBreak);
+    })();
+    // Temperature source: a live HA sensor bound to where the batch actually
+    // IS (fermenter while active, its specific cellar cabinet once bottled)
+    // must win over a hand-logged gravity-reading temp, which goes stale the
+    // moment the batch moves on and stops being taken at all once bottled.
+    (function(){
+      window._liveSensorTemps={};
+      APP.recipes=[{id:'rT',ogTarget:1.100,fgTarget:1.010,abvTarget:12.0,fermentDays:30,minAgeDays:60,peakAgeDays:240,steps:[]}];
+      // fermenting batch: live fermenter sensor should win over the logged temp
+      APP.fermenters=[{id:'f1',tempSensorEntity:'sensor.ferm1_temp',capacity:20}];
+      APP.cabinets=[];
+      var bF={id:'tf1',recipeId:'rT',startDate:isoAgo(5),og:1.100,yeast:'ec1118',fermenterId:'f1'};
+      APP.batches=[bF];APP.logs={tf1:[{date:isoAgo(5),gravity:1.100,temp:19},{date:isoAgo(0),gravity:1.060,temp:19}]};APP.bottling={};
+      window._liveSensorTemps['sensor.ferm1_temp']={value:22.5,unit:'°C'};
+      var sF=mwBatchSignals(bF);
+      ok('signals: fermenting batch takes the live fermenter sensor temp', sF&&sF.latestTemp===22.5&&sF.tempSource==='live', JSON.stringify(sF&&{temp:sF.latestTemp,src:sF.tempSource}));
+
+      // bottled batch on a specific cellar shelf: that cabinet's live sensor
+      // should win over the (now stale/absent) gravity-log temp.
+      APP.cabinets=[
+        {id:'cabA',tempSensorEntity:'sensor.cabA_temp',shelves:[{id:'shelfA1'}]},
+        {id:'cabB',tempSensorEntity:'sensor.cabB_temp',shelves:[{id:'shelfB1'}]}
+      ];
+      window._liveSensorTemps['sensor.cabA_temp']={value:13.1,unit:'°C'};
+      window._liveSensorTemps['sensor.cabB_temp']={value:17.9,unit:'°C'};
+      var bB={id:'tb1',recipeId:'rT',startDate:isoAgo(100),og:1.100,yeast:'ec1118'};
+      APP.batches=[bB];APP.logs={tb1:[{date:isoAgo(100),gravity:1.100,temp:19},{date:isoAgo(90),gravity:1.005,temp:19}]};
+      APP.bottling={tb1:{date:isoAgo(80),cellarShelfId:'shelfB1',fg:1.005,abv:12,countsAtBottling:{750:6},locations:{cellar:{750:6}}}};
+      var sB=mwBatchSignals(bB);
+      ok('signals: bottled batch takes ITS cabinet live sensor, not another cabinet\'s', sB&&sB.latestTemp===17.9&&sB.tempSource==='live', JSON.stringify(sB&&{temp:sB.latestTemp,src:sB.tempSource}));
+
+      // no live sensor bound anywhere → falls back to the last logged temp
+      window._liveSensorTemps={};
+      var sNo=mwBatchSignals(bB);
+      ok('signals: no live sensor bound → falls back to last logged temp', sNo&&sNo.latestTemp===19&&sNo.tempSource==='logged', JSON.stringify(sNo&&{temp:sNo.latestTemp,src:sNo.tempSource}));
+      APP.fermenters=[];APP.cabinets=[];
     })();
     // Individual rules, tested in isolation against hand-built signal objects —
     // exercises branches (stalled cause, pH bands, post-bottling carbonation)
@@ -344,10 +602,21 @@
       ok('rules: fermenting-long yields to a real stall', longRule({fermenting:true,stalled:true,nearFG:false,expectedFermentRange:frTest,daysSinceStart:35})===null, '');
       ok('rules: fermenting-long silent with no expected range available', longRule({fermenting:true,stalled:false,nearFG:false,expectedFermentRange:null,daysSinceStart:99})===null, '');
 
+      var histRule=ruleByName('historicalPace');
+      var histTest={avgDaysToFinish:24,avgRating:4.2,sampleSize:3,matchedOn:'recipe'};
+      ok('rules: historical-pace fires with real own-history data', histRule({fermenting:true,daysSinceStart:20,historical:histTest}).id==='historical-pace', '');
+      ok('rules: historical-pace silent with no comparable history', histRule({fermenting:true,daysSinceStart:20,historical:null})===null, '');
+      ok('rules: historical-pace silent once bottled/not fermenting', histRule({fermenting:false,daysSinceStart:20,historical:histTest})===null, '');
+
       var bulkRule=ruleByName('extendedBulkAging');
-      ok('rules: extended-bulk-aging fires past 270 unbottled days', bulkRule({bottled:false,status:'conditioning',daysSinceStart:300}).id==='extended-bulk-aging', '');
+      ok('rules: extended-bulk-aging fires past 270 unbottled days with no recipe target', bulkRule({bottled:false,status:'conditioning',daysSinceStart:300}).id==='extended-bulk-aging', '');
       ok('rules: extended-bulk-aging silent once actually bottled', bulkRule({bottled:true,status:'aging',daysSinceStart:300})===null, '');
       ok('rules: extended-bulk-aging silent for a young batch', bulkRule({bottled:false,status:'conditioning',daysSinceStart:60})===null, '');
+      // Bulk-aging duration field: the recipe's OWN target (1.5x it) sets the
+      // threshold instead of the flat 270 fallback — a recipe meant to sit a
+      // long time isn't flagged at the same mark as a quick traditional.
+      ok('rules: a LONG recipe bulk-age target raises the threshold well past 270', bulkRule({bottled:false,status:'aging',daysSinceStart:300,recipeBulkAgeDays:600})===null, '');
+      ok('rules: a SHORT recipe bulk-age target flags well before the flat 270 default', bulkRule({bottled:false,status:'aging',daysSinceStart:100,recipeBulkAgeDays:60}).id==='extended-bulk-aging', '');
     })();
     // mwBatchHealth(): per-axis explainability — each axis reports WHY it
     // scored what it did (code + supporting data + its weight), not just a bare
@@ -480,6 +749,77 @@
     ok('analytics: honey avg rating (5,3→4)', wf&&Math.abs(wf.avgRating-4)<1e-9, wf&&wf.avgRating);
     ok('analytics: sorted best-rating first', (st.byHoney[0].avgRating||0)>=(st.byHoney[st.byHoney.length-1].avgRating||0), '');
     APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.bottling={};APP.tastings={};APP.logs={};
+  })();
+
+  // Historical learning (E3): compare a batch to the BREWER'S OWN past
+  // batches, not generic lore — honest null with too little real history.
+  (function(){
+    APP.recipes=[{id:'rH',ogTarget:1.100,fgTarget:1.010}];
+    APP.batches=[
+      {id:'cur1',recipeId:'rH',yeast:'ec1118',og:1.100,startDate:isoAgo(10)},
+      {id:'h1',recipeId:'rH',yeast:'ec1118',og:1.100,startDate:isoAgo(50)},
+      {id:'h2',recipeId:'rH',yeast:'ec1118',og:1.100,startDate:isoAgo(60),failed:{category:'stuck'}},
+      {id:'h3',recipeId:'rH',yeast:'ec1118',og:1.100,startDate:isoAgo(60)}
+    ];
+    APP.bottling={h1:{date:isoAgo(20),fg:1.000,abv:13},h3:{date:isoAgo(24),fg:1.010,abv:12}};
+    APP.tastings={h1:[{rating:5}],h3:[{rating:3}]};APP.logs={};
+    var cur=APP.batches[0];
+    var hc=mwHistoricalComparison(cur);
+    ok('historicalComparison: matches on the SAME recipe first', hc&&hc.matchedOn==='recipe'&&hc.sampleSize===3, JSON.stringify(hc));
+    ok('historicalComparison: avg days-to-finish uses only BOTTLED past batches (30,36→33)', hc&&Math.abs(hc.avgDaysToFinish-33)<0.6, hc&&hc.avgDaysToFinish);
+    ok('historicalComparison: avg rating (5,3→4)', hc&&Math.abs(hc.avgRating-4)<1e-9, hc&&hc.avgRating);
+    ok('historicalComparison: null for a batch with no past history at all', mwHistoricalComparison({id:'lonely',recipeId:'nobody-else',og:1.1,startDate:isoAgo(5)})===null, '');
+
+    // Falls back to same-yeast comparison when there aren't 2+ same-recipe batches.
+    APP.batches=[
+      {id:'cur2',recipeId:'rNew',yeast:'ec1118',og:1.100,startDate:isoAgo(10)},
+      {id:'hy1',recipeId:'rOther1',yeast:'ec1118',og:1.100,startDate:isoAgo(50)},
+      {id:'hy2',recipeId:'rOther2',yeast:'ec1118',og:1.100,startDate:isoAgo(60)}
+    ];
+    var hcY=mwHistoricalComparison(APP.batches[0]);
+    ok('historicalComparison: falls back to same-YEAST when recipe history is too thin', hcY&&hcY.matchedOn==='yeast'&&hcY.sampleSize===2, JSON.stringify(hcY));
+
+    // Same yeast+honey combo across different recipes beats a plain yeast-only
+    // match — it's the closer real-world comparison (E3 refinement).
+    APP.batches=[
+      {id:'cur3',recipeId:'rNew',yeast:'ec1118',honeyType:'Orange Blossom',og:1.100,startDate:isoAgo(10)},
+      {id:'hy3',recipeId:'rOther1',yeast:'ec1118',honeyType:'Orange Blossom',og:1.100,startDate:isoAgo(50)},
+      {id:'hy4',recipeId:'rOther2',yeast:'ec1118',honeyType:'Orange Blossom',og:1.100,startDate:isoAgo(60)},
+      {id:'hy5',recipeId:'rOther3',yeast:'ec1118',honeyType:'Clover',og:1.100,startDate:isoAgo(60)}
+    ];
+    var hcYH=mwHistoricalComparison(APP.batches[0]);
+    ok('historicalComparison: prefers same yeast+honey over yeast-only', hcYH&&hcYH.matchedOn==='yeast-honey'&&hcYH.sampleSize===2&&hcYH.honey==='Orange Blossom', JSON.stringify(hcYH));
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.bottling={};APP.tastings={};APP.logs={};
+  })();
+
+  // Ingredient relationship notes (E9): pragmatic honey×yeast facts reused
+  // from EXISTING data fields — not invented numbers, not a generic graph.
+  (function(){
+    // D47 is an expressive yeast; Orange Blossom is a light/delicate honey
+    // with no notable nitrogen offset — should flag the flavor mismatch only.
+    var flavor=mwIngredientRelationship('Orange Blossom','d47');
+    ok('ingredientRelationship: flags an expressive yeast masking a light honey', flavor.some(function(n){return n.type==='flavor-mismatch';}), JSON.stringify(flavor));
+    ok('ingredientRelationship: does NOT flag nitrogen contribution when the offset is negligible', !flavor.some(function(n){return n.type==='nitrogen-contribution';}), JSON.stringify(flavor));
+    // Forest honey has a real yanOffset (15) and is 'bold' (not light) — should
+    // flag the nitrogen contribution only, not a flavor mismatch.
+    var nitro=mwIngredientRelationship('Forest','ec1118');
+    ok('ingredientRelationship: flags a honey with a real nitrogen contribution', nitro.some(function(n){return n.type==='nitrogen-contribution';}), JSON.stringify(nitro));
+    ok('ingredientRelationship: does NOT flag flavor mismatch for a neutral yeast', !nitro.some(function(n){return n.type==='flavor-mismatch';}), JSON.stringify(nitro));
+    ok('ingredientRelationship: [] for an unknown honey/yeast', JSON.stringify(mwIngredientRelationship('Not A Real Honey','not-a-real-yeast'))==='[]', '');
+    ok('ingredientRelationship: never repeats the fructose interaction (that has its own dedicated rule)', !mwIngredientRelationship('Tupelo','ec1118').some(function(n){return n.type==='fructose-risk'||n.type==='fructose-ok';}), '');
+
+    // End-to-end: the rule surfaces these notes for an active batch with a
+    // real honey+yeast pair, and stays silent when nothing is notable.
+    APP.recipes=[{id:'rIng',ogTarget:1.098,fgTarget:1.010,abvTarget:11.5,fermentDays:30,steps:[]}];
+    var bi={id:'ing1',recipeId:'rIng',startDate:isoAgo(3),og:1.098,yeast:'d47',honeyType:'Orange Blossom'};
+    APP.batches=[bi];APP.logs={ing1:[{date:isoAgo(3),gravity:1.098,temp:19},{date:isoAgo(0),gravity:1.090,temp:19}]};APP.bottling={};
+    var ai=mwBatchAdvice(bi);
+    var ingItem=ai.items.filter(function(i){return i.id==='ingredient-notes';})[0];
+    ok('advice: ingredient-notes fires end-to-end for a batch with a notable pairing', ingItem&&ingItem.data.notes.length>0, JSON.stringify(ingItem&&ingItem.data));
+    var biPlain={id:'ing2',recipeId:'rIng',startDate:isoAgo(3),og:1.098,yeast:'ec1118',honeyType:'Orange Blossom'};
+    APP.batches=[biPlain];APP.logs={ing2:[{date:isoAgo(3),gravity:1.098,temp:19},{date:isoAgo(0),gravity:1.090,temp:19}]};
+    ok('advice: ingredient-notes stays silent for an unremarkable pairing', !mwBatchAdvice(biPlain).items.some(function(i){return i.id==='ingredient-notes';}), JSON.stringify(mwBatchAdvice(biPlain).items.map(function(i){return i.id;})));
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.bottling={};APP.logs={};
   })();
 
   // competitions: survive the package→apply round-trip (persistence plumbing)
