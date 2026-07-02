@@ -377,8 +377,11 @@ async function loadHistoryPanel(){
     var dt=when?new Date(when):null;
     var label=(dt&&!isNaN(dt))?dt.toLocaleString(_dloc(),{day:'numeric',month:'short',year:'2-digit',hour:'2-digit',minute:'2-digit'}):'(unknown time)';
     var kb=it.bytes?(it.bytes/1024).toFixed(0)+' KB':'';
+    // Snapshots older than this feature predate the summary column (NULL) —
+    // those just show timestamp+size as before, same as always.
+    var summaryLine=it.summary?'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+escHtml(it.summary)+'</div>':'';
     return'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">'
-      +'<div><span style="color:var(--text)">'+label+'</span> <span style="font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-left:6px">'+kb+'</span></div>'
+      +'<div><span style="color:var(--text)">'+label+'</span> <span style="font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-left:6px">'+kb+'</span>'+summaryLine+'</div>'
       +'<button class="btn btn-secondary btn-sm" onclick="restoreHistorySnapshot('+it.id+',&quot;'+label.replace(/"/g,'')+'&quot;)">Restore</button>'
       +'</div>';
   }).join('');
