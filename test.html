@@ -778,6 +778,17 @@
     ];
     var hcY=mwHistoricalComparison(APP.batches[0]);
     ok('historicalComparison: falls back to same-YEAST when recipe history is too thin', hcY&&hcY.matchedOn==='yeast'&&hcY.sampleSize===2, JSON.stringify(hcY));
+
+    // Same yeast+honey combo across different recipes beats a plain yeast-only
+    // match — it's the closer real-world comparison (E3 refinement).
+    APP.batches=[
+      {id:'cur3',recipeId:'rNew',yeast:'ec1118',honeyType:'Orange Blossom',og:1.100,startDate:isoAgo(10)},
+      {id:'hy3',recipeId:'rOther1',yeast:'ec1118',honeyType:'Orange Blossom',og:1.100,startDate:isoAgo(50)},
+      {id:'hy4',recipeId:'rOther2',yeast:'ec1118',honeyType:'Orange Blossom',og:1.100,startDate:isoAgo(60)},
+      {id:'hy5',recipeId:'rOther3',yeast:'ec1118',honeyType:'Clover',og:1.100,startDate:isoAgo(60)}
+    ];
+    var hcYH=mwHistoricalComparison(APP.batches[0]);
+    ok('historicalComparison: prefers same yeast+honey over yeast-only', hcYH&&hcYH.matchedOn==='yeast-honey'&&hcYH.sampleSize===2&&hcYH.honey==='Orange Blossom', JSON.stringify(hcYH));
     APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.bottling={};APP.tastings={};APP.logs={};
   })();
 
