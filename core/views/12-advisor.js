@@ -470,9 +470,12 @@ function renderBatchAdvisor(b){
   if(sevCounts.critical)sumParts.push(sevCounts.critical+' '+(nl?(sevCounts.critical>1?'acties':'actie'):(sevCounts.critical>1?'actions':'action')));
   if(sevCounts.recommended)sumParts.push(sevCounts.recommended+' '+(nl?'om te volgen':'to watch'));
   if(sevCounts.info)sumParts.push(sevCounts.info+' '+(nl?(sevCounts.info>1?'inzichten':'inzicht'):(sevCounts.info>1?'insights':'insight')));
+  // The reassuring case gets a warmer sentence, not just a label — brewing
+  // carries enough anxiety on its own; "nothing needs your attention today"
+  // reads calmer than a bare "✓ Everything looks good".
   var summaryLine=sumParts.length
     ?('<div style="font-size:13.5px;color:var(--text2);margin-top:10px">'+sumParts.join(' · ')+'</div>')
-    :('<div style="font-size:13.5px;color:var(--green2);margin-top:10px">✓ '+(nl?'Alles ziet er goed uit':'Everything looks good')+'</div>');
+    :('<div style="font-size:13.5px;color:var(--green2);margin-top:10px">✓ '+(nl?'Verloopt normaal — niets vraagt vandaag je aandacht.':'Progressing normally — nothing needs your attention today.')+'</div>');
   var healthCard='<div class="card" style="margin-bottom:16px;border-left:3px solid '+hm.c+'">'
     +'<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">'
     +'<div style="text-align:center;min-width:96px"><div style="font-family:var(--font-display);font-size:42px;line-height:1;color:'+hm.c+'">'+(h&&h.score!=null?h.score:'—')+_advTrendChip(h&&h.trend)+'</div>'
@@ -578,10 +581,11 @@ function renderBatchAdvisor(b){
     var insightsSection=insightItems.length?('<details style="margin-top:'+(actionItems.length||watchItems.length?'14px':'0')+'"><summary style="cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text3);padding:4px 0;user-select:none">'
       +'💡 '+insightItems.length+' '+(nl?(insightItems.length>1?'inzichten':'inzicht'):(insightItems.length>1?'insights':'insight'))+'</summary>'+insightItems.map(itemCard).join('')+'</details>'):'';
     recHtml=catStrip+actionsSection+watchSection+insightsSection;
-  }else{
-    recHtml='<div class="info-box green"><div style="font-size:13px;color:var(--green2)">'+(nl?'✓ Geen actie nodig — alles ziet er goed uit.':'✓ No action needed — everything looks good.')+'</div></div>';
   }
-  var recCard='<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">'+(nl?'🧭 ADVIES':'🧭 RECOMMENDATIONS')+'</div></div>'+recHtml+'</div>';
+  // No separate "everything looks good" box — the health hero's summary line
+  // already said that. Repeating it one card down is the exact "same thing
+  // twice" redundancy the E13 wording pass was meant to catch.
+  var recCard=adv.items.length?('<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">'+(nl?'🧭 ADVIES':'🧭 RECOMMENDATIONS')+'</div></div>'+recHtml+'</div>'):'';
 
   // ---- Folded-in Brew Coach: today's actions + upcoming ----
   var d=(typeof daysSince==='function')?daysSince(b.startDate):0;
