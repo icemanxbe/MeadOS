@@ -63,7 +63,7 @@ function applyRecipeFilters(){
   var stageFilter=APP.filters.recipeStage||'all';
   var ageFilter=APP.filters.recipeAge||'all';
   var favOnly=!!APP.filters.recipeFavoritesOnly;
-  var filtered=APP.recipes.filter(function(r){
+  var filtered=visibleRecipes().filter(function(r){
     if(favOnly&&!isFavoriteRecipe(r.id))return false;
     if(diffFilter!=='all'&&r.difficulty!==diffFilter)return false;
     if(catFilter!=='all'&&(r.category||r.style||'Traditional')!==catFilter)return false;
@@ -98,7 +98,7 @@ function renderRecipes(){
   var diffChips=[['all','All'],['Beginner','Beginner'],['Intermediate','Intermediate'],['Advanced','Advanced'],['Expert','Expert']]
     .map(function(x){return'<span class="filter-chip '+(diffFilter===x[0]?'active':'')+'" onclick="setRecipeFilter(\''+x[0]+'\')">'+x[1]+'</span>';}).join('');
   var allCats={};
-  APP.recipes.forEach(function(r){var c=r.category||r.style||'Traditional';allCats[c]=(allCats[c]||0)+1;});
+  visibleRecipes().forEach(function(r){var c=r.category||r.style||'Traditional';allCats[c]=(allCats[c]||0)+1;});
   var catList=[['all','All Styles']].concat(Object.keys(allCats).sort().map(function(c){return[c,c+' ('+allCats[c]+')'];}));
   var catChips=catList.map(function(x){return'<span class="filter-chip '+(catFilter===x[0]?'active':'')+'" onclick="setRecipeCategoryFilter(\''+x[0]+'\')">'+x[1]+'</span>';}).join('');
   var stageChips=[['all','All stages'],['primary','Primary additions'],['secondary','Secondary additions'],['both','Both'],['none','No additions']]
@@ -112,10 +112,14 @@ function renderRecipes(){
     +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
     +'<button class="btn btn-secondary btn-sm" onclick="importBeerXMLClick()" title="Import a BeerXML recipe file (.xml) from another brewing app">⬇ Import BeerXML</button>'
     +(APP.customRecipes.length?'<button class="btn btn-secondary btn-sm" onclick="exportAllCustomRecipesBeerXML()" title="Export all custom recipes as BeerXML">⬆ Export Custom</button>':'')
-    +'<button class="btn btn-secondary btn-sm" onclick="openRecipeWizard()" title="Guided designer: pick targets, it does the honey/OG math and picks a yeast">✦ Designer</button>'
+    // The guided Designer wizard back-solves honey weight from OG (292 SG-points/kg)
+    // and only knows mead styles/adjuncts — cider's math and style list would need
+    // a real parallel wizard, not a relabeling, so it's mead-only for now. The plain
+    // "+ Create Recipe" form below is fully cider-aware (juice/Nottingham template).
+    +(activeBevMode()!=='cider'?'<button class="btn btn-secondary btn-sm" onclick="openRecipeWizard()" title="Guided designer: pick targets, it does the honey/OG math and picks a yeast">✦ Designer</button>':'')
     +'<button class="btn btn-primary btn-sm" onclick="openCustomRecipeModal()">＋ Create Recipe</button>'
     +'</div></div>'
-    +'<div class="page-subtitle">The Mead Compendium · '+APP.recipes.length+' recipe'+(APP.recipes.length!==1?'s':'')+(APP.customRecipes.length?' ('+APP.customRecipes.length+' yours)':'')+(anyFilterActive?' · '+filtered.length+' shown':'')+'</div>'
+    +'<div class="page-subtitle">'+(activeBevMode()==='cider'?'The Cider Compendium':'The Mead Compendium')+' · '+visibleRecipes().length+' recipe'+(visibleRecipes().length!==1?'s':'')+(APP.customRecipes.length?' ('+APP.customRecipes.length+' yours)':'')+(anyFilterActive?' · '+filtered.length+' shown':'')+'</div>'
     +(typeof renderBrewWhatYouHaveCard==='function'?renderBrewWhatYouHaveCard():'')
     +'<div class="search-bar"><input type="text" class="search-input" id="recipe-search" placeholder="🔍 Search name, style, tag, or ingredient (e.g. &quot;chestnut&quot;, &quot;blackcurrant&quot;)…" value="'+escHtml(q)+'" oninput="updateRecipeSearchResults(this.value)">'
     +'<div style="display:flex;flex-direction:column;gap:6px">'
@@ -126,7 +130,8 @@ function renderRecipes(){
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"><span style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1px;margin-right:4px">ADDITIONS:</span>'+stageChips+'</div>'
     +'</div></div>'
     +'<div id="recipe-list-results">'+(filtered.length?'<div class="grid-2">'+cards+'</div>':'<div class="empty-state"><p>No recipes match the filters.</p></div>')+'</div>'
-    +'<div class="info-box blue" style="margin-top:16px"><div style="font-size:13px;color:var(--blue2)">💡 Recipes target 5 L final volume — sized for the staged vessel setup: <strong>9 L primary</strong> (vigorous fermentation, good headspace) → <strong>7.6 L or 5 L secondary</strong> (settling, clarification) → <strong>5 L bulk aging</strong> before bottling (minimal headspace, oxidation-protected). <strong>Primary additions</strong> (fruit, ginger, etc.) survive CO₂ scrubbing; <strong>secondary additions</strong> (delicate spices, vanilla, hops) preserve aromatics.</div></div>';
+    +'<div class="info-box blue" style="margin-top:16px"><div style="font-size:13px;color:var(--blue2)">💡 Recipes target 5 L final volume — sized for the staged vessel setup: <strong>9 L primary</strong> (vigorous fermentation, good headspace) → <strong>7.6 L or 5 L secondary</strong> (settling, clarification) → <strong>5 L bulk aging</strong> before bottling (minimal headspace, oxidation-protected). <strong>Primary additions</strong> (fruit, ginger, etc.) survive CO₂ scrubbing; <strong>secondary additions</strong> (delicate spices, vanilla, hops) preserve aromatics.</div></div>'
+    +(activeBevMode()==='cider'?'<div class="info-box green" style="margin-top:12px"><div style="font-size:13px;color:var(--green2)">🍏 Don\'t have the named variety? Any plain 100% apple juice works — the named varieties above are a guide to character (tannin/acid/sweetness), not a hard requirement. On the carton, check for: <strong>no preservatives</strong> (potassium sorbate or benzoate will stop fermentation before it starts — check the ingredients list), <strong>no added sugar or vitamin C blends</strong>, and pasteurised is fine (from-concentrate is fine too — freshly-pressed only matters for flavor nuance, not fermentability).</div></div>':'');
 }
 
 // Update only the recipe results so the search input doesn't lose focus
@@ -346,6 +351,10 @@ function identifyYeastFromText(itemText){
     [/qa.?23/,'qa23'],
     [/red.?star.*cuv|premier.*cuv/,'red-pc'],
     [/red.?star.*blanc|premier.*blanc|pasteur champagne/,'red-bl'],
+    [/nottingham/,'nottingham'],
+    [/m02|mangrove jack.*cider/,'mangrovejacks-m02'],
+    [/wyeast.*4766|wyeast.*cider/,'wyeast4766'],
+    [/wlp.?775|english cider yeast/,'wlp775'],
     // M05 last because "mead yeast" is generic and would match other entries
     [/m05|mangrove jack.*mead|mead yeast/,'m05']
   ];
@@ -383,6 +392,30 @@ function identifyNutrientFromText(itemText){
   return null;
 }
 
+// Regional sourcing note for liquid-format yeast (White Labs vials / Wyeast
+// smack-packs): they need live cold-chain shipping and are far less commonly
+// stocked by mainland-EU homebrew shops than dry yeast is, so a metric-region
+// brewer benefits from knowing a dry equivalent exists — same idea as
+// ciderVarietyAvailNote (data-cider.js) for apple/pear varieties, reusing the
+// same currentUnitSystem() signal. Matches on the strain's own WLP###/Wyeast###
+// code (order-independent) rather than the full name, since recipe text and
+// the configurator's exact strain name don't always word-order match.
+function liquidYeastNote(itemText){
+  if(!itemText||typeof YEAST_STRAINS==='undefined'||typeof currentUnitSystem!=='function')return null;
+  if(currentUnitSystem()!=='metric')return null;
+  var text=itemText.toLowerCase().replace(/[\s-]/g,'');
+  var y=YEAST_STRAINS.find(function(x){
+    if(x.format!=='liquid')return false;
+    var m=/(?:wlp|wyeast)-?\s?(\d+)/i.exec(x.name||'');
+    if(!m)return false;
+    var code=m[0].toLowerCase().replace(/[\s-]/g,'');
+    return text.indexOf(code)!==-1;
+  });
+  if(!y)return null;
+  return y.name+' is a liquid strain — needs cold-chain shipping and is less commonly stocked by mainland-EU homebrew shops than dry yeast'
+    +(y.drySubstitute?('. Dry alternative: '+y.drySubstitute+'.'):'. Ask your local shop for a dry equivalent.');
+}
+
 // Scale recipe ingredients to the target volume.
 //
 // Yeast and sachet-based nutrients DON'T scale linearly in grams — they
@@ -397,7 +430,23 @@ function identifyNutrientFromText(itemText){
 //
 // Everything else (honey, water, fruit, spice, sulfite, sorbate, pectic)
 // scales linearly as before.
+// Cider mode: append a regional-sourcing note when an ingredient names an
+// apple/pear variety the app's own unit-system setting (see currentUnitSystem
+// + ciderVarietyAvailNote in data-cider.js) says isn't typically available
+// where the user is — e.g. a Dutch/EU brewer (metric) sees a substitute for
+// Baldwin, an American heirloom. No-op for mead ingredients (nothing in
+// CIDER_VARIETIES matches "honey", "yeast", etc.) and for any variety that
+// IS available in the user's own region.
 function scaleRecipeIngredients(r,scaleVol,config){
+  return _scaleRecipeIngredientsRaw(r,scaleVol,config).map(function(ing){
+    var note=(typeof ciderVarietyAvailNote==='function'?ciderVarietyAvailNote(ing.item):null)
+      ||liquidYeastNote(ing.item)
+      ||(typeof honeyAvailNote==='function'?honeyAvailNote(ing.item):null);
+    if(!note)return ing;
+    return Object.assign({},ing,{notes:(ing.notes?ing.notes+' · ':'')+note});
+  });
+}
+function _scaleRecipeIngredientsRaw(r,scaleVol,config){
   config=config||{};   // {honey,yeast,nutrient} overrides from the recipe configurator
   var linearFactor=scaleVol/(r.volume||5);
   // "to the N mark" follows the chosen recipe-scale unit (L / US gal / UK gal).
@@ -487,6 +536,7 @@ function scaleRecipeIngredients(r,scaleVol,config){
 // scale slider and these dropdowns share one live-update path (updateRecipeScale),
 // and the chosen config flows straight into "Brew This Recipe".
 function recipeConfigDefaults(r){
+  var isCider=(r.beverageType||'mead')==='cider';
   var honeyTypes=(typeof honeyTypesInRecipe==='function')?honeyTypesInRecipe(r):[];
   var honey=honeyTypes[0]||'Wildflower';
   var yeast=null,nutrient=null;
@@ -495,7 +545,7 @@ function recipeConfigDefaults(r){
     if(/yeast/i.test(it)&&!/nutrient/i.test(it)&&!yeast){var s=(typeof identifyYeastFromText==='function')?identifyYeastFromText(it):null;if(s)yeast=s.id;}
     if(/nutrient/i.test(it)&&!nutrient){var p=(typeof identifyNutrientFromText==='function')?identifyNutrientFromText(it):null;if(p)nutrient=p.id;}
   });
-  return {honey:honey,yeast:yeast||'m05',nutrient:nutrient||'mj-mead',schedule:'auto'};
+  return {honey:honey,yeast:yeast||(isCider?'nottingham':'m05'),nutrient:nutrient||'mj-mead',schedule:'auto'};
 }
 function ensureRecipeConfig(r){
   if(!window.recipeConfig||window.recipeConfig._rid!==r.id){window.recipeConfig=recipeConfigDefaults(r);window.recipeConfig._rid=r.id;}
@@ -540,17 +590,25 @@ function recipeConfigWarning(r,cfg){
 }
 function renderRecipeConfigurator(r){
   var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var isCider=(r.beverageType||'mead')==='cider';
   var cfg=ensureRecipeConfig(r);
   var vol=window.recipeScaleVol||r.volume||5;
   function sel(id,field,opts){return '<select class="form-select" id="'+id+'" onchange="setRecipeConfig(\''+r.id+'\',\''+field+'\',this.value)">'+opts+'</select>';}
   var honeyOpts=(typeof HONEY_TYPES!=='undefined'?HONEY_TYPES:[]).map(function(h){return '<option value="'+escHtml(h)+'"'+(h===cfg.honey?' selected':'')+'>'+escHtml(proseL(h))+'</option>';}).join('');
-  var yeastOpts=(typeof YEAST_STRAINS!=='undefined'?YEAST_STRAINS:[]).map(function(y){return '<option value="'+y.id+'"'+(y.id===cfg.yeast?' selected':'')+'>'+escHtml(y.name)+'</option>';}).join('');
+  // Filtered to this recipe's own beverage — most strains are written up in
+  // mead-only language, so a cider recipe's yeast dropdown shouldn't offer M05.
+  var yeastOpts=(typeof YEAST_STRAINS!=='undefined'?YEAST_STRAINS:[]).filter(function(y){return y.id===cfg.yeast||(y.beverageTypes||['mead']).indexOf(isCider?'cider':'mead')>=0;}).map(function(y){return '<option value="'+y.id+'"'+(y.id===cfg.yeast?' selected':'')+'>'+escHtml(y.name)+'</option>';}).join('');
   var nutOpts=(typeof NUTRIENT_PRODUCTS!=='undefined'?NUTRIENT_PRODUCTS:[]).map(function(p){return '<option value="'+p.id+'"'+(p.id===cfg.nutrient?' selected':'')+'>'+escHtml(p.name)+'</option>';}).join('');
   var schedOpts=[['auto',nl?'Auto — afstemmen op de voeding':'Auto — match the nutrient'],['tosna2',nl?'TOSNA — organisch (4 doses)':'TOSNA — organic (4 doses)'],['sna',nl?'SNA — standaard (2 doses)':'SNA — standard (2 doses)'],['sna-high',nl?'SNA — hoge dichtheid (3 doses)':'SNA — high-gravity (3 doses)']].map(function(o){return '<option value="'+o[0]+'"'+(o[0]===cfg.schedule?' selected':'')+'>'+escHtml(o[1])+'</option>';}).join('');
   function row(label,ctl){return '<div class="form-group" style="margin-bottom:8px"><label class="form-label">'+label+'</label>'+ctl+'</div>';}
+  // Honey type has no meaning for a juice-based cider — a recipe with no
+  // honey ingredient shouldn't offer to pick one (config.honey is a no-op
+  // on cider ingredient scaling anyway, see isHoney check below).
   return '<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">'+(nl?'⚙ CONFIGUREER':'⚙ CONFIGURE')+'</div></div>'
-    +'<div style="font-size:11.5px;color:var(--text3);margin-bottom:10px;line-height:1.5">'+(nl?'Kies honing, gist, voeding en schema — ingrediënten en doelen passen zich live aan, en “Brouw dit recept” neemt je keuzes over.':'Pick honey, yeast, nutrient and schedule — ingredients and targets update live, and "Brew This Recipe" carries your choices.')+'</div>'
-    +row(nl?'Honingsoort':'Honey',sel('cfg-honey','honey',honeyOpts))
+    +'<div style="font-size:11.5px;color:var(--text3);margin-bottom:10px;line-height:1.5">'+(isCider
+      ?(nl?'Kies gist, voeding en schema — ingrediënten en doelen passen zich live aan, en “Brouw dit recept” neemt je keuzes over.':'Pick yeast, nutrient and schedule — ingredients and targets update live, and "Brew This Recipe" carries your choices.')
+      :(nl?'Kies honing, gist, voeding en schema — ingrediënten en doelen passen zich live aan, en “Brouw dit recept” neemt je keuzes over.':'Pick honey, yeast, nutrient and schedule — ingredients and targets update live, and "Brew This Recipe" carries your choices.'))+'</div>'
+    +(isCider?'':row(nl?'Honingsoort':'Honey',sel('cfg-honey','honey',honeyOpts)))
     +row(nl?'Giststam':'Yeast',sel('cfg-yeast','yeast',yeastOpts))
     +row(nl?'Voeding':'Nutrient',sel('cfg-nutrient','nutrient',nutOpts))
     +row(nl?'Voedingsschema':'Nutrient schedule',sel('cfg-schedule','schedule',schedOpts))
@@ -686,13 +744,15 @@ function renderRecipeYeastBlock(r){
     var tierConfig={
       recommended:{color:'var(--green2)',icon:'★',label:'TOP PICK'},
       acceptable:{color:'var(--gold2)',icon:'✓',label:'ALSO WORKS'},
-      discouraged:{color:'var(--red2)',icon:'✗',label:'AVOID'}
+      // #d66b6b, not var(--red2): the standard red measures under WCAG AA's
+      // 4.5:1 for small badge text on this card's background.
+      discouraged:{color:'#d66b6b',icon:'✗',label:'AVOID'}
     };
     var t=tierConfig[tier];
     // ABV mismatch flag — surface if this yeast can't reach the recipe's ABV target
     var abvFlag='';
     if(r.abvTarget&&y.abvMax<r.abvTarget){
-      abvFlag='<span style="display:inline-block;margin-left:6px;font-family:var(--font-mono);font-size:9px;color:var(--red2);background:rgba(200,60,60,0.15);padding:1px 5px;border-radius:6px;letter-spacing:1px">⛔ '+y.abvMax+'% MAX</span>';
+      abvFlag='<span style="display:inline-block;margin-left:6px;font-family:var(--font-mono);font-size:9px;color:#d66b6b;background:rgba(200,60,60,0.15);padding:1px 5px;border-radius:6px;letter-spacing:1px">⛔ '+y.abvMax+'% MAX</span>';
     }
     return'<div onclick="currentYeastId=\''+y.id+'\';showView(\'yeast-detail\')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-left:3px solid '+t.color+';border-radius:var(--radius);padding:9px 12px;transition:all 0.15s" onmouseover="this.style.background=\'var(--bg3)\';this.style.transform=\'translateX(2px)\'" onmouseout="this.style.background=\'var(--bg2)\';this.style.transform=\'\'">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'
@@ -713,7 +773,7 @@ function renderRecipeYeastBlock(r){
     +'<div style="font-size:12.5px;color:var(--text3);font-style:italic;line-height:1.55;margin-bottom:12px">'+escHtml(pairings.notes)+'</div>'
     +'<div style="display:flex;flex-direction:column;gap:6px">'+recommendedRows+'</div>'
     +(acceptableRows?'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--gold2);letter-spacing:1.5px;margin:14px 0 6px">ALSO ACCEPTABLE</div><div style="display:flex;flex-direction:column;gap:6px">'+acceptableRows+'</div>':'')
-    +(discouragedRows?'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--red2);letter-spacing:1.5px;margin:14px 0 6px">DO NOT USE</div><div style="display:flex;flex-direction:column;gap:6px">'+discouragedRows+'</div>':'')
+    +(discouragedRows?'<div style="font-family:var(--font-mono);font-size:9.5px;color:#d66b6b;letter-spacing:1.5px;margin:14px 0 6px">DO NOT USE</div><div style="display:flex;flex-direction:column;gap:6px">'+discouragedRows+'</div>':'')
   +'</div>';
 }
 
@@ -819,6 +879,10 @@ function renderRecipeComboBlock(r){
 }
 
 function renderRecipeCostEstimate(r,scaleVol){
+  // The mead estimate is built on honey-kg pricing (mwHoneyKg, OG-derived kg
+  // math), which doesn't generalize to a juice-based cider — hand off to the
+  // juice-liters equivalent instead of forcing honey math onto apple juice.
+  if((r.beverageType||'mead')==='cider')return renderCiderCostEstimate(r,scaleVol);
   var honeyPrice=parseFloat(APP.settings.honeyPricePerKg)||0;
   var currency=APP.settings.currency||'€';
   // Fruit/juice ingredients already supply part of that OG — credit it back
@@ -889,6 +953,73 @@ function renderRecipeCostEstimate(r,scaleVol){
     +'</table>'
     +(!yeastSupply||!nutrientSupply?'<div style="margin-top:8px;font-size:11px;color:var(--text3);font-style:italic">💡 Add per-unit prices to <a href="#view=supplies" onclick="event.preventDefault();showView(\'supplies\')" style="color:var(--gold2)">your supplies</a> to replace estimates with actual costs.</div>':'')
     +(extrasCost?'<div style="margin-top:4px;font-size:11px;color:var(--text3);font-style:italic">Extras are heuristic estimates — your actual cost depends on fruit/spice sourcing.</div>':'')
+    +'</div>';
+}
+
+// Cider's cost equivalent — priced by juice liters instead of honey kilos,
+// since a cider recipe's fermentable base is apple/pear juice, not honey.
+function renderCiderCostEstimate(r,scaleVol){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var juicePrice=parseFloat(APP.settings.juicePricePerL)||0;
+  var currency=APP.settings.currency||'€';
+  var linearFactor=scaleVol/(r.volume||5);
+  // Sum the liters of every ingredient whose name mentions "juice" (apple,
+  // pear, concentrate, etc.) — that's the recipe's fermentable base, scaled.
+  var juiceL=0;
+  (r.ingredients||[]).forEach(function(ing){
+    if(!/juice/i.test(ing.item||''))return;
+    var m=(ing.amount||'').match(/^~?\s*([0-9]+(?:\.[0-9]+)?)\s*L\b/i);
+    if(m)juiceL+=parseFloat(m[1])*linearFactor;
+  });
+  if(juiceL<=0)juiceL=scaleVol; // fallback if no ingredient line parsed as liters
+  function firstPricedSupplyByType(type){
+    if(!APP.supplies)return null;
+    return APP.supplies.find(function(s){return s.type===type&&parseFloat(s.pricePerUnit)>0;});
+  }
+  var yeastSupply=firstPricedSupplyByType('yeast');
+  var yeastCost=yeastSupply?parseFloat(yeastSupply.pricePerUnit):3.5;
+  var nutrientSupply=firstPricedSupplyByType('nutrient');
+  var nutrientCost=nutrientSupply?parseFloat(nutrientSupply.pricePerUnit):2;
+  // Extras — named non-juice adjuncts (raisins, maple syrup, hops, spices, fruit)
+  var extrasCost=0,extrasKey='';
+  var text=(r.ingredients||[]).map(function(i){return i.item;}).join(' ');
+  if(/maple syrup/i.test(text)){extrasCost=6;extrasKey='maple';}
+  else if(/raisins/i.test(text)){extrasCost=3;extrasKey='raisins';}
+  else if(/hop pellets/i.test(text)){extrasCost=3;extrasKey='hops';}
+  else if(/raspberries|berries/i.test(text)){extrasCost=5;extrasKey='fruit';}
+  else if(/cinnamon|clove/i.test(text)){extrasCost=2;extrasKey='spices';}
+  var extrasNote={maple:nl?'geschat (ahornsiroop)':'estimated (maple syrup)',raisins:nl?'geschat (rozijnen)':'estimated (raisins)',hops:nl?'geschat (hop)':'estimated (hops)',fruit:nl?'geschat (fruit)':'estimated (fruit)',spices:nl?'geschat (specerijen)':'estimated (spices)'}[extrasKey]||'';
+  var juiceCost=juiceL*juicePrice;
+  var totalCost=juiceCost+yeastCost+nutrientCost+extrasCost;
+  var litersAfterLoss=scaleVol*0.9;
+  var bottles750=Math.floor(litersAfterLoss/0.75);
+  var bottles500=Math.floor(litersAfterLoss/0.5);
+  var perBottle=bottles750?(totalCost/bottles750):0;
+  var perBottle500=bottles500?(totalCost/bottles500):0;
+  var p750s=firstPricedSupplyByType('bottle750'),p500s=firstPricedSupplyByType('bottle500');
+  var corkS=firstPricedSupplyByType('cork'),capS=firstPricedSupplyByType('crowncap');
+  var closureP=Math.min(corkS?parseFloat(corkS.pricePerUnit):Infinity,capS?parseFloat(capS.pricePerUnit):Infinity);
+  if(!isFinite(closureP))closureP=0;
+  var pack750=(p750s?parseFloat(p750s.pricePerUnit):0)+closureP;
+  var pack500=(p500s?parseFloat(p500s.pricePerUnit):0)+closureP;
+  if(!juicePrice){
+    return'<div class="info-box" id="scale-cost-estimate" style="border-left-color:var(--text3);margin-bottom:16px"><div style="font-size:13px;color:var(--text3);font-style:italic">'+(nl
+      ?'💡 Stel je sapprijs per liter in bij <a href="#view=settings" onclick="event.preventDefault();showView(\'settings\')" style="color:var(--gold2)">Instellingen → Kosten &amp; Voorraad</a> om brouwkostschattingen voor dit recept te zien. Voeg prijzen per eenheid toe bij <a href="#view=supplies" onclick="event.preventDefault();showView(\'supplies\')" style="color:var(--gold2)">Voorraad</a> voor een nauwkeurigere schatting.'
+      :'💡 Set your apple/pear juice price per L in <a href="#view=settings" onclick="event.preventDefault();showView(\'settings\')" style="color:var(--gold2)">Settings → Costs &amp; Supplies</a> to see brew-cost estimates for this recipe. Add per-unit prices to <a href="#view=supplies" onclick="event.preventDefault();showView(\'supplies\')" style="color:var(--gold2)">Supplies</a> for a more precise estimate.')+'</div></div>';
+  }
+  return'<div class="card" id="scale-cost-estimate" style="margin-bottom:16px"><div class="card-header"><div class="card-title">💰 '+(nl?'BROUWKOSTSCHATTING':'BREW COST ESTIMATE')+'</div></div>'
+    +'<div style="font-size:13px;color:var(--text3);margin-bottom:10px">'+(nl?'Voor '+scaleVol+' L bij OG '+r.ogTarget+'. Pas de SCHAAL-schuif hierboven aan om te herberekenen.':'For '+scaleVol+'L at OG '+r.ogTarget+'. Adjust the SCALE slider above to recalculate.')+'</div>'
+    +'<table style="width:100%;font-size:12.5px;border-collapse:collapse">'
+    +'<tr><td style="color:var(--text2);padding:4px 0">'+(nl?'Sap':'Juice')+' · '+juiceL.toFixed(2)+' L @ '+currency+juicePrice.toFixed(2)+'/L</td><td style="text-align:right;font-family:var(--font-mono);color:var(--gold2)">'+currency+juiceCost.toFixed(2)+'</td></tr>'
+    +'<tr><td style="color:var(--text2);padding:4px 0">'+(nl?'Gist':'Yeast')+' · 1 '+(nl?'pakje':'packet')+' <span style="color:var(--text3);font-size:10px;font-style:italic">('+(yeastSupply?(nl?'uit voorraad':'from supplies'):(nl?'geschat':'estimated'))+')</span></td><td style="text-align:right;font-family:var(--font-mono);color:var(--gold2)">'+currency+yeastCost.toFixed(2)+'</td></tr>'
+    +'<tr><td style="color:var(--text2);padding:4px 0">'+(nl?'Voeding':'Nutrient')+' · 1 sachet <span style="color:var(--text3);font-size:10px;font-style:italic">('+(nutrientSupply?(nl?'uit voorraad':'from supplies'):(nl?'geschat':'estimated'))+')</span></td><td style="text-align:right;font-family:var(--font-mono);color:var(--gold2)">'+currency+nutrientCost.toFixed(2)+'</td></tr>'
+    +(extrasCost?'<tr><td style="color:var(--text2);padding:4px 0">'+(nl?'Extra\'s':'Extras')+' · '+extrasNote+'</td><td style="text-align:right;font-family:var(--font-mono);color:var(--gold2)">'+currency+extrasCost.toFixed(2)+'</td></tr>':'')
+    +'<tr style="border-top:1px solid var(--border)"><td style="padding:8px 0 4px;font-weight:600;color:var(--text)">'+(nl?'Totale brouwkost':'Total batch cost')+'</td><td style="text-align:right;font-family:var(--font-mono);font-size:14px;font-weight:600;color:var(--gold)">'+currency+totalCost.toFixed(2)+'</td></tr>'
+    +'<tr><td style="padding:0 0 4px;color:var(--text3);font-size:11px">'+bottles750+' × 750ml '+(nl?'na overhevelen':'after racking')+'</td><td style="text-align:right;font-family:var(--font-mono);color:var(--text)">'+currency+perBottle.toFixed(2)+'/'+(nl?'fles':'bottle')+(pack750>0?' <span style="color:var(--text3);font-size:10px">+'+currency+pack750.toFixed(2)+' '+(nl?'verp.':'pkg')+'</span>':'')+'</td></tr>'
+    +'<tr><td style="padding:0 0 4px;color:var(--text3);font-size:11px">'+bottles500+' × 500ml '+(nl?'na overhevelen':'after racking')+'</td><td style="text-align:right;font-family:var(--font-mono);color:var(--text)">'+currency+perBottle500.toFixed(2)+'/'+(nl?'fles':'bottle')+(pack500>0?' <span style="color:var(--text3);font-size:10px">+'+currency+pack500.toFixed(2)+' '+(nl?'verp.':'pkg')+'</span>':'')+'</td></tr>'
+    +'</table>'
+    +(!yeastSupply||!nutrientSupply?'<div style="margin-top:8px;font-size:11px;color:var(--text3);font-style:italic">💡 '+(nl?'Voeg prijzen per eenheid toe bij <a href="#view=supplies" onclick="event.preventDefault();showView(\'supplies\')" style="color:var(--gold2)">je voorraad</a> om schattingen te vervangen door werkelijke kosten.':'Add per-unit prices to <a href="#view=supplies" onclick="event.preventDefault();showView(\'supplies\')" style="color:var(--gold2)">your supplies</a> to replace estimates with actual costs.')+'</div>':'')
+    +(extrasCost?'<div style="margin-top:4px;font-size:11px;color:var(--text3);font-style:italic">'+(nl?'Extra\'s zijn ruwe schattingen — je werkelijke kosten hangen af van fruit-/kruideninkoop.':'Extras are heuristic estimates — your actual cost depends on fruit/spice sourcing.')+'</div>':'')
     +'</div>';
 }
 
@@ -968,6 +1099,9 @@ function renderRecipeDetail(){
     +scaledIngredients.map(function(ing){return'<tr><td style="color:var(--text)">'+escHtml(ing.item)+'</td><td style="font-family:var(--font-mono);font-size:12px;color:'+r.brandColor+'">'+escHtml(ing.amount)+'</td><td style="color:var(--text3);font-style:italic;font-size:12px">'+escHtml(ing.notes)+'</td></tr>';}).join('')
     +'</table></div></div>'
     +'<div class="ra-honey">'+(function(){
+      // Cider has no honey ingredient at all — swap in the apple/pear-variety
+      // fit card, cider's equivalent of "which honey fits".
+      if((r.beverageType||'mead')==='cider')return(typeof renderCiderAppleFitCard==='function')?renderCiderAppleFitCard(r):'';
       // Auto-detect honey types in this recipe and surface suppliers from
       // the user's own rolodex (Suppliers view) tagged with those types.
       if(typeof honeyTypesInRecipe!=='function'||typeof suppliersForHoney!=='function')return'';
@@ -1032,8 +1166,8 @@ function renderRecipeDetail(){
         ?'<div style="font-size:12.5px;color:var(--text3);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:1px">EVERY HONEY · HOW EACH ONE FITS</div>'
           +(function(){var _nl=(typeof appLang==='function'&&appLang()==='nl');var IL={'a bold, robust honey':'een krachtige, robuuste honing','a light, delicate honey':'een lichte, delicate honing','a light honey that lets the fruit lead':'een lichte honing die het fruit laat leiden','a medium honey (bold honeys also work)':'een medium honing (krachtige honingen werken ook)','a medium-bodied honey':'een honing met medium body'};var lbl=escHtml(_nl?(IL[ideal.label]||ideal.label):ideal.label);
             return _nl
-            ?'<div style="font-size:11.5px;color:var(--text3);font-style:italic;margin-bottom:4px;line-height:1.5">Dit recept wil '+lbl+'. Elke honing in de bibliotheek is ervoor beoordeeld — <span style="color:var(--green2)">groen</span> past, <span style="color:var(--gold)">amber</span> werkt met een verschuiving, <span style="color:var(--red2)">rood</span> botst met de stijl. Honingen die je op voorraad hebt, zijn gemarkeerd en bovenaan hun categorie vastgezet.</div>'
-            :'<div style="font-size:11.5px;color:var(--text3);font-style:italic;margin-bottom:4px;line-height:1.5">This recipe wants '+lbl+'. Each honey in the library is rated for it — <span style="color:var(--green2)">green</span> fits, <span style="color:var(--gold)">amber</span> works with a shift, <span style="color:var(--red2)">red</span> fights the style. Honeys you have in stock are highlighted and pinned to the top of their tier.</div>';})()
+            ?'<div style="font-size:11.5px;color:var(--text3);font-style:italic;margin-bottom:4px;line-height:1.5">Dit recept wil '+lbl+'. Elke honing in de bibliotheek is ervoor beoordeeld — <span style="color:var(--green2)">groen</span> past, <span style="color:var(--gold)">amber</span> werkt met een verschuiving, <span style="color:#d66b6b">rood</span> botst met de stijl. Honingen die je op voorraad hebt, zijn gemarkeerd en bovenaan hun categorie vastgezet.</div>'
+            :'<div style="font-size:11.5px;color:var(--text3);font-style:italic;margin-bottom:4px;line-height:1.5">This recipe wants '+lbl+'. Each honey in the library is rated for it — <span style="color:var(--green2)">green</span> fits, <span style="color:var(--gold)">amber</span> works with a shift, <span style="color:#d66b6b">red</span> fights the style. Honeys you have in stock are highlighted and pinned to the top of their tier.</div>';})()
           +'<div class="honey-fit-grid">'+fitRows+'</div>'
         :'';
       return'<div class="card" style="margin-bottom:16px;border-left:3px solid var(--gold)"><div class="card-header"><div class="card-title">🛒 SOURCE YOUR HONEY</div></div>'
@@ -1257,7 +1391,7 @@ function renderCalendar(){
   var firstDay=new Date(year,month,1).getDay(),daysInMonth=new Date(year,month+1,0).getDate();
   var monthName=viewDate.toLocaleDateString(_dloc(),{month:'long',year:'numeric'});
   var events={};
-  APP.batches.forEach(function(b){
+  (typeof visibleBatches==='function'?visibleBatches():APP.batches).forEach(function(b){
     if(getBatchStatus(b)==='complete'||getBatchStatus(b)==='bottled'||getBatchStatus(b)==='failed')return;
     var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
     if(!recipe)return;
@@ -1337,8 +1471,9 @@ function navCalToToday(){
 
 // Day-detail modal — show every step scheduled for a date with full descriptions
 function showCalDayModal(dateStr){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
   var items=[];
-  APP.batches.forEach(function(b){
+  (typeof visibleBatches==='function'?visibleBatches():APP.batches).forEach(function(b){
     if(getBatchStatus(b)==='complete'||getBatchStatus(b)==='bottled'||getBatchStatus(b)==='failed')return;
     var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
     if(!recipe)return;
@@ -1356,7 +1491,7 @@ function showCalDayModal(dateStr){
       +'<div style="font-size:14px;color:var(--gold2);margin-bottom:4px;font-weight:500">'+calEventIcon(it.step.title)+' '+escHtml(it.step.title)+'</div>'
       +'<div style="font-size:12.5px;color:var(--text2);font-style:italic;line-height:1.5">'+escHtml(it.step.desc||'')+'</div>'
       +'</div>';
-  }).join(''):'<div style="text-align:center;color:var(--text3);font-style:italic;padding:20px">Nothing scheduled for this day.</div>';
+  }).join(''):'<div style="text-align:center;color:var(--text3);font-style:italic;padding:20px">'+(nl?'Niets gepland voor deze dag.':'Nothing scheduled for this day.')+'</div>';
   var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:600px">'
     +'<div class="modal-title">📅 '+fmtDate(dateStr)+'</div>'
     +rows

@@ -20,6 +20,24 @@ var DEFAULT_RECIPE_TEMPLATE={
          {day:14,title:'Mid-Fermentation Reading',desc:'Take gravity reading. Should be around 1.020.'},
          {day:42,title:'Bottling Day',desc:'Final gravity should be stable. Rack, optionally stabilize, bottle.'}]
 };
+// Cider counterpart of DEFAULT_RECIPE_TEMPLATE — a blank "+ Create Recipe" in
+// cider mode should start from juice/Nottingham, not honey/M05.
+var DEFAULT_CIDER_RECIPE_TEMPLATE={
+  name:'',style:'Common Cider',difficulty:'Beginner',
+  description:'',brandColor:'#8ab030',
+  volume:5,ogTarget:1.055,fgTarget:1.005,abvTarget:6.5,fermentDays:21,
+  bulkAgeDays:30,minAgeDays:14,peakAgeDays:60,maxAgeDays:270,
+  tags:['custom'],
+  ingredients:[{item:'Apple Juice',amount:'5.0 L',notes:'Fresh-pressed or 100% juice, no preservatives/sorbate'},
+               {item:'Lallemand Nottingham Yeast',amount:'11 g (1 packet)',notes:'Neutral — lets the apple lead'},
+               {item:'Pectic Enzyme',amount:'2 g',notes:'Prevents a lasting pectin haze'},
+               {item:'Fermaid-O',amount:'2 g',notes:'Staggered addition — apple must is nitrogen-poor like honey must'}],
+  steps:[{day:0,title:'Brew Day',desc:'Sanitize. Combine juice in the fermenter. Stir in pectic enzyme. Take an OG reading. Pitch yeast. Seal with airlock.'},
+         {day:1,title:'First Nutrient',desc:'Add 1g Fermaid-O. Stir gently.'},
+         {day:7,title:'1/3 Sugar Break Nutrient',desc:'Once past the 1/3 sugar break, add the remaining 1g Fermaid-O — the last nutrient addition.'},
+         {day:14,title:'Rack & Check',desc:'Rack off the initial sediment. Take a gravity reading.'},
+         {day:21,title:'Bottling Day',desc:'Final gravity should be stable. To back-sweeten, stabilise first with metabisulfite AND sorbate together.'}]
+};
 
 // ==================== RECIPE DESIGNER WIZARD ====================
 // A guided alternative to the manual recipe editor: pick a style + targets and
@@ -269,7 +287,8 @@ function wizUpdateMath(){
 function openCustomRecipeModal(seedId){
   closeModal();
   var seed=seedId?APP.recipes.find(function(r){return r.id===seedId;}):null;
-  var r=seed?JSON.parse(JSON.stringify(seed)):JSON.parse(JSON.stringify(DEFAULT_RECIPE_TEMPLATE));
+  var isCider=(typeof activeBevMode==='function')&&activeBevMode()==='cider';
+  var r=seed?JSON.parse(JSON.stringify(seed)):JSON.parse(JSON.stringify(isCider?DEFAULT_CIDER_RECIPE_TEMPLATE:DEFAULT_RECIPE_TEMPLATE));
   if(seed){r.name=seed.name+' (My Version)';r.id=null;}
   window._editingRecipe=r;
   renderRecipeEditor();
@@ -360,7 +379,7 @@ function saveCustomRecipe(){
     };
   }).filter(function(x){return x.title;}).sort(function(a,b){return a.day-b.day;});
   // Assign ID if new
-  if(!r.id){r.id='custom_'+genId();}
+  if(!r.id){r.id='custom_'+genId();r.beverageType=activeBevMode();}
   r.isCustom=true;
   // Upsert into APP.customRecipes
   var idx=APP.customRecipes.findIndex(function(x){return x.id===r.id;});

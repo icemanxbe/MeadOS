@@ -94,7 +94,7 @@ function renderTools(){
     +'<div class="card"><div class="card-header"><div class="card-title">🦠 PITCH CALCULATOR</div></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px">How much yeast for your batch. Higher OG = more stress = more yeast. Output also includes rehydration water amount.</div>'
     +'<div class="form-row-3"><div class="form-group"><label class="form-label">Yeast</label><select class="form-select" id="pc-yeast" onchange="calcPitch()">'
-    +YEAST_STRAINS.map(function(y){return'<option value="'+y.id+'">'+escHtml(y.name)+'</option>';}).join('')
+    +YEAST_STRAINS.filter(function(y){return(y.beverageTypes||['mead']).indexOf((typeof activeBevMode==='function'&&activeBevMode()==='cider')?'cider':'mead')>=0;}).map(function(y){return'<option value="'+y.id+'">'+escHtml(y.name)+'</option>';}).join('')
     +'</select></div>'
     +'<div class="form-group"><label class="form-label">Volume (L)</label><input class="form-input" id="pc-vol" type="number" value="5" step="0.1" oninput="calcPitch()"></div>'
     +'<div class="form-group"><label class="form-label">Target OG</label><input class="form-input" id="pc-og" type="number" value="1.100" step="0.001" oninput="calcPitch()"></div></div>'

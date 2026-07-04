@@ -6,6 +6,17 @@
 
 function _advNL(){return typeof appLang==='function'&&appLang()==='nl';}
 
+// A handful of recommendation strings name the beverage directly ("let the
+// mead clear"); this resolves the right noun from the item's own data so
+// the same rule/text reads correctly for a cider batch instead of always
+// saying "mead". "Cider" is a loanword in Dutch too, so no separate NL
+// word is needed there — only the mead noun changes by language.
+function _advBevWord(d,nl){
+  var isCider=(d&&d.beverageType)==='cider';
+  if(nl)return isCider?'cider':'mede';
+  return isCider?'cider':'mead';
+}
+
 // Resolve a yeast id to its display name (e.g. 'ec1118' → 'EC-1118') for
 // ingredient-aware recommendation text. Falls back to the raw id if unknown —
 // never silently substitutes a different strain.
@@ -89,17 +100,20 @@ function _advItemText(it){
                         :('Laatste meting was '+d.days+' dagen geleden. Een verse dichtheidsmeting houdt de prognose en stalldetectie scherp.'))
               :(d.first?('This batch has been fermenting '+d.days+' days with no gravity reading. Log one (and the OG) so the advisor can track progress, projection and health.')
                         :('Last reading was '+d.days+' days ago. A fresh gravity reading keeps the projection and stall detection accurate.'))},
-    'aging-window':{icon:'⌛',
+    'aging-window':(function(){
+      var bev=_advBevWord(d,nl);
+      return {icon:'⌛',
       title:nl?(d.phase==='declining'?'Voorbij de piek':d.phase==='peak'?'In het piekvenster':(d.approaching?'Nadert het piekvenster':'Klaar om te drinken'))
              :(d.phase==='declining'?'Past peak':d.phase==='peak'?'In its peak window':(d.approaching?'Approaching peak window':'Drink now')),
-      reason:nl?(d.phase==='declining'?('~'+d.aged+' dagen oud — dit type mede is typisch op zijn best vóór ~dag '+d.max+'. Geen garantie dat de kwaliteit terugloopt, maar dit is een goed moment om te proeven en niet veel langer te wachten.')
-                        :d.phase==='peak'?('Deze mede is ~'+d.aged+' dagen oud — dit is naar verwachting het piekvenster (~dag '+d.peak+' tot '+d.max+'). Dit is het beste moment om ervan te genieten.')
+      reason:nl?(d.phase==='declining'?('~'+d.aged+' dagen oud — dit type '+bev+' is typisch op zijn best vóór ~dag '+d.max+'. Geen garantie dat de kwaliteit terugloopt, maar dit is een goed moment om te proeven en niet veel langer te wachten.')
+                        :d.phase==='peak'?('Deze '+bev+' is ~'+d.aged+' dagen oud — dit is naar verwachting het piekvenster (~dag '+d.peak+' tot '+d.max+'). Dit is het beste moment om ervan te genieten.')
                         :(d.approaching?('~'+d.aged+' dagen oud — nadert het piekvenster rond dag '+d.peak+'. Een mooi moment om te proeven.')
                                        :('~'+d.aged+' dagen oud — voorbij het drinkpunt vanaf dag '+d.ready+'. Klaar om van te genieten; blijft verbeteren tot ~dag '+d.peak+'.')))
               :(d.phase==='declining'?('~'+d.aged+' days old — this style is typically best before ~day '+d.max+'. No guarantee quality is dropping, but it\'s a good time to taste and not wait much longer.')
-                        :d.phase==='peak'?('This mead is ~'+d.aged+' days old — this is its expected peak window (~day '+d.peak+' to '+d.max+'). This is the best time to enjoy it.')
+                        :d.phase==='peak'?('This '+bev+' is ~'+d.aged+' days old — this is its expected peak window (~day '+d.peak+' to '+d.max+'). This is the best time to enjoy it.')
                         :(d.approaching?('~'+d.aged+' days old — approaching its peak window around day '+d.peak+'. A great time to taste.')
-                                       :('~'+d.aged+' days old — past the drink-from point at day '+d.ready+'. Ready to enjoy; keeps improving toward ~day '+d.peak+'.')))},
+                                       :('~'+d.aged+' days old — past the drink-from point at day '+d.ready+'. Ready to enjoy; keeps improving toward ~day '+d.peak+'.')))};
+    })(),
     'fructose-stall-risk':{icon:'🍯',
       title:nl?'Risico op fructose-stall':'Fructose-stall risk',
       reason:nl?('Deze honing ('+(d.honey||'?')+') is fructoserijk en je gist is niet fructofiel — de klassieke oorzaak van een late stall vlak vóór het einde. Houd voeding en temperatuur op orde; bij een stall herstart je met een fructofiele gist (bv. K1-V1116).')
@@ -125,18 +139,44 @@ function _advItemText(it){
       title:nl?'Beperk de kopruimte':'Minimise headspace',
       reason:nl?('De hoofdgisting is voorbij en de partij rijpt nu rustig. Hevel over op een vat dat tot net onder de stop gevuld is, of top bij — zo beperk je zuurstofcontact en oxidatie tijdens het rijpen.')
               :('Primary is over and the batch is conditioning quietly. Rack into a vessel filled to just below the bung, or top up — this limits oxygen contact and oxidation during aging.')},
-    'cold-crash':{icon:'🔍',
+    'cold-crash':(function(){
+      var bev=_advBevWord(d,nl);
+      return {icon:'🔍',
       title:nl?'Koud klaren vóór bottelen':'Cold-crash to clear',
-      reason:nl?('De gisting is bijna klaar. Laat de mede klaren — koud wegzetten (cold-crash) of simpelweg tijd trekt gist en fijne deeltjes naar de bodem voor een heldere, schonere mede. Hevel daarna van de droesem.')
-              :('Fermentation is nearly done. Let the mead clear — a cold-crash (or simply time) drops yeast and fine particles to the bottom for a bright, cleaner mead. Then rack off the sediment.')},
-    'ph-low':{icon:'🧪',
-      title:nl?'pH is laag — gist onder stress':'pH is low — yeast under stress',
-      reason:nl?('Laatste pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' ligt onder de gezonde bandbreedte (3,0–3,4). Onder 2,9 raakt de gist gestrest, wat tot een trage of vastgelopen gisting kan leiden. Overweeg de pH te verhogen met kaliumcarbonaat.')
-              :('Last pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' is below the healthy band (3.0–3.4). Below 2.9, yeast becomes stressed, which can slow or stall fermentation. Consider raising pH with potassium carbonate.')},
-    'ph-high':{icon:'🧪',
+      reason:nl?('De gisting is bijna klaar. Laat de '+bev+' klaren — koud wegzetten (cold-crash) of simpelweg tijd trekt gist en fijne deeltjes naar de bodem voor een heldere, schonere '+bev+'. Hevel daarna van de droesem.')
+              :('Fermentation is nearly done. Let the '+bev+' clear — a cold-crash (or simply time) drops yeast and fine particles to the bottom for a bright, cleaner '+bev+'. Then rack off the sediment.')};
+    })(),
+    'ph-low':(function(){
+      var isCider=d.beverageType==='cider';
+      var band=(d.low!=null&&d.high!=null)?(d.low.toFixed(1)+'–'+d.high.toFixed(1)):(isCider?'3.3–3.8':'3.0–3.4');
+      var bandNl=band.replace(/\./g,',');
+      return {icon:'🧪',
+      title:nl?'pH is laag'+(isCider?'':' — gist onder stress'):('pH is low'+(isCider?'':' — yeast under stress')),
+      reason:nl?('Laatste pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' ligt onder de bandbreedte voor '+(isCider?'cider':'mede')+' ('+bandNl+'). '+(isCider?'Dit is vooral scherper van smaak, geen directe giststress.':'Onder 2,9 raakt de gist gestrest, wat tot een trage of vastgelopen gisting kan leiden. Overweeg de pH te verhogen met kaliumcarbonaat.'))
+              :('Last pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' is below the target band for '+(isCider?'cider':'mead')+' ('+band+'). '+(isCider?'This mostly just reads sharper/tarter — not the yeast-stress signal it would be in mead.':'Below 2.9, yeast becomes stressed, which can slow or stall fermentation. Consider raising pH with potassium carbonate.'))};
+    })(),
+    'ph-high':(function(){
+      var isCider=d.beverageType==='cider';
+      var band=(d.low!=null&&d.high!=null)?(d.low.toFixed(1)+'–'+d.high.toFixed(1)):(isCider?'3.3–3.8':'3.0–3.4');
+      var bandNl=band.replace(/\./g,',');
+      var bev=isCider?'cider':'mede';
+      return {icon:'🧪',
       title:nl?'pH is hoog — besmettingsrisico':'pH is high — contamination risk',
-      reason:nl?('Laatste pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' ligt boven de gezonde bandbreedte (3,0–3,4). Boven 3,5 wordt de mede kwetsbaarder voor ongewenste micro-organismen. Overweeg bij te sturen met wijnzuur.')
-              :('Last pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' is above the healthy band (3.0–3.4). Above 3.5, the mead becomes more vulnerable to unwanted microorganisms. Consider adjusting with tartaric or citric acid.')},
+      reason:nl?('Laatste pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' ligt boven de bandbreedte voor '+bev+' ('+bandNl+'). Hierboven wordt de '+bev+' kwetsbaarder voor ongewenste micro-organismen.'+(isCider?' Zorg dat je bij het rekken op tijd metabisulfiet toevoegt — zeker bij perry, waar een te hoge pH ook het risico op ongewenste malolactische omzetting (naar azijnzuur) vergroot.':' Overweeg bij te sturen met wijnzuur.'))
+              :('Last pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' is above the target band for '+(isCider?'cider':'mead')+' ('+band+'). Above this, the '+bev+' becomes more vulnerable to unwanted microorganisms.'+(isCider?' Make sure to sulfite promptly at racking — especially for perry, where a high pH also raises the risk of unwanted malolactic conversion (to acetic acid).':' Consider adjusting with tartaric or citric acid.'))};
+    })(),
+    'mlf-advisory':(function(){
+      var avoid=d.stance==='avoid', perry=!!d.isPerry;
+      return {icon:perry?'⚠':'🧪',
+      title:nl?(avoid?(perry?'MLF vermijden — azijnzuurrisico':'MLF vermijden voor deze stijl'):'MLF is traditioneel voor deze stijl')
+             :(avoid?(perry?'Avoid MLF — vinegar risk':'Avoid MLF for this style'):'MLF is traditional for this style'),
+      reason:nl?(perry?'Perry is een bijzonder geval: het citroenzuur van peren zet onder malolactische gisting (MLF) om in azijnzuur (azijnsmaak) in plaats van het boterachtige resultaat dat cider van appels krijgt. Voeg metabisulfiet toe zodra de hoofdgisting klaar is — wacht hier niet mee zoals je bij een Engelse cider misschien zou doen.'
+                  :avoid?'Voor deze stijl is MLF ongewenst — het kan botergeur/-smaak geven die niet bij het profiel past. Stabiliseer met metabisulfiet zodra de gisting klaar is om malolactische bacteriën te onderdrukken.'
+                  :'Deze stijl staat traditioneel malolactische gisting (MLF) toe voor een zachtere zuurgraad en een boterachtig/kruidig karakter. Wacht met sulfiet toevoegen als je dit wilt proberen, of stabiliseer meteen voor een schoner, helderder resultaat.')
+              :(perry?'Perry is a special case: pear\'s citric acid converts to acetic acid (vinegar character) under malolactic fermentation (MLF), rather than the buttery result apple cider gets. Add metabisulfite promptly once primary fermentation finishes — don\'t hold off the way you might with an English cider.'
+                  :avoid?'MLF isn\'t wanted for this style — it can add a buttery character that clashes with the intended profile. Stabilise with metabisulfite once fermentation finishes to suppress malolactic bacteria.'
+                  :'This style traditionally allows malolactic fermentation (MLF) for softer acidity and a buttery/spicy character. Hold off on sulfite if you want to try it, or stabilise right away for a cleaner, brighter result instead.')};
+    })(),
     'carbonation-developing':{icon:'🫧',
       title:nl?'Carbonatie bouwt zich op':'Carbonation is developing',
       reason:nl?('Gebotteld ~'+d.aged+' dagen geleden. Bottelrijping duurt doorgaans 2–3 weken — bewaar de flessen rechtop op kamertemperatuur zodat de gist de priming-suiker kan vergisten. Koel pas vlak voor het proeven.')
@@ -145,10 +185,13 @@ function _advItemText(it){
       title:nl?'Weinig ruimte boven de must — blow-off-risico':'Little headspace above the must — blow-off risk',
       reason:nl?('Deze partij ('+(d.volume||'?')+' L) laat maar ~'+d.headspacePct+'% lucht over in het vat ('+(d.capacity||'?')+' L). Tijdens de krachtigste fase van de gisting kan schuim/krausen via het waterslot naar buiten geduwd worden. Overweeg een groter vat, of leg een schaal onder het waterslot.')
               :('This batch ('+(d.volume||'?')+' L) leaves only ~'+d.headspacePct+'% air space in the vessel ('+(d.capacity||'?')+' L). During the most vigorous phase of fermentation, foam/krausen can push out through the airlock. Consider a larger vessel, or set a tray underneath to catch any blow-off.')},
-    'fermenting-long':{icon:'⏳',
+    'fermenting-long':(function(){
+      var bevPl=d.beverageType==='cider'?(nl?'ciders':'ciders'):(nl?'mede':'meads');
+      return {icon:'⏳',
       title:nl?'Duurt langer dan verwacht':'Taking longer than expected',
-      reason:nl?((_advYeastName(d.yeast)||'Deze gist')+' gist doorgaans in '+d.low+'–'+d.high+' dagen voor dit recept; deze partij zit al op dag '+d.days+'. Dat is niet per se een probleem — sommige mede rijpt gewoon trager — maar het is de moeite waard om temperatuur en voeding nog eens te checken als dit je verrast.')
-              :((_advYeastName(d.yeast)||'This yeast')+' typically finishes in '+d.low+'–'+d.high+' days for this recipe; this batch is at day '+d.days+'. That\'s not necessarily a problem — some meads simply run slower — but worth double-checking temperature and nutrients if this surprises you.')},
+      reason:nl?((_advYeastName(d.yeast)||'Deze gist')+' gist doorgaans in '+d.low+'–'+d.high+' dagen voor dit recept; deze partij zit al op dag '+d.days+'. Dat is niet per se een probleem — sommige '+bevPl+' rijpen gewoon trager — maar het is de moeite waard om temperatuur en voeding nog eens te checken als dit je verrast.')
+              :((_advYeastName(d.yeast)||'This yeast')+' typically finishes in '+d.low+'–'+d.high+' days for this recipe; this batch is at day '+d.days+'. That\'s not necessarily a problem — some '+bevPl+' simply run slower — but worth double-checking temperature and nutrients if this surprises you.')};
+    })(),
     'historical-pace':(function(){
       var yn=_advYeastName(d.yeast);
       var matchTxt=d.matchedOn==='recipe'?(nl?'dit recept':'this recipe')
@@ -161,10 +204,13 @@ function _advItemText(it){
         reason:nl?('Je vorige '+d.sampleSize+' partijen met '+matchTxt+' deden er gemiddeld ~'+d.avgDays+' dagen over'+ratingTxt+'. Deze partij zit nu op dag '+d.daysSoFar+pctTxt+'.')
                   :('Your last '+d.sampleSize+' batches with '+matchTxt+' took ~'+d.avgDays+' days on average'+ratingTxt+'. This batch is currently at day '+d.daysSoFar+pctTxt+'.')};
     })(),
-    'extended-bulk-aging':{icon:'🛢',
+    'extended-bulk-aging':(function(){
+      var bev=_advBevWord(d,nl);
+      return {icon:'🛢',
       title:nl?'Al lang niet gebotteld':'Sitting unbottled a long time',
-      reason:nl?('Deze partij zit al ~'+d.days+' dagen in bulkrijping zonder gebotteld te zijn'+(d.target?(' — dit recept mikt doorgaans op ~'+d.target+' dagen bulkrijping'):'')+'. Elke keer dat het vat geopend of verplaatst wordt, is er kans op zuurstofcontact — bottelen (ook al is de mede nog jong) sluit dat risico af. Overweeg binnenkort te bottelen.')
-              :('This batch has been sitting in bulk aging for ~'+d.days+' days without being bottled'+(d.target?(' — this recipe typically targets ~'+d.target+' days of bulk aging'):'')+'. Every time the vessel is opened or moved there\'s a chance of oxygen exposure — bottling (even if the mead is still young) closes off that risk. Consider bottling soon.')}
+      reason:nl?('Deze partij zit al ~'+d.days+' dagen in bulkrijping zonder gebotteld te zijn'+(d.target?(' — dit recept mikt doorgaans op ~'+d.target+' dagen bulkrijping'):'')+'. Elke keer dat het vat geopend of verplaatst wordt, is er kans op zuurstofcontact — bottelen (ook al is de '+bev+' nog jong) sluit dat risico af. Overweeg binnenkort te bottelen.')
+              :('This batch has been sitting in bulk aging for ~'+d.days+' days without being bottled'+(d.target?(' — this recipe typically targets ~'+d.target+' days of bulk aging'):'')+'. Every time the vessel is opened or moved there\'s a chance of oxygen exposure — bottling (even if the '+bev+' is still young) closes off that risk. Consider bottling soon.')};
+    })()
   };
   return M[it.id]||{icon:'•',title:it.id,reason:''};
 }
@@ -365,14 +411,15 @@ function _advWhyMatters(id){
     'oxygen-stop':{benefit:'Nu stoppen met beluchten voorkomt oxidatie.',downside:'Doorgaan met beluchten verhoogt het risico op oxidatie en muffe smaken.'},
     'stabilise-first':{benefit:'Stabiliseren vóór het bottelen voorkomt een herstart in de fles.',downside:'Overslaan kan leiden tot koolzuuropbouw en zelfs exploderende flessen.'},
     temperature:{benefit:'Temperatuur bijstellen houdt de gist in zijn beste bereik.',downside:'Buiten bereik blijven kan de gisting vertragen of ongewenste smaken geven.'},
-    'ph-low':{benefit:'Nu bijsturen voorkomt verdere giststress.',downside:'Een lage pH kan de gisting laten vastlopen.'},
+    'ph-low':{benefit:'Nu weten waar je pH staat helpt je beslissen of bijsturen nodig is.',downside:'Genegeerd kan een lage pH bij mede tot giststress en een vastgelopen gisting leiden.'},
     'record-og':{benefit:'Met een OG kan de adviseur al het overige doorrekenen.',downside:'Zonder OG blijft de adviseur blind voor vergisting, alcohol en prognose.'},
     'log-reading':{benefit:'Een nieuwe meting houdt het advies scherp.',downside:'Te lang niet meten laat problemen ongemerkt doorlopen.'},
     'blowoff-risk':{benefit:'Nu voorzorg nemen voorkomt een rommelige overloop.',downside:'Negeren kan schuim/most naar buiten drukken en een besmettingsrisico geven.'},
     'ferment-complete':{benefit:'Op tijd rackken/bottelen beperkt verdere zuurstofblootstelling.',downside:'Te lang wachten verlengt onnodig luchtcontact in het vat.',
       considerWaitingIf:'je hem bewust nog even op de gistdroesem laat liggen voor extra body of mondgevoel.'},
     'extended-bulk-aging':{benefit:'Binnenkort bottelen sluit verder zuurstofcontact bij het openen/verplaatsen van het vat af.',downside:'Langer wachten herhaalt dat oxidatierisico elke keer dat het vat verstoord wordt.',
-      considerWaitingIf:'je bewust een langere bulk- of vatrijping aanhoudt die bij deze stijl hoort.'}
+      considerWaitingIf:'je bewust een langere bulk- of vatrijping aanhoudt die bij deze stijl hoort.'},
+    'mlf-advisory':{benefit:'Nu beslissen over sulfiteren voorkomt een onbedoeld resultaat.',downside:'Niets doen laat de malolactische uitkomst aan het toeval over — bij perry riskeert dat een azijnachtige cider.'}
   }:{
     stalled:{benefit:'Acting now can rescue the fermentation.',downside:'Waiting risks a permanently stuck fermentation or spoilage.'},
     'nutrient-final':{benefit:'Feeding on time keeps the yeast population healthy.',downside:'Feeding too late causes yeast stress (fusel alcohols); feeding after the sugar break instead feeds spoilage organisms rather than the yeast.'},
@@ -380,14 +427,15 @@ function _advWhyMatters(id){
     'oxygen-stop':{benefit:'Stopping aeration now avoids oxidation.',downside:'Continuing to aerate raises the risk of oxidation and stale flavors.'},
     'stabilise-first':{benefit:'Stabilising before bottling prevents a restart in the bottle.',downside:'Skipping it risks carbonation buildup and even bottle bombs.'},
     temperature:{benefit:'Adjusting temperature keeps the yeast in its best range.',downside:'Staying out of range can slow fermentation or produce off-flavors.'},
-    'ph-low':{benefit:'Correcting now prevents further yeast stress.',downside:'A low pH can stall the fermentation.'},
+    'ph-low':{benefit:'Knowing where your pH stands now helps you decide whether adjusting is worth it.',downside:'Ignored, a low pH in mead can cause yeast stress and a stalled fermentation.'},
     'record-og':{benefit:'With an OG, the advisor can compute everything else.',downside:'Without it, the advisor stays blind to attenuation, ABV and the projection.'},
     'log-reading':{benefit:'A fresh reading keeps the advice sharp.',downside:'Going too long without one lets problems go unnoticed.'},
     'blowoff-risk':{benefit:'Taking precaution now avoids a messy blow-off.',downside:'Ignoring it can push foam/must out and risk contamination.'},
     'ferment-complete':{benefit:'Racking/bottling promptly limits further oxygen exposure.',downside:'Waiting too long extends unnecessary air contact in the vessel.',
       considerWaitingIf:'you\'re intentionally leaving it on the yeast lees a while longer for extra body or mouthfeel.'},
     'extended-bulk-aging':{benefit:'Bottling soon closes off further oxygen exposure from opening or moving the vessel.',downside:'Waiting longer repeats that oxidation risk every time the vessel is disturbed.',
-      considerWaitingIf:'you\'re deliberately doing an extended bulk- or barrel-aging style that calls for more time before bottling.'}
+      considerWaitingIf:'you\'re deliberately doing an extended bulk- or barrel-aging style that calls for more time before bottling.'},
+    'mlf-advisory':{benefit:'Deciding on sulfite timing now avoids an unintended result later.',downside:'Leaving it to chance lets the malolactic outcome go unmanaged — for perry that risks a vinegary cider.'}
   };
   return M[id]||null;
 }
@@ -592,19 +640,41 @@ function renderBatchAdvisor(b){
   var tasks=(typeof getTasksForBatch==='function')?getTasksForBatch(b):[];
   var todayTasks=tasks.filter(function(t){return t.isDue||t.isOverdue||t.doneToday;});
   var upcoming=tasks.filter(function(t){return t.isFuture;}).slice(0,5);
-  var actionsHtml=todayTasks.length?todayTasks.map(function(td){
+  function _coachDayLabel(td){
+    return td.isDue?(nl?' (VANDAAG)':' (TODAY)'):(td.isOverdue?(nl?' ('+fmtDuration(td.daysFromDue)+' te laat — NU DOEN)':' ('+fmtDuration(td.daysFromDue)+' overdue — DO NOW)'):td.done?(nl?' (gedaan)':' (done)'):(nl?' (over '+fmtDuration(-td.daysFromDue)+')':' (in '+fmtDuration(-td.daysFromDue)+')'));
+  }
+  function _coachFullBox(td){
     var overdue=td.isOverdue;
-    var dayLabel=td.isDue?(nl?' (VANDAAG)':' (TODAY)'):(overdue?(nl?' ('+fmtDuration(td.daysFromDue)+' te laat — NU DOEN)':' ('+fmtDuration(td.daysFromDue)+' overdue — DO NOW)'):td.done?(nl?' (gedaan)':' (done)'):(nl?' (over '+fmtDuration(-td.daysFromDue)+')':' (in '+fmtDuration(-td.daysFromDue)+')'));
-    return '<div class="coach-box" style="margin-bottom:12px'+(overdue?';border-color:var(--red);border-left:4px solid var(--red2)':'')+'"><div class="coach-title"'+(overdue?' style="color:var(--red2)"':'')+'>'+(overdue?'⚠':'⚗')+' '+(nl?'ACTIE VEREIST — DAG ':'ACTION DUE — DAY ')+td.day+dayLabel+'</div>'
+    return '<div class="coach-box" style="margin-bottom:12px'+(overdue?';border-color:var(--red);border-left:4px solid var(--red2)':'')+'"><div class="coach-title"'+(overdue?' style="color:var(--red2)"':'')+'>'+(overdue?'⚠':'⚗')+' '+(nl?'ACTIE VEREIST — DAG ':'ACTION DUE — DAY ')+td.day+_coachDayLabel(td)+'</div>'
       +'<div style="font-family:var(--font-display);font-size:15px;color:'+(overdue?'var(--red2)':'var(--gold2)')+';margin-bottom:8px">'+escHtml(typeof stepTitleL==='function'?stepTitleL(td.title):td.title)+'</div>'
       +'<div class="coach-text">'+escHtml(typeof stepDescL==='function'?stepDescL(td.desc):td.desc)+'</div>'
       +'<div class="coach-tasks" style="margin-top:12px"><div class="coach-task"><div class="task-cb '+(td.done?'checked':'')+'" onclick="toggleTask(\''+td.id+'\',this)">'+(td.done?'✓':'')+'</div><span style="font-size:13px">'+(td.done?(nl?'Vandaag gedaan — vink uit indien niet':'Done today — uncheck if not'):(nl?'Markeer als gedaan':'Mark as completed'))+'</span></div></div></div>';
-  }).join(''):'<div class="info-box green" style="margin-bottom:12px"><div style="font-size:13px;color:var(--green2)">'+(nl?'✓ Geen stap-actie vandaag. Controleer waterslot en temperatuur.':'✓ No step due today. Check airlock water and temperature.')+'</div></div>';
+  }
+  // A brewer who's fallen behind on several steps needs a checklist to catch
+  // up, not N identical full-height red boxes stacked down the page — only
+  // the single most-due step gets the full instructional card; the rest
+  // collapse into compact rows (mirrors the Insights <details> treatment above).
+  function _coachRow(td){
+    var overdue=td.isOverdue;
+    return '<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border)">'
+      +'<div class="task-cb '+(td.done?'checked':'')+'" onclick="toggleTask(\''+td.id+'\',this)" style="margin-top:2px;flex-shrink:0">'+(td.done?'✓':'')+'</div>'
+      +'<div style="flex:1;font-size:13px;color:'+(overdue?'var(--red2)':'var(--text)')+'">'+(nl?'Dag ':'Day ')+td.day+' · '+escHtml(typeof stepTitleL==='function'?stepTitleL(td.title):td.title)+_coachDayLabel(td)+'</div></div>';
+  }
+  var sortedToday=todayTasks.slice().sort(function(a,b){return a.day-b.day;});
+  var primaryTask=sortedToday[0], restTasks=sortedToday.slice(1);
+  var actionsHtml=primaryTask?_coachFullBox(primaryTask):'<div class="info-box green" style="margin-bottom:12px"><div style="font-size:13px;color:var(--green2)">'+(nl?'✓ Geen stap-actie vandaag. Controleer waterslot en temperatuur.':'✓ No step due today. Check airlock water and temperature.')+'</div></div>';
+  if(restTasks.length){
+    actionsHtml+='<details style="margin-bottom:12px"><summary style="cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text3);padding:4px 0;user-select:none">'
+      +'⏳ '+restTasks.length+' '+(nl?(restTasks.length>1?'andere openstaande stappen':'andere openstaande stap'):(restTasks.length>1?'other steps waiting':'other step waiting'))+'</summary>'
+      +restTasks.map(_coachRow).join('')+'</details>';
+  }
   var upcomingHtml='<div class="card"><div class="card-header"><div class="card-title">'+(nl?'KOMENDE STAPPEN':'UPCOMING STEPS')+'</div></div>'
     +(upcoming.length?upcoming.map(function(t){return '<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)"><div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);white-space:nowrap;padding-top:2px">'+(nl?'Dag ':'Day ')+t.day+'</div><div><div style="font-size:14px;color:var(--text)">'+escHtml(typeof stepTitleL==='function'?stepTitleL(t.title):t.title)+'</div><div style="font-size:12px;color:var(--text3);margin-top:2px">'+escHtml((typeof stepDescL==='function'?stepDescL(t.desc):t.desc).substring(0,110))+'…</div></div></div>';}).join(''):'<p style="color:var(--text3);font-style:italic;font-size:13px">'+(nl?'Geen stappen meer in het recept.':'No more steps in recipe.')+'</p>')
     +'</div>';
-  var wisdom=(typeof getMeadWisdom==='function')?getMeadWisdom(b,d):[];
-  var wisdomHtml=wisdom.length?'<div class="card"><div class="card-header"><div class="card-title">'+(nl?'WIJSHEID VAN DE MEADMAKER':'MEADWRIGHT\'S WISDOM')+'</div></div><div class="ornament">— ⬡ —</div>'
+  var isCiderBatch=s&&s.beverageType==='cider';
+  var wisdomFn=(isCiderBatch&&typeof getCiderWisdom==='function')?getCiderWisdom:getMeadWisdom;
+  var wisdom=(typeof wisdomFn==='function')?wisdomFn(b,d):[];
+  var wisdomHtml=wisdom.length?'<div class="card"><div class="card-header"><div class="card-title">'+(isCiderBatch?(nl?'WIJSHEID VAN DE CIDERMAKER':'CIDERMAKER\'S WISDOM'):(nl?'WIJSHEID VAN DE MEADMAKER':'MEADWRIGHT\'S WISDOM'))+'</div></div><div class="ornament">— ⬡ —</div>'
     +wisdom.map(function(tip){return '<div class="info-box" style="margin-bottom:8px"><div style="font-size:13px;color:var(--text2)">'+tip+'</div></div>';}).join('')+'</div>':'';
 
   // ---- Deep diagnostics (E13): the what-if simulator and general brewing

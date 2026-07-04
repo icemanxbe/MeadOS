@@ -5,13 +5,17 @@
 
 // ==================== PERSONAL RECORDS / MEADWRIGHT ACHIEVEMENTS ====================
 function computePersonalRecords(){
+  // View filter (cider mode): "records" are bragging-rights stats for
+  // whichever beverage you're currently looking at — a cider batch's ABV
+  // shouldn't win "Highest ABV" while reviewing your mead year.
+  var scopedBatches=typeof visibleBatches==='function'?visibleBatches():APP.batches;
   var records={
     highestABV:null,
     strongestAttenuation:null,
     longestAged:null,
     biggestYear:null,
     mostBottlesInBatch:null,
-    totalBatchesLifetime:APP.batches.length,
+    totalBatchesLifetime:scopedBatches.length,
     totalBottlesLifetime:0,
     bottlesDrunkLifetime:0,
     bottlesGiftedLifetime:0,
@@ -22,7 +26,7 @@ function computePersonalRecords(){
   var recipesSeen={};
   // Track year batch counts
   var byYear={};
-  APP.batches.forEach(function(b){
+  scopedBatches.forEach(function(b){
     recipesSeen[b.recipeId]=true;
     var y=new Date(b.startDate).getFullYear();
     byYear[y]=(byYear[y]||0)+1;

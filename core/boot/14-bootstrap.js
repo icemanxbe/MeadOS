@@ -49,14 +49,13 @@ async function init(){
   }
   window.rebuildRecipes=rebuildRecipes;
   rebuildRecipes();
-  // Populate topbar crest with the MeadOS logo
-  var crest=document.getElementById('topbar-crest');
-  if(crest&&typeof MEADOS_LOGO!=='undefined'&&MEADOS_LOGO){
-    var src=(typeof getBrandLogoSrc==='function')?getBrandLogoSrc():MEADOS_LOGO;
-    crest.innerHTML='<img src="'+src+'" alt="MeadOS">';
-  }
+  // Populate topbar crest + mode toggle pill (mead vs cider branding/logo).
+  if(typeof updateModeToggle==='function')updateModeToggle();
   updateTopbarDate();
   await loadData();
+  // Settings may have just changed under us (server-synced ciderModeEnabled/
+  // activeMode) — refresh the toggle/branding once more against the final state.
+  if(typeof updateModeToggle==='function')updateModeToggle();
   // Learn whether the server holds an HA token (and when it expires) — the
   // token itself never comes to the browser. Drives haConfigured() & reminders.
   await loadHAConfig();

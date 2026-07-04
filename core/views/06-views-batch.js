@@ -4,18 +4,22 @@
 'use strict';
 // ==================== DASHBOARD ====================
 function renderDashboard(){
+  // View filter (cider mode): only batches matching the active beverage mode
+  // are shown here — APP.batches itself always keeps every batch of every
+  // beverage type, see activeBevMode()'s own comment.
+  var modeBatches=visibleBatches();
   // Active = not bottled, not completed, AND not failed. Failed batches stay
   // in the database (postmortems matter) but they shouldn't pollute the active-
   // batch widgets — they're not consuming a fermenter, not generating tasks,
   // not on a fermentation curve.
-  var active=APP.batches.filter(function(b){var s=getBatchStatus(b);return s!=='complete'&&s!=='bottled'&&s!=='failed';});
-  var bottled=APP.batches.filter(function(b){return getBatchStatus(b)==='bottled';});
-  var failed=APP.batches.filter(function(b){return b.failed;});
-  var totalBottlesCount=Object.values(APP.bottling).reduce(function(s,b){return s+totalBottles(b);},0);
+  var active=modeBatches.filter(function(b){var s=getBatchStatus(b);return s!=='complete'&&s!=='bottled'&&s!=='failed';});
+  var bottled=modeBatches.filter(function(b){return getBatchStatus(b)==='bottled';});
+  var failed=modeBatches.filter(function(b){return b.failed;});
+  var totalBottlesCount=modeBatches.reduce(function(s,b){return s+(APP.bottling[b.id]?totalBottles(APP.bottling[b.id]):0);},0);
   var avgABV='—';
   // Average ABV across non-failed batches only — a failed-and-dumped batch's
   // gravity at time-of-dump shouldn't drag your cellar's average down.
-  var nonFailed=APP.batches.filter(function(b){return!b.failed;});
+  var nonFailed=modeBatches.filter(function(b){return!b.failed;});
   if(nonFailed.length){
     var sum=nonFailed.reduce(function(s,b){
       var lg=(APP.logs[b.id]||[]);
@@ -24,10 +28,10 @@ function renderDashboard(){
     },0);
     avgABV=(sum/nonFailed.length).toFixed(1)+'%';
   }
-  var todayTasks=getTodayTasks();
+  var todayTasks=getTodayTasks().filter(function(t){var tb=APP.batches.find(function(b){return b.id===t.batchId;});return!tb||inActiveMode(tb);});
   var batchCards='';
-  if(!APP.batches.length){
-    batchCards='<div style="text-align:center;margin-bottom:16px">'+brandCrestSVG(280)+'<div style="margin-top:16px;font-size:14px;color:var(--text2);font-style:italic">The family meadwright tradition begins here.</div></div>'
+  if(!modeBatches.length){
+    batchCards='<div style="text-align:center;margin-bottom:16px">'+brandCrestSVG(280)+'<div style="margin-top:16px;font-size:14px;color:var(--text2);font-style:italic">'+((typeof activeBevMode==='function'&&activeBevMode()==='cider')?'The orchard tradition begins here.':'The family meadwright tradition begins here.')+'</div></div>'
       +'<div class="empty-state" style="padding:20px"><button class="btn btn-primary" onclick="openNewBatchModal()">＋ Start First Batch</button></div>';
   }else{
     batchCards=active.slice(0,4).map(function(b){
@@ -170,7 +174,7 @@ function renderDashboard(){
     : '';
   return'<div class="dashboard-hero">'
     +'<div class="dashboard-hero-logo">'+brandCrestSVG(140)+'</div>'
-    +'<div class="dashboard-hero-text"><div class="page-title" style="margin-bottom:6px">Dashboard</div><div class="page-subtitle" style="margin-bottom:0">The Meadwright\'s Overview · '+L.inCare+' batch'+(L.inCare!==1?'es':'')+' under your care'+(careFootnotes.length?' · '+careFootnotes.join(' · '):'')+'</div></div>'
+    +'<div class="dashboard-hero-text"><div class="page-title" style="margin-bottom:6px">Dashboard</div><div class="page-subtitle" style="margin-bottom:0">'+(typeof activeBevMode==='function'&&activeBevMode()==='cider'?'The Cidermaker\'s Overview':'The Meadwright\'s Overview')+' · '+L.inCare+' batch'+(L.inCare!==1?'es':'')+' under your care'+(careFootnotes.length?' · '+careFootnotes.join(' · '):'')+'</div></div>'
     +'</div>'
     +renderStockAlerts()
     +renderProactiveAlerts()
@@ -194,7 +198,7 @@ function renderDashboard(){
     +'<div class="coach-tasks">'+taskHtml+'</div>'
     +(todayTasks.length?'<div style="margin-top:12px"><button class="btn btn-secondary btn-sm" onclick="showView(\'coach\')">See full briefing →</button></div>':'')
     +'</div>'
-    +(APP.batches.length?'<div class="card" style="margin-top:16px"><div class="card-header"><div class="card-title">GRAVITY TREND</div></div><div style="position:relative;height:180px"><canvas id="dash-chart"></canvas></div></div>':'')
+    +(modeBatches.length?'<div class="card" style="margin-top:16px"><div class="card-header"><div class="card-title">GRAVITY TREND</div></div><div style="position:relative;height:180px"><canvas id="dash-chart"></canvas></div></div>':'')
     +renderOnThisDayCard()
     +'</div></div>';
 }
@@ -217,7 +221,7 @@ function renderOnThisDayCard(){
 
   var events=[];
   // Batches started on this calendar day in a previous year
-  (APP.batches||[]).forEach(function(b){
+  visibleBatches().forEach(function(b){
     if(isSameMonthDay(b.startDate)){
       var d=new Date(b.startDate);
       var yearsAgo=thisYear-d.getFullYear();
@@ -238,7 +242,7 @@ function renderOnThisDayCard(){
     var bot=APP.bottling[bid];
     if(!bot||!isSameMonthDay(bot.date))return;
     var b=APP.batches.find(function(x){return x.id===bid;});
-    if(!b)return;
+    if(!b||!inActiveMode(b))return;
     var d=new Date(bot.date);
     var yearsAgo=thisYear-d.getFullYear();
     events.push({
@@ -256,7 +260,7 @@ function renderOnThisDayCard(){
   Object.keys(APP.tastings||{}).forEach(function(bid){
     var arr=APP.tastings[bid]||[];
     var b=APP.batches.find(function(x){return x.id===bid;});
-    if(!b)return;
+    if(!b||!inActiveMode(b))return;
     arr.forEach(function(t){
       if(!isSameMonthDay(t.date))return;
       var d=new Date(t.date);
@@ -309,11 +313,12 @@ function renderOnThisDayCard(){
 }
 
 function initDashCharts(){
-  if(!APP.batches.length)return;
+  var modeBatches=visibleBatches();
+  if(!modeBatches.length)return;
   setTimeout(function(){
     var ctx=document.getElementById('dash-chart');
     if(!ctx)return;
-    var active=APP.batches.filter(function(b){var s=getBatchStatus(b);return s!=='complete'&&s!=='bottled'&&s!=='failed';}).slice(0,4);
+    var active=modeBatches.filter(function(b){var s=getBatchStatus(b);return s!=='complete'&&s!=='bottled'&&s!=='failed';}).slice(0,4);
     var datasets=active.map(function(b){
       var logs=APP.logs[b.id]||[];
       var data=[{x:0,y:b.og||1.095}].concat(logs.map(function(l,j){return{x:j+1,y:l.gravity};}));
@@ -379,7 +384,7 @@ function _batchFilterSort(){
   var statusFilter=APP.filters.batchStatus||'all';
   var sort=APP.filters.batchSort||'newest';
   var rmap={};(APP.recipes||[]).forEach(function(r){rmap[r.id]=r;});
-  var arr=APP.batches.filter(function(b){
+  var arr=visibleBatches().filter(function(b){
     if(statusFilter!=='all'){
       var st=getBatchStatus(b);
       if(statusFilter==='active'){if(st==='bottled'||st==='complete'||st==='failed')return false;}
@@ -415,11 +420,13 @@ function _batchListResultsHtml(){
 
 function _batchListSubtitle(total){
   var q=APP.filters.batchSearch,sf=APP.filters.batchStatus;
-  return 'The Meadwright\'s Cellar · '+APP.batches.length+' batch'+(APP.batches.length!==1?'es':'')+((q||sf!=='all')?(' · '+total+' shown'):'');
+  var n=visibleBatches().length;
+  var heading=(typeof activeBevMode==='function'&&activeBevMode()==='cider')?'The Cidermaker\'s Cellar':'The Meadwright\'s Cellar';
+  return heading+' · '+n+' batch'+(n!==1?'es':'')+((q||sf!=='all')?(' · '+total+' shown'):'');
 }
 
 function renderBatchList(){
-  if(!APP.batches.length){
+  if(!visibleBatches().length){
     return'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div class="page-title">My Batches</div><button class="btn btn-primary" onclick="openNewBatchModal()">＋ New Batch</button></div>'
       +'<div class="page-subtitle">The Cellar</div>'
       +'<div class="empty-state"><div class="es-icon">🍯</div><p>Your cellar awaits its first creation.</p><br><button class="btn btn-primary" onclick="openNewBatchModal()">＋ Begin First Batch</button></div>';
@@ -427,7 +434,7 @@ function renderBatchList(){
   var q=(APP.filters.batchSearch||'');
   var statusFilter=APP.filters.batchStatus||'all';
   var sort=APP.filters.batchSort||'newest';
-  var failedCount=APP.batches.filter(function(b){return getBatchStatus(b)==='failed';}).length;
+  var failedCount=visibleBatches().filter(function(b){return getBatchStatus(b)==='failed';}).length;
   var statusChips=[['all','All'],['active','Active'],['bottled','Bottled'],['complete','Complete'],['failed','Failed']]
     .map(function(x){return'<span class="filter-chip '+(statusFilter===x[0]?'active':'')+'" onclick="setBatchFilter(\''+x[0]+'\')">'+x[1]+(x[0]==='failed'&&failedCount?' · '+failedCount:'')+'</span>';}).join('');
   var sortSel='<select class="search-input" style="max-width:180px;flex:0 0 auto" onchange="setBatchSort(this.value)" title="Sort batches">'
@@ -512,6 +519,7 @@ function renderFermentationProjection(b){
 function renderBatchDetail(){
   var b=APP.batches.find(function(x){return x.id===currentBatchId;});
   if(!b)return'<div class="empty-state"><p>Batch not found.</p><br><button class="btn btn-secondary" onclick="showView(\'batches\')">← Back to Cellar</button></div>';
+  var isCider=(b.beverageType||'mead')==='cider';
   var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
   var logs=APP.logs[b.id]||[];
   var d=daysSince(b.startDate);
@@ -565,7 +573,7 @@ function renderBatchDetail(){
         var label=ferm.name+(ferm.capacity?' ('+fmtVol(ferm.capacity)+')':'')+(rackingCount?' &nbsp;<span style="font-size:10px;font-family:var(--font-mono);color:var(--text3);letter-spacing:1px">· '+rackingCount+'× RACKED</span>':'');
         return'<tr><td style="color:var(--text3)">Current Vessel</td><td><span style="color:'+(ferm.color||'var(--gold2)')+'">'+escHtml(ferm.name.length>30?ferm.name.slice(0,28)+'…':ferm.name)+'</span>'+(ferm.capacity?' <span style="color:var(--text3);font-size:11px">('+fmtVol(ferm.capacity)+')</span>':'')+(rackingCount?' <span style="font-size:10px;font-family:var(--font-mono);color:var(--text3);letter-spacing:1px;margin-left:6px">· '+rackingCount+'× RACKED</span>':'')+'</td></tr>';
       }()):'')
-      +(b.honey?'<tr><td style="color:var(--text3)">Honey Used</td><td>'+b.honey+' kg'+(b.honeyType?' · '+escHtml(b.honeyType):'')+'</td></tr>':'')
+      +(b.honey?'<tr><td style="color:var(--text3)">'+(isCider?'Juice Used':'Honey Used')+'</td><td>'+b.honey+(isCider?' L':' kg')+(b.honeyType?' · '+escHtml(b.honeyType):'')+'</td></tr>':'')
       +(b.yeast?'<tr><td style="color:var(--text3)">Yeast</td><td>'+escHtml((getYeastById(b.yeast)||{}).name||b.yeast)+'</td></tr>':'')
       +(b.nutrient?(function(){
         var p=typeof getNutrientById==='function'?getNutrientById(b.nutrient):null;
@@ -621,7 +629,7 @@ function renderBatchDetail(){
           +'<div class="stat-card" style="padding:12px"><div class="stat-val" style="font-size:22px;color:var(--gold2)">'+ccy+total.toFixed(2)+'</div><div class="stat-label">Total Spent</div></div>'
           +(perL>0?'<div class="stat-card" style="padding:12px"><div class="stat-val" style="font-size:22px;color:var(--green2)">'+ccy+perL.toFixed(2)+'</div><div class="stat-label">Per Litre</div></div>':'<div class="stat-card" style="padding:12px"><div class="stat-val" style="font-size:22px;color:var(--text2)">'+ccy+perLPerVolume.toFixed(2)+'</div><div class="stat-label">Per Litre (Recipe)</div></div>')
           +'</div>'
-          +'<table class="data-table" style="font-size:13px"><tr><td style="color:var(--text3)">Honey</td><td>'+ccy+honey.toFixed(2)+(b.honey?' <span style="color:var(--text3);font-size:11px">('+ccy+(honey/b.honey).toFixed(2)+'/kg)</span>':'')+'</td></tr>'
+          +'<table class="data-table" style="font-size:13px"><tr><td style="color:var(--text3)">'+(isCider?'Juice':'Honey')+'</td><td>'+ccy+honey.toFixed(2)+(b.honey?' <span style="color:var(--text3);font-size:11px">('+ccy+(honey/b.honey).toFixed(2)+(isCider?'/L)':'/kg)')+'</span>':'')+'</td></tr>'
           +(extras?'<tr><td style="color:var(--text3)">Fruit, spices, extras</td><td>'+ccy+extras.toFixed(2)+'</td></tr>':'')
           +sizeBreakdown
           +'</table>'
@@ -1026,6 +1034,7 @@ function _compAwards(){return [
 function _compAwardMeta(k){var a=_compAwards();for(var i=0;i<a.length;i++)if(a[i].k===k)return a[i];return {k:k,l:k||'Entered',icon:'•',c:'var(--text3)',rank:9};}
 function renderCompetitions(b){
   var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var isCider=(b.beverageType||'mead')==='cider';
   var list=((APP.competitions&&APP.competitions[b.id])||[]).slice().sort(function(a,c){return(c.date||'').localeCompare(a.date||'');});
   var awardOpts=_compAwards().map(function(a){return '<option value="'+a.k+'">'+a.icon+' '+a.l+'</option>';}).join('');
   var rows=list.length?list.map(function(c){
@@ -1043,7 +1052,7 @@ function renderCompetitions(b){
   }).join(''):'<div style="color:var(--text3);font-style:italic;font-size:13px;padding:12px 0">'+(nl?'Nog geen wedstrijdinzendingen.':'No competition entries yet.')+'</div>';
   return '<div class="card" style="margin-top:16px"><div class="card-header"><div class="card-title">'+(nl?'🏆 WEDSTRIJDEN &amp; PRIJZEN':'🏆 COMPETITIONS &amp; AWARDS')+'</div></div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">'+(nl?'Wedstrijd':'Competition')+'</label><input class="form-input" id="comp-name" placeholder="'+(nl?'bv. NHC, lokale show':'e.g. NHC, local show')+'"></div>'
-    +'<div class="form-group"><label class="form-label">'+(nl?'Categorie':'Category')+'</label><input class="form-input" id="comp-cat" placeholder="'+(nl?'bv. M1A Droge mede':'e.g. M1A Dry Mead')+'"></div></div>'
+    +'<div class="form-group"><label class="form-label">'+(nl?'Categorie':'Category')+'</label><input class="form-input" id="comp-cat" placeholder="'+(isCider?(nl?'bv. C1A Gewone cider':'e.g. C1A Common Cider'):(nl?'bv. M1A Droge mede':'e.g. M1A Dry Mead'))+'"></div></div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">'+(nl?'Datum':'Date')+'</label><input class="form-input" type="date" id="comp-date" value="'+today()+'"></div>'
     +'<div class="form-group"><label class="form-label">'+(nl?'Resultaat':'Award')+'</label><select class="form-select" id="comp-award">'+awardOpts+'</select></div></div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">'+(nl?'Score':'Score')+'</label><input class="form-input" type="number" id="comp-score" step="0.5" placeholder="38"></div>'
@@ -1378,12 +1387,40 @@ function getMeadWisdom(b,day){
   return tips.slice(0,3);
 }
 
+// Cider-side counterpart to getMeadWisdom — same day-staged tip structure,
+// cider-specific content (pectin haze, MLF timing, apple-appropriate advice)
+// instead of honey/mead framing.
+function getCiderWisdom(b,day){
+  var tips=[];
+  var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+  var yeast=(typeof getYeastById==='function')?(getYeastById(b.yeast||(recipe&&recipe.yeast)||'nottingham')||{}):{};
+  var tRange=(yeast.optimalTempLow!=null&&yeast.optimalTempHigh!=null)?yeast.optimalTempLow+'-'+yeast.optimalTempHigh+'°C':'its optimal range';
+  if(day<3)tips.push('🌡 Keep fermentation temperature stable at '+tRange+(yeast.name?' for '+yeast.name.split('—')[0].trim():'')+'. Swings stress yeast.');
+  if(day<7)tips.push('🍏 Cloudiness early on is normal — apple pectin plus active yeast. Pectic enzyme (if used) needs time to work.');
+  if(day>=3&&day<14)tips.push('📊 Log gravity every 3-4 days. Fermentation is complete when gravity is stable across two readings.');
+  if(day>=14&&recipe&&typeof CIDER_MLF_BY_STYLE!=='undefined'&&recipe.styleId&&CIDER_MLF_BY_STYLE[recipe.styleId]!=='neutral'){
+    tips.push(CIDER_MLF_BY_STYLE[recipe.styleId]==='avoid'
+      ?'🧪 This style is best kept free of malolactic fermentation — sulfite promptly once primary finishes, don\'t leave it sitting unsulfited.'
+      :'🧪 This style traditionally allows malolactic fermentation for a softer, buttery character — hold off on sulfite if you want to try it.');
+  }
+  if(day>=14&&(!recipe||!recipe.styleId||CIDER_MLF_BY_STYLE[recipe.styleId]==='neutral'))tips.push('🍎 When racking, work gently and slowly. Minimize oxygen contact to preserve fresh apple aromatics.');
+  if(day>=60)tips.push('🌿 Consider oak cubes for a heirloom/English-style cider, or extra bulk-aging time to round out tannin.');
+  tips.push('🧼 Clean (e.g. Chemipro OXI), then sanitize (Chemipro SAN or Star San) EVERYTHING that touches your cider. One contamination ruins months of work.');
+  return tips.slice(0,3);
+}
+
 // ==================== ICS CALENDAR FEED ====================
 // Build a flat list of upcoming brewing events for the calendar feed. The
 // client owns all the scheduling logic (recipe steps, TOSNA injection, aging
 // profiles), so it computes the events and stores them in the state blob;
 // the server just formats whatever's there as an .ics. Events refresh on every
 // save, which is plenty fresh for a polled calendar subscription.
+// Deliberately NOT filtered by activeBevMode()/visibleBatches(): this feeds a
+// single persistent external subscription URL (webcal://.../calendar/<token>.ics)
+// that a calendar app polls independently of the browser's UI. Its content
+// silently changing based on whichever mead/cider toggle happened to be active
+// in someone's browser at last-save-time would be confusing, so it always
+// includes every batch; per-event icon/wording is beverage-aware instead.
 function buildCalendarEvents(){
   var events=[];
   var nowMs=Date.now();
@@ -1397,6 +1434,9 @@ function buildCalendarEvents(){
     var recipe=(APP.recipes||[]).find(function(r){return r.id===b.recipeId;});
     var status=(typeof getBatchStatus==='function')?getBatchStatus(b):'';
     var active=(status!=='bottled'&&status!=='complete'&&status!=='failed');
+    var isCider=(b.beverageType||'mead')==='cider';
+    var icon=isCider?'🍎':'🍯';
+    var kindName=isCider?'Cider':'Mead';
     // Process-step events for active batches (nutrient doses, racking, etc.)
     if(active&&recipe){
       var steps=(typeof getEffectiveSteps==='function')?getEffectiveSteps(b,recipe):(recipe.steps||[]);
@@ -1408,7 +1448,7 @@ function buildCalendarEvents(){
         // Skip steps the user already ticked off (care steps aren't tickable).
         if(!s._care&&typeof isTaskDone==='function'&&isTaskDone(taskId))return;
         events.push({uid:'step-'+b.id+'-'+s.day+'@meados',date:iso(dt),
-          summary:'🍯 '+(b.name||'Batch')+' · '+s.title,
+          summary:icon+' '+(b.name||'Batch')+' · '+s.title,
           description:String(s.desc||'').replace(/\s+/g,' ')});
       });
     }
@@ -1421,7 +1461,7 @@ function buildCalendarEvents(){
         if(dt.getTime()<pastWindow||dt.getTime()>futureWindow)return;
         events.push({uid:p[0]+'-'+b.id+'@meados',date:iso(dt),
           summary:p[1]+' · '+(b.name||'Batch'),
-          description:(recipe.name||'Mead')+p[2]});
+          description:(recipe.name||kindName)+p[2]});
       });
     }
   });

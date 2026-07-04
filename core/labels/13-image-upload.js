@@ -435,7 +435,8 @@ function pickBrandLogo(){
       var crest=document.getElementById('topbar-crest');
       if(crest){
         var src=getBrandLogoSrc();
-        crest.innerHTML='<img src="'+src+'" alt="MeadOS">';
+        var isCider=(typeof activeBevMode==='function')&&activeBevMode()==='cider';
+        crest.innerHTML='<img src="'+src+'" alt="'+(isCider?'CiderOS':'MeadOS')+'">';
       }
       renderMain();
       toast('✦ Brand logo updated');
@@ -453,7 +454,8 @@ function clearBrandLogo(){
   if(typeof deleteAssetIfUnused==='function'){deleteAssetIfUnused(prev);if(prevIcon)deleteAssetIfUnused(prevIcon);}
   var crest=document.getElementById('topbar-crest');
   if(crest){
-    crest.innerHTML='<img src="'+MEADOS_LOGO+'" alt="MeadOS">';
+    var isCider=(typeof activeBevMode==='function')&&activeBevMode()==='cider';
+    crest.innerHTML='<img src="'+((typeof getBrandLogoSrc==='function')?getBrandLogoSrc():MEADOS_LOGO)+'" alt="'+(isCider?'CiderOS':'MeadOS')+'">';
   }
   renderMain();
   toast('Brand logo reverted');
@@ -469,5 +471,8 @@ function getBrandLogoSrc(){
     var resolved=getResolvedMediaUrl(custom);
     if(resolved)return resolved;
   }
+  // No custom logo set — fall back to whichever beverage's own default crest
+  // matches the active mode, so cider mode never shows the mead honey-drop.
+  if(typeof activeBevMode==='function'&&activeBevMode()==='cider'&&typeof CIDER_LOGO!=='undefined')return CIDER_LOGO;
   return(typeof MEADOS_LOGO!=='undefined')?MEADOS_LOGO:'';
 }

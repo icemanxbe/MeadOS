@@ -45,7 +45,21 @@ var RECIPE_DESC_NL={
   r31:'Knisperende appelbruis, ergens tussen droge cider en lichte mede. Honing rondt de appel af, de bubbels houden het levendig — een moeiteloze publiekslieveling.',
   r32:'Een lichte, alcoholarme honing-spritz — helder, bruisend en verfrissend. De ongedwongen instap-mousserende mede die je jong kunt drinken.',
   r33:'Droog, levendig en boordevol vers bosvruchtenaroma — roze, mousserend en helder. Bessenbruis met een schone, frisse afdronk.',
-  r34:'Een volwassen gemberbier met ruggengraat — honing en verse gember, droog vergist en mousserend. Warmend, pittig en gevaarlijk drinkbaar.'
+  r34:'Een volwassen gemberbier met ruggengraat — honing en verse gember, droog vergist en mousserend. Warmend, pittig en gevaarlijk drinkbaar.',
+  // ---- cider mode ----
+  c1:'De eerlijke, alledaagse cider — gemaakt van keukenappels in plaats van erfgoed-bittersweets. Lagere tannine, helderder zuur, verfrissend en makkelijk jong te drinken. Het meeste van \'s werelds cider wordt eigenlijk zo gemaakt.',
+  c2:'Gebouwd op echt ciderappel-karakter in plaats van keukenfruit — Dabinetts betrouwbare bittersweet-ruggengraat opgehelderd met Golden Russets ongewone suiker-en-zuurcombinatie. Schone gisting, geen malolactisch karakter, echte structuur.',
+  c3:'Volmondig en droog met een lange tannische afdronk — gebouwd rond Kingston Black, de ene appel waarover men het breed eens is dat hij "de perfecte ciderappel" is vanwege zijn zeldzame balans van hoge tannine ÉN hoog zuur in één vrucht. Optioneel toegestaan malolactisch te gisten voor het klassieke fenolische, boterachtige Engelse karakter.',
+  c4:'Medium-tot-zoet, volmondig en rijk, met een fenolisch of boerderij-achtig achtergrondkarakter — de traditionele laag-alcoholische stijl gebouwd rond een van nature trage, koele gisting in plaats van een volledig droge cider terug te zoeten.',
+  c5:'Droog, fris en rustiek met heldere zuurgraad en lichte-tot-matige wilde/azijnachtige tonen — een aardse, boerderij-indruk traditioneel bereikt door open, ongecontroleerde gisting in grote vaten.',
+  c6:'Een substantiële, historische Amerikaanse stijl opgebouwd met adjuncten — rozijnen zijn traditioneel — soms vatgerijpt. Hoger alcohol en echte body onderscheiden hem van een standaardcider.',
+  c7:'Presenteert zich als een droge witte wijn eerder dan een cider — fruitig en bloemig, gebalanceerd, met lage wrangheid en bitterheid. Een hogere-dichtheid, wijngist-gedreven stijl die echte kelder-tijd beloont.',
+  c8:'Een dessertstijl-cider van geconcentreerd sap — zacht, rijk en zoet als een dessertwijn, met balancerend zuur. Traditioneel gemaakt door sap te vries-concentreren (cryo-concentratie) in plaats van in te koken, wat verse appelaromatiek behoudt.',
+  c9:'Een donkergoud tot bruine cider met een zeer zoete, gekarameliseerde, ahornsiroopachtige indruk — ciders antwoord op een bochet, gebouwd rond een echte karamelisatiestap in plaats van gewoon geconcentreerd sap.',
+  c10:'Appelsap en frambozen in echte balans — zowel het appelkarakter als het toegevoegde fruit blijven merkbaar, complementair, en geen van beide overheerst de ander.',
+  c11:'Kaneel en kruidnagel geïntegreerd met de cider in plaats van hem te domineren — een warm, herfstig glas. Probeer geen malolactische gisting bij deze stijl; het kruidig/boterachtige karakter zou botsen in plaats van aanvullen.',
+  c12:'Een moderne crossover-stijl: een schone cider dry-hoppen met fruitige, citrusachtige hop (in plaats van dank/hars-achtige) voor aroma zonder bitterheid toe te voegen. Het ciderkarakter moet aanwezig blijven — dit is geen bier met appelsap erin.',
+  c13:'Gegiste perensap — een eigen, apart ding, niet zomaar "cider gemaakt met peren." Perenrassen voor perry hebben hun eigen tannine/zuur-classificatie en hun eigen gevaren: in tegenstelling tot appelcider moet malolactische gisting hier VERMEDEN worden, aangezien het citroenzuur van peren omzet in azijnzuur (azijn) in plaats van ciders boterachtige melkzuurresultaat.'
 };
 
 // Dutch display names per recipe (share page + label name/style), keyed by id.
@@ -66,12 +80,23 @@ var RECIPE_NAME_NL={
   r27:'Sack Lavendel · Lang Gerijpte Zoete Metheglin', r28:'Acerglyn · Ahornmede',
   r29:'Ahorn-Bochet · Gekarameliseerde Bos-Sack', r30:'Mousserende Traditionele Mede',
   r31:'Mousserende Cyser', r32:'Hydromel · Mousserende Sessiemede',
-  r33:'Mousserende Bessenmelomel', r34:'Mousserende Gembermede'
+  r33:'Mousserende Bessenmelomel', r34:'Mousserende Gembermede',
+  // ---- cider mode ----
+  c1:'Gewone Cider', c2:'Erfgoedcider', c3:'Engelse Cider', c4:'Franse Cider',
+  c5:'Spaanse Cider (Sidra)', c6:'New England Cider', c7:'Appelwijn', c8:'IJscider',
+  c9:'Vuurcider', c10:'Vruchtencider — Framboos', c11:'Kruidencider — Kaneel & Kruidnagel',
+  c12:'Experimentele Cider — Droog Gehopt', c13:'Traditionele Perry'
 };
 // Dutch for the style/category word shown alongside the name.
 var RECIPE_STYLE_NL={
   'Show Mead':'Show mede','Mead':'Mede','Traditional':'Traditioneel','Melomel':'Melomel',
   'Cyser':'Cyser','Pyment':'Pyment','Metheglin':'Metheglin','Bochet':'Bochet',
   'Braggot':'Braggot','Acerglyn':'Acerglyn','Sack Mead':'Sack-mede','Sack':'Sack',
-  'Specialty':'Specialiteit','Sparkling':'Mousserend','Hydromel':'Hydromel'
+  'Specialty':'Specialiteit','Sparkling':'Mousserend','Hydromel':'Hydromel',
+  // ---- cider mode ----
+  'Common Cider':'Gewone Cider','Heirloom Cider':'Erfgoedcider','English Cider':'Engelse Cider',
+  'French Cider':'Franse Cider','Spanish Cider':'Spaanse Cider','New England Cider':'New England Cider',
+  'Applewine':'Appelwijn','Ice Cider':'IJscider','Fire Cider':'Vuurcider',
+  'Fruit Cider':'Vruchtencider','Spiced Cider':'Kruidencider','Experimental Cider':'Experimentele Cider',
+  'Perry':'Perry'
 };

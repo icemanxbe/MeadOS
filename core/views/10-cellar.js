@@ -89,7 +89,7 @@ function renderCellarTempPill(){
 }
 
 function renderCellar(){
-  var bottled=APP.batches.filter(function(b){return APP.bottling[b.id]&&APP.bottling[b.id].date;});
+  var bottled=visibleBatches().filter(function(b){return APP.bottling[b.id]&&APP.bottling[b.id].date;});
   if(!bottled.length){
     return'<div class="page-title">The Cellar</div><div class="page-subtitle">Bottle Aging Tracker</div>'
       +'<div class="empty-state"><div class="es-icon">🍾</div><p>No bottled batches yet.</p><br>'

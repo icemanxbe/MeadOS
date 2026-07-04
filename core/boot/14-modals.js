@@ -8,6 +8,7 @@ function closeModal(){var m=document.querySelector('.modal-overlay');if(m)m.remo
 function openNewBatchModal(recipeId,scaledVol,opts){
   closeModal();
   opts=opts||{};
+  var isCider=activeBevMode()==='cider';
   // Carry the recipe page's configurator selections (honey/yeast/nutrient/schedule)
   // into the modal so "Brew This Recipe" reflects exactly what the user picked.
   // Only fills fields the caller didn't already set, and only for the same recipe.
@@ -23,17 +24,30 @@ function openNewBatchModal(recipeId,scaledVol,opts){
   window._deployingPlanId=opts.plannedId||null;
   window._batchDangerOverride=false;
   window._lastBatchYeastCheck=null;
-  var preselect=recipeId||(APP.recipes[0]&&APP.recipes[0].id);
-  var recipeOpts=APP.recipes.map(function(r){return'<option value="'+r.id+'"'+(r.id===preselect?' selected':'')+'>'+escHtml(r.name)+' ('+r.style+')</option>';}).join('');
-  var initial=APP.recipes.find(function(r){return r.id===preselect;})||APP.recipes[0];
+  // View filter (cider mode): only offer recipes matching the active
+  // beverage mode — APP.recipes itself always keeps every recipe.
+  var modeRecipes=visibleRecipes();
+  var preselect=recipeId||(modeRecipes[0]&&modeRecipes[0].id);
+  var recipeOpts=modeRecipes.map(function(r){return'<option value="'+r.id+'"'+(r.id===preselect?' selected':'')+'>'+escHtml(r.name)+' ('+r.style+')</option>';}).join('');
+  var initial=modeRecipes.find(function(r){return r.id===preselect;})||modeRecipes[0];
   var volPrefSI=scaledVol||(initial?initial.volume:4.5);      // metric litres
-  // Estimate honey amount from OG + volume (metric kg)
-  var initialHoneyKg=initial?((initial.ogTarget-1)*1000*volPrefSI/292):0;
-  var initialCost=APP.settings.honeyPricePerKg?(initialHoneyKg*APP.settings.honeyPricePerKg).toFixed(2):'';
   // Display values honour the chosen unit system (storage stays metric).
   var us=currentUnitSystem();
   var volPref=(volPrefSI/UNIT_VOL[us].toSI).toFixed(us==='metric'?2:3);
-  var initialHoney=initialHoneyKg?(initialHoneyKg/UNIT_WT[us].toSI).toFixed(2):'';
+  var initialHoneyKg,initialCost,initialHoney;
+  if(isCider){
+    // Cider's primary fermentable IS the juice — no separate "addition" to
+    // water the way honey is added, so default the quantity to the batch
+    // volume itself (in whatever unit the batch volume is displayed in).
+    initialHoneyKg=volPrefSI;
+    initialCost='';
+    initialHoney=volPref;
+  }else{
+    // Estimate honey amount from OG + volume (metric kg)
+    initialHoneyKg=initial?((initial.ogTarget-1)*1000*volPrefSI/292):0;
+    initialCost=APP.settings.honeyPricePerKg?(initialHoneyKg*APP.settings.honeyPricePerKg).toFixed(2):'';
+    initialHoney=initialHoneyKg?(initialHoneyKg/UNIT_WT[us].toSI).toFixed(2):'';
+  }
   var unitBtns=['metric','us','imperial'].map(function(s){
     var lbl={metric:'Metric · L / kg',us:'US · gal / lb',imperial:'Imperial · gal / lb'}[s];
     var on=(s===us);
@@ -53,24 +67,27 @@ function openNewBatchModal(recipeId,scaledVol,opts){
     '';
   var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-title">⚗ NEW BATCH</div>'
     +'<div class="form-group"><label class="form-label">Choose Recipe</label><select class="form-select" id="nb-recipe" onchange="updateRecipeFields();updateYeastCompatibility()">'+recipeOpts+'</select></div>'
-    +'<div class="form-group"><label class="form-label">Batch Name</label><input class="form-input" id="nb-name" placeholder="e.g., Spring Batch #1" value="'+escHtml((initial?initial.name:'Mead')+' #'+(APP.batches.length+1))+'"></div>'
+    +'<div class="form-group"><label class="form-label">Batch Name</label><input class="form-input" id="nb-name" placeholder="e.g., Spring Batch #1" value="'+escHtml((initial?initial.name:(activeBevMode()==='cider'?'Cider':'Mead'))+' #'+(visibleBatches().length+1))+'"></div>'
     +'<div class="form-group"><label class="form-label">Units</label><div style="display:flex;gap:6px">'+unitBtns+'</div></div>'
     +fermenterRow
     +'<div class="form-row"><div class="form-group"><label class="form-label">Start Date</label><input class="form-input" id="nb-date" type="date" value="'+today()+'"></div>'
     +'<div class="form-group"><label class="form-label" id="nb-vol-label">Volume ('+UNIT_VOL[us].label+')</label><input class="form-input" id="nb-vol" type="number" step="0.1" value="'+volPref+'"></div></div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">Target OG</label><input class="form-input" id="nb-og" type="number" step="0.001" value="'+(initial?initial.ogTarget:1.095)+'" onchange="updateYeastCompatibility()"></div>'
-    +'<div class="form-group"><label class="form-label" id="nb-honey-label">Honey ('+UNIT_WT[us].label+')</label><input class="form-input" id="nb-honey" type="number" step="0.01" value="'+initialHoney+'"></div></div>'
-    +'<div class="form-row"><div class="form-group"><label class="form-label">Honey Type</label><select class="form-select" id="nb-honey-type" onchange="updateYeastCompatibility()">'
+    +'<div class="form-group"><label class="form-label" id="nb-honey-label">'+(isCider?'Juice ('+UNIT_VOL[us].label+')':'Honey ('+UNIT_WT[us].label+')')+'</label><input class="form-input" id="nb-honey" type="number" step="0.01" value="'+initialHoney+'"></div></div>'
+    +'<div class="form-row"><div class="form-group"><label class="form-label">'+(isCider?'Apple / Juice Blend':'Honey Type')+'</label><select class="form-select" id="nb-honey-type" onchange="updateYeastCompatibility()">'
     +(function(){
-      // Build two-group dropdown: honeys you actually have in supplies first,
+      // Build two-group dropdown: what you actually have in supplies first,
       // then every other variety. Quantities and units shown for stocked ones
       // so the user picks "what's available" rather than "what's nice in theory".
-      var honeySupplies=(APP.supplies||[]).filter(function(s){return s.type==='honey'&&parseFloat(s.qty)>0;});
-      // Match each supply to a canonical HONEY_TYPES entry by substring; track which canonical names are stocked
+      var stockType=isCider?'juice':'honey';
+      var varietyList=isCider?CIDER_FRUIT_TYPES:HONEY_TYPES;
+      var defaultVariety=isCider?'Mixed / Orchard Blend':'Wildflower';
+      var honeySupplies=(APP.supplies||[]).filter(function(s){return s.type===stockType&&parseFloat(s.qty)>0;});
+      // Match each supply to a canonical variety entry by substring; track which canonical names are stocked
       var stockedCanonical={};
       var inStockOptions=honeySupplies.map(function(s){
         var name=String(s.name||'').trim();
-        var canonical=HONEY_TYPES.find(function(t){
+        var canonical=varietyList.find(function(t){
           var lt=t.toLowerCase(),ln=name.toLowerCase();
           return ln.indexOf(lt)!==-1||lt.indexOf(ln)!==-1;
         });
@@ -80,9 +97,9 @@ function openNewBatchModal(recipeId,scaledVol,opts){
         var brandSuffix=s.brand?' · '+s.brand:'';
         return'<option value="'+escHtml(displayValue)+'">'+escHtml(name)+' ('+qtyLabel+brandSuffix+')</option>';
       }).join('');
-      var otherOptions=HONEY_TYPES.filter(function(t){return!stockedCanonical[t];})
-        .map(function(t){return'<option value="'+escHtml(t)+'"'+(t==='Wildflower'&&!inStockOptions?' selected':'')+'>'+escHtml(t)+'</option>';}).join('');
-      // If user has stocked honeys, default-select the first one
+      var otherOptions=varietyList.filter(function(t){return!stockedCanonical[t];})
+        .map(function(t){return'<option value="'+escHtml(t)+'"'+(t===defaultVariety&&!inStockOptions?' selected':'')+'>'+escHtml(t)+'</option>';}).join('');
+      // If user has stocked varieties, default-select the first one
       if(inStockOptions){
         return'<optgroup label="'+uiL('🟢 In your supplies')+'">'+inStockOptions+'</optgroup>'
           +'<optgroup label="'+uiL('Other varieties (not stocked)')+'">'+otherOptions+'</optgroup>';
@@ -92,22 +109,26 @@ function openNewBatchModal(recipeId,scaledVol,opts){
     +'</select></div>'
     +'<div class="form-group"><label class="form-label">Yeast Strain</label><select class="form-select" id="nb-yeast" onchange="updateYeastCompatibility()">'
     +(function(){
-      // Same treatment for yeast — show what you have first
+      // Same treatment for yeast — show what you have first. Filtered to
+      // strains valid for the active beverage: most of this library is
+      // written up in mead-only terms, so a cider batch shouldn't offer M05.
+      var defaultStrainId=isCider?'nottingham':'m05';
+      var modeStrains=YEAST_STRAINS.filter(function(y){return(y.beverageTypes||['mead']).indexOf(isCider?'cider':'mead')>=0;});
       var yeastSupplies=(APP.supplies||[]).filter(function(s){return s.type==='yeast'&&parseFloat(s.qty)>0;});
       var stockedStrains={};
       var inStockOptions=yeastSupplies.map(function(s){
         var name=String(s.name||'').trim();
-        var strain=YEAST_STRAINS.find(function(y){
+        var strain=modeStrains.find(function(y){
           var ln=name.toLowerCase(),lyn=y.name.toLowerCase(),lyid=y.id.toLowerCase();
           return ln.indexOf(lyid)!==-1||ln.indexOf(lyn.split(' ').pop().toLowerCase())!==-1;
         });
-        var value=strain?strain.id:'m05';
+        var value=strain?strain.id:defaultStrainId;
         if(strain)stockedStrains[strain.id]=true;
         var qtyLabel=(parseFloat(s.qty)||0)+' '+(s.unit||'');
         return'<option value="'+escHtml(value)+'">'+escHtml(name)+' ('+qtyLabel+')</option>';
       }).join('');
-      var otherOptions=YEAST_STRAINS.filter(function(y){return!stockedStrains[y.id];})
-        .map(function(y){return'<option value="'+escHtml(y.id)+'"'+(y.id==='m05'&&!inStockOptions?' selected':'')+'>'+escHtml(y.name)+'</option>';}).join('');
+      var otherOptions=modeStrains.filter(function(y){return!stockedStrains[y.id];})
+        .map(function(y){return'<option value="'+escHtml(y.id)+'"'+(y.id===defaultStrainId&&!inStockOptions?' selected':'')+'>'+escHtml(y.name)+'</option>';}).join('');
       if(inStockOptions){
         return'<optgroup label="'+uiL('🟢 In your supplies')+'">'+inStockOptions+'</optgroup>'
           +'<optgroup label="'+uiL('Other strains (not stocked)')+'">'+otherOptions+'</optgroup>';
@@ -165,9 +186,9 @@ function openNewBatchModal(recipeId,scaledVol,opts){
     +'</select></div></div>'
     +'<div id="nb-protocol-warn"></div>'
     +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;margin:14px 0 8px;text-transform:uppercase">Cost Tracking (optional)</div>'
-    +'<div class="form-row"><div class="form-group"><label class="form-label">Honey Cost ('+(APP.settings.currency||'€')+')</label><input class="form-input" id="nb-cost-honey" type="number" step="0.01" value="'+initialCost+'" placeholder="e.g. 18.00"></div>'
-    +'<div class="form-group"><label class="form-label">Extras Cost ('+(APP.settings.currency||'€')+')</label><input class="form-input" id="nb-cost-extras" type="number" step="0.01" placeholder="fruit, spices, etc."></div></div>'
-    +'<div class="form-group"><label class="form-label">Notes (optional)</label><textarea class="form-textarea" id="nb-notes" placeholder="Honey source, intentions, anything worth remembering…"></textarea></div>'
+    +'<div class="form-row"><div class="form-group"><label class="form-label">'+(isCider?'Juice Cost':'Honey Cost')+' ('+(APP.settings.currency||'€')+')</label><input class="form-input" id="nb-cost-honey" type="number" step="0.01" value="'+initialCost+'" placeholder="e.g. 18.00"></div>'
+    +'<div class="form-group"><label class="form-label">Extras Cost ('+(APP.settings.currency||'€')+')</label><input class="form-input" id="nb-cost-extras" type="number" step="0.01" placeholder="'+(isCider?'spices, oak, etc.':'fruit, spices, etc.')+'"></div></div>'
+    +'<div class="form-group"><label class="form-label">Notes (optional)</label><textarea class="form-textarea" id="nb-notes" placeholder="'+(isCider?'Juice source, pressing date, intentions…':'Honey source, intentions, anything worth remembering…')+'"></textarea></div>'
     +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="createBatch()">Create Batch</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
   // Deploy pre-fills: when launched from a planned batch, seed the target
@@ -292,6 +313,8 @@ function onNutrientChange(){
 // preference. Storage stays metric; this is presentation only.
 function onBatchUnitChange(sys){
   if(sys!=='metric'&&sys!=='us'&&sys!=='imperial')return;
+  var isCider=activeBevMode()==='cider';
+  var honeyUnit=isCider?UNIT_VOL:UNIT_WT; // cider's "honey" field holds juice liters, not weight
   var old=currentUnitSystem();
   var volEl=document.getElementById('nb-vol'),honeyEl=document.getElementById('nb-honey');
   if(volEl&&volEl.value!==''){
@@ -299,13 +322,13 @@ function onBatchUnitChange(sys){
     volEl.value=(si/UNIT_VOL[sys].toSI).toFixed(sys==='metric'?2:3);
   }
   if(honeyEl&&honeyEl.value!==''){
-    var sik=parseFloat(honeyEl.value)*UNIT_WT[old].toSI;
-    honeyEl.value=(sik/UNIT_WT[sys].toSI).toFixed(2);
+    var sik=parseFloat(honeyEl.value)*honeyUnit[old].toSI;
+    honeyEl.value=(sik/honeyUnit[sys].toSI).toFixed(2);
   }
   APP.settings.unitSystem=sys;
   if(typeof saveSettings==='function')saveSettings();
   var vl=document.getElementById('nb-vol-label');if(vl)vl.textContent='Volume ('+UNIT_VOL[sys].label+')';
-  var hl=document.getElementById('nb-honey-label');if(hl)hl.textContent='Honey ('+UNIT_WT[sys].label+')';
+  var hl=document.getElementById('nb-honey-label');if(hl)hl.textContent=(isCider?'Juice (':'Honey (')+honeyUnit[sys].label+')';
   ['metric','us','imperial'].forEach(function(s){
     var b=document.getElementById('nb-unit-'+s);if(!b)return;var on=(s===sys);
     b.style.border='1px solid '+(on?'var(--gold)':'var(--border)');
@@ -318,16 +341,23 @@ function updateRecipeFields(){
   var id=document.getElementById('nb-recipe').value;
   var r=APP.recipes.find(function(x){return x.id===id;});
   if(!r)return;
+  var isCider=(r.beverageType||'mead')==='cider';
   var us=currentUnitSystem();
   document.getElementById('nb-name').value=r.name+' #'+(APP.batches.length+1);
   // r.volume is metric litres; convert to the displayed unit.
   document.getElementById('nb-vol').value=(r.volume/UNIT_VOL[us].toSI).toFixed(us==='metric'?2:3);
   document.getElementById('nb-og').value=r.ogTarget;
-  var honeyKg=((r.ogTarget-1)*1000*r.volume/292);      // metric kg
-  document.getElementById('nb-honey').value=(honeyKg/UNIT_WT[us].toSI).toFixed(2);
-  if(APP.settings.honeyPricePerKg){
-    // Cost is always computed from the metric kg, regardless of display unit.
-    document.getElementById('nb-cost-honey').value=(honeyKg*APP.settings.honeyPricePerKg).toFixed(2);
+  if(isCider){
+    // Juice ≈ batch volume — no separate "addition" the way honey is added to water.
+    document.getElementById('nb-honey').value=(r.volume/UNIT_VOL[us].toSI).toFixed(2);
+    document.getElementById('nb-cost-honey').value='';
+  }else{
+    var honeyKg=((r.ogTarget-1)*1000*r.volume/292);      // metric kg
+    document.getElementById('nb-honey').value=(honeyKg/UNIT_WT[us].toSI).toFixed(2);
+    if(APP.settings.honeyPricePerKg){
+      // Cost is always computed from the metric kg, regardless of display unit.
+      document.getElementById('nb-cost-honey').value=(honeyKg*APP.settings.honeyPricePerKg).toFixed(2);
+    }
   }
 }
 
@@ -348,12 +378,15 @@ function createBatch(){
   var costExtras=parseFloat(document.getElementById('nb-cost-extras').value)||0;
   var fermenterSel=document.getElementById('nb-fermenter');
   var startDate=document.getElementById('nb-date').value||today();
+  var isCider=activeBevMode()==='cider';
   // Volume/honey are entered in the user's chosen unit — convert back to the
-  // metric values MeadOS stores and calculates with everywhere else.
+  // metric values MeadOS stores and calculates with everywhere else. Cider's
+  // "honey" field holds juice liters, so it converts via UNIT_VOL, not UNIT_WT.
   var volIn=parseFloat(document.getElementById('nb-vol').value);
   var honeyIn=parseFloat(document.getElementById('nb-honey').value);
+  var honeyUnit=isCider?UNIT_VOL:UNIT_WT;
   var volumeSI=(!isNaN(volIn)?volIn*UNIT_VOL[currentUnitSystem()].toSI:4.5);
-  var honeySI=(!isNaN(honeyIn)?honeyIn*UNIT_WT[currentUnitSystem()].toSI:null);
+  var honeySI=(!isNaN(honeyIn)?honeyIn*honeyUnit[currentUnitSystem()].toSI:null);
   var protoSel=(document.getElementById('nb-protocol')||{}).value||'auto';
   var b={
     id:genId(),
@@ -369,7 +402,7 @@ function createBatch(){
     volume:Math.round(volumeSI*1000)/1000,
     og:parseFloat(document.getElementById('nb-og').value)||1.095,
     honey:honeySI!=null?Math.round(honeySI*1000)/1000:null,
-    honeyType:(document.getElementById('nb-honey-type')||{}).value||'Wildflower',
+    honeyType:(document.getElementById('nb-honey-type')||{}).value||(isCider?'Mixed / Orchard Blend':'Wildflower'),
     yeast:(document.getElementById('nb-yeast')||{}).value||'m05',
     nutrient:(document.getElementById('nb-nutrient')||{}).value||'mj-mead',
     // Nutrient schedule the batch follows: 'auto' defers to the nutrient's own
@@ -381,6 +414,11 @@ function createBatch(){
   };
   var r=APP.recipes.find(function(x){return x.id===b.recipeId;});
   if(r)b.style=r.style;
+  // Every batch is tagged so mode-filtered views (visibleBatches()) know
+  // which side it belongs to — inherit from the recipe, falling back to
+  // whichever mode was active when the batch was created (e.g. a custom
+  // recipe that never got a beverageType of its own).
+  b.beverageType=(r&&r.beverageType)||activeBevMode();
   APP.batches.push(b);
   APP.logs[b.id]=[];
   // If this batch was deployed from the brew plan, retire that plan entry now
@@ -454,22 +492,33 @@ function openEditBatchModal(id){
   closeModal();
   var b=APP.batches.find(function(x){return x.id===id;});
   if(!b)return;
+  var isCider=(b.beverageType||'mead')==='cider';
   var cost=b.cost||{};
   var fermenterOpts=(APP.fermenters||[]).map(function(f){
     return'<option value="'+f.id+'"'+(f.id===b.fermenterId?' selected':'')+'>'+escHtml(f.name+(f.capacity?' ('+f.capacity+'L)':''))+'</option>';
   }).join('');
   var fermenterRow=fermenterOpts?'<div class="form-group"><label class="form-label">Fermenter</label><select class="form-select" id="eb-fermenter">'+fermenterOpts+'</select></div>':'';
   // Honey type — datalist with all known varieties (free-text still allowed
-  // for custom additions). Defaults to whatever was stored on the batch.
-  var honeyDatalist=(typeof HONEY_TYPES!=='undefined'&&HONEY_TYPES.length)
+  // for custom additions). Defaults to whatever was stored on the batch. The
+  // same b.honey/b.honeyType fields double as "primary fermentable" for cider
+  // batches (liters of juice / apple blend) rather than a separate schema —
+  // only the label and datalist change, so existing data keeps working.
+  var honeyDatalist=(!isCider&&typeof HONEY_TYPES!=='undefined'&&HONEY_TYPES.length)
     ?'<datalist id="eb-honey-types">'+HONEY_TYPES.map(function(h){return'<option value="'+escHtml(h)+'"></option>';}).join('')+'</datalist>':'';
   // Yeast strain — dropdown of known strains plus the raw value (for legacy
-  // data that may not match any known id).
-  var currentYeast=b.yeast||'m05';
+  // data that may not match any known id). Filtered to the batch's own
+  // beverage (not the currently active mode — editing shouldn't change
+  // which batch you're looking at), but the batch's existing yeast always
+  // stays selectable even if it's a cross-mode/legacy strain, so editing
+  // never silently swaps out what's actually fermenting.
+  var currentYeast=b.yeast||(isCider?'nottingham':'m05');
+  var modeYeastStrains=(typeof YEAST_STRAINS!=='undefined'?YEAST_STRAINS:[]).filter(function(y){
+    return y.id===currentYeast||(y.beverageTypes||['mead']).indexOf(isCider?'cider':'mead')>=0;
+  });
   var yeastOpts='';
-  if(typeof YEAST_STRAINS!=='undefined'&&YEAST_STRAINS.length){
+  if(modeYeastStrains.length){
     var found=false;
-    yeastOpts=YEAST_STRAINS.map(function(y){
+    yeastOpts=modeYeastStrains.map(function(y){
       var sel=(y.id===currentYeast);
       if(sel)found=true;
       return'<option value="'+y.id+'"'+(sel?' selected':'')+'>'+escHtml(y.name)+'</option>';
@@ -485,10 +534,10 @@ function openEditBatchModal(id){
     +'<div class="form-row"><div class="form-group"><label class="form-label">Start Date</label><input class="form-input" id="eb-date" type="date" value="'+b.startDate+'"></div>'
     +'<div class="form-group"><label class="form-label">Volume (L)</label><input class="form-input" id="eb-vol" type="number" step="0.1" value="'+(b.volume||4.5)+'"></div></div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">OG</label><input class="form-input" id="eb-og" type="number" step="0.001" value="'+(b.og||1.095)+'"></div>'
-    +'<div class="form-group"><label class="form-label">Honey (kg)</label><input class="form-input" id="eb-honey" type="number" step="0.1" value="'+(b.honey||'')+'"></div></div>'
-    +'<div class="form-row"><div class="form-group"><label class="form-label">Honey Type</label><input class="form-input" id="eb-honey-type" value="'+escHtml(b.honeyType||'')+'" list="eb-honey-types" placeholder="Wildflower, Acacia, Buckwheat…">'+honeyDatalist+'</div>'
+    +'<div class="form-group"><label class="form-label">'+(isCider?'Juice (L)':'Honey (kg)')+'</label><input class="form-input" id="eb-honey" type="number" step="0.1" value="'+(b.honey||'')+'"></div></div>'
+    +'<div class="form-row"><div class="form-group"><label class="form-label">'+(isCider?'Apple / Juice Blend':'Honey Type')+'</label><input class="form-input" id="eb-honey-type" value="'+escHtml(b.honeyType||'')+'" list="eb-honey-types" placeholder="'+(isCider?'Golden Delicious, Kingston Black…':'Wildflower, Acacia, Buckwheat…')+'">'+honeyDatalist+'</div>'
     +yeastRow+'</div>'
-    +'<div class="form-row"><div class="form-group"><label class="form-label">Honey Cost ('+(APP.settings.currency||'€')+')</label><input class="form-input" id="eb-cost-honey" type="number" step="0.01" value="'+(cost.honey||'')+'"></div>'
+    +'<div class="form-row"><div class="form-group"><label class="form-label">'+(isCider?'Juice Cost':'Honey Cost')+' ('+(APP.settings.currency||'€')+')</label><input class="form-input" id="eb-cost-honey" type="number" step="0.01" value="'+(cost.honey||'')+'"></div>'
     +'<div class="form-group"><label class="form-label">Extras Cost ('+(APP.settings.currency||'€')+')</label><input class="form-input" id="eb-cost-extras" type="number" step="0.01" value="'+(cost.extras||'')+'"></div></div>'
     +'<div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="eb-notes">'+escHtml(b.notes||'')+'</textarea></div>'
     +'<div class="form-group" style="background:var(--bg);border-left:3px solid var(--gold2);border-radius:var(--radius);padding:12px 14px">'
@@ -1055,6 +1104,8 @@ function clearHAToken(){
 function saveCostsSettings(){
   var hpEl=document.getElementById('set-honey-price');
   if(hpEl)APP.settings.honeyPricePerKg=parseFloat(hpEl.value)||0;
+  var jpEl=document.getElementById('set-juice-price');
+  if(jpEl)APP.settings.juicePricePerL=parseFloat(jpEl.value)||0;
   var ccyEl=document.getElementById('set-currency');
   if(ccyEl)APP.settings.currency=ccyEl.value;
   var sachetEl=document.getElementById('set-sachet');

@@ -4,7 +4,7 @@
 'use strict';
 // ==================== SCHEMA VERSIONING ====================
 // Current schema version. Bump when packageState/applyState changes shape.
-var CURRENT_SCHEMA_VERSION=12;
+var CURRENT_SCHEMA_VERSION=13;
 
 var SCHEMA_MIGRATIONS={
   // v1 → v2: legacy locations as numbers → size-keyed maps
@@ -202,6 +202,16 @@ var SCHEMA_MIGRATIONS={
       }
     }
     delete d.cellar;
+    return d;
+  },
+  // v12 → v13: Cider mode. Every batch and recipe (built-in and custom) gets a
+  // beverageType tag so the app can filter what's shown per the active mode.
+  // Everything that existed before this version was mead by definition, so the
+  // migration is a pure default-fill, never a guess — no batch changes meaning.
+  13:function(d){
+    (d.batches||[]).forEach(function(b){if(!b.beverageType)b.beverageType='mead';});
+    (d.customRecipes||[]).forEach(function(r){if(!r.beverageType)r.beverageType='mead';});
+    (d.plannedBatches||[]).forEach(function(b){if(!b.beverageType)b.beverageType='mead';});
     return d;
   }
 };

@@ -61,7 +61,7 @@ function renderStockAlerts(){
 function detectStuckFermentations(){
   var stuck=[];
   var now=Date.now();
-  (APP.batches||[]).forEach(function(b){
+  (typeof visibleBatches==='function'?visibleBatches():(APP.batches||[])).forEach(function(b){
     var status=getBatchStatus(b);
     if(status==='bottled'||status==='complete'||status==='failed')return;
     var logs=(APP.logs[b.id]||[]).slice().sort(function(a,b){return(a.date||'').localeCompare(b.date||'');});
@@ -110,7 +110,7 @@ function detectStuckFermentations(){
 function detectDrinkingWindowAlerts(){
   var alerts=[];
   var now=Date.now();
-  (APP.batches||[]).forEach(function(b){
+  (typeof visibleBatches==='function'?visibleBatches():(APP.batches||[])).forEach(function(b){
     var bot=APP.bottling[b.id];
     if(!bot||!bot.date)return;
     var onHand=(typeof bottlesOnHand==='function')?bottlesOnHand(bot):(bot.bottleCount||0);
@@ -142,7 +142,7 @@ function detectDrinkingWindowAlerts(){
 function detectAnniversaryTastingPrompts(){
   var prompts=[];
   var now=Date.now();
-  (APP.batches||[]).forEach(function(b){
+  (typeof visibleBatches==='function'?visibleBatches():(APP.batches||[])).forEach(function(b){
     var bot=APP.bottling[b.id];
     if(!bot||!bot.date)return;
     var onHand=(typeof bottlesOnHand==='function')?bottlesOnHand(bot):(bot.bottleCount||0);
