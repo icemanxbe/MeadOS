@@ -453,8 +453,8 @@ var UI_PHRASES={
   'Anything above 14% rules out D47 and 71B (they stall). Above 16% essentially mandates EC-1118 or K1V.':'Alles boven 14% sluit D47 en 71B uit (ze vallen stil). Boven 16% is EC-1118 of K1V vrijwel verplicht.',
   'Honey-forward → M05. Fruit → 71B. Floral/honey amp → K1V. Wine-like body → D47. Neutral → EC-1118.':'Honinggedreven → M05. Fruit → 71B. Bloemig/honingversterking → K1V. Wijnachtige body → D47. Neutraal → EC-1118.',
   'Strict 18°C ferment temp → D47 rewards you. Variable basement temps → K1V is forgiving (10-35°C).':'Strikte gisttemperatuur van 18°C → D47 beloont je. Wisselende keldertemperaturen → K1V is vergevingsgezind (10-35°C).',
-  'SACHET MATH:':'SACHET-REKENWERK:','One sachet covers up to':'Eén sachet dekt tot',
-  'liters at standard OG (≤1.090). High-OG batches (sack mead, OG 1.130+) reduce effective coverage — MeadOS computes this automatically in recipe scaling.':'liter bij standaard-OG (≤1.090). Hoge-OG-brouwsels (sack-mede, OG 1.130+) verminderen de effectieve dekking — MeadOS berekent dit automatisch bij het schalen van recepten.',
+  'SACHET MATH:':'SACHET-REKENWERK:',
+  "Coverage varies by strain — open a yeast's detail page for its exact liters per sachet at standard OG (≤1.090). High-OG batches (sack mead, OG 1.130+) reduce effective coverage — MeadOS computes this automatically in recipe scaling.":'Dekking verschilt per stam — open het detailoverzicht van een gist voor het exacte aantal liter per sachet bij standaard-OG (≤1.090). Hoge-OG-brouwsels (sack-mede, OG 1.130+) verminderen de effectieve dekking — MeadOS berekent dit automatisch bij het schalen van recepten.',
   // ---- nutrient library ----
   'Nutrient & Protocol Guide':'Voedings- & protocolgids',
   '📖 Nutrient Protocols — Full Guide (SNA · TOSNA · TOSCA · TiOSNA)':'📖 Voedingsprotocollen — volledige gids (SNA · TOSNA · TOSCA · TiOSNA)',

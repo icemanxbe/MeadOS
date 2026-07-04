@@ -505,7 +505,7 @@ function renderYeastLibrary(){
     +'</div>'
     +(liquids.length?'<div style="font-family:var(--font-display);font-size:14px;color:var(--gold2);letter-spacing:2px;margin:24px 0 10px">LIQUID YEASTS</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(380px,100%),1fr));gap:10px">'+liquids.map(card).join('')+'</div>':'')
     +'<div style="margin-top:24px;padding:14px 18px;background:var(--bg2);border-radius:var(--radius);border-left:3px solid var(--gold2);font-size:13px;color:var(--text2);line-height:1.6">'
-      +'<strong style="color:var(--gold2)">SACHET MATH:</strong> One sachet covers up to <em>sachetCoversL</em> liters at standard OG (≤1.090). High-OG batches (sack mead, OG 1.130+) reduce effective coverage — MeadOS computes this automatically in recipe scaling.'
+      +'<strong style="color:var(--gold2)">SACHET MATH:</strong> Coverage varies by strain — open a yeast\'s detail page for its exact liters per sachet at standard OG (≤1.090). High-OG batches (sack mead, OG 1.130+) reduce effective coverage — MeadOS computes this automatically in recipe scaling.'
     +'</div>';
 }
 
