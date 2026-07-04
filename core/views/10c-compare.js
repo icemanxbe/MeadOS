@@ -6,11 +6,14 @@
 // ==================== COMPARE VIEW ====================
 function renderCompare(){
   var selected=APP.compareSelection||[];
-  // Filter out batches that no longer exist
-  selected=selected.filter(function(id){return APP.batches.find(function(b){return b.id===id;});});
+  var modeBatches=visibleBatches();
+  // Filter out batches that no longer exist, or belong to the other beverage
+  // mode (switching modes shouldn't leave a stale, invisible cider batch
+  // silently occupying a comparison slot while browsing mead).
+  selected=selected.filter(function(id){return modeBatches.find(function(b){return b.id===id;});});
   APP.compareSelection=selected;
   // Build selection grid
-  var cards=APP.batches.map(function(b){
+  var cards=modeBatches.map(function(b){
     var color=getBatchColor(b);
     var sel=selected.indexOf(b.id)!==-1;
     var status=getBatchStatus(b);
@@ -117,7 +120,7 @@ function renderCompare(){
 
   return'<div class="page-title">Compare</div><div class="page-subtitle">Side-by-side analysis · select 2-4 batches to overlay gravity curves and stats'+(selected.length?' · '+selected.length+' selected':'')+'</div>'
     +(selected.length>0?'<div style="margin-bottom:12px"><button class="btn btn-secondary btn-sm" onclick="APP.compareSelection=[];renderMain()">Clear Selection</button></div>':'')
-    +(APP.batches.length?'<div class="grid-3" style="gap:10px">'+cards+'</div>':'<div class="empty-state"><p>No batches to compare yet.</p></div>')
+    +(modeBatches.length?'<div class="grid-3" style="gap:10px">'+cards+'</div>':'<div class="empty-state"><p>No batches to compare yet.</p></div>')
     +comparisonHtml;
 }
 

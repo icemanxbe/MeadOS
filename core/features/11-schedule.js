@@ -5,7 +5,7 @@
 
 // ==================== AGING TIMELINE (Gantt) ====================
 function renderTimeline(){
-  var allBottled=APP.batches.filter(function(b){return APP.bottling[b.id]&&!b.failed;});
+  var allBottled=visibleBatches().filter(function(b){return APP.bottling[b.id]&&!b.failed;});
   // Finished batches (drunk/gifted to zero) have nothing left to age — hide
   // them by default so the forecast stays focused, with a toggle to show.
   function isFinished(b){var bo=APP.bottling[b.id];return bo&&bottlesOnHand(bo)===0&&bottlesOriginal(bo)>0&&(bo.cellarFilled||(bo.gifts&&bo.gifts.length)||(APP.tastings[b.id]||[]).length);}
@@ -302,7 +302,7 @@ function renderFermenterTimeline(){
 // surfaces as a ghost bar on the Gantt above, feeds the aggregated shopping
 // list below, and "deploys" into a real batch on brew day.
 function renderBrewPlanCard(){
-  var plans=(APP.plannedBatches||[]).slice().sort(function(a,b){
+  var plans=(APP.plannedBatches||[]).filter(function(p){return typeof inActiveMode!=='function'||inActiveMode(p);}).slice().sort(function(a,b){
     return new Date(a.plannedStart||0)-new Date(b.plannedStart||0);
   });
   var addBtn='<button class="btn btn-primary btn-sm" onclick="openPlanBatchModal()">＋ Plan a Batch</button>';
@@ -378,16 +378,27 @@ function computeShoppingNeeds(){
   var plans=APP.plannedBatches||[];
   var ccy=(APP.settings&&APP.settings.currency)||'€';
   var sachetSz=parseFloat(APP.settings&&APP.settings.sachetSize)||12;
-  var need={honeyKg:0,yeastPackets:0,nutrientGrams:0,nutrientSachets:0,bottles750:0,bottles500:0,caps:0};
-  var honeyTypes={},yeastNames={};
+  var need={honeyKg:0,juiceL:0,yeastPackets:0,nutrientGrams:0,nutrientSachets:0,bottles750:0,bottles500:0,caps:0};
+  var honeyTypes={},juiceTypes={},yeastNames={};
   var extras={}; // key -> {item, amounts, batches}
   plans.forEach(function(pb){
     var r=APP.recipes.find(function(x){return x.id===pb.recipeId;});
     if(!r)return;
     var vol=parseFloat(pb.volume)||r.volume||4.5;
     var og=r.ogTarget||1.095;
-    need.honeyKg+=(og-1)*1000*vol/292;
-    if(pb.honeyType)honeyTypes[pb.honeyType]=(honeyTypes[pb.honeyType]||0)+1;
+    // Cider's OG comes from apple juice, not honey — the (OG-1)*1000/292
+    // formula is honey-specific (292 SG-points/kg is honey's own density
+    // constant) and would produce a bogus honey-shopping number for a
+    // cider plan. Cider plans instead need juice ≈ the batch volume itself
+    // (no separate "addition" the way honey is added to water).
+    var isMeadPlan=(r.beverageType||'mead')==='mead';
+    if(isMeadPlan){
+      need.honeyKg+=(og-1)*1000*vol/292;
+      if(pb.honeyType)honeyTypes[pb.honeyType]=(honeyTypes[pb.honeyType]||0)+1;
+    }else{
+      need.juiceL+=vol;
+      if(pb.honeyType)juiceTypes[pb.honeyType]=(juiceTypes[pb.honeyType]||0)+1;
+    }
     // Yeast packets scale with the CHOSEN strain's coverage (sachet covers L)
     var strain=getYeastById(pb.yeast)||{sachetCoversL:17};
     need.yeastPackets+=Math.max(1,Math.ceil(vol/(strain.sachetCoversL||17)));
@@ -408,7 +419,7 @@ function computeShoppingNeeds(){
     (r.ingredients||[]).forEach(function(ing){
       var nm=String(ing.item||'').trim();
       if(!nm)return;
-      if(/honey|water|yeast|nutrient/i.test(nm))return; // staples handled above
+      if(/honey|juice|water|yeast|nutrient/i.test(nm))return; // staples handled above
       if(/metabisulfite|sorbate|sulfite|campden/i.test(nm))return; // stabilizers — assumed on hand
       var key=nm.toLowerCase();
       if(!extras[key])extras[key]={item:nm,amounts:[],batches:0};
@@ -434,7 +445,14 @@ function computeShoppingNeeds(){
   // Honey label notes which type(s) the plans call for
   var honeyTypeList=Object.keys(honeyTypes);
   var honeyLabel='Honey'+(honeyTypeList.length?' · '+honeyTypeList.join(', '):'');
-  lines.push((function(){var n=Math.round(need.honeyKg*100)/100,h=Math.round(haveQty('honey')*100)/100,buy=Math.max(0,n-h);return{label:honeyLabel,unit:'kg',need:n,have:h,buy:buy,cost:honeyPrice?buy*honeyPrice:0};})());
+  if(need.honeyKg>0){
+    var n=Math.round(need.honeyKg*100)/100,h=Math.round(haveQty('honey')*100)/100,buy=Math.max(0,n-h);
+    lines.push({label:honeyLabel,unit:'kg',need:n,have:h,buy:buy,cost:honeyPrice?buy*honeyPrice:0});
+  }
+  // Juice label notes which apple/juice blend(s) the cider plans call for
+  var juiceTypeList=Object.keys(juiceTypes);
+  var juiceLabel='Juice'+(juiceTypeList.length?' · '+juiceTypeList.join(', '):'');
+  pushLine(juiceLabel,'L',Math.round(need.juiceL*100)/100,'juice');
   var yeastNameList=Object.keys(yeastNames);
   pushLine('Yeast'+(yeastNameList.length?' · '+yeastNameList.join(', '):''),'packets',need.yeastPackets,'yeast');
   pushLine('Nutrient · ~'+Math.round(need.nutrientGrams)+' g','sachets',need.nutrientSachets,'nutrient');
@@ -464,29 +482,45 @@ function detectRecipeSupplyNeeds(r){
 function computeBrewableRecipes(scaleVol){
   var supplies=APP.supplies||[];
   function haveType(t){return supplies.filter(function(s){return s.type===t;}).reduce(function(a,s){return a+(parseFloat(s.qty)||0);},0);}
-  var have={honey:haveType('honey'),yeast:haveType('yeast'),nutrient:haveType('nutrient'),pectic:haveType('pectic'),sulfite:haveType('sulfite'),sorbate:haveType('sorbate')};
+  var have={honey:haveType('honey'),juice:haveType('juice'),yeast:haveType('yeast'),nutrient:haveType('nutrient'),pectic:haveType('pectic'),sulfite:haveType('sulfite'),sorbate:haveType('sorbate')};
+  // Card shows whichever beverage is active — mead's honey math and cider's
+  // juice math are different enough (honeyPerL from OG vs juice ≈ volume)
+  // that they're evaluated as separate branches rather than one formula.
+  var isCider=(typeof activeBevMode==='function')&&activeBevMode()==='cider';
   // Supplies already committed to planned/scheduled batches.
   var sachetSz=parseFloat(APP.settings&&APP.settings.sachetSize)||12;
-  var planned={honey:0,yeast:0,nutrient:0};
+  var planned={honey:0,juice:0,yeast:0,nutrient:0};
   (APP.plannedBatches||[]).forEach(function(pb){
     var r=(APP.recipes||[]).find(function(x){return x.id===pb.recipeId;});
-    if(!r)return;
+    if(!r||((r.beverageType||'mead')==='cider')!==isCider)return;
     var v=parseFloat(pb.volume)||r.volume||5,og=r.ogTarget||1.095;
-    if(og>1)planned.honey+=(og-1)*1000*v/292;
+    if(isCider)planned.juice+=v;
+    else if(og>1)planned.honey+=(og-1)*1000*v/292;
     planned.yeast+=1;
     planned.nutrient+=Math.max(1,Math.ceil(recipeNutrientGrams(r,v)/sachetSz));
   });
   var vol=parseFloat(scaleVol)||5;
-  var list=(APP.recipes||[]).map(function(r){
+  var list=(APP.recipes||[]).filter(function(r){return(r.beverageType||'mead')===(isCider?'cider':'mead');}).map(function(r){
     var og=r.ogTarget||1.095;
-    if(og<=1)return null;
-    var honeyPerL=(og-1)*1000/292;
-    if(honeyPerL<=0)return null;
-    var honeyNeed=honeyPerL*vol;
+    var primaryNeed,primaryHave,maxVol;
+    if(isCider){
+      // Cider's fermentable IS the juice — no separate "addition" the way
+      // honey is added to water, so need ≈ the target batch volume.
+      primaryNeed=vol;
+      primaryHave=have.juice;
+      maxVol=have.juice;
+    }else{
+      if(og<=1)return null;
+      var honeyPerL=(og-1)*1000/292;
+      if(honeyPerL<=0)return null;
+      primaryNeed=honeyPerL*vol;
+      primaryHave=have.honey;
+      maxVol=have.honey/honeyPerL;
+    }
     var nutrientNeed=Math.max(1,Math.ceil(recipeNutrientGrams(r,vol)/sachetSz));
     var chem=detectRecipeSupplyNeeds(r);
     var missing=[];
-    if(have.honey<honeyNeed-0.001)missing.push('honey');
+    if(primaryHave<primaryNeed-0.001)missing.push(isCider?'juice':'honey');
     if(have.yeast<1)missing.push('yeast');
     if(have.nutrient<nutrientNeed)missing.push('nutrient');
     if(chem.pectic&&have.pectic<=0)missing.push('pectic enzyme');
@@ -494,14 +528,19 @@ function computeBrewableRecipes(scaleVol){
     if(chem.sorbate&&have.sorbate<=0)missing.push('sorbate');
     // Would brewing this now leave too little for the scheduled batches?
     var starves=[];
-    if(planned.honey>0&&have.honey-honeyNeed<planned.honey-0.001)starves.push('honey');
+    var plannedPrimary=isCider?planned.juice:planned.honey;
+    if(plannedPrimary>0&&primaryHave-primaryNeed<plannedPrimary-0.001)starves.push(isCider?'juice':'honey');
     if(planned.yeast>0&&have.yeast-1<planned.yeast)starves.push('yeast');
     if(planned.nutrient>0&&have.nutrient-nutrientNeed<planned.nutrient)starves.push('nutrient');
     var abv=r.abvTarget||Math.round((og-(r.fgTarget||1.010))*131.25*10)/10;
-    return{recipe:r,og:og,abv:abv,honeyNeed:honeyNeed,maxVol:have.honey/honeyPerL,missing:missing,starves:starves,makeable:missing.length===0};
+    return{recipe:r,og:og,abv:abv,honeyNeed:primaryNeed,maxVol:maxVol,missing:missing,starves:starves,makeable:missing.length===0};
   }).filter(Boolean);
   list.sort(function(a,b){if(a.makeable!==b.makeable)return a.makeable?-1:1;return b.maxVol-a.maxVol;});
-  return{have:have,planned:planned,hasPlanned:(APP.plannedBatches||[]).length>0,vol:vol,list:list};
+  var hasPlanned=(APP.plannedBatches||[]).some(function(pb){
+    var r=(APP.recipes||[]).find(function(x){return x.id===pb.recipeId;});
+    return r&&((r.beverageType||'mead')==='cider')===isCider;
+  });
+  return{have:have,planned:planned,hasPlanned:hasPlanned,vol:vol,list:list,isCider:isCider};
 }
 
 function toggleBrewWhatYouHave(){
@@ -557,11 +596,11 @@ function renderBrewWhatYouHaveCard(){
   var makeableCount=r.list.filter(function(x){return x.makeable;}).length;
   var header='<div class="card" id="bwyh-card" style="margin-bottom:16px">'
     +'<div onclick="toggleBrewWhatYouHave()" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none">'
-    +'<div class="card-title">🍯 BREW WITH WHAT YOU HAVE</div>'
-    +'<div style="display:flex;align-items:center;gap:10px"><span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:0.5px">'+makeableCount+' ready · '+fmtWt(r.have.honey)+' honey</span><span class="bwyh-chev" style="color:var(--gold2);font-size:13px">'+(window._bwyhOpen?'▾':'▸')+'</span></div>'
+    +'<div class="card-title">'+(r.isCider?'🍎':'🍯')+' BREW WITH WHAT YOU HAVE</div>'
+    +'<div style="display:flex;align-items:center;gap:10px"><span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:0.5px">'+(r.isCider?makeableCount+' ready · '+fmtVol(r.have.juice)+' juice':makeableCount+' ready · '+fmtWt(r.have.honey)+' honey')+'</span><span class="bwyh-chev" style="color:var(--gold2);font-size:13px">'+(window._bwyhOpen?'▾':'▸')+'</span></div>'
     +'</div>';
   var plannedNote=r.hasPlanned?'<div style="font-size:11.5px;color:var(--text3);margin-top:10px;font-style:italic">Cross-checked against your planned batches — a ⚠ badge means brewing it now would leave too little for a scheduled batch.</div>':'';
-  var body='<div style="font-size:12px;color:var(--text3);margin:10px 0 4px">Recipes you can start now from your supplies — honey, yeast, nutrient and the chemicals each recipe calls for (pectic enzyme, metabisulfite, sorbate).</div>'
+  var body='<div style="font-size:12px;color:var(--text3);margin:10px 0 4px">'+(r.isCider?'Recipes you can start now from your supplies — juice, yeast, nutrient and the chemicals each recipe calls for (pectic enzyme, metabisulfite, sorbate).':'Recipes you can start now from your supplies — honey, yeast, nutrient and the chemicals each recipe calls for (pectic enzyme, metabisulfite, sorbate).')+'</div>'
     +'<div style="display:flex;align-items:center;gap:12px;margin:8px 0 12px">'
     +'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px;white-space:nowrap">BATCH SIZE</span>'
     +'<input type="range" min="1" max="12" step="0.5" value="'+window._bwyhVol+'" oninput="setBrewWhatYouHaveVol(this.value)" style="flex:1">'
@@ -651,14 +690,16 @@ function copyShoppingList(){
 // yeast id directly, so we sniff their ingredient lines for a known strain /
 // honey before falling back to the house defaults.
 function planDefaultsForRecipe(r){
-  var d={yeast:'m05',nutrient:'mj-mead',honeyType:'Wildflower'};
+  var isCider=r?((r.beverageType||'mead')==='cider'):((typeof activeBevMode==='function')&&activeBevMode()==='cider');
+  var d={yeast:isCider?'nottingham':'m05',nutrient:'mj-mead',honeyType:isCider?'Mixed / Orchard Blend':'Wildflower'};
   if(!r)return d;
   var ings=(r.ingredients||[]).map(function(i){return String(i.item||'');}).join(' | ').toLowerCase();
-  var strain=YEAST_STRAINS.find(function(y){
+  var strain=YEAST_STRAINS.filter(function(y){return(y.beverageTypes||['mead']).indexOf(isCider?'cider':'mead')>=0;}).find(function(y){
     return ings.indexOf(y.id.toLowerCase())!==-1||ings.indexOf(y.name.split('—')[0].trim().toLowerCase())!==-1;
   });
   if(strain)d.yeast=strain.id;
-  var honey=HONEY_TYPES.find(function(t){return ings.indexOf(t.toLowerCase())!==-1;});
+  var varietyList=isCider?CIDER_FRUIT_TYPES:HONEY_TYPES;
+  var honey=varietyList.find(function(t){return ings.indexOf(t.toLowerCase())!==-1;});
   if(honey)d.honeyType=honey;
   if(/fermaid-?o/i.test(ings))d.nutrient='fermaid-o';
   else if(/fermaid-?k/i.test(ings))d.nutrient='fermaid-k';
@@ -668,10 +709,14 @@ function planDefaultsForRecipe(r){
 function openPlanBatchModal(planId,presetRecipeId,presetVolSI){
   closeModal();
   var editing=planId?(APP.plannedBatches||[]).find(function(p){return p.id===planId;}):null;
-  if(!APP.recipes||!APP.recipes.length){toast('⚠ No recipes available');return;}
-  var preRecipe=editing?editing.recipeId:(presetRecipeId||(APP.recipes[0]&&APP.recipes[0].id));
-  var recipeOpts=APP.recipes.map(function(r){return'<option value="'+r.id+'"'+(r.id===preRecipe?' selected':'')+'>'+escHtml(r.name)+' ('+r.style+')</option>';}).join('');
-  var initial=APP.recipes.find(function(r){return r.id===preRecipe;})||APP.recipes[0];
+  // View filter (cider mode): only offer recipes matching the active mode —
+  // same reasoning as openNewBatchModal's recipe picker.
+  var modeRecipes=visibleRecipes();
+  if(!modeRecipes.length){toast('⚠ No recipes available');return;}
+  var preRecipe=editing?editing.recipeId:(presetRecipeId||(modeRecipes[0]&&modeRecipes[0].id));
+  var recipeOpts=modeRecipes.map(function(r){return'<option value="'+r.id+'"'+(r.id===preRecipe?' selected':'')+'>'+escHtml(r.name)+' ('+r.style+')</option>';}).join('');
+  var initial=modeRecipes.find(function(r){return r.id===preRecipe;})||modeRecipes[0];
+  var isCider=(initial&&(initial.beverageType||'mead')==='cider')||(!initial&&(typeof activeBevMode==='function')&&activeBevMode()==='cider');
   var defs=planDefaultsForRecipe(initial);
   var fermOpts='<option value="">— Unassigned (decide later) —</option>'+(APP.fermenters||[]).map(function(f){
     var occ=fermenterOccupiedBy(f.id);
@@ -690,9 +735,11 @@ function openPlanBatchModal(planId,presetRecipeId,presetVolSI){
     var lbl={metric:'Metric · L',us:'US · gal',imperial:'Imp · gal'}[s];var on=(s===us);
     return'<button type="button" id="pb-unit-'+s+'" onclick="onPlanUnitChange(\''+s+'\')" style="flex:1;padding:6px 4px;border-radius:var(--radius);cursor:pointer;font-family:var(--font-mono);font-size:10px;letter-spacing:0.3px;border:1px solid '+(on?'var(--gold)':'var(--border)')+';background:'+(on?'rgba(201,168,76,0.14)':'var(--bg3)')+';color:'+(on?'var(--gold2)':'var(--text3)')+'">'+lbl+'</button>';
   }).join('');
-  var yeastOpts=YEAST_STRAINS.map(function(y){return'<option value="'+y.id+'"'+(y.id===curYeast?' selected':'')+'>'+escHtml(y.name)+' · '+(y.abvMax||'?')+'% max</option>';}).join('');
+  // Filtered to this plan's own beverage — see openNewBatchModal for the same treatment.
+  var yeastOpts=YEAST_STRAINS.filter(function(y){return y.id===curYeast||(y.beverageTypes||['mead']).indexOf(isCider?'cider':'mead')>=0;})
+    .map(function(y){return'<option value="'+y.id+'"'+(y.id===curYeast?' selected':'')+'>'+escHtml(y.name)+' · '+(y.abvMax||'?')+'% max</option>';}).join('');
   var nutrientOpts=NUTRIENT_PRODUCTS.map(function(p){return'<option value="'+p.id+'"'+(p.id===curNutrient?' selected':'')+'>'+escHtml(p.name)+'</option>';}).join('');
-  var honeyOpts=HONEY_TYPES.map(function(t){return'<option value="'+escHtml(t)+'"'+(t===curHoney?' selected':'')+'>'+escHtml(t)+'</option>';}).join('');
+  var honeyOpts=(isCider?CIDER_FRUIT_TYPES:HONEY_TYPES).map(function(t){return'<option value="'+escHtml(t)+'"'+(t===curHoney?' selected':'')+'>'+escHtml(t)+'</option>';}).join('');
   var bottleOpts=[['mixed','Mixed (750 ml + a 500 ml remainder)'],['750','750 ml only'],['500','500 ml only']]
     .map(function(b){return'<option value="'+b[0]+'"'+(b[0]===curBottle?' selected':'')+'>'+b[1]+'</option>';}).join('');
   var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:620px">'
@@ -704,7 +751,7 @@ function openPlanBatchModal(planId,presetRecipeId,presetVolSI){
     +'<div class="form-group"><label class="form-label" id="pb-vol-label">Volume ('+UNIT_VOL[us].label+')</label><input class="form-input" id="pb-vol" type="number" step="0.1" value="'+volDisp+'"></div></div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">Yeast Strain</label><select class="form-select" id="pb-yeast">'+yeastOpts+'</select></div>'
     +'<div class="form-group"><label class="form-label">Nutrient</label><select class="form-select" id="pb-nutrient">'+nutrientOpts+'</select></div></div>'
-    +'<div class="form-row"><div class="form-group"><label class="form-label">Honey Type</label><select class="form-select" id="pb-honey">'+honeyOpts+'</select></div>'
+    +'<div class="form-row"><div class="form-group"><label class="form-label">'+(isCider?'Apple / Juice Blend':'Honey Type')+'</label><select class="form-select" id="pb-honey">'+honeyOpts+'</select></div>'
     +'<div class="form-group"><label class="form-label">Bottle Type</label><select class="form-select" id="pb-bottle">'+bottleOpts+'</select></div></div>'
     +'<div class="form-group"><label class="form-label">Planned Brew Date</label><input class="form-input" id="pb-date" type="date" value="'+defDate+'"></div>'
     +'<div class="form-group"><label class="form-label">Notes (optional)</label><textarea class="form-textarea" id="pb-notes" placeholder="e.g. gift batch for the holidays, try the new orange-blossom honey">'+escHtml(editing&&editing.notes||'')+'</textarea></div>'
@@ -758,6 +805,12 @@ function savePlannedBatch(planId){
     plannedStart:document.getElementById('pb-date').value||'',
     notes:document.getElementById('pb-notes').value.trim()
   };
+  // Tag with beverageType so visibleBatches()-style filtering (and the
+  // schema migration's own default-fill for pre-existing plans) has
+  // something real to match on — inherit from the chosen recipe, falling
+  // back to whichever mode was active when the plan was created.
+  var planRecipe=APP.recipes.find(function(x){return x.id===data.recipeId;});
+  data.beverageType=(planRecipe&&planRecipe.beverageType)||activeBevMode();
   if(!APP.plannedBatches)APP.plannedBatches=[];
   if(planId){
     var idx=APP.plannedBatches.findIndex(function(p){return p.id===planId;});

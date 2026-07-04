@@ -346,7 +346,7 @@ function getOverdueAdditions(){
   var out=[];
   Object.keys(APP.additions).forEach(function(bid){
     var b=APP.batches.find(function(x){return x.id===bid;});
-    if(!b)return;
+    if(!b||(typeof inActiveMode==='function'&&!inActiveMode(b)))return;
     (APP.additions[bid]||[]).forEach(function(a){
       if(a.removedDate)return;
       var info=ADDITION_TYPES.find(function(t){return t.key===a.type;});

@@ -58,6 +58,55 @@ function renderGuide(){
     +'<div class="grid-3">'+cards+'</div>';
 }
 
+// ==================== CIDER GUIDE ====================
+// Same structure as the Mead Guide above, keyed off CIDER_BEGINNER_HOWTO /
+// CIDER_GUIDE_SECTIONS() in 01-state.js. proseL() is called explicitly here
+// (rather than relying solely on translateChrome's whole-text-node pass) —
+// safer against the whitespace-mismatch translation gaps found elsewhere in
+// this codebase for HTML-template-generated text nodes.
+function renderCiderBeginnerHowto(){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var steps=CIDER_BEGINNER_HOWTO.map(function(s,i){
+    return'<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="flex-shrink:0;width:26px;height:26px;border-radius:13px;background:var(--bg4);border:1px solid var(--gold);color:var(--gold2);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px">'+(i+1)+'</div>'
+      +'<div><div style="font-size:14px;color:var(--text);font-weight:500;margin-bottom:2px">'+escHtml(proseL(s.t))+'</div><div style="font-size:13px;color:var(--text2);line-height:1.6">'+escHtml(proseL(s.d))+'</div></div>'
+    +'</div>';
+  }).join('');
+  return'<details class="card" open style="margin-bottom:20px;border-left:3px solid var(--gold)"><summary style="cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px"><span style="font-size:22px">🍎</span><div style="flex:1"><div class="card-title" style="font-size:15px">'+(nl?'HOE MAAK JE CIDER — EERSTE BROUWSEL VOOR BEGINNERS':'HOW TO MAKE CIDER — A BEGINNER\'S FIRST BATCH')+'</div><div style="font-size:12px;color:var(--text3);font-style:italic;margin-top:2px">'+(nl?'Een complete wandeling, van lege vergister tot eerste proeverij':'A complete walkthrough, from empty fermenter to first tasting')+'</div></div><span style="color:var(--text3);font-size:14px">▾</span></summary>'
+    +'<div style="margin-top:12px">'+steps+'</div></details>';
+}
+function openCiderGuideSection(i){
+  var s=CIDER_GUIDE_SECTIONS()[i];
+  if(!s)return;
+  closeModal();
+  var title=proseL(s.title).toUpperCase();
+  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:640px">'
+    +'<div class="modal-title">'+s.icon+' '+escHtml(title)+'</div>'
+    +'<div style="font-size:14px;color:var(--text2);line-height:1.8;white-space:pre-line">'+escHtml(proseL(s.content))+'</div>'
+    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'
+    +'</div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
+}
+function renderCiderGuide(){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var sections=CIDER_GUIDE_SECTIONS();
+  var cards=sections.map(function(s,i){
+    var content=proseL(s.content);
+    var title=proseL(s.title).toUpperCase();
+    var teaser=String(content||'').replace(/\s+/g,' ').trim().slice(0,104);
+    return'<div class="card" style="cursor:pointer;margin:0" onclick="openCiderGuideSection('+i+')">'
+      +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px"><span style="font-size:20px">'+s.icon+'</span><div class="card-title" style="font-size:12.5px">'+escHtml(title)+'</div></div>'
+      +'<div style="font-size:12.5px;color:var(--text3);line-height:1.5">'+escHtml(teaser)+'…</div>'
+      +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--gold2);letter-spacing:1px;margin-top:10px">'+(nl?'LEZEN →':'READ →')+'</div>'
+    +'</div>';
+  }).join('');
+  return'<div class="page-title">'+(nl?'Cider Gids':'Cider Guide')+'</div><div class="page-subtitle">'+(nl?'Het Compendium voor de Beginnende Cidermaker':'The Beginner Cidermaker\'s Compendium')+'</div>'
+    +'<div class="ornament">— ⬡ ✦ ⬡ —</div>'
+    +renderCiderBeginnerHowto()
+    +'<div style="font-family:var(--font-display);font-size:14px;color:var(--gold2);letter-spacing:2px;margin:6px 0 12px">'+(nl?'ONDERWERPEN · tik om te lezen':'TOPICS · tap to read')+'</div>'
+    +'<div class="grid-3">'+cards+'</div>';
+}
+
 // ==================== BOTTLE SCANNER ====================
 // Opens the camera, watches for a QR code, and routes to the matching batch.
 //

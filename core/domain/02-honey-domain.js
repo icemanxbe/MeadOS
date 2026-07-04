@@ -214,8 +214,11 @@ function honeyFitForRecipe(r,honeyName,ctx){
     var FT={great:{tier:'great',order:2,badge:'✓ GREAT FIT',color:'var(--green2)'},
             good:{tier:'good',order:3,badge:'✓ GOOD FIT',color:'var(--green2)'},
             workable:{tier:'workable',order:4,badge:'~ WORKABLE',color:'var(--gold)'},
-            poor:{tier:'poor',order:5,badge:'✗ NOT IDEAL',color:'var(--red2)'},
-            clash:{tier:'poor',order:5,badge:'✗ CLASH',color:'var(--red2)'}};
+            // #d66b6b, not var(--red2): the standard red measures ~4.3:1 on this
+            // card's near-black row background, just under WCAG AA's 4.5:1 for
+            // small badge text — this brighter tint clears it (~5.9:1).
+            poor:{tier:'poor',order:5,badge:'✗ NOT IDEAL',color:'#d66b6b'},
+            clash:{tier:'poor',order:5,badge:'✗ CLASH',color:'#d66b6b'}};
     var t=FT[cu.fit]||{tier:'recommended',order:1,badge:'✓ RECOMMENDED',color:'var(--green2)'};
     return{tier:t.tier,order:t.order,badge:t.badge,color:t.color,inStock:inStock,note:cu.shift||cu.note||''};
   }
@@ -226,7 +229,7 @@ function honeyFitForRecipe(r,honeyName,ctx){
   if(d===0){tier='great';order=2;badge='✓ GREAT FIT';color='var(--green2)';fit='an ideal weight for this recipe.';}
   else if(d===1){tier='good';order=3;badge='✓ GOOD FIT';color='var(--green2)';fit=heavier?'a touch bolder than ideal, but it sits well here.':'a touch lighter than ideal, but clean and pleasant here.';}
   else if(d===2){tier='workable';order=4;badge='~ WORKABLE';color='var(--gold)';fit=heavier?'bolder than this recipe wants — it leads more than intended, so use a lighter hand.':'lighter than ideal — clean, but its own character can get lost.';}
-  else{tier='poor';order=5;badge='✗ NOT IDEAL';color='var(--red2)';fit=heavier?'too dominant — it would bury this recipe.':'too delicate to stand up in this recipe.';}
+  else{tier='poor';order=5;badge='✗ NOT IDEAL';color='#d66b6b';fit=heavier?'too dominant — it would bury this recipe.':'too delicate to stand up in this recipe.';}
   return{tier:tier,order:order,badge:badge,color:color,inStock:inStock,note:(gist?gist+' — ':'')+fit};
 }
 

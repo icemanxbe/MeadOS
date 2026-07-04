@@ -13,6 +13,15 @@
 --font-display:'Cinzel',serif;--font-body:'Crimson Pro',serif;--font-mono:'JetBrains Mono',monospace;
 --shadow:0 2px 20px rgba(0,0,0,0.6);
 }
+/* Cider mode: nearly every accent border/title/badge in the app is themed
+   through --gold/--gold2/--gold3/--amber/--honey, so re-pointing just those
+   five variables re-skins the whole app (orchard green + apple red instead
+   of honey gold/amber) with no per-component changes needed. Toggled on
+   <body> by updateModeToggle() whenever the active mode is cider. */
+body.mode-cider{
+--gold:#7cb350;--gold2:#a3d17e;--gold3:#d9f0c4;
+--amber:#c1502f;--honey:#d46a3f;
+}
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:16px;line-height:1.6}
 #app{display:grid;grid-template-rows:calc(54px + env(safe-area-inset-top,0px)) 1fr;grid-template-columns:230px 1fr;height:100vh;overflow:hidden}
 /* iOS standalone PWA draws under the notch (viewport-fit=cover): pad the top
@@ -26,6 +35,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);fon
 .logo-mark img{width:100%;height:100%;object-fit:contain;display:block}
 .logo-text{display:flex;align-items:baseline;gap:10px}
 .logo .sub{color:var(--text3);font-size:11px;letter-spacing:2.5px;font-family:var(--font-body);font-weight:400;font-style:italic}
+.mode-toggle{display:flex;align-items:center;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:3px;gap:2px}
+.mode-toggle-btn{border:none;background:transparent;color:var(--text3);font-family:var(--font-mono);font-size:11px;letter-spacing:.5px;padding:6px 14px;border-radius:16px;cursor:pointer;transition:all .15s}
+.mode-toggle-btn.active{background:var(--gold);color:#141417;font-weight:700}
+.mode-toggle-btn:not(.active):hover{color:var(--gold2)}
 .topbar-right{margin-left:auto;display:flex;align-items:center;gap:10px}
 .topbar-date{font-family:var(--font-mono);font-size:11px;color:var(--text3);letter-spacing:1px}
 .sync-badge{font-family:var(--font-mono);font-size:10px;padding:4px 9px;border-radius:12px;letter-spacing:.5px;border:1px solid;display:inline-flex;align-items:center;gap:5px}

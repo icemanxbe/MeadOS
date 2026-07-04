@@ -126,6 +126,7 @@ USER_ASSET_DIRS = {
 # unchanged (e.g. /icon-192.png); only the on-disk location moved here.
 BUNDLED_ASSET_FILE = {
     "/icon.svg": "assets/icons/icon.svg",
+    "/icon-cider.svg": "assets/icons/icon-cider.svg",
     "/icon-192.png": "assets/icons/icon-192.png",
     "/icon-512.png": "assets/icons/icon-512.png",
     "/icon-maskable-512.png": "assets/icons/icon-maskable-512.png",
@@ -297,6 +298,7 @@ STATIC_ASSETS = {
     # PWA assets — all public (the install/offline shell isn't sensitive).
     "/sw.js": "text/javascript; charset=utf-8",
     "/icon.svg": "image/svg+xml",
+    "/icon-cider.svg": "image/svg+xml",
     "/icon-192.png": "image/png",
     "/icon-512.png": "image/png",
     "/icon-maskable-512.png": "image/png",

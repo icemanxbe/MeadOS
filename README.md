@@ -16,6 +16,7 @@
   <img alt="Vanilla JS, no build step" src="https://img.shields.io/badge/frontend-vanilla%20JS-9C6B30">
   <img alt="English + Nederlands" src="https://img.shields.io/badge/i18n-EN%20%2B%20NL-8B5E3C">
   <img alt="Installable PWA" src="https://img.shields.io/badge/app-installable%20PWA-6F4E37">
+  <img alt="Mead + Cider" src="https://img.shields.io/badge/brews-Mead%20%2B%20Cider-8ab030">
   <img alt="PolyForm Noncommercial 1.0.0" src="https://img.shields.io/badge/licence-PolyForm%20NC%201.0.0-8B5E3C">
 </p>
 
@@ -77,6 +78,9 @@ An unguessable per-batch **share page** (EN/NL, with the Studio label front-and-
 **🏠 Optional Home Assistant**
 Live fermenter/cellar temperatures, hydrometer (iSpindel/Tilt/RAPT) readings and push notifications — proxied safely server-side. Entirely optional; MeadOS runs fully standalone.
 
+**🍎 Optional: CiderOS mode**
+Flip on cider/perry tracking in Settings and a **Mead / Cider** switch appears in the top bar. It's a pure view filter — every batch and recipe always lives in the same database — but the app re-brands itself completely: **CIDEROS** wordmark and a green apple crest, a 13-recipe Cider Compendium, a 41-variety **Apple & Pear Library** classified by the industry-standard LARS tannin/acid system, cider-appropriate yeast strains, and a genuinely separate Cider Guide, Troubleshoot and Advisor content — not a mead page with the words swapped. See **[CiderOS Mode](https://github.com/icemanxbe/MeadOS/wiki/Cider-Mode)** in the wiki.
+
 ---
 
 ## 📸 A look around
@@ -92,6 +96,10 @@ Live fermenter/cellar temperatures, hydrometer (iSpindel/Tilt/RAPT) readings and
 | Label Studio — front & back designer | The same label, in Nederlands |
 |---|---|
 | ![Label Studio](docs/screenshots/label-studio.png) | ![Dutch label](docs/screenshots/label-studio-nl.png) |
+
+| 🍎 CiderOS — same app, fully re-branded | Cider recipe — apple-fit, yeast & nutrient cards |
+|---|---|
+| ![CiderOS dashboard](docs/screenshots/cider-dashboard.png) | ![Cider recipe detail](docs/screenshots/cider-recipe-detail.png) |
 
 <details>
 <summary>More screenshots</summary>
@@ -119,6 +127,22 @@ Live fermenter/cellar temperatures, hydrometer (iSpindel/Tilt/RAPT) readings and
 | Yeast library | The whole app in Dutch |
 |---|---|
 | ![Yeast library](docs/screenshots/yeast-library.png) | ![Dutch dashboard](docs/screenshots/dashboard-nl.png) |
+
+| Apple & Pear Library — 41 varieties, LARS classified | Cider Guide |
+|---|---|
+| ![Apple & Pear Library](docs/screenshots/cider-apple-library.png) | ![Cider Guide](docs/screenshots/cider-guide.png) |
+
+| Cider yeast library — only cider-appropriate strains | Cider Troubleshoot |
+|---|---|
+| ![Cider yeast library](docs/screenshots/cider-yeast-library.png) | ![Cider troubleshoot](docs/screenshots/cider-troubleshoot.png) |
+
+| A bottled cider batch — juice, yeast, full journey | CiderOS Advisor |
+|---|---|
+| ![Cider batch detail](docs/screenshots/cider-batch-detail.png) | ![Cider advisor](docs/screenshots/cider-advisor.png) |
+
+| CiderOS in Dutch |
+|---|
+| ![Dutch cider dashboard](docs/screenshots/cider-dashboard-nl.png) |
 
 </details>
 
@@ -170,6 +194,7 @@ The complete handbook is in the **[Wiki](https://github.com/icemanxbe/MeadOS/wik
 | 🏷 [Labels, Sharing & Calendar](https://github.com/icemanxbe/MeadOS/wiki/Labels-Sharing-and-Calendar) | 🌍 [Language & Units](https://github.com/icemanxbe/MeadOS/wiki/Language-and-Units) |
 | 🏠 [Home Assistant](https://github.com/icemanxbe/MeadOS/wiki/Home-Assistant) | 🔒 [Security & Deployment](https://github.com/icemanxbe/MeadOS/wiki/Security-and-Deployment) |
 | 💾 [Backups & Data](https://github.com/icemanxbe/MeadOS/wiki/Backups-and-Data) | 🛟 [Troubleshooting](https://github.com/icemanxbe/MeadOS/wiki/Troubleshooting) |
+| 🍎 [CiderOS Mode](https://github.com/icemanxbe/MeadOS/wiki/Cider-Mode) | |
 
 ---
 

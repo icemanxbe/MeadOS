@@ -500,7 +500,7 @@ function printStorageLabel(batchId){
     +'</style></head><body>'
     +'<div class="btns no-print"><button onclick="window.print()">🖨 Print</button><button onclick="window.close()">Close</button></div>'
     +'<div class="label">'+svg+'</div>'
-    +'<div class="hint no-print">This label prints at 150mm × 100mm. Stick it on the side of your aging-storage box for quick identification across the cellar. The QR code scans to this batch\'s page in MeadŌS — handy for a guest browsing your collection. Use a 4×6\" sticker label or print on A4 and trim.</div>'
+    +'<div class="hint no-print">This label prints at 150mm × 100mm. Stick it on the side of your aging-storage box for quick identification across the cellar. The QR code scans to this batch\'s page in '+((b.beverageType||'mead')==='cider'?'CiderOS':'MeadOS')+' — handy for a guest browsing your collection. Use a 4×6\" sticker label or print on A4 and trim.</div>'
     +'</body></html>');
   w.document.close();
 }

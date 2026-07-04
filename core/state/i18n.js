@@ -30,7 +30,9 @@ var UI_NAV={
   'nav-tools':['Brewing Tools','Brouwgereedschap'],
   'nav-supplies':['Supplies','Voorraad'],
   'nav-guide':['Mead Guide','Medegids'],
-  'nav-troubleshoot':['Troubleshoot','Probleemoplossing']
+  'nav-cider-guide':['Cider Guide','Cidergids'],
+  'nav-troubleshoot':['Troubleshoot','Probleemoplossing'],
+  'nav-apple-library':['Apple & Pear Library','Appel- & perenbibliotheek']
 };
 // Topbar icon-button id → [English, Nederlands] tooltip/aria-label
 var UI_TT={
@@ -141,6 +143,7 @@ var UI_PHRASES={
   'bottled':'gebotteld','planning':'gepland','complete':'voltooid','failed':'mislukt','stalled':'gevalt stil',
   'FREE':'VRIJ','See full briefing →':'Volledige briefing →',
   'The family meadwright tradition begins here.':'De familietraditie van de medemaker begint hier.',
+  'The orchard tradition begins here.':'De traditie van de boomgaard begint hier.',
   '＋ Start First Batch':'＋ Start eerste brouwsel',
   'No tasks today — your batches rest peacefully.':'Geen taken vandaag — je brouwsels rusten vredig.',
   // default fermenter names
@@ -187,8 +190,10 @@ var UI_PHRASES={
   'No batches queued. Plan your next brews to see them on the schedule above and roll up everything you need to buy.':'Geen brouwsels in wachtrij. Plan je volgende brouwsels om ze hierboven in het schema te zien en alles wat je moet kopen te verzamelen.',
   // ---- recipes ----
   'Recipes':'Recepten','⬇ Import BeerXML':'⬇ BeerXML importeren','✦ Designer':'✦ Ontwerper','＋ Create Recipe':'＋ Recept maken',
-  '🍯 BREW WITH WHAT YOU HAVE':'🍯 BROUW MET WAT JE HEBT','BATCH SIZE':'LOTGROOTTE',
+  '🍯 BREW WITH WHAT YOU HAVE':'🍯 BROUW MET WAT JE HEBT','🍎 BREW WITH WHAT YOU HAVE':'🍎 BROUW MET WAT JE HEBT','BATCH SIZE':'LOTGROOTTE',
   'Recipes you can start now from your supplies — honey, yeast, nutrient and the chemicals each recipe calls for (pectic enzyme, metabisulfite, sorbate).':'Recepten die je nu kunt starten uit je voorraad — honing, gist, voeding en de chemicaliën die elk recept vraagt (pectine-enzym, metabisulfiet, sorbaat).',
+  'Recipes you can start now from your supplies — juice, yeast, nutrient and the chemicals each recipe calls for (pectic enzyme, metabisulfite, sorbate).':'Recepten die je nu kunt starten uit je voorraad — sap, gist, voeding en de chemicaliën die elk recept vraagt (pectine-enzym, metabisulfiet, sorbaat).',
+  'Juice':'Sap',
   'PIN:':'PIN:','★ Favorites':'★ Favorieten','STYLE:':'STIJL:','All Styles':'Alle stijlen',
   'DIFFICULTY:':'MOEILIJKHEID:','All':'Alle','Beginner':'Beginner','Intermediate':'Gevorderd','Advanced':'Geavanceerd','Expert':'Expert',
   'TIME TO READY:':'TIJD TOT KLAAR:','Any time':'Elke tijd','Quick (< 3mo)':'Snel (< 3mnd)','Medium (3-12mo)':'Gemiddeld (3-12mnd)','Long (1yr+)':'Lang (1jr+)',
@@ -301,6 +306,28 @@ var UI_PHRASES={
   // ---- honey library ----
   '🍯 YOUR HONEY LIBRARY':'🍯 JOUW HONINGBIBLIOTHEEK','Pairs with:':'Combineert met:',
   'Not used in built-in recipes':'Niet gebruikt in ingebouwde recepten','PEAK':'PIEK','🌸 IN SEASON':'🌸 IN SEIZOEN',
+  // ---- cider mode: Apple & Pear Library ----
+  '🍎 YOUR APPLE & PEAR LIBRARY':'🍎 JOUW APPEL- & PERENBIBLIOTHEEK','Apple & Pear Library':'Appel- & perenbibliotheek',
+  'Every apple/pear falls somewhere on two axes — tannin and acid — that decide what it contributes: true cider apples (bittersharp/bittersweet) carry real structure, common supermarket apples (sweet/sharp) are what most people actually have and work fine blended 2-3 together. Flags show where a variety is realistically sourceable. Tap a card for full brewing detail.':'Elke appel/peer valt ergens op twee assen — tannine en zuur — die bepalen wat hij bijdraagt: echte ciderappels (bittersharp/bittersweet) geven echte structuur, gewone supermarktappels (sweet/sharp) zijn wat de meeste mensen echt hebben en werken prima met 2-3 samen gemengd. Vlaggen tonen waar een variëteit realistisch te vinden is. Tik op een kaart voor volledige brouwdetails.',
+  'APPLE VARIETY':'APPELVARIËTEIT','PERRY PEAR':'PEER (PERRY)','TANNIN / ACID (LARS)':'TANNINE / ZUUR (LARS)',
+  '⚗ CIDER CHEMISTRY':'⚗ CIDERCHEMIE','LARS CATEGORY':'LARS-CATEGORIE','TANNIN':'TANNINE','ACID':'ZUUR',
+  'TYPICAL BRIX':'TYPISCHE BRIX','TYPICAL pH':'TYPISCHE pH','CROPPING':'OOGSTPATROON',
+  'Biennial':'Beurtjarig','(heavy one year, light the next)':'(zwaar het ene jaar, licht het volgende)',
+  'Annual (reliable every year)':'Jaarlijks (betrouwbaar elk jaar)',
+  'LARS (Long Ashton Research Station) classifies cider apples on two axes — tannin above 0.2% and acid above 0.45% both count as "high." Bittersharp needs both high; bittersweet is tannin-only; sharp is acid-only; sweet is neither.':'LARS (Long Ashton Research Station) classificeert ciderappels op twee assen — tannine boven 0,2% en zuur boven 0,45% tellen beide als "hoog." Bittersharp heeft beide hoog nodig; bittersweet is alleen tannine; sharp is alleen zuur; sweet is geen van beide.',
+  'LARS (Long Ashton Research Station) classifies cider apples on two axes — tannin above 0.2% and acid above 0.45% both count as "high." Perry pears use a different threshold scale under similar names — never compare these numbers directly to an apple\'s.':'LARS (Long Ashton Research Station) classificeert ciderappels op twee assen — tannine boven 0,2% en zuur boven 0,45% tellen beide als "hoog." Perenrassen voor perry gebruiken een andere drempelschaal onder vergelijkbare namen — vergelijk deze cijfers nooit rechtstreeks met die van een appel.',
+  '🌍 WHERE TO FIND IT':'🌍 WAAR TE VINDEN','← All Varieties':'← Alle variëteiten',
+  'This variety is not used in any built-in recipes — but you can substitute it into any recipe where the character fits, or design a custom recipe around it.':'Deze variëteit wordt in geen enkel ingebouwd recept gebruikt — maar je kunt hem in elk recept vervangen waar het karakter past, of een eigen recept eromheen ontwerpen.',
+  // ---- cider mode: settings, header toggle, recipes-page juice guidance ----
+  '🍎 CIDER MODE · OPTIONAL':'🍎 CIDERMODUS · OPTIONEEL','Track cider too':'Volg ook cider',
+  'Track cider (and perry) batches alongside your mead — same database, same Advisor, its own recipe library and branding. Once enabled, a Mead/Cider switch appears in the header so you can jump between them from any screen; both always coexist, switching only changes what\'s shown.':'Volg cider (en perry) partijen naast je mede — dezelfde database, dezelfde Adviseur, een eigen receptenbibliotheek en branding. Eenmaal ingeschakeld verschijnt een Mede/Cider-schakelaar in de kop, zodat je vanaf elk scherm kunt wisselen; beide bestaan altijd naast elkaar, wisselen verandert alleen wat je ziet.',
+  'Mead Brewing Companion':'Mede-brouwmetgezel','Cider Making Companion':'Cider-maakmetgezel',
+  '🍯 Mead':'🍯 Mede','🍎 Cider':'🍎 Cider',
+  '🍏 Don\'t have the named variety? Any plain 100% apple juice works — the named varieties above are a guide to character (tannin/acid/sweetness), not a hard requirement. On the carton, check for:':'🍏 Heb je de genoemde variëteit niet? Gewoon 100% appelsap werkt ook — de genoemde variëteiten hierboven zijn een richtlijn voor karakter (tannine/zuur/zoetheid), geen harde eis. Check op het pak:',
+  'no preservatives':'geen bewaarmiddelen',
+  '(potassium sorbate or benzoate will stop fermentation before it starts — check the ingredients list),':'(kaliumsorbaat of benzoaat stopt de gisting voordat die begint — check de ingrediëntenlijst),',
+  'no added sugar or vitamin C blends':'geen toegevoegde suiker of vitamine-C-mengsels',
+  ', and pasteurised is fine (from-concentrate is fine too — freshly-pressed only matters for flavor nuance, not fermentability).':', en gepasteuriseerd is prima (uit-concentraat is ook prima — vers geperst maakt alleen uit voor smaaknuance, niet voor gistbaarheid).',
   'Each honey gives mead a distinct character — color, aroma, body, finish. Match the honey to the style: light honeys (acacia, rapeseed) for delicate spice and floral additions; dark honeys (buckwheat, chestnut) for bold bochets and ports. Tap a honey card for detailed brewing notes, food pairings, and recipe links.':'Elke honing geeft de mede een eigen karakter — kleur, aroma, body, afdronk. Stem de honing af op de stijl: lichte honingsoorten (acacia, koolzaad) voor delicate specerij- en bloementoevoegingen; donkere honingsoorten (boekweit, kastanje) voor krachtige bochets en ports. Tik op een honingkaart voor uitgebreide brouwnotities, gerechtcombinaties en receptlinks.',
   'Honeys at their freshness peak this month. Peak-of-season is the best time to source — local apiaries have just harvested, Mediterranean imports are most recent.':'Honingsoorten op hun versheidspiek deze maand. Op het hoogtepunt van het seizoen koop je het best in — lokale bijenstallen hebben net geoogst, mediterrane import is het recentst.',
   // region labels + hints (in-season card)
@@ -361,6 +388,7 @@ var UI_PHRASES={
   '💰 COSTS & SUPPLIES':'💰 KOSTEN & VOORRAAD',
   'Optional defaults for cost tracking and sachet-based ingredient hints. Changes save automatically.':'Optionele standaardwaarden voor kostenregistratie en sachet-gebaseerde ingrediënthints. Wijzigingen worden automatisch opgeslagen.',
   'Default Honey Price (per kg)':'Standaard honingprijs (per kg)','Nutrient Sachet Size (g)':'Voedingssachet-grootte (g)',
+  'Default Apple/Pear Juice Price (per L)':'Standaard appel-/perensapprijs (per L)',
   'Used by the Brewing Tools calculator, brew-day checklists, and the bottling workflow.':'Gebruikt door de Brouwgereedschap-calculator, brouwdag-checklists en de bottel-workflow.',
   'M.J. Mead Yeast Nutrient sachets vary by SKU — current default 12g. The app shows nutrient amounts as both grams and sachet count throughout.':'M.J. Mede-gistvoeding-sachets verschillen per SKU — huidige standaard 12 g. De app toont voedingshoeveelheden overal als grammen én sachetaantal.',
   'Auto-deduct supplies when starting a batch':'Voorraad automatisch aftrekken bij start van een brouwsel',
@@ -453,8 +481,14 @@ var UI_PHRASES={
   'Anything above 14% rules out D47 and 71B (they stall). Above 16% essentially mandates EC-1118 or K1V.':'Alles boven 14% sluit D47 en 71B uit (ze vallen stil). Boven 16% is EC-1118 of K1V vrijwel verplicht.',
   'Honey-forward → M05. Fruit → 71B. Floral/honey amp → K1V. Wine-like body → D47. Neutral → EC-1118.':'Honinggedreven → M05. Fruit → 71B. Bloemig/honingversterking → K1V. Wijnachtige body → D47. Neutraal → EC-1118.',
   'Strict 18°C ferment temp → D47 rewards you. Variable basement temps → K1V is forgiving (10-35°C).':'Strikte gisttemperatuur van 18°C → D47 beloont je. Wisselende keldertemperaturen → K1V is vergevingsgezind (10-35°C).',
-  'SACHET MATH:':'SACHET-REKENWERK:','One sachet covers up to':'Eén sachet dekt tot',
-  'liters at standard OG (≤1.090). High-OG batches (sack mead, OG 1.130+) reduce effective coverage — MeadOS computes this automatically in recipe scaling.':'liter bij standaard-OG (≤1.090). Hoge-OG-brouwsels (sack-mede, OG 1.130+) verminderen de effectieve dekking — MeadOS berekent dit automatisch bij het schalen van recepten.',
+  'SACHET MATH:':'SACHET-REKENWERK:',
+  // yeast grid intro (cider variant)
+  'Yeast choice shapes cider character more than any other variable. Three questions to ask:':'Gistkeuze bepaalt het cider-karakter meer dan elke andere variabele. Drie vragen om te stellen:',
+  '2. What character?':'2. Welk karakter?','3. Cool ferment or not?':'3. Koel vergisten of niet?',
+  'Common/heritage cider (≤7%) — Nottingham or M02 are plenty. New England, high-OG, or Ice Cider (10%+) — EC-1118\'s ~18% tolerance is the safe bet.':'Gewone/erfgoedcider (≤7%) — Nottingham of M02 volstaan ruimschoots. New England, hoge OG, of ijscider (10%+) — de ~18% tolerantie van EC-1118 is de veilige keuze.',
+  'Clean apple-forward → Nottingham or M02. Softened acidity + fruity esters (great for fruit ciders) → 71B. Traditional English body with natural MLF → WLP775. Fully neutral, highest-attenuating → EC-1118.':'Zuiver appelgedreven → Nottingham of M02. Verzachte zuurgraad + fruitige esters (uitstekend voor vruchtenciders) → 71B. Traditionele Engelse body met natuurlijke MLF → WLP775. Volledig neutraal, hoogst vergistend → EC-1118.',
+  'Nottingham shines cool (12-20°C) for a crisper result. EC-1118 tolerates a wider range but ferments hard and fast either way.':'Nottingham schittert koel (12-20°C) voor een frisser resultaat. EC-1118 verdraagt een breder bereik maar vergist hoe dan ook hard en snel.',
+  "Coverage varies by strain — open a yeast's detail page for its exact liters per sachet at standard OG (≤1.090). High-OG batches (sack mead, OG 1.130+) reduce effective coverage — MeadOS computes this automatically in recipe scaling.":'Dekking verschilt per stam — open het detailoverzicht van een gist voor het exacte aantal liter per sachet bij standaard-OG (≤1.090). Hoge-OG-brouwsels (sack-mede, OG 1.130+) verminderen de effectieve dekking — MeadOS berekent dit automatisch bij het schalen van recepten.',
   // ---- nutrient library ----
   'Nutrient & Protocol Guide':'Voedings- & protocolgids',
   '📖 Nutrient Protocols — Full Guide (SNA · TOSNA · TOSCA · TiOSNA)':'📖 Voedingsprotocollen — volledige gids (SNA · TOSNA · TOSCA · TiOSNA)',
@@ -489,6 +523,7 @@ var UI_PHRASES={
   'Low stock:':'Lage voorraad:','✓ have enough':'✓ genoeg in voorraad',
   'Est. cost to buy the shortfall':'Geschatte kost om het tekort te kopen',
   'Bottles · 750 ml':'Flessen · 750 ml','Bottles · 500 ml':'Flessen · 500 ml',
+  'Apple Juice / Must':'Appelsap / Most',
   'No suppliers yet. Add your trusted beekeepers and brewing-supply shops to keep track of where to source each honey type and ingredient.':'Nog geen leveranciers. Voeg je vertrouwde imkers en brouwwinkels toe om bij te houden waar je elke honingsoort en elk ingrediënt haalt.',
   // ---- insights ----
   '🌟 BEST-TASTING INSIGHTS':'🌟 INZICHTEN BESTE SMAAK','📈 YEAR-OVER-YEAR TRENDS':'📈 TRENDS JAAR-OP-JAAR',
@@ -661,7 +696,7 @@ var UI_PHRASES={
   '✦ Front + back saved':'✦ Voor- + achterkant opgeslagen','⚠ No back label on this design':'⚠ Geen achteretiket op dit ontwerp'
 };
 // Map of words used inside "Needs ..." / "Missing ..." supply badges.
-var SUPPLY_TERMS_NL={'honey':'honing','yeast':'gist','nutrient':'voeding','pectic enzyme':'pectine-enzym','metabisulfite':'metabisulfiet','sorbate':'sorbaat','water':'water'};
+var SUPPLY_TERMS_NL={'honey':'honing','juice':'sap','yeast':'gist','nutrient':'voeding','pectic enzyme':'pectine-enzym','metabisulfite':'metabisulfiet','sorbate':'sorbaat','water':'water'};
 function _supplyList(s){return s.split(',').map(function(x){var k=x.trim().toLowerCase();return SUPPLY_TERMS_NL[k]||x.trim();}).join(', ');}
 // Failure-category labels (postmortems). Rendered combined with an icon/prefix,
 // so translated at render sites via proseL (merged into the data prose map).
@@ -676,6 +711,10 @@ var FAILCAT_NL={
   'Other':'Overig','Unknown':'Onbekend'
 };
 var UI_PATTERNS=[
+  // Detail-page subtitle suffix shared by honey/yeast/nutrient/apple library
+  // pages ("<Name> · in depth") — pre-existing gap across all of them, not
+  // cider-specific, caught while checking the new Apple Library's own subtitle.
+  [/^(.+) · in depth$/, '$1 · in detail'],
   // ---- audit pass: value-bearing chrome ----
   [/^The Meadwright's Cellar · (\d+) (?:batch|batches)( · \d+ shown)?$/, function(m,n,shown){return "De kelder van de meadmaker · "+n+" partij"+(n==='1'?'':'en')+(shown?shown.replace(/ · (\d+) shown/,' · $1 getoond'):'');}],
   [/^Bottle Aging Tracker · (\d+) (?:batch|batches) resting · tap a header to expand$/, function(m,n){return "Flesrijping-tracker · "+n+" partij"+(n==='1'?'':'en')+" rust · tik op een kop om uit te klappen";}],
@@ -702,11 +741,21 @@ var UI_PATTERNS=[
     if(foot){var f=foot.replace(/(\d+) finished/g,'$1 afgewerkt').replace(/(\d+) failed/g,'$1 mislukt');base+=' · '+f;}
     return base;
   }],
+  [/^The Cidermaker's Overview · (\d+) (?:batch|batches) under your care(?: · (.+))?$/, function(m,n,foot){
+    var base='Het overzicht van de cidermaker · '+n+' partij'+(n==='1'?'':'en')+' onder jouw hoede';
+    if(foot){var f=foot.replace(/(\d+) finished/g,'$1 afgewerkt').replace(/(\d+) failed/g,'$1 mislukt');base+=' · '+f;}
+    return base;
+  }],
+  [/^The Cidermaker's Cellar · (\d+) (?:batch|batches)( · \d+ shown)?$/, function(m,n,shown){return "De kelder van de cidermaker · "+n+" partij"+(n==='1'?'':'en')+(shown?shown.replace(/ · (\d+) shown/,' · $1 getoond'):'');}],
+  [/^The Cider Compendium · (\d+) recipes?$/, function(m,n){return 'Het Cider-compendium · '+n+(n==='1'?' recept':' recepten');}],
+  [/^Choose the fruit, shape the cider · (\d+) varieties$/, 'Kies het fruit, vorm de cider · $1 variëteiten'],
+  [/^Realistically sourceable in: (.+)\.$/, 'Realistisch te vinden in: $1.'],
   [/^([\d.]+) L · tap to start a batch$/, '$1 L · tik om te starten'],
   [/^⚗ DAILY BREW LOG · (.+)$/, '⚗ DAGELIJKS BROUWLOG · $1'],
   // recipes
   [/^The Mead Compendium · (\d+) recipes$/, 'Het Mede-compendium · $1 recepten'],
   [/^(\d+) ready · ([\d.]+) kg honey$/, '$1 klaar · $2 kg honing'],
+  [/^(\d+) ready · ([\d.]+) L juice$/, '$1 klaar · $2 L sap'],
   [/^Nothing fully makeable at ([\d.]+) L — these are the closest; the badge shows what's missing\.$/, 'Niets volledig maakbaar bij $1 L — dit zijn de dichtstbijzijnde; de badge toont wat ontbreekt.'],
   [/^Needs (.+)$/, function(m,list){return 'Mist '+_supplyList(list);}],
   [/^Missing (.+)$/, function(m,list){return 'Mist '+_supplyList(list);}],
@@ -876,6 +925,17 @@ function _buildDataMaps(){
       ['profile','pairing','notes'].forEach(function(f){if(en[f]&&nl[f])prose[en[f]]=nl[f];});
     });
   }
+  // cider variety library prose: same shape, from CIDER_VARIETIES_NL
+  if(typeof CIDER_VARIETIES!=='undefined'&&typeof CIDER_VARIETIES_NL!=='undefined'){
+    Object.keys(CIDER_VARIETIES_NL).forEach(function(nm){
+      var en=CIDER_VARIETIES[nm],nl=CIDER_VARIETIES_NL[nm];if(!en||!nl)return;
+      ['profile','pairing','notes'].forEach(function(f){if(en[f]&&nl[f])prose[en[f]]=nl[f];});
+    });
+  }
+  // cider variety details (origin/history/character/growingNote/tips/mistakes)
+  if(typeof CIDER_DETAIL_NL!=='undefined')Object.keys(CIDER_DETAIL_NL).forEach(function(k){prose[k]=CIDER_DETAIL_NL[k];});
+  // cider recipe ingredient item names + per-ingredient notes (shares the same
+  // reverse-map ING_ITEM_NL/ING_NOTES_NL already merged below for mead)
   // mead guide: title (card + icon-prefixed modal), full content (modal) and the
   // whitespace-collapsed 104-char teaser (card) all reverse-mapped to NL.
   function teaser(t){return String(t||'').replace(/\s+/g,' ').trim().slice(0,104)+'…';}
@@ -886,6 +946,18 @@ function _buildDataMaps(){
       prose[eu]=nu; prose[s.icon+' '+eu]=s.icon+' '+nu;
       if(s.content&&nl.content){prose[s.content]=nl.content;prose[teaser(s.content)]=teaser(nl.content);}
     });
+  }
+  // cider guide: same shape as the mead guide above, from CIDER_GUIDE_SECTIONS_NL
+  if(typeof CIDER_GUIDE_SECTIONS==='function'&&typeof CIDER_GUIDE_SECTIONS_NL!=='undefined'){
+    CIDER_GUIDE_SECTIONS().forEach(function(s){
+      var nl=CIDER_GUIDE_SECTIONS_NL[s.title];if(!nl)return;
+      var eu=String(s.title).toUpperCase(),nu=String(nl.title).toUpperCase();
+      prose[s.title]=nl.title; prose[eu]=nu; prose[s.icon+' '+eu]=s.icon+' '+nu;
+      if(s.content&&nl.content){prose[s.content]=nl.content;prose[teaser(s.content)]=teaser(nl.content);}
+    });
+  }
+  if(typeof CIDER_BEGINNER_HOWTO!=='undefined'&&typeof CIDER_BEGINNER_HOWTO_NL!=='undefined'){
+    CIDER_BEGINNER_HOWTO.forEach(function(s){var nl=CIDER_BEGINNER_HOWTO_NL[s.t];if(!nl)return;if(s.t&&nl.t)prose[s.t]=nl.t;if(s.d&&nl.d)prose[s.d]=nl.d;});
   }
   if(typeof BEGINNER_HOWTO!=='undefined'&&typeof BEGINNER_HOWTO_NL!=='undefined'){
     BEGINNER_HOWTO.forEach(function(s){var nl=BEGINNER_HOWTO_NL[s.t];if(!nl)return;if(s.t&&nl.t)prose[s.t]=nl.t;if(s.d&&nl.d)prose[s.d]=nl.d;});

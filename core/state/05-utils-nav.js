@@ -79,6 +79,83 @@ function addDays(ds,n){var d=new Date(ds);d.setDate(d.getDate()+n);return d.toIS
 function calcABV(og,fg){return((og-fg)*131.25).toFixed(1);}
 function escHtml(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
+// ==================== CIDER MODE (beverage-type filtering) ====================
+// Mead and cider batches/recipes always coexist in the same APP.batches /
+// APP.recipes arrays — this is a VIEW filter only, never a data split. Never
+// filter APP.batches/APP.recipes in place (that would silently hide the other
+// beverage's data from saves, sync and cross-batch analytics like historical
+// comparison); only list-building view code should read through these helpers.
+function activeBevMode(){
+  return (APP.settings&&APP.settings.ciderModeEnabled&&APP.settings.activeMode==='cider')?'cider':'mead';
+}
+function inActiveMode(x){return(x.beverageType||'mead')===activeBevMode();}
+function visibleBatches(){return APP.batches.filter(inActiveMode);}
+function visibleRecipes(){return(APP.recipes||[]).filter(inActiveMode);}
+// Switch mode, persist, and refresh every mode-aware surface (topbar branding,
+// sidebar, current view). Settings has its own separate save button for HA/etc,
+// but the mode toggle needs to feel instant, so it saves+re-renders immediately.
+function setActiveMode(mode){
+  if(mode!=='mead'&&mode!=='cider')return;
+  APP.settings.activeMode=mode;
+  if(typeof saveSettings==='function')saveSettings();
+  if(typeof scheduleSave==='function')scheduleSave();
+  if(typeof updateModeToggle==='function')updateModeToggle();
+  renderMain();
+}
+// Settings checkbox handler: enabling/disabling cider mode itself (distinct
+// from switching WHICH mode is active, see setActiveMode above). Disabling
+// resets the active mode back to mead so the toggle can't be left stuck
+// showing a hidden cider view.
+function toggleCiderModeSetting(enabled){
+  APP.settings.ciderModeEnabled=!!enabled;
+  if(!enabled)APP.settings.activeMode='mead';
+  if(typeof saveSettings==='function')saveSettings();
+  if(typeof scheduleSave==='function')scheduleSave();
+  if(typeof updateModeToggle==='function')updateModeToggle();
+  renderMain();
+}
+// Refreshes every mode-aware piece of chrome: the toggle pill's visibility +
+// active segment, the body-level theme class (re-skins --gold/etc app-wide,
+// see app.css), and the topbar brand text. Called once at boot and again on
+// every mode change — cheap DOM writes, safe to call liberally.
+function updateModeToggle(){
+  var wrap=document.getElementById('mode-toggle');
+  if(!wrap)return; // share mode has no topbar
+  var mode=activeBevMode();
+  wrap.style.display=(APP.settings&&APP.settings.ciderModeEnabled)?'flex':'none';
+  var meadBtn=document.getElementById('mode-toggle-mead'), ciderBtn=document.getElementById('mode-toggle-cider');
+  if(meadBtn)meadBtn.classList.toggle('active',mode==='mead');
+  if(ciderBtn)ciderBtn.classList.toggle('active',mode==='cider');
+  document.body.classList.toggle('mode-cider',mode==='cider');
+  var logoText=document.querySelector('#topbar .logo-text');
+  if(logoText){
+    logoText.innerHTML=(mode==='cider')
+      ?'CIDEROS<span class="sub">Cider Making Companion</span>'
+      :'MEADOS<span class="sub">Mead Brewing Companion</span>';
+  }
+  // getBrandLogoSrc() already resolves the right default (mead vs cider)
+  // once a custom brand logo isn't set — see its own comment.
+  var crest=document.getElementById('topbar-crest');
+  if(crest&&typeof getBrandLogoSrc==='function'){
+    crest.innerHTML='<img src="'+getBrandLogoSrc()+'" alt="'+(mode==='cider'?'CiderOS':'MeadOS')+'">';
+  }
+  // Nav items that only make sense on one side — Honey Library (superseded by
+  // Apple & Pear Library below) and the Mead Guide (superseded by the Cider
+  // Guide below) would just be dead ends while browsing cider batches.
+  // Everything else (yeast/nutrient libraries, tools, troubleshoot, etc.) is
+  // beverage-agnostic and stays visible either way.
+  ['nav-honey','nav-guide'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el)el.style.display=(mode==='cider')?'none':'';
+  });
+  // Apple & Pear Library and the Cider Guide are cider's own counterparts —
+  // inverse visibility.
+  ['nav-apple-library','nav-cider-guide'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el)el.style.display=(mode==='cider')?'':'none';
+  });
+}
+
 function getBatchColor(b){
   if(b&&b.recipeId){
     var r=APP.recipes.find(function(x){return x.id===b.recipeId;});
@@ -285,11 +362,12 @@ function showView(view,arg){
 function renderSidebar(){
   var el=document.getElementById('sidebar-batches');
   if(!el)return; // share mode replaces the whole body — no sidebar exists
-  if(!APP.batches.length){
+  var modeBatches=visibleBatches();
+  if(!modeBatches.length){
     el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 14px;font-style:italic">No batches yet</div>';
     return;
   }
-  var active=APP.batches.filter(function(b){var s=getBatchStatus(b);return s!=='complete'&&s!=='bottled'&&s!=='failed';});
+  var active=modeBatches.filter(function(b){var s=getBatchStatus(b);return s!=='complete'&&s!=='bottled'&&s!=='failed';});
   if(!active.length){
     el.innerHTML='<div style="font-size:12px;color:var(--text3);padding:8px 14px;font-style:italic">All batches bottled or complete</div>';
     return;
@@ -369,8 +447,11 @@ function renderMain(){
     case'calendar':main.innerHTML=renderCalendar();break;
     case'tools':main.innerHTML=renderTools();initTools();break;
     case'guide':main.innerHTML=renderGuide();break;
+    case'cider-guide':main.innerHTML=renderCiderGuide();break;
     case'honey':main.innerHTML=renderHoneyLibrary();break;
     case'honey-detail':main.innerHTML=renderHoneyDetail();break;
+    case'apple-library':main.innerHTML=renderAppleLibrary();break;
+    case'apple-detail':main.innerHTML=renderAppleDetail();break;
     case'yeast-library':main.innerHTML=renderYeastLibrary();break;
     case'yeast-detail':main.innerHTML=renderYeastDetail();break;
     case'nutrient-library':main.innerHTML=renderNutrientLibrary();break;
@@ -394,4 +475,9 @@ function renderMain(){
   if(typeof a11yEnhance==='function')a11yEnhance(main);
   if(typeof translateChrome==='function')translateChrome(main);
   if(typeof translateChrome==='function')translateChrome(document.getElementById('sidebar'));
+  // Topbar (logo wordmark/tagline, mode toggle) was never covered before —
+  // cider mode's "Cider Making Companion" tagline and Mead/Cider toggle
+  // labels need it, and this also fixes the same pre-existing gap for mead's
+  // own "Mead Brewing Companion" tagline.
+  if(typeof translateChrome==='function')translateChrome(document.getElementById('topbar'));
 }

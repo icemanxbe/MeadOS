@@ -93,7 +93,10 @@ function bottlesInCellar(bot){return bottlesInLocation(bot,'cellar');}
 function lifetimeStats(){
   var s={total:0,active:0,bottledBatches:0,complete:0,failed:0,
           onHand:0,cellar:0,fridge:0,gifted:0,bottledEver:0,drunk:0,bySize:{}};
-  (APP.batches||[]).forEach(function(b){
+  // View filter (cider mode): dashboard/Insights stat chips should reflect
+  // whichever beverage you're currently looking at, not a combined total —
+  // see visibleBatches()'s own comment for why this never touches APP.batches.
+  (typeof visibleBatches==='function'?visibleBatches():(APP.batches||[])).forEach(function(b){
     s.total++;
     var st=getBatchStatus(b);
     if(st==='failed'||b.failed){s.failed++;return;}

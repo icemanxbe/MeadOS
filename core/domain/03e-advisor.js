@@ -155,6 +155,14 @@ function mwBatchSignals(b){
   // Historical learning (E3): the brewer's OWN past batches, not generic lore.
   var historical=(typeof mwHistoricalComparison==='function')?mwHistoricalComparison(b):null;
 
+  // Cider mode: beverageType branches a handful of rules/text below (pH
+  // targets, MLF, wording) that otherwise assume mead. styleId + mlfStance
+  // ('encouraged'|'neutral'|'avoid') come straight from the recipe's own
+  // CIDER_STYLES/CIDER_MLF_BY_STYLE data — never guessed for an unknown style.
+  var beverageType=b.beverageType||(recipe&&recipe.beverageType)||'mead';
+  var styleId=(recipe&&recipe.styleId)||null;
+  var mlfStance=(beverageType==='cider'&&styleId&&typeof CIDER_MLF_BY_STYLE!=='undefined')?(CIDER_MLF_BY_STYLE[styleId]||null):null;
+
   return {
     recipeId:b.recipeId, status:status, active:active, fermenting:fermenting,
     og:og, lastG:lastG, readings:readings, daysSinceStart:daysSinceStart,
@@ -174,7 +182,8 @@ function mwBatchSignals(b){
     bottled:bottled, agedDays:agedDays, readyDays:readyDays, peakDays:peakDays, maxAgeDays:maxAgeDays, agePhase:agePhase,
     volume:volume, fermenterCapacity:fermenterCapacity, headspaceFrac:headspaceFrac, recipeFermentDays:recipeFermentDays, recipeBulkAgeDays:recipeBulkAgeDays,
     yeastSpeed:yeastSpeed, expectedFermentRange:expectedFermentRange, fermentProgress:fermentProgress,
-    historical:historical
+    historical:historical,
+    beverageType:beverageType, styleId:styleId, mlfStance:mlfStance
   };
 }
 
@@ -337,12 +346,40 @@ function _advRules(){
     function phRange(s){
       // Optional signal — most brewers never log pH. Relevant throughout active
       // life, not just fermentation (a spoilage-risk pH doesn't fix itself).
+      // Mead's healthy band (~3.0-3.4) and cider's (~3.3-3.8, malic-acid basis)
+      // don't overlap — using mead's numbers on a cider batch would flag a
+      // perfectly normal cider pH as a false risk, so the bounds branch on
+      // beverageType. low/high ride along in `data` so the view text always
+      // matches the actual bounds that fired, for either beverage.
       if(!s.active||s.latestPH==null)return null;
-      if(s.latestPH<2.9)return {id:'ph-low',severity:s.fermenting?'recommended':'info',category:'fermentation',
-        data:{ph:s.latestPH},reasons:['ph-low']};
-      if(s.latestPH>3.5)return {id:'ph-high',severity:'info',category:'fermentation',
-        data:{ph:s.latestPH},reasons:['ph-high']};
+      var isCider=s.beverageType==='cider';
+      var lo=isCider?(typeof CIDER_PH_TARGET_LOW!=='undefined'?CIDER_PH_TARGET_LOW:3.3):2.9;
+      var hi=isCider?(typeof CIDER_PH_TARGET_HIGH!=='undefined'?CIDER_PH_TARGET_HIGH:3.8):3.5;
+      if(s.latestPH<lo)return {id:'ph-low',severity:s.fermenting?'recommended':'info',category:'fermentation',
+        data:{ph:s.latestPH,low:lo,high:hi,beverageType:s.beverageType},reasons:['ph-low']};
+      if(s.latestPH>hi)return {id:'ph-high',severity:'info',category:'fermentation',
+        data:{ph:s.latestPH,low:lo,high:hi,beverageType:s.beverageType},reasons:['ph-high']};
       return null;
+    },
+    function mlfAdvisory(s){
+      // Cider-only. MLF (malic→lactic acid conversion) has no mead equivalent.
+      // Fires once around the racking/stabilise decision point — the same
+      // moment the 'stabilise-first'/'cold-crash' rules key off (nearFG, not
+      // yet bottled) — since that's when the brewer chooses whether to hold
+      // off sulfite (to allow MLF) or sulfite promptly (to block it).
+      // Perry is a special, higher-severity case: its citric acid converts to
+      // acetic acid (vinegar) under MLF rather than cider's buttery result,
+      // so an 'avoid' stance on perry specifically is 'critical', not just
+      // 'recommended' — the mistake is more costly there than on an applewine.
+      if(s.beverageType!=='cider'||!s.mlfStance||s.mlfStance==='neutral')return null;
+      if(!s.active||!s.nearFG||s.bottled)return null;
+      if(s.status==='bottled'||s.status==='complete')return null;
+      var isPerry=s.styleId==='perry';
+      return {id:'mlf-advisory',
+        severity:s.mlfStance==='avoid'?(isPerry?'critical':'recommended'):'info',
+        category:'stabilisation',
+        data:{stance:s.mlfStance,styleId:s.styleId,isPerry:isPerry},
+        reasons:[s.mlfStance==='avoid'?'mlf-avoid':'mlf-encouraged']};
     },
     function logReading(s){
       if(!s.fermenting)return null;
@@ -363,7 +400,7 @@ function _advRules(){
       if(!s.bottled||s.agedDays==null||s.agePhase==null||s.agePhase==='aging')return null;
       var approaching=(s.agePhase==='ready'&&s.peakDays&&s.agedDays>=s.peakDays-Math.max(14,Math.round(s.peakDays*0.12)));
       return {id:'aging-window',severity:'info',category:'aging',
-        data:{phase:s.agePhase,aged:s.agedDays,ready:s.readyDays,peak:s.peakDays,max:s.maxAgeDays,approaching:approaching},
+        data:{phase:s.agePhase,aged:s.agedDays,ready:s.readyDays,peak:s.peakDays,max:s.maxAgeDays,approaching:approaching,beverageType:s.beverageType},
         reasons:[s.agePhase==='declining'?'past-max':s.agePhase==='peak'?'past-peak':approaching?'approaching-peak':'in-window']};
     },
     function onSchedule(s){
@@ -409,7 +446,7 @@ function _advRules(){
       if(!s.active||!s.nearFG||s.sparkling)return null;
       if(s.status==='bottled'||s.status==='complete')return null;
       return {id:'cold-crash',severity:'info',category:'clarity',
-        data:{},reasons:['clear-before-bottling']};
+        data:{beverageType:s.beverageType},reasons:['clear-before-bottling']};
     },
     function carbonationDeveloping(s){
       // Sparkling + freshly bottled: bottle-conditioning is still building — a
@@ -443,7 +480,7 @@ function _advRules(){
       if(!s.expectedFermentRange||s.daysSinceStart==null)return null;
       if(s.daysSinceStart<=s.expectedFermentRange.high)return null;
       return {id:'fermenting-long',severity:'info',category:'fermentation',
-        data:{days:s.daysSinceStart,low:s.expectedFermentRange.low,high:s.expectedFermentRange.high,expected:s.expectedFermentRange.expected,yeast:s.yeastId},
+        data:{days:s.daysSinceStart,low:s.expectedFermentRange.low,high:s.expectedFermentRange.high,expected:s.expectedFermentRange.expected,yeast:s.yeastId,beverageType:s.beverageType},
         reasons:['past-expected-range']};
     },
     function historicalPace(s){
@@ -469,7 +506,7 @@ function _advRules(){
       var threshold=s.recipeBulkAgeDays?Math.round(s.recipeBulkAgeDays*1.5):270;
       if(s.daysSinceStart==null||s.daysSinceStart<threshold)return null;
       return {id:'extended-bulk-aging',severity:'info',category:'oxygen',
-        data:{days:s.daysSinceStart,target:s.recipeBulkAgeDays},reasons:['long-unbottled']};
+        data:{days:s.daysSinceStart,target:s.recipeBulkAgeDays,beverageType:s.beverageType},reasons:['long-unbottled']};
     }
   ];
 }
@@ -631,7 +668,10 @@ function mwIngredientStats(){
   var rmap={};((typeof APP!=='undefined'&&APP.recipes)||[]).forEach(function(r){rmap[r.id]=r;});
   var byY={}, byH={};
   function bucket(map,key){if(key==null||key==='')return null;if(!map[key])map[key]={key:key,n:0,rsum:0,rn:0,abvsum:0,abvn:0,attsum:0,attn:0,fail:0};return map[key];}
-  ((typeof APP!=='undefined'&&APP.batches)||[]).forEach(function(b){
+  // View filter (cider mode): a yeast like EC-1118 is used by both mead and
+  // cider recipes — without this, "ingredient performance" would silently
+  // average a cider batch's numbers into a mead yeast's stats and vice versa.
+  (typeof visibleBatches==='function'?visibleBatches():((typeof APP!=='undefined'&&APP.batches)||[])).forEach(function(b){
     var recipe=rmap[b.recipeId];
     var bot=(typeof APP!=='undefined'&&APP.bottling&&APP.bottling[b.id])||null;
     var og=parseFloat(b.og)||(recipe&&recipe.ogTarget)||null;
@@ -670,7 +710,12 @@ function mwIngredientStats(){
 // comparable past batches.
 function mwHistoricalComparison(b){
   if(!b)return null;
-  var all=(typeof APP!=='undefined'&&APP.batches)||[];
+  // Scoped to b's OWN beverage type (not the ambient active-mode toggle) —
+  // this reasons about a specific batch, so it must stay correct regardless
+  // of whatever mode the header happens to be showing. Otherwise a mead
+  // batch on EC-1118 could get pooled with a cider batch on EC-1118.
+  var bBev=b.beverageType||'mead';
+  var all=((typeof APP!=='undefined'&&APP.batches)||[]).filter(function(o){return(o.beverageType||'mead')===bBev;});
   // Honey resolves the same way mwBatchSignals() does: explicit batch field,
   // else the recipe's first honey — so batches sharing a recipe still match.
   function honeyOf(o){

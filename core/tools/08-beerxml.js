@@ -200,7 +200,10 @@ function beerXMLToRecipe(xmlText){
     notes:notes,
     // Imported recipes are user-owned like forks/designs — mark them so they
     // get the "MINE" badge and the Edit/Delete affordances (not just Fork).
-    isCustom:true
+    isCustom:true,
+    // BeerXML has no mead/cider distinction — tag it with whichever mode is
+    // active at import time, same convention as a freshly-authored custom recipe.
+    beverageType:(typeof activeBevMode==='function')?activeBevMode():'mead'
   };
 }
 

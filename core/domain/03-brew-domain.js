@@ -631,11 +631,13 @@ function deductSuppliesForBatch(b,recipe){
   if(APP.settings&&APP.settings.autoDeductSupplies===false)return[];
   if(!APP.supplies||!APP.supplies.length)return[];
   var deductions=[];
-  // ---- HONEY ----
+  // ---- HONEY (mead) / JUICE (cider) — same b.honey/b.honeyType fields double
+  // as the primary-fermentable quantity+variety for both beverages. ----
+  var isCiderBatch=(b.beverageType||'mead')==='cider';
   if(b.honey&&b.honeyType){
     var needle=String(b.honeyType).toLowerCase();
     var honeySupply=APP.supplies.find(function(s){
-      if(s.type!=='honey')return false;
+      if(s.type!==(isCiderBatch?'juice':'honey'))return false;
       var name=String(s.name||'').toLowerCase();
       // Match either direction: supply name contains honeyType, or vice versa
       return name.indexOf(needle)!==-1||needle.indexOf(name)!==-1;

@@ -140,6 +140,7 @@ function renderHoneyUsageForecast(){
 // Honey Library: rich card grid surfacing each honey type with its profile,
 // flavor notes, and which recipes use it.
 function renderHoneyLibrarySection(){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
   var cards=HONEY_TYPES.map(function(name){
     var p=HONEY_PROFILES[name];
     if(!p)return'';
@@ -147,16 +148,25 @@ function renderHoneyLibrarySection(){
     var recipePills=recipes.length?recipes.slice(0,4).map(function(r){
       return'<span onclick="event.stopPropagation();currentRecipeId=\''+r.id+'\';showView(\'recipe-detail\')" style="display:inline-block;font-family:var(--font-mono);font-size:9.5px;background:rgba(0,0,0,0.25);color:'+r.color+';border:1px solid '+r.color+'66;padding:2px 7px;border-radius:8px;margin:2px 3px 2px 0;cursor:pointer">'+escHtml(r.name.substring(0,18))+(r.name.length>18?'…':'')+'</span>';
     }).join('')+(recipes.length>4?'<span style="font-size:10px;color:var(--text3);font-style:italic;margin-left:4px">+'+(recipes.length-4)+' more</span>':''):'<span style="font-size:11px;color:var(--text3);font-style:italic">Not used in built-in recipes</span>';
+    // Header text color adapts to the honey's own luminance — a dark honey
+    // (buckwheat, chestnut) with hardcoded dark text would be unreadable.
+    var headLum=(function(c){
+      var m=/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(c||''));
+      if(!m)return 200;
+      return 0.299*parseInt(m[1],16)+0.587*parseInt(m[2],16)+0.114*parseInt(m[3],16);
+    })(p.color);
+    var headDark=headLum<150;
+    var headText=headDark?'#f4ecd8':'#1a0f08';
     return'<div onclick="currentHoneyName=\''+name+'\';showView(\'honey-detail\')" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:transform 0.15s,border-color 0.15s" onmouseover="this.style.borderColor=\''+p.color+'\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.transform=\'translateY(0)\'">'
       // Color stripe with name
-      +'<div style="background:'+p.color+';color:#1a0f08;padding:10px 14px;display:flex;justify-content:space-between;align-items:center">'
-      +'<div style="font-family:var(--font-display);font-size:15px;font-weight:600;letter-spacing:0.5px">'+escHtml(name)+'</div>'
-      +'<div style="font-family:var(--font-mono);font-size:9px;background:rgba(0,0,0,0.18);padding:2px 8px;border-radius:10px;letter-spacing:1.2px;text-transform:uppercase">'+p.intensity+'</div>'
+      +'<div style="background:'+p.color+';color:'+headText+';padding:10px 14px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div style="font-family:var(--font-display);font-size:15px;font-weight:600;letter-spacing:0.5px">'+escHtml(proseL(name))+'</div>'
+      +'<div style="font-family:var(--font-mono);font-size:9px;background:'+(headDark?'rgba(255,255,255,0.18)':'rgba(0,0,0,0.18)')+';padding:2px 8px;border-radius:10px;letter-spacing:1.2px;text-transform:uppercase">'+p.intensity+'</div>'
       +'</div>'
       +'<div style="padding:14px;flex:1;display:flex;flex-direction:column;gap:8px">'
-      +'<div style="font-size:13px;color:var(--text2);line-height:1.5">'+escHtml(p.profile)+'</div>'
-      +'<div style="font-size:12px;color:var(--text2);line-height:1.5"><strong style="color:var(--gold2)">Pairs with:</strong> '+escHtml(p.pairing)+'</div>'
-      +(p.notes?'<div style="font-size:11.5px;color:var(--text3);line-height:1.5;font-style:italic">'+escHtml(p.notes)+'</div>':'')
+      +'<div style="font-size:13px;color:var(--text2);line-height:1.5">'+escHtml(proseL(p.profile))+'</div>'
+      +'<div style="font-size:12px;color:var(--text2);line-height:1.5"><strong style="color:var(--gold2)">'+(nl?'Combineert met:':'Pairs with:')+'</strong> '+escHtml(proseL(p.pairing))+'</div>'
+      +(p.notes?'<div style="font-size:11.5px;color:var(--text3);line-height:1.5;font-style:italic">'+escHtml(proseL(p.notes))+'</div>':'')
       +'<div style="margin-top:auto;padding-top:8px;border-top:1px dotted var(--border)">'
       +'<div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1.5px;margin-bottom:4px">USED IN '+recipes.length+' RECIPE'+(recipes.length===1?'':'S')+'</div>'
       +recipePills
@@ -444,13 +454,418 @@ function renderHoneyDetail(){
     +similarBlock;
 }
 
+// ==================== APPLE & PEAR LIBRARY (cider mode) ====================
+// Mirrors the Honey Library architecture (grid → detail) but keyed on
+// CIDER_VARIETIES instead of HONEY_PROFILES, and swaps honey's fructose/YAN
+// chemistry block for the LARS tannin/acid classification that actually
+// drives cider blending decisions. No in-season/usage-forecast banners —
+// there's no apple-harvest-calendar data model to back them, unlike honey's
+// HONEY_SEASONS.
+function recipesUsingCiderVariety(name){
+  if(!APP.recipes||!name)return[];
+  var needle=name.toLowerCase();
+  return APP.recipes.filter(function(r){
+    if(!r.ingredients||r.beverageType!=='cider')return false;
+    return r.ingredients.some(function(i){
+      return ((i.item||'')+' '+(i.notes||'')).toLowerCase().indexOf(needle)!==-1;
+    });
+  }).map(function(r){return{id:r.id,name:r.name,color:r.brandColor};});
+}
+
+// ==================== CIDER VARIETY ↔ RECIPE FIT ====================
+// Mirrors the honey ↔ recipe fit system (honeyFitForRecipe/honeyFitListForRecipe
+// in 02-honey-domain.js), but rates apple/pear varieties on the two axes that
+// actually drive cider blending — tannin% and acid% — instead of honey's single
+// intensity axis. Powers the "Source Your Apples" card on cider recipe pages.
+
+// Parse a cider recipe's ingredients for named CIDER_VARIETIES types — mirrors
+// honeyTypesInRecipe(). Longest names first so "Golden Russet" doesn't get
+// shadowed by a shorter accidental substring match.
+function ciderVarietiesInRecipe(r){
+  if(!r||!r.ingredients||r.beverageType!=='cider')return[];
+  var found=[];
+  var names=Object.keys(CIDER_VARIETIES).sort(function(a,b){return b.length-a.length;});
+  r.ingredients.forEach(function(ing){
+    var text=((ing.item||'')+' '+(ing.notes||'')).toLowerCase();
+    names.forEach(function(n){
+      if(text.indexOf(n.toLowerCase())!==-1&&found.indexOf(n)===-1)found.push(n);
+    });
+  });
+  return found;
+}
+
+// Fallback ideal tannin/acid target for the handful of recipes that name no
+// specific library variety ("Mixed Apple Juice") — derived from each recipe's
+// own notes rather than guessed, so the fit ratings still mean something.
+var CIDER_RECIPE_IDEAL_FALLBACK={
+  c5:{tannin:0.04,acid:0.55},  // Sidra: "whatever sharp/tart apples are available"
+  c11:{tannin:0.08,acid:0.35}, // Spiced Cider: unnamed everyday blend, spices lead
+  c12:{tannin:0.03,acid:0.40}  // Dry-Hopped: "a clean, moderate-acid juice"
+};
+
+// The tannin/acid this recipe is actually built around — weighted by each named
+// variety's volume (liters) in the recipe. Falls back to a curated target when
+// no specific variety is named at all.
+function recipeCiderIdeal(r){
+  var fruit=(r&&r.style==='Perry')?'pear':'apple';
+  if(!r||!r.ingredients)return{tannin:0.10,acid:0.35,fruit:fruit};
+  var totalL=0,tSum=0,aSum=0;
+  r.ingredients.forEach(function(ing){
+    var text=((ing.item||'')+' '+(ing.notes||'')).toLowerCase();
+    var m=(ing.amount||'').match(/^~?\s*([0-9]+(?:\.[0-9]+)?)\s*L\b/i);
+    var vol=m?parseFloat(m[1]):0;
+    if(!vol)return;
+    Object.keys(CIDER_VARIETIES).forEach(function(name){
+      if(text.indexOf(name.toLowerCase())===-1)return;
+      var v=CIDER_VARIETIES[name];
+      totalL+=vol;tSum+=v.tech.tanninPct*vol;aSum+=v.tech.acidPct*vol;
+    });
+  });
+  if(totalL>0)return{tannin:tSum/totalL,acid:aSum/totalL,fruit:fruit};
+  var fb=CIDER_RECIPE_IDEAL_FALLBACK[r.id];
+  if(fb)return{tannin:fb.tannin,acid:fb.acid,fruit:fruit};
+  return{tannin:0.10,acid:0.35,fruit:fruit};
+}
+
+// Scale factors normalize the two axes to comparable "one bucket" units, roughly
+// matching LARS's own bittersweet/sharp thresholds (tannin>0.2%, acid>0.45%).
+var CIDER_FIT_TANNIN_SCALE=0.10, CIDER_FIT_ACID_SCALE=0.20;
+
+function ciderFitForRecipe(r,varietyName,ctx){
+  ctx=ctx||{};
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var ideal=ctx.ideal||recipeCiderIdeal(r);
+  var primarySet=ctx.primarySet||{};
+  var v=CIDER_VARIETIES[varietyName];
+  if(!v)return{tier:'varies',order:6,badge:nl?'~ onbekend':'~ unknown',color:'var(--text3)',note:nl?'Onbekende variëteit.':'Unknown variety.'};
+  if(primarySet[varietyName])
+    return{tier:'primary',order:0,badge:nl?'PRIMAIR':'PRIMARY',color:'var(--gold2)',
+      note:(v.profile?proseL(v.profile)+' — ':'')+(nl?'de vrucht waar dit recept omheen is gebouwd.':'the fruit this recipe is built around.')};
+  if(v.fruit!==ideal.fruit)
+    // #d66b6b, not var(--red2): the standard red measures under WCAG AA's 4.5:1
+    // for small badge text on this card's near-black row background.
+    return{tier:'poor',order:5,badge:nl?'✗ VERKEERD FRUIT':'✗ WRONG FRUIT',color:'#d66b6b',
+      note:nl?('Dit is een '+(v.fruit==='pear'?'peer':'appel')+' — dit recept gebruikt '+(ideal.fruit==='pear'?'peren':'appels')+', en de tannine/zuur-schalen zijn niet vergelijkbaar tussen de twee vruchten.')
+             :('This is a '+v.fruit+' — this recipe uses '+(ideal.fruit==='pear'?'pears':'apples')+', and the tannin/acid scales aren\'t comparable across the two fruits.')};
+  var t=v.tech.tanninPct,a=v.tech.acidPct;
+  var tDir=t-ideal.tannin,aDir=a-ideal.acid;
+  var dev=Math.abs(tDir)/CIDER_FIT_TANNIN_SCALE+Math.abs(aDir)/CIDER_FIT_ACID_SCALE;
+  var tier,order,badge,color;
+  if(dev<=0.5){tier='great';order=2;badge=nl?'✓ GEWELDIGE MATCH':'✓ GREAT FIT';color='var(--green2)';}
+  else if(dev<=1.2){tier='good';order=3;badge=nl?'✓ GOEDE MATCH':'✓ GOOD FIT';color='var(--green2)';}
+  else if(dev<=2.2){tier='workable';order=4;badge=nl?'~ WERKBAAR':'~ WORKABLE';color='var(--gold)';}
+  else{tier='poor';order=5;badge=nl?'✗ BOTST MET DE STIJL':'✗ FIGHTS THE STYLE';color='#d66b6b';}
+  var note;
+  if(dev<=0.5){
+    note=nl?'Sluit nauw aan bij de eigen blend van dit recept — verwacht een zeer vergelijkbaar resultaat.'
+           :'A close match to this recipe\'s own blend — expect a very similar result.';
+  }else{
+    var tPart,aPart;
+    if(Math.abs(tDir)<=0.02)tPart=nl?'vergelijkbare tannine':'similar tannin';
+    else if(tDir>0)tPart=nl?(tDir>0.08?'flink meer tannine':'iets meer tannine'):(tDir>0.08?'noticeably more tannin':'a bit more tannin');
+    else tPart=nl?(tDir<-0.08?'veel minder tannine':'iets minder tannine'):(tDir<-0.08?'much less tannin':'a bit less tannin');
+    if(Math.abs(aDir)<=0.05)aPart=nl?'vergelijkbaar zuur':'similar acid';
+    else if(aDir>0)aPart=nl?(aDir>0.15?'duidelijk scherper zuur':'iets scherper zuur'):(aDir>0.15?'noticeably brighter acid':'slightly brighter acid');
+    else aPart=nl?(aDir<-0.15?'veel vlakker zuur':'iets vlakker zuur'):(aDir<-0.15?'much flatter acid':'slightly flatter acid');
+    note=nl?('Geeft '+tPart+' en '+aPart+' dan de eigen blend van dit recept.')
+           :('Brings '+tPart+' and '+aPart+' than this recipe\'s own blend.');
+  }
+  return{tier:tier,order:order,badge:badge,color:color,note:note};
+}
+
+// The whole apple/pear library rated for a recipe, best-fit first. Perry (r.style
+// === 'Perry') only rates pear varieties and vice versa — apple/pear tannin-acid
+// numbers aren't comparable, so cross-fruit suggestions would be actively wrong.
+function ciderFitListForRecipe(r){
+  if(!r)return[];
+  var primaries=ciderVarietiesInRecipe(r);
+  var primarySet={};primaries.forEach(function(t){primarySet[t]=true;});
+  var ideal=recipeCiderIdeal(r);
+  var ctx={primarySet:primarySet,ideal:ideal};
+  var names=Object.keys(CIDER_VARIETIES).filter(function(n){return CIDER_VARIETIES[n].fruit===ideal.fruit;});
+  var list=names.map(function(n){
+    var fit=ciderFitForRecipe(r,n,ctx);
+    fit.variety=n;
+    fit.color2=CIDER_VARIETIES[n].color||'var(--text2)';
+    return fit;
+  });
+  list.sort(function(a,b){
+    if(a.order!==b.order)return a.order-b.order;
+    return a.variety.localeCompare(b.variety);
+  });
+  return list;
+}
+
+// Renders the cider-side equivalent of "Source Your Honey" — every library
+// variety rated for how it'd change THIS recipe if swapped in. Perry gets a
+// pear-only list (and its own heading), everything else gets apples.
+function renderCiderAppleFitCard(r){
+  if(!r)return'';
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var isPerry=r.style==='Perry';
+  var ideal=recipeCiderIdeal(r);
+  var fitList=ciderFitListForRecipe(r);
+  if(!fitList.length)return'';
+  var bucketLabels={
+    primary:nl?'HET RECEPT’S EIGEN FRUIT':'THE RECIPE’S OWN FRUIT',
+    great:nl?'GOEDE MATCHES':'GOOD FITS',good:nl?'GOEDE MATCHES':'GOOD FITS',
+    workable:nl?'WERKBAAR — VERWACHT EEN VERSCHUIVING':'WORKABLE — EXPECT A SHIFT',
+    poor:nl?'BOTST MET DE STIJL':'FIGHTS THE STYLE'
+  };
+  var lastBucket='';
+  var rows=fitList.map(function(f){
+    var bl=bucketLabels[f.tier]||'';
+    var header='';
+    if(bl!==lastBucket){lastBucket=bl;
+      header='<div class="hf-head" style="font-size:10px;color:var(--text3);letter-spacing:1.5px;font-family:var(--font-mono);margin:12px 0 6px">'+bl+'</div>';
+    }
+    return header
+      +'<div style="padding:9px 11px;background:rgba(0,0,0,0.18);border-radius:var(--radius);border-left:3px solid '+f.color2+';margin-bottom:7px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;flex-wrap:wrap">'
+      +'<div style="font-family:var(--font-display);font-size:13px;color:'+f.color2+';cursor:pointer" onclick="window.currentAppleName=\''+f.variety.replace(/'/g,"\\'")+'\';showView(\'apple-detail\')">'+escHtml(f.variety)+' →</div>'
+      +'<span style="font-family:var(--font-mono);font-size:9px;color:'+f.color+';letter-spacing:0.5px">'+escHtml(f.badge)+'</span>'
+      +'</div>'
+      +'<div style="font-size:12px;color:var(--text2);line-height:1.5;font-style:italic">'+escHtml(f.note)+'</div>'
+      +'</div>';
+  }).join('');
+  var idealNote=nl
+    ?('Dit recept is gebouwd rond ~'+ideal.tannin.toFixed(2)+'% tannine en ~'+ideal.acid.toFixed(2)+'% zuur. Elke variëteit in de bibliotheek is hiertegen beoordeeld — <span style="color:var(--green2)">groen</span> past, <span style="color:var(--gold)">amber</span> werkt met een verschuiving, <span style="color:#d66b6b">rood</span> botst met de stijl.')
+    :('This recipe is built around ~'+ideal.tannin.toFixed(2)+'% tannin and ~'+ideal.acid.toFixed(2)+'% acid. Every variety in the library is rated against it — <span style="color:var(--green2)">green</span> fits, <span style="color:var(--gold)">amber</span> works with a shift, <span style="color:#d66b6b">red</span> fights the style.');
+  return'<div class="card" style="margin-bottom:16px;border-left:3px solid var(--gold)"><div class="card-header"><div class="card-title">'+(isPerry?(nl?'🍐 KIES JE PEREN':'🍐 SOURCE YOUR PEARS'):(nl?'🍎 KIES JE APPELS':'🍎 SOURCE YOUR APPLES'))+'</div></div>'
+    +'<div style="font-size:11.5px;color:var(--text3);margin-bottom:6px;font-family:var(--font-mono);letter-spacing:1px">'+(isPerry?(nl?'ELKE PEER · HOE ELK PAST':'EVERY PEAR · HOW EACH ONE FITS'):(nl?'ELKE APPEL · HOE ELK PAST':'EVERY APPLE · HOW EACH ONE FITS'))+'</div>'
+    +'<div style="font-size:11.5px;color:var(--text3);font-style:italic;margin-bottom:4px;line-height:1.5">'+idealNote+'</div>'
+    +'<div class="honey-fit-grid">'+rows+'</div>'
+    +'</div>';
+}
+
+var CIDER_CATEGORY_META={
+  bittersharp:{color:'var(--red2)',label:'BITTERSHARP'},
+  bittersweet:{color:'var(--gold2)',label:'BITTERSWEET'},
+  sharp:{color:'var(--blue2)',label:'SHARP'},
+  'medium-sharp':{color:'var(--purple2)',label:'MEDIUM-SHARP'},
+  sweet:{color:'var(--green2)',label:'SWEET'}
+};
+var CIDER_AVAIL_META={us:{flag:'🇺🇸',label:'US'},uk:{flag:'🇬🇧',label:'UK'},metric:{flag:'🌍',label:'EU / rest of world'}};
+function ciderAvailBadges(avail){
+  if(!avail||!avail.length)return'';
+  return avail.map(function(a){var m=CIDER_AVAIL_META[a];return m?'<span title="'+m.label+'" style="font-size:11px;margin-right:2px">'+m.flag+'</span>':'';}).join('');
+}
+
+function renderAppleLibrary(){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var cards=Object.keys(CIDER_VARIETIES).map(function(name){
+    var v=CIDER_VARIETIES[name];
+    var cat=CIDER_CATEGORY_META[v.tech&&v.tech.category]||{color:'var(--text3)',label:(v.tech&&v.tech.category||'').toUpperCase()};
+    var recipes=recipesUsingCiderVariety(name);
+    var recipePills=recipes.length?recipes.slice(0,4).map(function(r){
+      return'<span onclick="event.stopPropagation();currentRecipeId=\''+r.id+'\';showView(\'recipe-detail\')" style="display:inline-block;font-family:var(--font-mono);font-size:9.5px;background:rgba(0,0,0,0.25);color:'+r.color+';border:1px solid '+r.color+'66;padding:2px 7px;border-radius:8px;margin:2px 3px 2px 0;cursor:pointer">'+escHtml(r.name.substring(0,18))+(r.name.length>18?'…':'')+'</span>';
+    }).join('')+(recipes.length>4?'<span style="font-size:10px;color:var(--text3);font-style:italic;margin-left:4px">+'+(recipes.length-4)+' more</span>':''):'<span style="font-size:11px;color:var(--text3);font-style:italic">Not used in built-in recipes</span>';
+    // Header text color adapts to the variety's own luminance — dark cider
+    // apples (Kingston Black, Dabinett) with hardcoded dark text would be
+    // unreadable, same fix as the honey library grid card.
+    var headLum=(function(c){
+      var m=/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(c||''));
+      if(!m)return 200;
+      return 0.299*parseInt(m[1],16)+0.587*parseInt(m[2],16)+0.114*parseInt(m[3],16);
+    })(v.color);
+    var headDark=headLum<150;
+    var headText=headDark?'#f4ecd8':'#1a0f08';
+    return'<div onclick="window.currentAppleName=\''+name.replace(/'/g,"\\'")+'\';showView(\'apple-detail\')" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:transform 0.15s,border-color 0.15s" onmouseover="this.style.borderColor=\''+v.color+'\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.transform=\'translateY(0)\'">'
+      +'<div style="background:'+v.color+';color:'+headText+';padding:10px 14px;display:flex;justify-content:space-between;align-items:center">'
+      +'<div style="font-family:var(--font-display);font-size:15px;font-weight:600;letter-spacing:0.5px">'+escHtml(name)+'</div>'
+      +'<div style="font-family:var(--font-mono);font-size:9px;background:'+(headDark?'rgba(255,255,255,0.18)':'rgba(0,0,0,0.18)')+';padding:2px 8px;border-radius:10px;letter-spacing:1.2px;text-transform:uppercase">'+(v.fruit==='pear'?'🍐 ':'🍎 ')+cat.label+'</div>'
+      +'</div>'
+      +'<div style="padding:14px;flex:1;display:flex;flex-direction:column;gap:8px">'
+      +'<div style="font-size:13px;color:var(--text2);line-height:1.5">'+escHtml(proseL(v.profile))+'</div>'
+      +'<div style="font-size:12px;color:var(--text2);line-height:1.5"><strong style="color:var(--gold2)">'+(nl?'Combineert met:':'Pairs with:')+'</strong> '+escHtml(proseL(v.pairing||''))+'</div>'
+      +(v.notes?'<div style="font-size:11.5px;color:var(--text3);line-height:1.5;font-style:italic">'+escHtml(proseL(v.notes))+'</div>':'')
+      +'<div style="margin-top:auto;padding-top:8px;border-top:1px dotted var(--border)">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">'
+      +'<div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1.5px">USED IN '+recipes.length+' RECIPE'+(recipes.length===1?'':'S')+'</div>'
+      +'<div>'+ciderAvailBadges(v.avail)+'</div>'
+      +'</div>'
+      +recipePills
+      +'</div>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+  return'<div class="page-title">Apple &amp; Pear Library</div>'
+    +'<div class="page-subtitle">Choose the fruit, shape the cider · '+Object.keys(CIDER_VARIETIES).length+' varieties</div>'
+    +'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">🍎 YOUR APPLE &amp; PEAR LIBRARY</div></div>'
+    +'<div style="font-size:14px;color:var(--text2);line-height:1.7;margin-bottom:14px">Every apple/pear falls somewhere on two axes — tannin and acid — that decide what it contributes: true cider apples (bittersharp/bittersweet) carry real structure, common supermarket apples (sweet/sharp) are what most people actually have and work fine blended 2-3 together. Flags show where a variety is realistically sourceable. Tap a card for full brewing detail.</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">'+cards+'</div>'
+    +'</div>';
+}
+
+function renderAppleDetail(){
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var name=window.currentAppleName;
+  if(!name||!CIDER_VARIETIES[name])return renderAppleLibrary();
+  var v=CIDER_VARIETIES[name];
+  var d=v.details||null;
+  var recipes=recipesUsingCiderVariety(name);
+  var cat=CIDER_CATEGORY_META[v.tech&&v.tech.category]||{color:'var(--text3)',label:(v.tech&&v.tech.category||'').toUpperCase()};
+
+  var heroLum=(function(c){
+    var m=/^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(String(c||''));
+    if(!m)return 200;
+    return 0.299*parseInt(m[1],16)+0.587*parseInt(m[2],16)+0.114*parseInt(m[3],16);
+  })(v.color);
+  var heroDark=heroLum<150;
+  var hText=heroDark?'#f4ecd8':'#1a0f08';
+  var hDim=heroDark?'rgba(244,236,216,0.75)':'rgba(26,15,8,0.78)';
+  var hero='<div style="position:relative;background:linear-gradient(135deg,'+v.color+','+(heroDark?'rgba(0,0,0,0.55)':'rgba(0,0,0,0.28)')+');border-radius:var(--radius);padding:28px 24px;margin-bottom:16px;overflow:hidden">'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap">'
+    +'<div style="flex:1;min-width:200px">'
+    +'<div style="font-family:var(--font-mono);font-size:10px;color:'+hDim+';letter-spacing:2px;margin-bottom:4px">'+(v.fruit==='pear'?'PERRY PEAR':'APPLE VARIETY')+'</div>'
+    +'<div style="font-family:var(--font-display);font-size:32px;color:'+hText+';letter-spacing:1px;line-height:1.1;font-weight:600;text-shadow:0 1px 2px rgba(0,0,0,'+(heroDark?'0.5':'0.12')+')">'+escHtml(name)+'</div>'
+    +'<div style="font-family:var(--font-mono);font-size:11px;color:'+hDim+';letter-spacing:1px;margin-top:6px;text-transform:uppercase">'+cat.label+(v.avail?' · '+ciderAvailBadges(v.avail):'')+'</div>'
+    +'</div>'
+    +'<div style="background:rgba(18,11,4,0.62);backdrop-filter:blur(2px);border:1px solid rgba(255,255,255,0.12);padding:14px 18px;border-radius:var(--radius);min-width:180px">'
+    +'<div style="font-family:var(--font-mono);font-size:9px;color:rgba(244,236,216,0.7);letter-spacing:1.5px;margin-bottom:8px">TANNIN / ACID (LARS)</div>'
+    +(v.tech?[['TANNIN',v.tech.tanninPct],['ACID',v.tech.acidPct]].map(function(x){
+        var pct=Math.min(100,(x[1]/1.0)*100);
+        return'<div style="margin-bottom:6px"><div style="display:flex;justify-content:space-between;font-family:var(--font-mono);font-size:8px;color:rgba(244,236,216,0.65);margin-bottom:2px"><span>'+x[0]+'</span><span>'+x[1].toFixed(2)+'%</span></div><div style="background:rgba(255,255,255,0.16);height:5px;border-radius:3px;overflow:hidden"><div style="background:linear-gradient(90deg,#c9a350,#e8c878);height:100%;width:'+pct+'%"></div></div></div>';
+      }).join(''):'')
+    +'</div>'
+    +'</div>'
+    +'</div>';
+
+  var profileBlock='<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">'+(nl?'SMAAKPROFIEL':'FLAVOR PROFILE')+'</div></div>'
+    +'<div style="font-size:15px;color:var(--text2);line-height:1.7;margin-bottom:12px">'+escHtml(proseL(v.profile))+'</div>'
+    +(v.pairing?'<div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:8px"><strong style="color:var(--gold2)">'+(nl?'Combineert met:':'Pairs with:')+'</strong> '+escHtml(proseL(v.pairing))+'</div>':'')
+    +(v.notes?'<div style="font-size:12.5px;color:var(--text3);line-height:1.6;font-style:italic;padding-top:8px;border-top:1px dotted var(--border)">'+escHtml(proseL(v.notes))+'</div>':'')
+    +'</div>';
+
+  var quickFactsBlock='';
+  if(d){
+    var facts=[
+      d.origin?{label:'ORIGIN',body:d.origin}:null,
+      d.character?{label:'CHARACTER',body:d.character}:null,
+      d.growingNote?{label:'GROWING NOTE',body:d.growingNote}:null
+    ].filter(Boolean);
+    if(facts.length){
+      quickFactsBlock='<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">🔍 QUICK FACTS</div></div>'
+        +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px">'
+        +facts.map(function(f){return'<div style="background:var(--bg);padding:12px;border-radius:var(--radius);border-left:3px solid '+v.color+'"><div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3);letter-spacing:1.5px;margin-bottom:4px">'+f.label+'</div><div style="font-size:12.5px;color:var(--text2);line-height:1.5">'+escHtml(f.body)+'</div></div>';}).join('')
+        +'</div></div>';
+    }
+  }
+
+  // Cider-specific chemistry block — tannin/acid/brix/pH/biennial, the
+  // numbers that actually decide blending ratios. Honey's equivalent block
+  // covers fructose-stall risk instead; this covers LARS classification.
+  var chemBlock='';
+  if(v.tech){
+    var t=v.tech;
+    function fcell(lbl,val,col){return'<div style="background:var(--bg);padding:11px 12px;border-radius:var(--radius);border-left:3px solid '+(col||v.color)+'"><div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1.5px;margin-bottom:3px">'+lbl+'</div><div style="font-size:13px;color:var(--text);line-height:1.4">'+val+'</div></div>';}
+    var cells=[
+      fcell('LARS CATEGORY','<span style="color:'+cat.color+';font-weight:600">'+cat.label+'</span>',cat.color),
+      fcell('TANNIN',t.tanninPct.toFixed(2)+'%'),
+      fcell('ACID',t.acidPct.toFixed(2)+'%'),
+      fcell('TYPICAL BRIX',t.brixTypical+'°Bx'),
+      fcell('TYPICAL pH',t.phTypical),
+      fcell('CROPPING',t.biennial?'<span style="color:var(--gold2)">Biennial</span> (heavy one year, light the next)':'Annual (reliable every year)')
+    ].join('');
+    chemBlock='<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">⚗ CIDER CHEMISTRY</div></div>'
+      +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px">'+cells+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-top:10px;line-height:1.5">LARS (Long Ashton Research Station) classifies cider apples on two axes — tannin above 0.2% and acid above 0.45% both count as "high." '+(v.fruit==='pear'?'Perry pears use a different threshold scale under similar names — never compare these numbers directly to an apple\'s.':'Bittersharp needs both high; bittersweet is tannin-only; sharp is acid-only; sweet is neither.')+'</div>'
+      +'</div>';
+  }
+
+  var stylesBlock='';
+  if(d&&d.bestStyles&&d.bestStyles.length){
+    stylesBlock='<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">✦ BEST IN THESE STYLES</div></div>'
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+      +d.bestStyles.map(function(s){return'<span style="background:'+v.color+'22;border:1px solid '+v.color+';color:'+v.color+';padding:6px 12px;border-radius:14px;font-family:var(--font-mono);font-size:11px;letter-spacing:0.5px">'+escHtml(s)+'</span>';}).join('')
+      +'</div></div>';
+  }
+
+  var tipsBlock='';
+  if(d&&d.tips&&d.tips.length){
+    tipsBlock='<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">💡 TIPS &amp; TRICKS</div></div>'
+      +d.tips.map(function(t,i){return'<div style="display:grid;grid-template-columns:32px 1fr;gap:10px;padding:10px 0'+(i<d.tips.length-1?';border-bottom:1px dotted var(--border)':'')+'">'
+        +'<div style="background:'+v.color+'22;border:1px solid '+v.color+'88;color:'+v.color+';border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;font-weight:600">'+(i+1)+'</div>'
+        +'<div><div style="font-family:var(--font-display);font-size:13px;color:var(--gold2);margin-bottom:2px">'+escHtml(t.title)+'</div>'
+        +'<div style="font-size:12.5px;color:var(--text2);line-height:1.6">'+escHtml(t.body)+'</div></div>'
+        +'</div>';}).join('')
+      +'</div>';
+  }
+
+  var mistakesBlock='';
+  if(d&&d.commonMistakes&&d.commonMistakes.length){
+    mistakesBlock='<div class="card" style="margin-bottom:16px;border-left:3px solid var(--red)"><div class="card-header"><div class="card-title">⚠ COMMON MISTAKES</div></div>'
+      +'<ul style="margin:0;padding-left:20px;list-style-type:none">'
+      +d.commonMistakes.map(function(m){return'<li style="font-size:12.5px;color:var(--text2);line-height:1.6;padding:4px 0;position:relative"><span style="position:absolute;left:-16px;color:var(--red2)">✗</span>'+escHtml(m)+'</li>';}).join('')
+      +'</ul></div>';
+  }
+
+  // Regional sourcing — reuses the same avail/substituteEU data the recipe
+  // ingredient notes already draw on (ciderVarietyAvailNote), surfaced here
+  // directly rather than only showing up conditionally inside a recipe.
+  var sourcingBlock='';
+  if(v.avail){
+    sourcingBlock='<div class="card" style="margin-bottom:16px;border-left:3px solid '+v.color+'"><div class="card-header"><div class="card-title">🌍 WHERE TO FIND IT</div></div>'
+      +'<div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:'+(v.substituteEU?'10px':'0')+'">Realistically sourceable in: '+v.avail.map(function(a){var m=CIDER_AVAIL_META[a];return m?m.flag+' '+m.label:a;}).join(', ')+'.</div>'
+      +(v.substituteEU?'<div style="font-size:12.5px;color:var(--text3);line-height:1.6;font-style:italic;padding-top:8px;border-top:1px dotted var(--border)">Outside those regions, try: '+escHtml(v.substituteEU)+'</div>':'')
+      +'</div>';
+  }
+
+  var historyBlock=d&&d.history?
+    '<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">📜 HISTORY &amp; CONTEXT</div></div>'
+    +'<div style="font-size:13px;color:var(--text2);line-height:1.7;font-style:italic">'+escHtml(d.history)+'</div></div>':'';
+
+  var recipesBlock='<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">🍷 USED IN '+recipes.length+' BUILT-IN RECIPE'+(recipes.length===1?'':'S')+'</div></div>';
+  if(recipes.length){
+    recipesBlock+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">'
+      +recipes.map(function(r){
+        var recipe=APP.recipes.find(function(x){return x.id===r.id;});
+        var style=recipe?recipe.style:'';
+        var diff=recipe?recipe.difficulty:'';
+        return'<div onclick="currentRecipeId=\''+r.id+'\';showView(\'recipe-detail\')" style="background:var(--bg);padding:10px 12px;border-radius:var(--radius);cursor:pointer;border-left:3px solid '+r.color+';transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
+          +'<div style="font-family:var(--font-display);font-size:13px;color:'+r.color+';margin-bottom:2px">'+escHtml(r.name)+'</div>'
+          +'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3);letter-spacing:1px;text-transform:uppercase">'+escHtml(style)+(diff?' · '+escHtml(diff):'')+'</div>'
+          +'</div>';
+      }).join('')
+      +'</div>';
+  }else{
+    recipesBlock+='<div style="font-size:13px;color:var(--text3);font-style:italic">This variety is not used in any built-in recipes — but you can substitute it into any recipe where the character fits, or design a custom recipe around it.</div>';
+  }
+  recipesBlock+='</div>';
+
+  var actionsBlock='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
+    +'<button class="btn btn-secondary btn-sm" onclick="showView(\'apple-library\')">← All Varieties</button>'
+    +'</div>';
+
+  return'<div class="page-title" style="font-size:18px;margin-bottom:0">Apple &amp; Pear Library</div>'
+    +'<div class="page-subtitle">'+escHtml(name)+(d?' · in depth':'')+'</div>'
+    +actionsBlock
+    +hero
+    +profileBlock
+    +quickFactsBlock
+    +chemBlock
+    +sourcingBlock
+    +stylesBlock
+    +tipsBlock
+    +mistakesBlock
+    +recipesBlock
+    +historyBlock;
+}
+
 // ==================== YEAST LIBRARY ====================
 // Hub page: grid of all strains with quick-glance info. Click → detail.
 // Mirrors the Honey Library architecture but with strain-specific fields.
 function renderYeastLibrary(){
+  // View filter (cider mode): most strains here are written up in mead-only
+  // language (honey character, sack mead, traditional mead aging) — showing
+  // them in cider mode would be the "still looks like mead mode" bug this
+  // whole feature exists to avoid. Missing beverageTypes defaults to mead,
+  // matching the b.beverageType||'mead' convention used everywhere else.
+  var isCider=(typeof activeBevMode==='function')&&activeBevMode()==='cider';
+  var modeYeasts=YEAST_STRAINS.filter(function(y){return(y.beverageTypes||['mead']).indexOf(isCider?'cider':'mead')>=0;});
   // Group cards: dry yeasts vs liquid (currently just WLP720), then by manufacturer
-  var dries=YEAST_STRAINS.filter(function(y){return y.format==='dry';});
-  var liquids=YEAST_STRAINS.filter(function(y){return y.format!=='dry';});
+  var dries=modeYeasts.filter(function(y){return y.format==='dry';});
+  var liquids=modeYeasts.filter(function(y){return y.format!=='dry';});
 
   function tempBadge(y){
     return '<span style="font-family:var(--font-mono);font-size:10px;color:var(--text2);background:rgba(201,163,80,0.1);padding:2px 7px;border-radius:8px;letter-spacing:0.5px">🌡 '+y.optimalTempLow+'-'+y.optimalTempHigh+'°C</span>';
@@ -481,23 +896,31 @@ function renderYeastLibrary(){
       +'</div>'
       +'<div style="font-style:italic;color:var(--text2);font-size:12.5px;margin-bottom:10px;line-height:1.5">'+escHtml(y.profile)+'</div>'
       +'<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">'+tempBadge(y)+abvBadge(y)+attBadge(y)+speedBadge(y)+'</div>'
-      +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:0.5px;margin-top:8px"><strong style="color:var(--gold2)">BEST FOR:</strong> '+escHtml((y.recommendedFor||[]).slice(0,3).join(' · '))+'</div>'
+      +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:0.5px;margin-top:8px"><strong style="color:var(--gold2)">BEST FOR:</strong> '+escHtml(((isCider&&y.recommendedForCider)||y.recommendedFor||[]).slice(0,3).join(' · '))+'</div>'
     +'</div>';
   }
 
   var legend='<div style="display:flex;gap:14px;font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-bottom:14px;flex-wrap:wrap"><div><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green2);margin-right:4px;vertical-align:middle"></span>Homebrew-shop staple</div><div><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gold2);margin-right:4px;vertical-align:middle"></span>EU-available</div><div><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--red2);margin-right:4px;vertical-align:middle"></span>Import only</div></div>';
 
-  return'<div class="page-title">Yeast Library</div>'
-    +'<div class="page-subtitle">Strain reference · '+YEAST_STRAINS.length+' yeasts · click any card for the deep-dive</div>'
-    +legend
-    +'<div class="card" style="margin-bottom:16px;background:linear-gradient(180deg,rgba(201,163,80,0.06),transparent);border-left:3px solid var(--gold)">'
-      +'<div style="font-family:var(--font-display);font-size:14px;color:var(--gold2);letter-spacing:1.5px;margin-bottom:8px">CHOOSING THE RIGHT STRAIN</div>'
-      +'<div style="font-size:13px;color:var(--text2);line-height:1.65">Yeast choice shapes flavor more than any other variable in mead-making. Three questions to ask:</div>'
+  var chooseCard=isCider?
+    ('<div style="font-size:13px;color:var(--text2);line-height:1.65">Yeast choice shapes cider character more than any other variable. Three questions to ask:</div>'
+      +'<div style="margin:10px 0 0;padding-left:18px;font-size:13px;color:var(--text2);line-height:1.7">'
+        +'<div style="margin-bottom:6px"><strong style="color:var(--gold2)">1. What ABV?</strong> Common/heritage cider (≤7%) — Nottingham or M02 are plenty. New England, high-OG, or Ice Cider (10%+) — EC-1118\'s ~18% tolerance is the safe bet.</div>'
+        +'<div style="margin-bottom:6px"><strong style="color:var(--gold2)">2. What character?</strong> Clean apple-forward → Nottingham or M02. Softened acidity + fruity esters (great for fruit ciders) → 71B. Traditional English body with natural MLF → WLP775. Fully neutral, highest-attenuating → EC-1118.</div>'
+        +'<div><strong style="color:var(--gold2)">3. Cool ferment or not?</strong> Nottingham shines cool (12-20°C) for a crisper result. EC-1118 tolerates a wider range but ferments hard and fast either way.</div>'
+      +'</div>'):
+    ('<div style="font-size:13px;color:var(--text2);line-height:1.65">Yeast choice shapes flavor more than any other variable in mead-making. Three questions to ask:</div>'
       +'<div style="margin:10px 0 0;padding-left:18px;font-size:13px;color:var(--text2);line-height:1.7">'
         +'<div style="margin-bottom:6px"><strong style="color:var(--gold2)">1. What ABV?</strong> Anything above 14% rules out D47 and 71B (they stall). Above 16% essentially mandates EC-1118 or K1V.</div>'
         +'<div style="margin-bottom:6px"><strong style="color:var(--gold2)">2. What flavors should dominate?</strong> Honey-forward → M05. Fruit → 71B. Floral/honey amp → K1V. Wine-like body → D47. Neutral → EC-1118.</div>'
         +'<div><strong style="color:var(--gold2)">3. What can you control?</strong> Strict 18°C ferment temp → D47 rewards you. Variable basement temps → K1V is forgiving (10-35°C).</div>'
-      +'</div>'
+      +'</div>');
+  return'<div class="page-title">Yeast Library</div>'
+    +'<div class="page-subtitle">Strain reference · '+modeYeasts.length+' yeasts · click any card for the deep-dive</div>'
+    +legend
+    +'<div class="card" style="margin-bottom:16px;background:linear-gradient(180deg,rgba(201,163,80,0.06),transparent);border-left:3px solid var(--gold)">'
+      +'<div style="font-family:var(--font-display);font-size:14px;color:var(--gold2);letter-spacing:1.5px;margin-bottom:8px">CHOOSING THE RIGHT STRAIN</div>'
+      +chooseCard
     +'</div>'
     +'<div style="font-family:var(--font-display);font-size:14px;color:var(--gold2);letter-spacing:2px;margin:18px 0 10px">DRY YEASTS</div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(380px,100%),1fr));gap:10px">'
@@ -505,7 +928,7 @@ function renderYeastLibrary(){
     +'</div>'
     +(liquids.length?'<div style="font-family:var(--font-display);font-size:14px;color:var(--gold2);letter-spacing:2px;margin:24px 0 10px">LIQUID YEASTS</div><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(380px,100%),1fr));gap:10px">'+liquids.map(card).join('')+'</div>':'')
     +'<div style="margin-top:24px;padding:14px 18px;background:var(--bg2);border-radius:var(--radius);border-left:3px solid var(--gold2);font-size:13px;color:var(--text2);line-height:1.6">'
-      +'<strong style="color:var(--gold2)">SACHET MATH:</strong> One sachet covers up to <em>sachetCoversL</em> liters at standard OG (≤1.090). High-OG batches (sack mead, OG 1.130+) reduce effective coverage — MeadOS computes this automatically in recipe scaling.'
+      +'<strong style="color:var(--gold2)">SACHET MATH:</strong> Coverage varies by strain — open a yeast\'s detail page for its exact liters per sachet at standard OG (≤1.090). High-OG batches (sack mead, OG 1.130+) reduce effective coverage — MeadOS computes this automatically in recipe scaling.'
     +'</div>';
 }
 
@@ -516,6 +939,7 @@ function renderYeastDetail(){
   var y=getYeastById(window.currentYeastId);
   if(!y)return renderYeastLibrary();
   var _nl=(typeof appLang==='function'&&appLang()==='nl');
+  var isCider=(typeof activeBevMode==='function')&&activeBevMode()==='cider';
   function section(title,body){if(!body)return'';return'<div class="card" style="margin-bottom:14px"><div class="card-header"><div class="card-title">'+title+'</div></div><div style="font-size:13px;color:var(--text2);line-height:1.65">'+body+'</div></div>';}
   function listBlock(items){if(!items||!items.length)return'';return'<ul style="margin:0;padding-left:18px">'+items.map(function(i){return'<li style="margin-bottom:5px">'+escHtml(i)+'</li>';}).join('')+'</ul>';}
   function pillRow(items,color){
@@ -574,7 +998,7 @@ function renderYeastDetail(){
         +section('FLAVOR EXPECTATIONS',pillRow(y.expectedFlavors,'var(--gold2)'))
         +section('WHY CHOOSE',escHtml(y.whyChoose))
         +section('WHY AVOID',escHtml(y.whyAvoid))
-        +section('BEST FOR',pillRow(y.recommendedFor,'var(--green2)'))
+        +section('BEST FOR',pillRow((isCider&&y.recommendedForCider)||y.recommendedFor,'var(--green2)'))
         +section('NOT RECOMMENDED FOR',pillRow(y.notRecommendedFor,'var(--red2)'))
       +'</div>'
       +'<div>'
@@ -854,6 +1278,10 @@ function renderSettings(){
       +'</div>':'')
     +renderStorageBudgetCard()
     +'</div>'
+    +'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">🍎 CIDER MODE · OPTIONAL</div></div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.55">Track cider (and perry) batches alongside your mead — same database, same Advisor, its own recipe library and branding. Once enabled, a Mead/Cider switch appears in the header so you can jump between them from any screen; both always coexist, switching only changes what\'s shown.</div>'
+    +'<div class="form-group"><label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text2);cursor:pointer"><input type="checkbox" id="set-cider-mode" '+(APP.settings.ciderModeEnabled?'checked':'')+' onchange="toggleCiderModeSetting(this.checked)" style="cursor:pointer"> Track cider too</label></div>'
+    +'</div>'
     +'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">🏠 HOME ASSISTANT · OPTIONAL</div></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.55">Completely optional — MeadOS runs fully standalone. Connect a Home Assistant instance to read live temperature &amp; hydrometer sensors, send push notifications via the companion app, browse HA media for label images, and publish a status summary for the dashboard card below.</div>'
     +(function(){
@@ -924,10 +1352,11 @@ function renderSettings(){
     +'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">💰 COSTS &amp; SUPPLIES</div></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px">Optional defaults for cost tracking and sachet-based ingredient hints. Changes save automatically.</div>'
     +'<div class="form-row-3"><div class="form-group"><label class="form-label">Default Honey Price (per kg)</label><input class="form-input" id="set-honey-price" type="number" step="0.1" value="'+(APP.settings.honeyPricePerKg||'')+'" placeholder="12" onchange="saveCostsSettings()"></div>'
+    +'<div class="form-group"><label class="form-label">Default Apple/Pear Juice Price (per L)</label><input class="form-input" id="set-juice-price" type="number" step="0.1" value="'+(APP.settings.juicePricePerL||'')+'" placeholder="2.5" onchange="saveCostsSettings()"></div>'
     +'<div class="form-group"><label class="form-label">Currency</label><select class="form-select" id="set-currency" onchange="saveCostsSettings()">'
     +['€','$','£','CHF','SEK','NOK','DKK'].map(function(c){return'<option'+(APP.settings.currency===c?' selected':'')+'>'+c+'</option>';}).join('')
-    +'</select></div>'
-    +'<div class="form-group"><label class="form-label">Nutrient Sachet Size (g)</label><input class="form-input" id="set-sachet" type="number" step="0.5" value="'+(APP.settings.sachetSize||12)+'" placeholder="12" onchange="saveCostsSettings()"></div></div>'
+    +'</select></div></div>'
+    +'<div class="form-row-3"><div class="form-group"><label class="form-label">Nutrient Sachet Size (g)</label><input class="form-input" id="set-sachet" type="number" step="0.5" value="'+(APP.settings.sachetSize||12)+'" placeholder="12" onchange="saveCostsSettings()"></div></div>'
     +'<div class="form-group"><label class="form-label">Preferred Sanitizer</label><select class="form-select" id="set-sanitizer" onchange="saveCostsSettings()">'
     +Object.keys(SANITIZERS).map(function(k){return'<option value="'+k+'"'+(((APP.settings.sanitizer||'chemipro_san')===k)?' selected':'')+'>'+SANITIZERS[k].name+' · '+SANITIZERS[k].mlPerL+' ml/L</option>';}).join('')
     +'</select><div style="font-size:12px;color:var(--text3);margin-top:4px">Used by the Brewing Tools calculator, brew-day checklists, and the bottling workflow.</div></div>'
@@ -1000,7 +1429,7 @@ function renderSettings(){
     +'<button class="btn btn-danger" onclick="resetAllData()">Reset All Data</button></div>'
     +renderSourcesCard()
     +'</div></div>'
-    +'<div style="text-align:center;font-size:11px;color:var(--text3);margin:26px 0 6px;line-height:1.8">MEADŌS · © 2026 <a href="https://github.com/icemanxbe/MeadOS" target="_blank" rel="noopener" style="color:var(--gold2);text-decoration:none">icemanxbe</a><br><a href="https://github.com/icemanxbe/MeadOS/blob/main/LICENSE" target="_blank" rel="noopener" style="color:var(--text3)">PolyForm Noncommercial License 1.0.0</a> — free to use &amp; modify, not to sell</div>';
+    +'<div style="text-align:center;font-size:11px;color:var(--text3);margin:26px 0 6px;line-height:1.8">MEADOS · © 2026 <a href="https://github.com/icemanxbe/MeadOS" target="_blank" rel="noopener" style="color:var(--gold2);text-decoration:none">icemanxbe</a><br><a href="https://github.com/icemanxbe/MeadOS/blob/main/LICENSE" target="_blank" rel="noopener" style="color:var(--text3)">PolyForm Noncommercial License 1.0.0</a> — free to use &amp; modify, not to sell</div>';
 }
 
 // ==================== SOURCES & CREDITS (Settings card) ====================

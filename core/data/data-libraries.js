@@ -42,7 +42,7 @@ var HONEY_SEASONS={
 };
 
 var HONEY_PROFILES={
-  'Tupelo':{color:'#e0c060',intensity:'light',tech:{fgRatio:1.54,fructoseRisk:'critical',fructophilic:true,crystallises:'very_slow',yanOffset:0,phAdjust:0,sugarPotential:42},profile:'Premium Southern-US varietal. Buttery and complex with jasmine and cinnamon notes, very sweet on the tongue. Pale gold-green.',pairing:'Small-batch traditionals where the honey is the star; superb as a backsweetener.',notes:'CRITICAL fructose risk (F:G ~1.54) — fructophilic yeast (K1-V1116, BC-S103, UVAFERM 43) is mandatory or it stalls at the 1/3 break. Rare, seasonal, expensive.',
+  'Tupelo':{color:'#e0c060',intensity:'light',avail:['us'],substituteEU:'Acacia — similarly delicate, floral and very slow to crystallize; the honey most mead-makers reach for when real Tupelo isn\'t available.',tech:{fgRatio:1.54,fructoseRisk:'critical',fructophilic:true,crystallises:'very_slow',yanOffset:0,phAdjust:0,sugarPotential:42},profile:'Premium Southern-US varietal. Buttery and complex with jasmine and cinnamon notes, very sweet on the tongue. Pale gold-green.',pairing:'Small-batch traditionals where the honey is the star; superb as a backsweetener.',notes:'CRITICAL fructose risk (F:G ~1.54) — fructophilic yeast (K1-V1116, BC-S103, UVAFERM 43) is mandatory or it stalls at the 1/3 break. Rare, seasonal, expensive.',
     details:{
       origin:'Ogeechee Tupelo (Nyssa ogeche) along the river swamps of the Florida Panhandle and southern Georgia. Harvested in a narrow window each spring.',
       season:'Brief spring bloom (April-May) only',
@@ -709,6 +709,34 @@ var HONEY_PROFILES={
   'Other':{color:'#a08060',intensity:'varies',profile:'Custom or rare honey not in this list.',pairing:'Depends on the source.',notes:'Add tasting notes in your batch journal — build your own reference over time.'}
 };
 
+// Regional sourcing note for a honey type named in recipe/ingredient text —
+// same currentUnitSystem()-based mechanism as ciderVarietyAvailNote (see
+// data-cider.js) and liquidYeastNote (07-views-recipe.js), reusing the app's
+// existing unit-system setting as the region signal instead of a separate
+// preference. Deliberately conservative: only Tupelo gets an `avail` tag here.
+// Most other honey types in this library are either genuinely global
+// (Wildflower, Clover, Linden) or equally exotic to every region alike
+// (Manuka/NZ, Sidr/Yemen, Coffee Blossom — a US, UK or EU brewer all need a
+// specialty importer for those, so the toggle doesn't differentiate anything
+// real for them) — tagging those would just be noise, not a genuine regional
+// gap the way a Southern-US-only honey or an American heirloom apple is.
+function honeyAvailNote(itemText){
+  if(!itemText||typeof HONEY_PROFILES==='undefined'||typeof currentUnitSystem!=='function')return null;
+  var text=itemText.toLowerCase();
+  var names=Object.keys(HONEY_PROFILES).sort(function(a,b){return b.length-a.length;});
+  for(var i=0;i<names.length;i++){
+    var name=names[i];
+    if(text.indexOf(name.toLowerCase())===-1)continue;
+    var h=HONEY_PROFILES[name];
+    if(!h.avail||h.avail.indexOf(currentUnitSystem())!==-1)return null;
+    if(h.substituteEU&&currentUnitSystem()==='metric'){
+      return name+' honey is a regional specialty (hard to source in mainland Europe) — try '+h.substituteEU;
+    }
+    return name+' honey is a regional specialty, less common outside '+h.avail.join('/').toUpperCase()+' — check specialty honey importers or substitute a similar local honey.';
+  }
+  return null;
+}
+
 var YEAST_STRAINS=[
   {
     id:'m05',name:'Mangrove Jack\'s M05 — Mead',
@@ -740,7 +768,7 @@ var YEAST_STRAINS=[
     euAvailable:true,widelyAvailable:true,priceCategory:'standard'
   },
   {
-    id:'ec1118',name:'Lalvin EC-1118 — Champagne',
+    id:'ec1118',name:'Lalvin EC-1118 — Champagne',beverageTypes:['mead','cider'],
     manufacturer:'Lallemand',strain:'Saccharomyces cerevisiae var. bayanus',
     sachetSize:5,sachetCoversL:23,unit:'g',format:'dry',
     abvMax:18,attenuation:95,
@@ -751,6 +779,7 @@ var YEAST_STRAINS=[
     expectedAromas:['Neutral','Very low ester'],
     expectedFlavors:['Bone-dry','Clean','Crisp','No yeast character'],
     recommendedFor:['Sack Mead','Hydromel','Sparkling Mead','Stuck Ferment Restart','High-OG Traditional'],
+    recommendedForCider:['New England Cider','Ice Cider','High-OG cider (10%+)','Stuck Ferment Restart'],
     notRecommendedFor:['Light Melomel (strips delicate fruit aromatics)','Subtle Spiced Mead (too aggressive)','Sweet Mead (will ferment dry no matter what)'],
     description:'Selected from Champagne fermentations. EC-1118 is the most popular wine yeast worldwide — extremely vigorous, very high alcohol tolerance, low nutrient needs, and a "killer factor" that lets it outcompete wild yeasts. The default choice when you want clean dry results and don\'t need delicate flavors.',
     whyChoose:'When you need to push past 16% ABV, restart a stuck batch, or guarantee dry results. Also excellent base for sparkling meads.',
@@ -798,7 +827,7 @@ var YEAST_STRAINS=[
     euAvailable:true,widelyAvailable:true,priceCategory:'standard'
   },
   {
-    id:'71b',name:'Lalvin 71B — Narbonne',
+    id:'71b',name:'Lalvin 71B — Narbonne',beverageTypes:['mead','cider'],
     manufacturer:'Lallemand',strain:'Saccharomyces cerevisiae',
     sachetSize:5,sachetCoversL:23,unit:'g',format:'dry',
     abvMax:14,attenuation:88,
@@ -809,6 +838,7 @@ var YEAST_STRAINS=[
     expectedAromas:['Berry','Tropical fruit','Floral','Pear/apple esters'],
     expectedFlavors:['Smooth','Fruity','Drink-young friendly','Less acidic'],
     recommendedFor:['Fruit Melomels (berry, stone fruit)','Cyser','Traditional','Drink-Young Styles'],
+    recommendedForCider:['Fruit Cider','High-tannin heritage apples (softens the malic bite)','Drink-Young Styles'],
     notRecommendedFor:['Sack Mead (low ABV tolerance)','Long-aging styles','Hopped Mead'],
     description:'71B is unique among wine yeasts: it metabolizes up to 40% of the malic acid in the must, smoothing harsh acidity and producing a softer, rounder mead. Combined with strong fruity ester production, it\'s the #1 choice for fruit-forward melomels meant to drink young (3-6 months).',
     whyChoose:'For melomels with tart fruit (raspberry, cherry, blackcurrant, sour fruits). The malic acid reduction smooths the sharpness while preserving fruit character.',
@@ -921,7 +951,7 @@ var YEAST_STRAINS=[
     euAvailable:true,widelyAvailable:true,priceCategory:'standard'
   },
   {
-    id:'w15',name:'WLP720 / White Labs Sweet Mead',
+    id:'w15',name:'WLP720 / White Labs Sweet Mead',drySubstitute:'Lallemand 71B or K1-V1116 — both dry, both leave similar residual sweetness/softness',
     manufacturer:'White Labs',strain:'Saccharomyces cerevisiae',
     sachetSize:null,sachetCoversL:20,unit:'pouch',format:'liquid',
     abvMax:15,attenuation:78,
@@ -1064,7 +1094,7 @@ var YEAST_STRAINS=[
   },
   // ---- Additional commercial strains (mead/wine/cider/kveik) ----
   {
-    id:'wyeast4184',name:'Wyeast 4184 — Sweet Mead',
+    id:'wyeast4184',name:'Wyeast 4184 — Sweet Mead',drySubstitute:'Lallemand 71B or K1-V1116 for a similarly soft, sweet-leaning result',
     manufacturer:'Wyeast',strain:'Saccharomyces cerevisiae (blend)',
     sachetSize:1,sachetCoversL:19,unit:'pack',format:'liquid',
     abvMax:11,attenuation:70,
@@ -1085,7 +1115,7 @@ var YEAST_STRAINS=[
     euAvailable:true,widelyAvailable:false,priceCategory:'premium'
   },
   {
-    id:'wyeast4632',name:'Wyeast 4632 — Dry Mead',
+    id:'wyeast4632',name:'Wyeast 4632 — Dry Mead',drySubstitute:'Lallemand EC-1118 — same clean, fully-dry, high-attenuating profile',
     manufacturer:'Wyeast',strain:'Saccharomyces cerevisiae',
     sachetSize:1,sachetCoversL:19,unit:'pack',format:'liquid',
     abvMax:18,attenuation:95,
@@ -1106,7 +1136,7 @@ var YEAST_STRAINS=[
     euAvailable:true,widelyAvailable:false,priceCategory:'premium'
   },
   {
-    id:'wlp715',name:'White Labs WLP715 — Champagne',
+    id:'wlp715',name:'White Labs WLP715 — Champagne',drySubstitute:'Lallemand EC-1118 — the dry champagne-yeast equivalent, same clean/neutral high-attenuating role',
     manufacturer:'White Labs',strain:'Saccharomyces cerevisiae (bayanus type)',
     sachetSize:1,sachetCoversL:19,unit:'vial',format:'liquid',
     abvMax:17,attenuation:90,
@@ -1127,7 +1157,7 @@ var YEAST_STRAINS=[
     euAvailable:true,widelyAvailable:false,priceCategory:'premium'
   },
   {
-    id:'wlp720',name:'White Labs WLP720 — Sweet Mead/Wine',
+    id:'wlp720',name:'White Labs WLP720 — Sweet Mead/Wine',drySubstitute:'Lallemand 71B or K1-V1116 for a similarly soft, sweet-leaning result',
     manufacturer:'White Labs',strain:'Saccharomyces cerevisiae',
     sachetSize:1,sachetCoversL:19,unit:'vial',format:'liquid',
     abvMax:15,attenuation:73,
@@ -1148,7 +1178,7 @@ var YEAST_STRAINS=[
     euAvailable:true,widelyAvailable:false,priceCategory:'premium'
   },
   {
-    id:'wlp099',name:'White Labs WLP099 — Super High Gravity',
+    id:'wlp099',name:'White Labs WLP099 — Super High Gravity',drySubstitute:'Lallemand EC-1118 — the closest dry high-tolerance strain, though its ceiling is somewhat lower',
     manufacturer:'White Labs',strain:'Saccharomyces cerevisiae',
     sachetSize:1,sachetCoversL:19,unit:'vial',format:'liquid',
     abvMax:22,attenuation:85,
@@ -1169,7 +1199,7 @@ var YEAST_STRAINS=[
     euAvailable:true,widelyAvailable:false,priceCategory:'premium'
   },
   {
-    id:'wyeast1388',name:'Wyeast 1388 — Belgian Strong Ale',
+    id:'wyeast1388',name:'Wyeast 1388 — Belgian Strong Ale',drySubstitute:'no close dry equivalent in this library — ask your local shop for a dry Belgian-style ale yeast, or fall back to 71B for a cleaner (non-Belgian) result',
     manufacturer:'Wyeast',strain:'Saccharomyces cerevisiae (POF+)',
     sachetSize:1,sachetCoversL:19,unit:'pack',format:'liquid',
     abvMax:12,attenuation:75,
@@ -1190,7 +1220,7 @@ var YEAST_STRAINS=[
     euAvailable:true,widelyAvailable:false,priceCategory:'premium'
   },
   {
-    id:'wlp775',name:'White Labs WLP775 — English Cider',
+    id:'wlp775',name:'White Labs WLP775 — English Cider',drySubstitute:'Lallemand Nottingham for a similarly English-ale-derived character, or EC-1118 for a cleaner, drier result',beverageTypes:['mead','cider'],
     manufacturer:'White Labs',strain:'Saccharomyces cerevisiae',
     sachetSize:1,sachetCoversL:19,unit:'vial',format:'liquid',
     abvMax:15,attenuation:90,
@@ -1201,6 +1231,7 @@ var YEAST_STRAINS=[
     expectedAromas:['Apple','Crisp','Fresh fruit'],
     expectedFlavors:['Dry','Crisp','Retained apple character'],
     recommendedFor:['Cyser','Apple Melomel','Dry fruit mead'],
+    recommendedForCider:['English Cider','Common Cider','French Cider (natural MLF character)'],
     notRecommendedFor:['Sweet traditionals (ferments dry)'],
     description:'White Labs\' English cider strain — a natural choice for cysers (apple-and-honey meads). Selected to ferment apple sugars dry (80–100% attenuation) while keeping the apple fruit character, a balance harder to get from a neutral wine yeast.',
     whyChoose:'For cysers where you want a dry finish but the apple to survive.',
@@ -1229,6 +1260,69 @@ var YEAST_STRAINS=[
     bestPractices:['Pitch warm (30–35°C) — it loves heat and stalls if too cold','Excellent for quick bochet/braggot turnarounds'],
     commonMistakes:['Fermenting it cold like a wine yeast','Assuming high temp means fusels — kveik stays clean hot'],
     historicalNotes:'Voss is one of the best-known kveik landraces, isolated and commercialised by Lallemand from Norwegian farmhouse cultures.',
+    euAvailable:true,widelyAvailable:true,priceCategory:'standard'
+  },
+  {
+    id:'nottingham',name:'Lallemand Nottingham — English Ale',beverageTypes:['cider'],
+    manufacturer:'Lallemand',strain:'Saccharomyces cerevisiae',
+    sachetSize:11,sachetCoversL:23,unit:'g',format:'dry',
+    abvMax:14,attenuation:82,
+    optimalTempLow:14,optimalTempHigh:20,
+    tempToleranceLow:10,tempToleranceHigh:22,
+    speed:'medium-fast',flocculation:'high',nitrogenNeed:'low',fructophilic:false,flavorImpact:'subtle',
+    profile:'Neutral English ale yeast — lets apple character lead, cold-tolerant, clean and smooth finish.',
+    expectedAromas:['Neutral','Faint fruity undertone'],
+    expectedFlavors:['Clean','Smooth','Apple-forward (gets out of the way)'],
+    recommendedFor:['Common Cider','English Cider','Any style where apple character should lead'],
+    notRecommendedFor:['Styles wanting strong yeast-driven esters (use 71B instead)'],
+    description:'One of the most widely used cider yeasts precisely because it\'s neutral — it ferments cleanly and gets out of the way, letting the apple (or apple blend) speak for itself. Genuinely cold-tolerant down to about 10°C, which suits unheated cellar/garage fermentation through a cool autumn.',
+    whyChoose:'Your default cider yeast when you want the fruit, not the yeast, to define the result.',
+    whyAvoid:'If you specifically want pronounced fruity esters — 71B or a wine yeast will give you more character.',
+    bestPractices:['Ferment on the cooler end of its range (14-18°C) for the cleanest result','High flocculation means it drops bright with time — patience over fining'],
+    commonMistakes:['Pitching warm and expecting the same clean profile — heat brings out more of its (usually hidden) yeast character'],
+    historicalNotes:'Originally an English brewer\'s ale strain; adopted widely by cidermakers for the same reason brewers like it — reliable, clean, flocculent.',
+    euAvailable:true,widelyAvailable:true,priceCategory:'standard'
+  },
+  {
+    id:'wyeast4766',name:'Wyeast 4766 — Cider',drySubstitute:'Lallemand Nottingham or Mangrove Jack\'s M02 — both dry, both purpose-suited to cider',beverageTypes:['cider'],
+    manufacturer:'Wyeast',strain:'Saccharomyces cerevisiae',
+    sachetSize:1,sachetCoversL:19,unit:'vial',format:'liquid',
+    abvMax:12,attenuation:85,
+    optimalTempLow:16,optimalTempHigh:24,
+    tempToleranceLow:16,tempToleranceHigh:24,
+    speed:'medium',flocculation:'medium',nitrogenNeed:'low',fructophilic:false,flavorImpact:'subtle',
+    profile:'Purpose-built liquid cider strain — balanced, moderate attenuation, keeps some roundness rather than bone-dry.',
+    expectedAromas:['Apple-forward','Mild fruity esters'],
+    expectedFlavors:['Balanced','Not aggressively dry','Retains some body'],
+    recommendedFor:['Common Cider','French Cider (rounder, less bone-dry finish)'],
+    notRecommendedFor:['High-gravity styles above ~12% ABV (use EC-1118 instead)'],
+    description:'A liquid strain marketed specifically for cider, with a narrower, more moderate temperature range than the wine yeasts also used for cider. Its moderate (not maximal) attenuation leaves a little more roundness/body than EC-1118 or Nottingham, suiting rounder, less austere styles.',
+    whyChoose:'When you want a purpose-built cider strain rather than repurposing a wine or ale yeast, and don\'t need very high ABV.',
+    whyAvoid:'High-gravity ice cider or New England-style — its 12% tolerance is a real ceiling.',
+    bestPractices:['Keep within its 16-24°C range — it wasn\'t bred for temperature extremes like kveik or EC-1118\'s wide tolerance'],
+    commonMistakes:['Pitching into a very high-OG must expecting it to power through — check the ABV ceiling first'],
+    historicalNotes:'One of the earliest yeasts marketed specifically "for cider" rather than adapted from wine or ale use.',
+    euAvailable:false,widelyAvailable:true,priceCategory:'premium'
+  },
+  {
+    id:'mangrovejacks-m02',name:'Mangrove Jack\'s M02 — Cider',beverageTypes:['cider'],
+    manufacturer:'Mangrove Jack\'s',strain:'Saccharomyces cerevisiae',
+    sachetSize:9,sachetCoversL:23,unit:'g',format:'dry',
+    abvMax:12,attenuation:88,
+    optimalTempLow:18,optimalTempHigh:24,
+    tempToleranceLow:16,tempToleranceHigh:28,
+    speed:'medium',flocculation:'very-high',nitrogenNeed:'low',fructophilic:false,flavorImpact:'subtle',
+    profile:'Craft Series dry cider yeast, ships with nutrient already blended in — highly flocculant, drops bright on its own.',
+    expectedAromas:['Clean apple','Minimal yeast character'],
+    expectedFlavors:['Clean','Crisp','Clears naturally'],
+    recommendedFor:['Common Cider','Beginner-friendly ciders (built-in nutrient reduces one variable)'],
+    notRecommendedFor:['High-gravity styles above ~12% ABV'],
+    description:'A dry cider yeast sold with its nutrient requirement already blended into the sachet — a genuinely beginner-friendly option since it removes one of the decisions (how much nutrient, when) that trips up first-time cidermakers. Its very high flocculation means it drops out on its own once fermentation finishes, often clearing without any fining.',
+    whyChoose:'First cider batch, or any time you want one less thing to plan — nutrient is already handled.',
+    whyAvoid:'If you\'re dosing nutrient precisely yourself (TOSNA-style staggered additions) — the built-in nutrient makes a separate schedule redundant.',
+    bestPractices:['No separate nutrient addition needed — that\'s the point of this product','Rack promptly once clear; very high flocculation means it compacts hard on the bottom'],
+    commonMistakes:['Adding a full separate nutrient schedule on top of the built-in dose — risks over-nutrification'],
+    historicalNotes:'Part of Mangrove Jack\'s Craft Series, mirroring their M05 mead yeast\'s "batteries included" approach to nutrient.',
     euAvailable:true,widelyAvailable:true,priceCategory:'standard'
   }
 ];

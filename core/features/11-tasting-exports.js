@@ -162,9 +162,11 @@ function getTastingWheelRadarHTML(values){
 
 // ==================== CALENDAR EXPORT (.ics) ====================
 function exportCalendarICS(){
-  var active=APP.batches.filter(function(b){var s=getBatchStatus(b);return s!=='complete'&&s!=='bottled'&&s!=='failed';});
-  if(!active.length){toast('⚠ No active batches with steps to export');return;}
-  var ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//MeadOS//MeadOS//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:MeadOS Brewing Schedule','X-WR-TIMEZONE:Europe/Brussels'];
+  var nl=(typeof appLang==='function'&&appLang()==='nl');
+  var isCider=(typeof activeBevMode==='function')&&activeBevMode()==='cider';
+  var active=(typeof visibleBatches==='function'?visibleBatches():APP.batches).filter(function(b){var s=getBatchStatus(b);return s!=='complete'&&s!=='bottled'&&s!=='failed';});
+  if(!active.length){toast(nl?'⚠ Geen actieve partijen met stappen om te exporteren':'⚠ No active batches with steps to export');return;}
+  var ics=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//'+(isCider?'CiderOS//CiderOS':'MeadOS//MeadOS')+'//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:'+(isCider?'CiderOS Cidermaking Schedule':'MeadOS Brewing Schedule'),'X-WR-TIMEZONE:Europe/Brussels'];
   function pad(n){return String(n).padStart(2,'0');}
   function fmtICSDate(d){return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate());}
   function fmtICSDT(d){return d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())+'T'+pad(d.getUTCHours())+pad(d.getUTCMinutes())+'00Z';}
@@ -181,15 +183,16 @@ function exportCalendarICS(){
       var taskDate=new Date(startDate.getTime()+s.day*86400000);
       if(taskDate<now&&Math.abs(taskDate-now)>2*86400000)return; // skip past tasks >2 days old
       var uid='meados-'+b.id+'-step-'+s.day+'@meados';
+      var bCider=(b.beverageType||'mead')==='cider';
       ics.push('BEGIN:VEVENT');
       ics.push('UID:'+uid);
       ics.push('DTSTAMP:'+dtstamp);
       ics.push('DTSTART;VALUE=DATE:'+fmtICSDate(taskDate));
       var endDate=new Date(taskDate.getTime()+86400000);
       ics.push('DTEND;VALUE=DATE:'+fmtICSDate(endDate));
-      ics.push('SUMMARY:'+escICS('⚗ '+b.name+' — '+s.title));
+      ics.push('SUMMARY:'+escICS((bCider?'🍎 ':'⚗ ')+b.name+' — '+s.title));
       ics.push('DESCRIPTION:'+escICS(annotateNutrientDesc(s.desc)+'\n\nBatch: '+b.name+' (Day '+s.day+' of '+recipe.fermentDays+')'));
-      ics.push('CATEGORIES:Mead Brewing,MeadOS');
+      ics.push('CATEGORIES:'+(bCider?'Cider Brewing,CiderOS':'Mead Brewing,MeadOS'));
       ics.push('END:VEVENT');
     });
   });
@@ -197,9 +200,9 @@ function exportCalendarICS(){
   var blob=new Blob([ics.join('\r\n')],{type:'text/calendar'});
   var url=URL.createObjectURL(blob);
   var a=document.createElement('a');
-  a.href=url;a.download='meados-schedule-'+today()+'.ics';a.click();
+  a.href=url;a.download=(isCider?'cideros-schedule-':'meados-schedule-')+today()+'.ics';a.click();
   URL.revokeObjectURL(url);
-  toast('📅 Calendar exported — open in your calendar app');
+  toast(nl?'📅 Agenda geëxporteerd — open in je agenda-app':'📅 Calendar exported — open in your calendar app');
 }
 
 // ==================== BATCH CERTIFICATE (printable) ====================

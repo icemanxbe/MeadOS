@@ -11,7 +11,8 @@ function renderYearReview(){
   var year=window._yrYear||currentYear;
   // Find the earliest year that has any batch activity so we know the lower bound
   var minYear=currentYear;
-  APP.batches.forEach(function(b){
+  var yrBatches=typeof visibleBatches==='function'?visibleBatches():APP.batches;
+  yrBatches.forEach(function(b){
     if(b.startDate){var y=new Date(b.startDate).getFullYear();if(y<minYear)minYear=y;}
   });
   Object.keys(APP.bottling||{}).forEach(function(bid){
@@ -21,12 +22,12 @@ function renderYearReview(){
   var yearStart=new Date(year,0,1).getTime();
   var yearEnd=new Date(year+1,0,1).getTime();
   // Filter batches started in this year
-  var thisYearBatches=APP.batches.filter(function(b){
+  var thisYearBatches=yrBatches.filter(function(b){
     var t=new Date(b.startDate).getTime();
     return t>=yearStart&&t<yearEnd;
   });
   // Filter bottled-this-year
-  var bottledThisYear=APP.batches.filter(function(b){
+  var bottledThisYear=yrBatches.filter(function(b){
     var bot=APP.bottling[b.id];
     if(!bot)return false;
     var t=new Date(bot.date).getTime();
@@ -54,7 +55,7 @@ function renderYearReview(){
   Object.keys(APP.tastings||{}).forEach(function(bid){
     (APP.tastings[bid]||[]).forEach(function(t){
       if(t.date&&new Date(t.date).getTime()>=yearStart&&new Date(t.date).getTime()<yearEnd&&t.rating>0){
-        var b=APP.batches.find(function(x){return x.id===bid;});
+        var b=yrBatches.find(function(x){return x.id===bid;});
         if(b)allTastings.push({batch:b,tasting:t});
       }
     });
@@ -131,8 +132,9 @@ function printYearReview(year){
   year=year||new Date().getFullYear();
   var yearStart=new Date(year,0,1).getTime();
   var yearEnd=new Date(year+1,0,1).getTime();
-  var thisYearBatches=APP.batches.filter(function(b){var t=new Date(b.startDate).getTime();return t>=yearStart&&t<yearEnd;});
-  var bottledThisYear=APP.batches.filter(function(b){var bot=APP.bottling[b.id];if(!bot)return false;var t=new Date(bot.date).getTime();return t>=yearStart&&t<yearEnd;});
+  var pyBatches=typeof visibleBatches==='function'?visibleBatches():APP.batches;
+  var thisYearBatches=pyBatches.filter(function(b){var t=new Date(b.startDate).getTime();return t>=yearStart&&t<yearEnd;});
+  var bottledThisYear=pyBatches.filter(function(b){var bot=APP.bottling[b.id];if(!bot)return false;var t=new Date(bot.date).getTime();return t>=yearStart&&t<yearEnd;});
   var bottlesProduced=bottledThisYear.reduce(function(s,b){return s+bottlesOriginal(APP.bottling[b.id]);},0);
   var volProduced=bottledThisYear.reduce(function(s,b){return s+totalVolumeMLOriginal(APP.bottling[b.id]);},0)/1000;
   var abvs=bottledThisYear.map(function(b){return APP.bottling[b.id].abv;}).filter(function(x){return x;});
@@ -145,7 +147,7 @@ function printYearReview(year){
   Object.keys(APP.tastings||{}).forEach(function(bid){
     (APP.tastings[bid]||[]).forEach(function(t){
       if(t.date&&new Date(t.date).getTime()>=yearStart&&new Date(t.date).getTime()<yearEnd&&t.rating>0){
-        var b=APP.batches.find(function(x){return x.id===bid;});
+        var b=pyBatches.find(function(x){return x.id===bid;});
         if(b)allTastings.push({batch:b,tasting:t});
       }
     });

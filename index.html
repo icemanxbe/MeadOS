@@ -24,7 +24,11 @@
 <div id="topbar">
 <div class="logo">
 <div class="logo-mark" id="topbar-crest"></div>
-<span class="logo-text">MEADŌS<span class="sub">Mead Brewing Companion</span></span>
+<span class="logo-text">MEADOS<span class="sub">Mead Brewing Companion</span></span>
+</div>
+<div class="mode-toggle" id="mode-toggle" style="display:none" title="Switch between Mead and Cider — both are always saved, this just changes what's shown">
+<button type="button" class="mode-toggle-btn active" id="mode-toggle-mead" onclick="setActiveMode('mead')">🍯 Mead</button>
+<button type="button" class="mode-toggle-btn" id="mode-toggle-cider" onclick="setActiveMode('cider')">🍎 Cider</button>
 </div>
 <div class="topbar-right">
 <button class="btn-icon" onclick="openBottleScanner()" title="Scan a bottle/storage label QR code" id="scan-btn">📷</button>
@@ -49,12 +53,14 @@
 <div class="nav-item" onclick="showView('coach')" id="nav-coach"><span class="ni">✦</span><span>Daily Coach</span></div>
 <div class="nav-item" onclick="showView('recipes')" id="nav-recipes"><span class="ni">📜</span><span>Recipes</span></div>
 <div class="nav-item" onclick="showView('honey')" id="nav-honey"><span class="ni">🍯</span><span>Honey Library</span></div>
+<div class="nav-item" onclick="showView('apple-library')" id="nav-apple-library" style="display:none"><span class="ni">🍎</span><span>Apple &amp; Pear Library</span></div>
 <div class="nav-item" onclick="showView('yeast-library')" id="nav-yeast-library"><span class="ni">🧫</span><span>Yeast Library</span></div>
 <div class="nav-item" onclick="showView('nutrient-library')" id="nav-nutrient-library"><span class="ni">⚗</span><span>Nutrient &amp; Protocols</span></div>
 <div class="nav-item" onclick="showView('calendar')" id="nav-calendar"><span class="ni">◈</span><span>Calendar</span></div>
 <div class="nav-item" onclick="showView('tools')" id="nav-tools"><span class="ni">⚒</span><span>Brewing Tools</span></div>
 <div class="nav-item" onclick="showView('supplies')" id="nav-supplies"><span class="ni">📦</span><span>Supplies</span></div>
 <div class="nav-item" onclick="showView('guide')" id="nav-guide"><span class="ni">❧</span><span>Mead Guide</span></div>
+<div class="nav-item" onclick="showView('cider-guide')" id="nav-cider-guide" style="display:none"><span class="ni">❧</span><span>Cider Guide</span></div>
 <div class="nav-item" onclick="showView('troubleshoot')" id="nav-troubleshoot"><span class="ni">🛠</span><span>Troubleshoot</span></div>
 <div class="sidebar-section" style="margin-top:8px" id="side-sec-active">Active Batches</div>
 <div class="sidebar-batch-list" id="sidebar-batches"></div>
@@ -69,9 +75,14 @@
      order. Data first (so the logic sees BUILTIN_RECIPES, HONEY_PROFILES, etc.),
      then the logic modules, with 14-bootstrap.js (init) last. No build step. -->
 <script src="/core/data/data-libraries.js"></script>
+<script src="/core/data/data-cider.js"></script>
+<script src="/core/data/data-cider-recipes.js"></script>
 <script src="/core/data/data-recipes.js"></script>
 <script src="/core/data/data-recipes-nl.js"></script>
 <script src="/core/data/data-libraries-nl.js"></script>
+<script src="/core/data/data-cider-nl.js"></script>
+<script src="/core/data/data-cider-detail-nl.js"></script>
+<script src="/core/data/data-cider-guide-nl.js"></script>
 <script src="/core/data/data-recipe-steps-nl.js"></script>
 <script src="/core/data/data-recipe-ingredients-nl.js"></script>
 <script src="/core/data/data-yeast-nl.js"></script>

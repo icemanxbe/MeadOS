@@ -10,6 +10,10 @@
 // has steps to remediate or prevent. The UI tallies cause-matches across
 // selected flavors and surfaces the top hits.
 
+// ciderCauses (where present) is used instead of causes when activeBevMode()
+// is 'cider' — written as genuinely distinct cider guidance, not a mead word-
+// swap. onlyFor restricts a flavor chip to a single beverage entirely (used
+// for "Mousy", which has no mead-side equivalent worth surfacing).
 var OFF_FLAVOR_DB={
   'Rotten egg / sulphur':{
     icon:'🥚',
@@ -25,6 +29,11 @@ var OFF_FLAVOR_DB={
       cause:'Wild yeast or bacterial contamination (4-VG / phenolic)',
       severity:'high',
       fix:['Likely Brettanomyces or wild bacteria','Cannot be removed — accept or discard','Re-evaluate sanitation: sanitizer contact time and coverage','Replace porous gear (siphon tubing, plastic wand) — biofilm sticks']
+    }],
+    ciderCauses:[{
+      cause:'Wild yeast or bacterial contamination (4-VG / phenolic)',
+      severity:'medium',
+      fix:['A degree of this is the actual point of a French Cider or Sidra — traditional farmhouse funk from Brettanomyces or wild bacteria is expected there, not a flaw','In any other style, it\'s unwanted and can\'t be removed — accept or discard','Re-evaluate sanitation: sanitizer contact time and coverage','Replace porous gear (siphon tubing, plastic wand) — biofilm sticks']
     }]
   },
   'Vinegar / sharp acidic':{
@@ -33,6 +42,11 @@ var OFF_FLAVOR_DB={
       cause:'Acetobacter contamination (oxygen exposure)',
       severity:'high',
       fix:['Limit oxygen contact: top up vessel, use airlock','Discard if strongly acetic — unrecoverable','Sanitize all vessels and gear with your no-rinse sanitizer','For prevention: fill bulk-aging vessels to >95%']
+    }],
+    ciderCauses:[{
+      cause:'Acetobacter contamination (oxygen exposure) — cider\'s single biggest real-world spoilage risk',
+      severity:'high',
+      fix:['Limit oxygen contact: top up vessel, use airlock','Discard if strongly acetic — unrecoverable','Sanitize all vessels and gear with your no-rinse sanitizer','Wild-fermented, low-sulfite styles (Sidra, French Cider) carry the highest risk — a light sulfite dose (0.2-0.3g/L) cuts risk without losing much wild character']
     }]
   },
   'Cardboard / wet paper / sherry':{
@@ -41,6 +55,11 @@ var OFF_FLAVOR_DB={
       cause:'Oxidation',
       severity:'medium',
       fix:['Add 0.5g/L potassium metabisulfite to bind oxygen','Rack with minimal splashing under the surface','For aging: keep headspace <3% in bulk vessels','Some "sherry" notes are stylistic in sack meads — context matters']
+    }],
+    ciderCauses:[{
+      cause:'Oxidation',
+      severity:'medium',
+      fix:['Add 0.5g/L potassium metabisulfite to bind oxygen','Rack with minimal splashing under the surface','For aging: keep headspace <3% in bulk vessels','A faint sherry-like note can be part of the character in a long-aged Applewine or English Cider — context matters before "fixing" it']
     }]
   },
   'Hot / solvent / nail polish':{
@@ -49,6 +68,11 @@ var OFF_FLAVOR_DB={
       cause:'Fusel alcohols from high-temp fermentation',
       severity:'medium',
       fix:['Age 3-6 more months — fusels mellow significantly with time','Future batches: ferment 16-22°C, never above 26°C','Pitch enough yeast and stagger nutrients to reduce stress']
+    }],
+    ciderCauses:[{
+      cause:'Fusel alcohols from high-temp fermentation',
+      severity:'medium',
+      fix:['Age 3-6 more months — fusels mellow significantly with time','Future batches: ferment 18-20°C with Nottingham/M02, never above 28°C even with heat-tolerant EC-1118','Pitch enough yeast and stagger Fermaid-O to reduce stress']
     }]
   },
   'Soapy / floral perfumed':{
@@ -61,6 +85,11 @@ var OFF_FLAVOR_DB={
       cause:'Lavender or floral additions over-extracted',
       severity:'low',
       fix:['Reduce lavender to ≤8g per 5L next time, or use shorter contact time','Soap quality fades with 6-12 months of aging','Some character is style-appropriate for floral meads']
+    }],
+    ciderCauses:[{
+      cause:'Yeast autolysis (dead yeast cells released oils)',
+      severity:'medium',
+      fix:['Rack off the lees promptly after primary','Don\'t leave on gross lees longer than 3-4 weeks at warm temps','Future: cold-crash before racking to firm up sediment']
     }]
   },
   'Buttery / butterscotch':{
@@ -69,6 +98,11 @@ var OFF_FLAVOR_DB={
       cause:'Diacetyl from incomplete fermentation',
       severity:'medium',
       fix:['Warm to 22-24°C and hold 7-14 days — yeast will reabsorb diacetyl','Don\'t rush bottling — let yeast clean up','Future: ensure adequate yeast pitch and nutrient']
+    }],
+    ciderCauses:[{
+      cause:'Malolactic fermentation (English Cider) or incomplete fermentation (everywhere else)',
+      severity:'low',
+      fix:['If this is an English Cider you deliberately let undergo MLF, this IS the intended phenolic/buttery character — taste before treating it as a flaw','If unintended: warm to 22-24°C and hold 7-14 days so the yeast reabsorbs the diacetyl','Don\'t rush bottling — let the ferment clean up first','Future: ensure adequate yeast pitch and Fermaid-O']
     }]
   },
   'Yeasty / bready':{
@@ -77,6 +111,11 @@ var OFF_FLAVOR_DB={
       cause:'Suspended yeast in young mead',
       severity:'low',
       fix:['Age longer — usually clears with 2-3 more months','Cold-crash 2 weeks at 2-4°C drops most yeast','Bentonite or gelatin fining for stubborn cases']
+    }],
+    ciderCauses:[{
+      cause:'Suspended yeast in young cider',
+      severity:'low',
+      fix:['Age longer — usually clears with 2-3 more months','Cold-crash 2 weeks at 2-4°C drops most yeast','Pectic enzyme plus a fining agent for stubborn cases — cider haze is often pectin-and-yeast combined']
     }]
   },
   'Sourness / acetone':{
@@ -85,6 +124,11 @@ var OFF_FLAVOR_DB={
       cause:'Lactobacillus or wild bacterial fermentation',
       severity:'high',
       fix:['Some sourness is style-appropriate (e.g. Pyment)','True acetone smell = unrecoverable, discard','Improve sanitation for future batches','Check tap water quality / source — chloramine inhibits but doesn\'t kill all bacteria']
+    }],
+    ciderCauses:[{
+      cause:'Lactobacillus or wild bacterial fermentation',
+      severity:'high',
+      fix:['Some sourness is entirely style-appropriate for Sidra or French Cider — that\'s the wild/rustic character those styles are built around','True acetone smell = unrecoverable, discard','Improve sanitation for future batches unless you\'re deliberately going wild','Check water quality / source — chloramine inhibits but doesn\'t kill all bacteria']
     }]
   },
   'Astringent / mouth-drying':{
@@ -93,6 +137,11 @@ var OFF_FLAVOR_DB={
       cause:'Over-extraction of tannins from fruit, herbs, or oak',
       severity:'low',
       fix:['Age 6+ months — astringency mellows','Future: shorter contact times, gentler fruit handling (no pulverizing)','For oak: reduce cube/chip contact by half']
+    }],
+    ciderCauses:[{
+      cause:'A genuinely high-tannin apple blend (Kingston Black, Foxwhelp) or over-extracted oak',
+      severity:'low',
+      fix:['Age 6+ months — English Cider and Heirloom Cider especially need this time for tannin to round out, not fade','If it\'s oak (New England Cider\'s barrel-aged version): reduce cube contact by half next time, or pull cubes earlier','Some astringency is simply the point of a bittersharp-forward single-varietal — taste before "fixing" it']
     }]
   },
   'Sweet / cloying when expected dry':{
@@ -101,6 +150,11 @@ var OFF_FLAVOR_DB={
       cause:'Stuck fermentation',
       severity:'medium',
       fix:['Check current SG against target','Add fresh nutrient and warm to 22-24°C','If still stuck, repitch with EC-1118 (alcohol-tolerant rescue strain)','Sometimes residual sweetness is fine — taste before "fixing"']
+    }],
+    ciderCauses:[{
+      cause:'Stuck fermentation',
+      severity:'medium',
+      fix:['Check current SG against target','Add fresh Fermaid-O and warm to 22-24°C','If still stuck, repitch with EC-1118 (highest-tolerance cider yeast)','French Cider, Ice Cider and Fire Cider are all DELIBERATELY sweet by design — confirm this is actually unintended before "fixing" it']
     }]
   },
   'Cooked / caramelized when not intended':{
@@ -109,6 +163,20 @@ var OFF_FLAVOR_DB={
       cause:'Honey overheated during preparation',
       severity:'low',
       fix:['Future: never heat honey above 40°C','Maillard browning can be desirable in bochets — undesirable otherwise','Age to integrate flavor; some character will remain']
+    }],
+    ciderCauses:[{
+      cause:'Over-caramelized maple syrup (Fire Cider) or long-term oxidative aging',
+      severity:'low',
+      fix:['If this was a Fire Cider brew day: the caramelization step goes from perfect to burnt in under a minute — pull the syrup the moment it smells deeply toasted rather than sharp/burnt','Cooked-apple/caramel notes can also emerge from long oxidative aging in an Applewine or English Cider — some is stylistic, too much means the vessel wasn\'t topped up well enough','Age to integrate the flavor either way; some character will remain']
+    }]
+  },
+  'Mousy (aftertaste only, not on the nose)':{
+    icon:'🐭',
+    onlyFor:'cider',
+    causes:[{
+      cause:'Certain lactic acid bacteria producing pyridines, usually in low-sulfite, higher-pH cider',
+      severity:'high',
+      fix:['Only detectable retronasally (after swallowing) — if you\'re unsure, swallow a sip and wait a few seconds','Add metabisulfite promptly to suppress further bacterial activity — this stops it worsening but won\'t remove taint already present','Most common in wild-fermented, unsulfited styles (Sidra, French Cider) — a light initial sulfite dose reduces the risk without losing much character','If strong, it\'s effectively unrecoverable for drinking neat — consider it for cooking use instead']
     }]
   }
 };
@@ -127,21 +195,26 @@ function toggleOffFlavorSelection(flavor){
 
 function renderOffFlavorWizard(){
   closeModal();
+  var isCider=(typeof activeBevMode==='function')&&activeBevMode()==='cider';
   var sel=window._offFlavorSelections||{};
   var selectedFlavors=Object.keys(sel);
-  // Build chips
-  var chips=Object.keys(OFF_FLAVOR_DB).map(function(name){
+  // Build chips — "Mousy" only appears for cider (no mead-side equivalent worth surfacing)
+  var chips=Object.keys(OFF_FLAVOR_DB).filter(function(name){
+    var entry=OFF_FLAVOR_DB[name];
+    return!entry.onlyFor||entry.onlyFor===(isCider?'cider':'mead');
+  }).map(function(name){
     var isSel=!!sel[name];
     var entry=OFF_FLAVOR_DB[name];
     return'<span class="filter-chip '+(isSel?'active':'')+'" onclick="toggleOffFlavorSelection(\''+name.replace(/'/g,"\\'")+'\')" style="cursor:pointer;'+(isSel?'background:rgba(232,196,106,0.2);border-color:var(--gold);color:var(--gold2)':'')+'">'+entry.icon+' '+escHtml(name)+'</span>';
   }).join('');
 
-  // Tally causes across selected flavors
+  // Tally causes across selected flavors — cider mode prefers ciderCauses when present
   var causeMap={};
   selectedFlavors.forEach(function(f){
     var entry=OFF_FLAVOR_DB[f];
     if(!entry)return;
-    entry.causes.forEach(function(c){
+    var causesToUse=(isCider&&entry.ciderCauses)?entry.ciderCauses:entry.causes;
+    causesToUse.forEach(function(c){
       if(!causeMap[c.cause])causeMap[c.cause]={cause:c.cause,severity:c.severity,fix:c.fix,flavors:[],hits:0};
       causeMap[c.cause].flavors.push(f);
       causeMap[c.cause].hits++;
@@ -193,14 +266,21 @@ function openTroubleshootTopic(id){
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }
-// Swap a troubleshooting topic's title + steps for the Dutch version (keeping
-// id/icon/category so grouping and the detail modal still work) when NL.
+// Pick mead/cider content (based on activeBevMode()) then swap in the Dutch
+// version (keeping id/icon/category so grouping and the detail modal still
+// work) when NL. Falls back to the mead variant if a cider version is
+// missing for a given topic, so nothing renders blank.
 function tsLocalizeTopic(t){
-  if(!t||typeof appLang!=='function'||appLang()!=='nl')return t;
+  if(!t)return t;
+  var isCider=(typeof activeBevMode==='function')&&activeBevMode()==='cider';
+  var base=(isCider&&t.ciderTitle&&t.ciderSteps)?{id:t.id,icon:t.icon,category:t.category,title:t.ciderTitle,steps:t.ciderSteps}:t;
+  if(typeof appLang!=='function'||appLang()!=='nl')return base;
   var nl=(typeof TROUBLESHOOT_TOPICS_NL!=='undefined'&&TROUBLESHOOT_TOPICS_NL[t.id])
         ||(typeof APP_TROUBLESHOOT_TOPICS_NL!=='undefined'&&APP_TROUBLESHOOT_TOPICS_NL[t.id]);
-  if(!nl)return t;
-  return {id:t.id,icon:t.icon,category:t.category,title:nl.title||t.title,steps:nl.steps||t.steps};
+  if(!nl)return base;
+  var nlTitle=isCider?(nl.ciderTitle||base.title):(nl.title||base.title);
+  var nlSteps=isCider?(nl.ciderSteps||base.steps):(nl.steps||base.steps);
+  return {id:t.id,icon:t.icon,category:t.category,title:nlTitle,steps:nlSteps};
 }
 function renderTroubleshoot(){
   // Group by category — each category becomes a large card, with its topics as

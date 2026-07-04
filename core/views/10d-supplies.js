@@ -18,6 +18,7 @@ var SUPPLY_TYPES=[
   {key:'cork',label:'Corks',icon:'🪵',unit:'pcs',defaultName:'Natural corks'},
   {key:'crowncap',label:'Crown Caps',icon:'⭕',unit:'pcs',defaultName:'Crown caps (26mm)'},
   {key:'honey',label:'Honey',icon:'🍯',unit:'kg',defaultName:'Wildflower Honey'},
+  {key:'juice',label:'Apple Juice / Must',icon:'🧃',unit:'L',defaultName:'Fresh-Pressed Apple Juice'},
   {key:'other',label:'Other',icon:'📦',unit:'',defaultName:''}
 ];
 

@@ -3,7 +3,7 @@
 // Recipe data (recipes, honey/yeast/nutrient pairings, combos) — split out of app.js for easier editing. Loaded as a plain script
 // BEFORE app.js (shared global scope), so app.js sees these as globals.
 
-function BUILTIN_RECIPES(){return[
+function BUILTIN_RECIPES(){var _r=[
 {
 id:'r1',name:'Traditional Mead',brandName:'Traditional',style:'Show Mead',difficulty:'Beginner',brandColor:'#c9a84c',
 volume:5.0,ogTarget:1.098,fgTarget:1.010,abvTarget:11.5,fermentDays:42,ageDays:90,
@@ -1121,7 +1121,11 @@ steps:[
 ],
 notes:'GINGER TIMING: primary ginger integrates into a smooth warmth; a small secondary ginger addition adds a fresher, sharper top-note — do both for depth + brightness. Sparkling rule: do NOT stabilize; ferment dry, prime, bottle-condition in pressure-rated bottles (Mead Guide → Sparkling & Carbonated Mead).'
 }
-];}
+];
+// All 38 built-in recipes here predate cider mode, so every one of them is
+// mead by definition — stamped in one pass rather than touching all 38 literals.
+_r.forEach(function(r){if(!r.beverageType)r.beverageType='mead';});
+return _r.concat(typeof BUILTIN_CIDER_RECIPES==='function'?BUILTIN_CIDER_RECIPES():[]);}
 
 var RECIPE_HONEY_ALTERNATIVES={
   r1:[ // Traditional / Show Mead — the honey IS the drink, so a clean light honey wins; bold honeys stop being a "showcase".
@@ -2689,6 +2693,179 @@ var RECIPE_YEAST_PAIRINGS={
       us05:'Bland; can\'t carry the fruit.',
       w15:'Sweet-finishing — muddies the fresh berry character.'
     }
+  },
+  // ==================== CIDER YEAST PAIRINGS ====================
+  c1:{ // Common Cider
+    recommended:['nottingham','mangrovejacks-m02','us05'],
+    acceptable:['71b','wlp775'],
+    discouraged:['k1v','w15'],
+    notes:'This style wants the apple to lead — pick a clean, neutral yeast rather than an aromatic wine strain.',
+    effects:{
+      nottingham:'The recipe\'s own choice — clean, neutral, ferments happily at ale temps, budget-friendly. Gets out of the apple\'s way.',
+      'mangrovejacks-m02':'A cider-purpose-built strain with a near-identical neutral profile to Nottingham — the two are interchangeable here.',
+      us05:'The classic craft-cidery workhorse — clean American ale yeast, cheap, reliable, and genuinely used commercially for exactly this style.',
+      '71b':'Softens the apple\'s malic acid slightly and adds a touch of fruity ester — a gentle upgrade if you want a rounder edge.',
+      wlp775:'The liquid English Cider strain — more character than Nottingham without going full wine-yeast; a small step up in complexity.',
+      k1v:'Amplifies floral/terpene notes that don\'t exist in a plain culinary-apple juice — wasted intensity here, and can taste sharp.',
+      w15:'A sweet-mead strain that stops fermenting early and unpredictably — this style\'s sweetness should come from deliberate back-sweetening, not an unreliable stall.'
+    }
+  },
+  c2:{ // Heirloom Cider
+    recommended:['71b','wlp775','nottingham'],
+    acceptable:['ec1118','mangrovejacks-m02'],
+    discouraged:['w15','k1v'],
+    notes:'Dabinett\'s tannin needs a yeast that won\'t scrub it out — 71B softens the malic acid while leaving the tannin structure intact.',
+    effects:{
+      '71b':'The recipe\'s own choice — trims sharp malic acid and lifts fruity esters, rounding heritage-apple bittersweetness into something more approachable.',
+      wlp775:'True English cider heritage strain — a slightly more traditional, less fruity alternative to 71B with similar gentleness.',
+      nottingham:'Cleaner and more neutral than 71B — a good pick if you want the raw Dabinett/Golden Russet character to speak for itself.',
+      ec1118:'Ferments fully dry and bulletproof, but strips some of the delicate Golden Russet aromatics this recipe is built to showcase.',
+      'mangrovejacks-m02':'A reliable, purpose-built cider yeast — slightly more neutral than 71B, still a safe choice.',
+      w15:'Stops sweet unpredictably — this style\'s structure comes from tannin and acid balance, not residual sugar from a stalled ferment.',
+      k1v:'Floral/terpene amplification fights rather than complements a tannin-forward heritage-apple profile.'
+    }
+  },
+  c3:{ // English Cider
+    recommended:['ec1118','wlp775','nottingham'],
+    acceptable:['71b'],
+    discouraged:['w15','k1v'],
+    notes:'Kingston Black can stand alone — the yeast\'s job is to get out of the way (EC-1118) or lean into English tradition (WLP775/Nottingham).',
+    effects:{
+      ec1118:'The recipe\'s default — bone-dry, bulletproof, lets Kingston Black\'s rare tannin-and-acid balance speak clearly.',
+      wlp775:'The traditional choice for this exact style — liquid English cider culture, supports the classic phenolic/buttery result if you pursue malolactic fermentation.',
+      nottingham:'A softer, less aggressive ferment than EC-1118 — the recipe\'s own suggested alternative for a gentler result.',
+      '71b':'Softens the acid more than this style typically wants — Kingston Black\'s acid is part of the point, so use with a lighter hand.',
+      w15:'Unpredictable early stop fights the deliberate MLF-or-stabilise decision this recipe is built around.',
+      k1v:'Floral intensity clashes with a tannin-and-acid showcase — better suited to floral mead honeys than cider apples.'
+    }
+  },
+  c4:{ // French Cider — traditionally wild-fermented; this card covers the reliable fallback
+    recommended:['71b'],
+    acceptable:['nottingham','wlp775'],
+    discouraged:['ec1118','k1v'],
+    notes:'Traditional French cider uses no yeast at all — this card exists for the reliable fallback if you don\'t want to rely on wild fermentation (see the recipe\'s own notes).',
+    effects:{
+      '71b':'The recipe\'s own suggested backup — pitched at a light rate and stopped early with sulfite, it gets you a similar low-ABV, softened-acid result without wild-yeast unpredictability.',
+      nottingham:'A gentler, cooler-fermenting option if you want more control than wild yeast but a cleaner result than 71B\'s esters.',
+      wlp775:'Adds a trace of English-cider character rather than French farmhouse funk — a reasonable substitute if wild yeast isn\'t an option.',
+      ec1118:'Far too vigorous and dry for this style — would blow straight through the intended low-ABV, high-residual-sugar stopping point.',
+      k1v:'Aggressive and floral — fights the earthy, farmhouse character this style is built around.'
+    }
+  },
+  c5:{ // Spanish Cider (Sidra) — traditionally wild-fermented
+    recommended:['71b'],
+    acceptable:['voss-kveik','nottingham'],
+    discouraged:['ec1118','w15'],
+    notes:'Sidra is traditionally wild-fermented — 71B is the recipe\'s own suggested reliable substitute when you want a farmhouse result without the unpredictability.',
+    effects:{
+      '71b':'The recipe\'s own pick — light dose gives a rustic, dry result without gambling on an unreliable wild fermentation.',
+      'voss-kveik':'A hardy, fast-fermenting strain that tolerates warm, uncontrolled conditions well — a modern shortcut to a farmhouse-style profile with more reliability than true wild yeast.',
+      nottingham:'Cleaner than 71B if you\'d rather dial back the rustic funk while keeping some reliability.',
+      ec1118:'Too clean and neutral — erases the wild/acetic character that defines this style.',
+      w15:'Fights the style\'s fully-dry finish — Sidra should ferment out completely, not stall sweet.'
+    }
+  },
+  c6:{ // New England Cider
+    recommended:['ec1118'],
+    acceptable:['71b','k1v'],
+    discouraged:['us05','w15'],
+    notes:'The higher OG from added sugar and raisins needs a yeast with real alcohol tolerance — EC-1118 is the safe, proven choice.',
+    effects:{
+      ec1118:'The recipe\'s own choice — handles the ~10% ABV target with no risk of stalling, and its neutrality lets the raisin character show through cleanly.',
+      '71b':'Softens the acid and adds fruity esters that complement the raisin sweetness, though it has less headroom above 10% ABV than EC-1118.',
+      k1v:'Vigorous and reliable at this gravity, with a slight floral lift that pairs oddly but not badly with raisin character.',
+      us05:'Its ~11% ABV ceiling is uncomfortably close to this recipe\'s target — too little safety margin for a style this strong.',
+      w15:'Would stall well short of the OG this style needs to reach for its ABV target.'
+    }
+  },
+  c7:{ // Applewine
+    recommended:['ec1118','d47'],
+    acceptable:['k1v'],
+    discouraged:['us05','wlp775'],
+    notes:'This is meant to taste like a real wine, not a cider — a genuine wine yeast at a high attenuation rate is what gets you there.',
+    effects:{
+      ec1118:'The recipe\'s own choice — dry, clean, and reliably reaches this style\'s higher ABV target.',
+      d47:'Adds real body and a faint stone-fruit warmth that pushes this further toward "wine" than EC-1118\'s stark cleanliness — a strong alternative if you want more texture.',
+      k1v:'Vigorous and dry with a floral lift — works, though less classically "wine-like" than D47.',
+      us05:'An ale yeast has no place in a style built to taste like wine — wrong character entirely, and its ABV ceiling is too low besides.',
+      wlp775:'Its English-cider character fights the intentionally wine-like, apple-character-forward goal of this style.'
+    }
+  },
+  c8:{ // Ice Cider
+    recommended:['ec1118'],
+    acceptable:['wlp099'],
+    discouraged:['nottingham','us05'],
+    notes:'The concentrated must\'s extreme gravity needs a genuinely high-tolerance strain — this isn\'t a place to experiment.',
+    effects:{
+      ec1118:'The recipe\'s own choice — handles the very high starting gravity without stress, and you\'ll stop it early with sulfite well before it reaches its own ceiling.',
+      wlp099:'Built for exactly this kind of extreme-gravity must — more tolerance than you\'ll need here, but a safe, proven overkill option.',
+      nottingham:'Its tolerance ceiling (~14%) is too close to risky given how high this must\'s gravity runs — margin matters here.',
+      us05:'Far too low a tolerance ceiling for a concentrated must this strong — real risk of a stressed, stuck fermentation.'
+    }
+  },
+  c9:{ // Fire Cider
+    recommended:['ec1118'],
+    acceptable:['wlp099'],
+    discouraged:['nottingham','71b'],
+    notes:'Same extreme-gravity logic as Ice Cider — maple syrup pushes this must just as high, so tolerance matters more than character.',
+    effects:{
+      ec1118:'The recipe\'s own choice — reliably handles the maple-boosted gravity, and you\'ll stop it early with sulfite before it nears its ceiling.',
+      wlp099:'More headroom than this recipe strictly needs, but a safe choice if you want extra insurance against a stuck ferment.',
+      nottingham:'Not built for a must this strong — real risk of stalling under stress before reaching a usable gravity.',
+      '71b':'Its fruity-ester profile would compete with, rather than support, the caramelized maple character this style is built around.'
+    }
+  },
+  c10:{ // Fruit Cider — Raspberry
+    recommended:['71b'],
+    acceptable:['nottingham','wlp775'],
+    discouraged:['ec1118','k1v'],
+    notes:'71B is the standout fruit-cider yeast for the same reason it\'s the standout melomel yeast — it boosts esters and softens acid exactly where berries need it.',
+    effects:{
+      '71b':'The recipe\'s own choice — boosts fruity esters and softens sharp acid, the same reason it\'s the classic fruit-mead pick.',
+      nottingham:'Cleaner and more neutral — a good option if you want the raspberry to stand fully on its own without ester support.',
+      wlp775:'Adds a trace of English cider character underneath the raspberry — an interesting, less common variation.',
+      ec1118:'Strips delicate raspberry aromatics along with everything else — the wrong tool when fruit character is the point.',
+      k1v:'Its floral terpene amplification competes with rather than supports raspberry\'s own aroma.'
+    }
+  },
+  c11:{ // Spiced Cider — Cinnamon & Clove
+    recommended:['nottingham','mangrovejacks-m02'],
+    acceptable:['71b'],
+    discouraged:['k1v','wlp775'],
+    notes:'A neutral base lets the cinnamon and clove lead — this is not the place for an aromatic or characterful strain.',
+    effects:{
+      nottingham:'The recipe\'s own choice — clean and neutral, leaving the spice additions as the star.',
+      'mangrovejacks-m02':'Interchangeable with Nottingham here — same neutral, spice-forward-friendly profile.',
+      '71b':'Adds a touch of its own fruity ester — pleasant, but a slight departure from the intended pure spice-and-apple focus.',
+      k1v:'Floral terpene amplification clashes with warm spice character rather than complementing it.',
+      wlp775:'Its English cider phenolic edge can read as clashing "spicy" alongside actual added spices — better saved for an unspiced English Cider.'
+    }
+  },
+  c12:{ // Experimental Cider — Dry-Hopped
+    recommended:['nottingham','us05'],
+    acceptable:['mangrovejacks-m02'],
+    discouraged:['k1v','71b'],
+    notes:'Hop aroma needs a genuinely clean, neutral base to show through — this is exactly the kind of recipe US-05 (an ale yeast, unusually) earns a recommendation for.',
+    effects:{
+      nottingham:'The recipe\'s own choice — clean, neutral, and familiar territory for anyone who\'s dry-hopped a beer.',
+      us05:'The same clean American ale yeast behind countless craft dry-hopped ciders — a genuinely excellent, if unusual, cross-category pick.',
+      'mangrovejacks-m02':'A cider-purpose-built neutral strain — works just as well as Nottingham here.',
+      k1v:'Its own floral/terpene character competes with and muddies the hop aroma rather than showcasing it cleanly.',
+      '71b':'Its fruity esters blend confusingly with hop-derived fruitiness — better to keep the base neutral and let the hops do the work alone.'
+    }
+  },
+  c13:{ // Traditional Perry
+    recommended:['71b','ec1118'],
+    acceptable:['wlp775'],
+    discouraged:['nottingham','k1v'],
+    notes:'Perry pear juice ferments differently from apple — 71B and EC-1118 are the two proven choices, trading fruitiness for cleanliness.',
+    effects:{
+      '71b':'The recipe\'s own softer option — boosts fruity esters and eases pear\'s acid for a rounder result.',
+      ec1118:'The recipe\'s own cleaner option — neutral and bulletproof, letting the pear character stand unfiltered.',
+      wlp775:'An English-cider strain applied to pear — an interesting variation, though less proven for perry specifically than 71B/EC-1118.',
+      nottingham:'Not a traditional perry yeast — its ale-derived character is a better fit for apple cider than delicate pear.',
+      k1v:'Floral terpene amplification is a poor match for perry\'s own delicate, fruit-forward character.'
+    }
   }
 };
 
@@ -3046,6 +3223,100 @@ var RECIPE_NUTRIENT_PAIRINGS={
       'mj-mead':'Beginner-clean; 2-3 doses.',
       'fermaid-k':'Acceptable timed early; keep it modest to protect the fruit.',
       'goferm':'Day-0 rehydration primer.'
+    }
+  },
+  // ==================== CIDER NUTRIENT PAIRINGS ====================
+  // c4 (French Cider) and c5 (Sidra) intentionally have no entry — both
+  // recipes deliberately omit nutrient by design (traditional wild/low-
+  // nitrogen fermentation), so showing a "nutrient strategy" card for them
+  // would contradict the recipe's own instructions.
+  c1:{ protocol:'tosna', load:'standard', recommended:['fermaid-o','mj-mead'], acceptable:['fermaid-k','vinoferm-nutrivit'],
+    notes:'Apple must is just as nitrogen-poor as honey must — this style needs full, standard dosing despite being "simple."',
+    effects:{
+      'fermaid-o':'Clean organic feed, staggered — protects the mild Golden Delicious/Baldwin aroma this style leans on.',
+      'mj-mead':'Simple pre-portioned option, beginner-friendly, still clean.',
+      'fermaid-k':'Faster with DAP included — fine if dosed strictly early, but can slightly coarsen a deliberately gentle style.',
+      'vinoferm-nutrivit':'EU-available SNA alternative — effective, DAP-based, dose early.'
+    }
+  },
+  c2:{ protocol:'tosna', load:'standard', recommended:['fermaid-o','mj-mead'], acceptable:['fermaid-k'],
+    notes:'Dabinett and Golden Russet\'s tannin/acid structure is the point — an organic-only feed avoids the harsh edge a DAP-heavy schedule can add.',
+    effects:{
+      'fermaid-o':'Clean, staggered organic feed — protects the tannin structure this recipe is built around from harsh over-feeding.',
+      'mj-mead':'Simple, clean, and sufficient at this OG.',
+      'fermaid-k':'Works if timed strictly before the 1/3 break, but its DAP edge risks a slightly harsher finish on a tannin-forward cider.'
+    }
+  },
+  c3:{ protocol:'tosna', load:'standard', recommended:['fermaid-o','mj-mead'], acceptable:['fermaid-k'],
+    notes:'Whether or not you pursue malolactic fermentation, a clean organic feed keeps this full-bodied style from turning harsh.',
+    effects:{
+      'fermaid-o':'Clean staggered feed — the safest choice whether you stabilise early or let MLF run its course.',
+      'mj-mead':'Simple and clean, sufficient for this OG.',
+      'fermaid-k':'DAP vigour works but adds a slight harshness that a delicate tannin-and-acid balance doesn\'t need.'
+    }
+  },
+  c6:{ protocol:'tosna', load:'high', recommended:['fermaid-o','fermaid-k'], acceptable:['mj-mead'],
+    notes:'Raisins add fermentable sugar but essentially no nitrogen — this higher-OG style needs real, standard-to-high nutrient support despite the added sugar.',
+    effects:{
+      'fermaid-o':'Clean organic feed that keeps pace with the higher OG without any harsh DAP edge.',
+      'fermaid-k':'The faster DAP-inclusive option — genuinely useful at this gravity provided every dose lands before the 1/3 break.',
+      'mj-mead':'Workable, but budget one extra dose beyond the standard schedule given the higher OG.'
+    }
+  },
+  c7:{ protocol:'tosna', load:'high', recommended:['fermaid-o','fermaid-k'], acceptable:['mj-mead'],
+    notes:'A wine-strength OG needs a wine-strength nutrient schedule — don\'t under-feed just because it "looks like" a normal cider.',
+    effects:{
+      'fermaid-o':'Clean, staggered organic feed that supports EC-1118 through to full attenuation at this OG.',
+      'fermaid-k':'DAP-inclusive and effective at this gravity — dose early and completely before the 1/3 break.',
+      'mj-mead':'Workable but budget extra doses — this OG is meaningfully higher than a standard cider.'
+    }
+  },
+  c8:{ protocol:'tosna', load:'high', recommended:['fermaid-o','fermaid-k'], acceptable:['goferm'],
+    notes:'A concentrated must this strong needs real nutrient support just to reach a stable stopping point — this is not a place to under-feed.',
+    effects:{
+      'fermaid-o':'Clean organic feed, staggered — supports EC-1118 through the unusually long climb to the 1/3 break at this gravity.',
+      'fermaid-k':'DAP-inclusive for extra insurance against a stall at this extreme OG — dose early.',
+      'goferm':'Rehydration primer — worth using here specifically, since a healthy pitch matters more the higher the starting gravity.'
+    }
+  },
+  c9:{ protocol:'tosna', load:'high', recommended:['fermaid-o','fermaid-k'], acceptable:['goferm'],
+    notes:'Same extreme-gravity logic as Ice Cider — maple syrup adds sugar, not nitrogen, so the must needs the same real nutrient support.',
+    effects:{
+      'fermaid-o':'Clean organic feed, staggered — carries EC-1118 through the long, slow climb this high-OG must requires.',
+      'fermaid-k':'DAP-inclusive insurance against stalling at this gravity — dose early.',
+      'goferm':'Rehydration primer — a healthy pitch matters more at this OG than at a normal-strength cider.'
+    }
+  },
+  c10:{ protocol:'tosna', load:'standard', recommended:['fermaid-o','mj-mead'], acceptable:['fermaid-k'],
+    notes:'The base ferment is fed before the raspberries go in — a clean organic schedule protects fruit aroma added later.',
+    effects:{
+      'fermaid-o':'Clean staggered feed for the primary base — keeps the ferment healthy without any harshness that could carry into the fruit-contact stage.',
+      'mj-mead':'Simple and clean, sufficient at this OG.',
+      'fermaid-k':'Works if dosed strictly early; DAP harshness is a bigger risk here since raspberry aroma is delicate.'
+    }
+  },
+  c11:{ protocol:'tosna', load:'standard', recommended:['fermaid-o','mj-mead'], acceptable:['fermaid-k'],
+    notes:'A clean, standard feed on the base — the spices do the flavour work later, so the ferment itself should stay simple.',
+    effects:{
+      'fermaid-o':'Clean staggered feed, standard dose — no reason to deviate before the spices go in at secondary.',
+      'mj-mead':'Simple, clean, sufficient.',
+      'fermaid-k':'Works fine timed early — this style has no delicate aroma at the base-ferment stage to protect.'
+    }
+  },
+  c12:{ protocol:'tosna', load:'standard', recommended:['fermaid-o','mj-mead'], acceptable:['fermaid-k'],
+    notes:'A clean base ferment matters more here than usual — any nutrient-related off-notes would muddy the hop aroma added later.',
+    effects:{
+      'fermaid-o':'Clean staggered feed — protects the neutral base this style needs so hop aroma reads clearly at dry-hop.',
+      'mj-mead':'Simple and clean, sufficient at this OG.',
+      'fermaid-k':'Workable if dosed strictly early, though an organic-only feed is the safer bet given how much this style depends on a clean base.'
+    }
+  },
+  c13:{ protocol:'tosna', load:'standard', recommended:['fermaid-o','mj-mead'], acceptable:['fermaid-k'],
+    notes:'Pear must behaves like apple must nutritionally — standard organic dosing, same staggered timing.',
+    effects:{
+      'fermaid-o':'Clean staggered feed — keeps pear\'s delicate character intact, same logic as an apple cider.',
+      'mj-mead':'Simple and clean, sufficient at this OG.',
+      'fermaid-k':'Works if dosed strictly early; organic-only is the gentler choice for pear\'s more delicate aroma.'
     }
   }
 };
