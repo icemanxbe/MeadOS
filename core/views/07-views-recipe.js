@@ -112,11 +112,7 @@ function renderRecipes(){
     +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
     +'<button class="btn btn-secondary btn-sm" onclick="importBeerXMLClick()" title="Import a BeerXML recipe file (.xml) from another brewing app">⬇ Import BeerXML</button>'
     +(APP.customRecipes.length?'<button class="btn btn-secondary btn-sm" onclick="exportAllCustomRecipesBeerXML()" title="Export all custom recipes as BeerXML">⬆ Export Custom</button>':'')
-    // The guided Designer wizard back-solves honey weight from OG (292 SG-points/kg)
-    // and only knows mead styles/adjuncts — cider's math and style list would need
-    // a real parallel wizard, not a relabeling, so it's mead-only for now. The plain
-    // "+ Create Recipe" form below is fully cider-aware (juice/Nottingham template).
-    +(activeBevMode()!=='cider'?'<button class="btn btn-secondary btn-sm" onclick="openRecipeWizard()" title="Guided designer: pick targets, it does the honey/OG math and picks a yeast">✦ Designer</button>':'')
+    +'<button class="btn btn-secondary btn-sm" onclick="openRecipeWizard()" title="Guided designer: pick targets, it works out the OG math and picks a yeast">✦ Designer</button>'
     +'<button class="btn btn-primary btn-sm" onclick="openCustomRecipeModal()">＋ Create Recipe</button>'
     +'</div></div>'
     +'<div class="page-subtitle">'+(activeBevMode()==='cider'?'The Cider Compendium':'The Mead Compendium')+' · '+visibleRecipes().length+' recipe'+(visibleRecipes().length!==1?'s':'')+(APP.customRecipes.length?' ('+APP.customRecipes.length+' yours)':'')+(anyFilterActive?' · '+filtered.length+' shown':'')+'</div>'

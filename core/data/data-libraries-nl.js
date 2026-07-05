@@ -1,9 +1,10 @@
 // ==========================================================================
-// Dutch translations of the reference libraries (honey profiles for now;
-// yeast/nutrient added in later waves). Keyed by the same English name as the
-// source data in data-libraries.js. The i18n data layer reverse-maps these so
-// the library views read Dutch when labelLocale is 'nl', without touching the
-// view code. Recipe references (r15, r10…) are kept verbatim.
+// Dutch translations of the honey library (yeast/nutrient translations live
+// in their own data-yeast-nl.js / data-nutrient-nl.js). Keyed by the same
+// English name as the source data in data-libraries.js. The i18n data layer
+// reverse-maps these so the library views read Dutch when labelLocale is
+// 'nl', without touching the view code. Recipe references (r15, r10…) are
+// kept verbatim.
 // ==========================================================================
 var HONEY_PROFILES_NL={
   'Tupelo':{profile:'Premium varietal uit het zuiden van de VS. Boterig en complex met jasmijn- en kaneeltonen, zeer zoet op de tong. Bleek goudgroen.',pairing:'Kleinschalige traditionele meden waarin de honing de ster is; uitstekend als terugzoeter.',notes:'KRITISCH fructoserisico (F:G ~1,54) — fructofiele gist (K1-V1116, BC-S103, UVAFERM 43) is verplicht of het valt stil bij de 1/3-breuk. Zeldzaam, seizoensgebonden, duur.'},

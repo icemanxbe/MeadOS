@@ -93,10 +93,85 @@ function wizRecommendYeasts(targetAbv){
   });
   return ok.length?ok:YEAST_STRAINS.slice();
 }
+
+// ==================== CIDER RECIPE DESIGNER WIZARD ====================
+// Cider counterpart to the mead wizard above. Shares the same step shell
+// (renderRecipeWizard, wizNav, the modal) but diverges on the two things
+// that are genuinely different for cider: there's no honey to back-solve
+// (juice supplies its own OG — see Formulas & Methods §17 in the wiki).
+var WIZ_CIDER_STYLES=[
+  {key:'Common Cider',label:'Common',color:'#8ab030',adjunct:null,desc:'Culinary apples — the honest everyday cider.'},
+  {key:'Heirloom Cider',label:'Heirloom',color:'#6a4020',adjunct:null,desc:'Real cider-apple character — a bittersweet + sharp blend.'},
+  {key:'English Cider',label:'English',color:'#754020',adjunct:null,desc:'Tannic and full-bodied, built around a bittersharp backbone.'},
+  {key:'New England Cider',label:'New England',color:'#9a6a2a',adjunct:null,desc:'Higher-ABV, raisin/brown-sugar boosted tradition.'},
+  {key:'Fruit Cider',label:'Fruit',color:'#c04858',adjunct:'fruit',desc:'Apple cider fermented or blended with fruit.'},
+  {key:'Spiced Cider',label:'Spiced',color:'#7a5230',adjunct:'spice',desc:'Warming spices — mulled-cider character.'},
+  {key:'Ice Cider',label:'Ice Cider',color:'#5a8aa0',adjunct:null,desc:'Freeze-concentrated juice — rich, dessert-sweet.'}
+];
+function wizComputeCiderMath(w){
+  var sw=WIZ_SWEETNESS.find(function(s){return s.key===w.sweetness;})||WIZ_SWEETNESS[2];
+  var fg=sw.fg;
+  var abv=parseFloat(w.abv)||6.5;
+  var vol=parseFloat(w.volume)||5;
+  var og=fg+abv/131.25;
+  // No honey-equivalent back-solve here — juice supplies its own fermentable
+  // sugar, so there's nothing to weigh out the way honey is. The wizard's
+  // job is to tell you the OG your juice/blend needs to hit, not to compute
+  // an ingredient amount (see Cider-Mode wiki page for why).
+  return{fg:fg,og:Math.round(og*1000)/1000,abv:abv,vol:vol,juiceL:vol};
+}
+function wizRecommendCiderYeasts(targetAbv){
+  var ciderYeasts=YEAST_STRAINS.filter(function(y){return(y.beverageTypes||[]).indexOf('cider')>=0;});
+  var ok=ciderYeasts.filter(function(y){return(y.abvMax||14)>=targetAbv+0.5;});
+  ok.sort(function(a,b){
+    if(a.id==='nottingham')return-1;if(b.id==='nottingham')return 1;
+    return(a.abvMax||14)-(b.abvMax||14);
+  });
+  return ok.length?ok:ciderYeasts;
+}
+function wizBuildCiderRecipe(w){
+  var m=wizComputeCiderMath(w);
+  var st=WIZ_CIDER_STYLES.find(function(s){return s.key===w.style;})||WIZ_CIDER_STYLES[0];
+  var yeast=getYeastById(w.yeast)||wizRecommendCiderYeasts(m.abv)[0];
+  var fermDays=m.abv>=9?35:21;
+  var ingredients=[
+    {item:'Apple Juice',amount:m.juiceL+' L',notes:st.key==='Ice Cider'?'Freeze-concentrate part of this to reach the target OG':'Fresh-pressed or 100% juice, no preservatives/sorbate'}
+  ];
+  if(st.adjunct==='fruit'||st.adjunct==='spice'){
+    ingredients.push({item:w.adjunctName||(st.adjunct==='fruit'?'Fruit':'Spices'),amount:w.adjunctAmount||(st.adjunct==='fruit'?Math.round(m.vol*0.2*10)/10+' kg':'to taste'),notes:'Add in secondary'});
+  }
+  if(st.key==='New England Cider'){
+    ingredients.push({item:'Raisins',amount:Math.round(m.vol*0.1*100)/100+' kg',notes:'Traditional gravity/body boost'});
+    ingredients.push({item:'Brown Sugar',amount:Math.round(m.vol*0.1*100)/100+' kg',notes:'Dissolve into the juice to help reach target OG'});
+  }
+  ingredients.push({item:yeast.name,amount:(yeast.sachetSize||11)+' '+(yeast.unit||'g')+' (1 packet)',notes:'Sprinkle on must or rehydrate per packet instructions'});
+  ingredients.push({item:'Pectic Enzyme',amount:Math.round(m.vol*0.4*10)/10+' g',notes:'Prevents a lasting pectin haze — apple/pear juice always carries natural pectin'});
+  ingredients.push({item:'Fermaid-O',amount:Math.round(m.vol*0.4*10)/10+' g total',notes:'Staggered addition — apple must is nitrogen-poor like honey must'});
+  var steps=[
+    {day:0,title:'Brew Day',desc:'Clean & sanitize. Combine the juice'+(st.adjunct==='fruit'?' and fruit':'')+' in the fermenter. Stir in the pectic enzyme. Take an OG reading (target '+m.og+'). Sprinkle/rehydrate '+yeast.name.split('—')[0].trim()+' and pitch. Seal with airlock.'},
+    {day:1,title:'First Nutrient',desc:'Add half the Fermaid-O. Stir gently to mix without losing CO2.'},
+    {day:7,title:'1/3 Sugar Break Nutrient',desc:'Once at or past the 1/3 sugar break, add the remaining Fermaid-O — the last nutrient addition.'},
+    {day:14,title:'Rack & Check',desc:'Rack off the initial sediment to a clean vessel. Take a gravity reading — should be dropping steadily toward '+m.fg.toFixed(3)+'.'},
+    {day:fermDays,title:'Final Gravity & Bottle',desc:'Two stable readings near '+m.fg.toFixed(3)+' confirm completion. To back-sweeten, stabilise first with metabisulfite AND sorbate together. Then bottle.'}
+  ];
+  var minDays=m.abv>=9?60:14;
+  return{
+    name:w.name||((WIZ_CIDER_STYLES.find(function(s){return s.key===w.style;})||{}).label||'Cider')+' (Designed)',
+    style:w.style,difficulty:m.abv>=9?'Intermediate':'Beginner',
+    description:'Designed for '+m.abv+'% ABV, '+(WIZ_SWEETNESS.find(function(s){return s.key===w.sweetness;})||{}).label.toLowerCase()+'. '+st.desc,
+    brandColor:st.color,beverageType:'cider',
+    volume:m.vol,ogTarget:m.og,fgTarget:m.fg,abvTarget:m.abv,fermentDays:fermDays,
+    minAgeDays:minDays,peakAgeDays:minDays+60,maxAgeDays:minDays+240,
+    tags:['custom','designed',st.label.split(' ')[0].toLowerCase()],
+    ingredients:ingredients,steps:steps
+  };
+}
+
 function openRecipeWizard(){
   closeModal();
-  window._wiz={step:0,name:'',style:'Traditional Mead',volume:5,abv:12,sweetness:'semi',
-    yeast:'m05',nutrient:'tosca2',adjunctName:'',adjunctAmount:''};
+  var isCider=(typeof activeBevMode==='function')&&activeBevMode()==='cider';
+  window._wiz={step:0,name:'',style:isCider?'Common Cider':'Traditional Mead',volume:5,abv:isCider?6.5:12,sweetness:'semi',
+    yeast:isCider?'nottingham':'m05',nutrient:'tosca2',adjunctName:'',adjunctAmount:''};
   renderRecipeWizard();
 }
 function wizSet(field,val){
@@ -104,9 +179,10 @@ function wizSet(field,val){
   window._wiz[field]=val;
   // Picking a style preselects a sensible adjunct placeholder
   if(field==='style'){
-    var st=WIZ_STYLES.find(function(s){return s.key===val;});
+    var isCider=(typeof activeBevMode==='function')&&activeBevMode()==='cider';
+    var st=(isCider?WIZ_CIDER_STYLES:WIZ_STYLES).find(function(s){return s.key===val;});
     if(st&&st.adjunct&&!window._wiz.adjunctName){
-      window._wiz.adjunctName=st.adjunct==='fruit'?'Fruit (e.g. raspberries)':st.adjunct==='juice'?(val==='Cyser'?'Fresh apple juice':'Grape juice'):'Spices';
+      window._wiz.adjunctName=st.adjunct==='fruit'?(isCider?'Fruit (e.g. blackberries)':'Fruit (e.g. raspberries)'):st.adjunct==='juice'?(val==='Cyser'?'Fresh apple juice':'Grape juice'):'Spices';
     }
   }
   renderRecipeWizard();
@@ -125,7 +201,9 @@ function wizNav(delta){
   renderRecipeWizard();
 }
 function wizBuildRecipe(){
-  var w=window._wiz,m=wizComputeMath(w);
+  var w=window._wiz;
+  if((typeof activeBevMode==='function')&&activeBevMode()==='cider')return wizBuildCiderRecipe(w);
+  var m=wizComputeMath(w);
   var st=WIZ_STYLES.find(function(s){return s.key===w.style;})||WIZ_STYLES[0];
   var yeast=getYeastById(w.yeast)||YEAST_STRAINS[0];
   var fermDays=m.abv>=15?56:42;
@@ -180,14 +258,16 @@ function wizFinish(){
 function renderRecipeWizard(){
   var w=window._wiz;if(!w)return;
   var existing=document.querySelector('.modal-overlay');if(existing)existing.remove();
-  var m=wizComputeMath(w);
+  var isCider=(typeof activeBevMode==='function')&&activeBevMode()==='cider';
+  var m=isCider?wizComputeCiderMath(w):wizComputeMath(w);
+  var styleList=isCider?WIZ_CIDER_STYLES:WIZ_STYLES;
   var steps=['Style & Targets','Yeast','Adjuncts & Nutrient','Review'];
   var dots=steps.map(function(s,i){
     return'<div style="display:flex;align-items:center;gap:6px"><div style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;'+(i===w.step?'background:var(--gold);color:#1a1a0f':i<w.step?'background:var(--green2);color:#0f0f0a':'background:var(--bg3);color:var(--text3)')+'">'+(i<w.step?'✓':(i+1))+'</div><span style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.5px;color:'+(i===w.step?'var(--gold2)':'var(--text3)')+'">'+s+'</span></div>';
   }).join('<div style="flex:1;height:1px;background:var(--border);min-width:8px"></div>');
   var body='';
   if(w.step===0){
-    var styleBtns=WIZ_STYLES.map(function(s){
+    var styleBtns=styleList.map(function(s){
       var on=w.style===s.key;
       return'<button type="button" onclick="wizSet(\'style\',\''+s.key+'\')" style="text-align:left;padding:10px 12px;border-radius:var(--radius);cursor:pointer;border:1px solid '+(on?s.color:'var(--border)')+';background:'+(on?s.color+'22':'var(--bg3)')+'"><div style="font-size:13px;color:'+(on?s.color:'var(--text)')+';font-weight:500">'+s.label+'</div><div style="font-size:11px;color:var(--text3);line-height:1.3;margin-top:2px">'+s.desc+'</div></button>';
     }).join('');
@@ -195,22 +275,23 @@ function renderRecipeWizard(){
       var on=w.sweetness===s.key;
       return'<button type="button" onclick="wizSet(\'sweetness\',\''+s.key+'\')" style="flex:1;min-width:84px;padding:8px 6px;border-radius:var(--radius);cursor:pointer;border:1px solid '+(on?'var(--gold)':'var(--border)')+';background:'+(on?'rgba(201,168,76,0.14)':'var(--bg3)')+'"><div style="font-size:12px;color:'+(on?'var(--gold2)':'var(--text)')+'">'+s.label+'</div><div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3);margin-top:2px">FG '+s.fg.toFixed(3)+'</div></button>';
     }).join('');
-    body='<div class="form-group"><label class="form-label">Recipe Name</label><input class="form-input" id="wiz-name" value="'+escHtml(w.name)+'" placeholder="My Designer Mead"></div>'
+    body='<div class="form-group"><label class="form-label">Recipe Name</label><input class="form-input" id="wiz-name" value="'+escHtml(w.name)+'" placeholder="'+(isCider?'My Designer Cider':'My Designer Mead')+'"></div>'
       +'<div class="form-group"><label class="form-label">Style</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+styleBtns+'</div></div>'
       +'<div class="form-row"><div class="form-group"><label class="form-label">Batch Volume (L)</label><input class="form-input" id="wiz-vol" type="number" step="0.5" value="'+w.volume+'" oninput="window._wiz.volume=parseFloat(this.value)||5;wizUpdateMath()"></div>'
-      +'<div class="form-group"><label class="form-label">Target ABV (%)</label><input class="form-input" id="wiz-abv" type="number" step="0.5" value="'+w.abv+'" oninput="window._wiz.abv=parseFloat(this.value)||12;wizUpdateMath()"></div></div>'
+      +'<div class="form-group"><label class="form-label">Target ABV (%)</label><input class="form-input" id="wiz-abv" type="number" step="0.5" value="'+w.abv+'" oninput="window._wiz.abv=parseFloat(this.value)||'+(isCider?6.5:12)+';wizUpdateMath()"></div></div>'
       +'<div class="form-group"><label class="form-label">Sweetness</label><div style="display:flex;gap:6px;flex-wrap:wrap">'+sweetBtns+'</div></div>'
       +wizMathBox(m);
   }else if(w.step===1){
-    var recs=wizRecommendYeasts(m.abv);
+    var recs=isCider?wizRecommendCiderYeasts(m.abv):wizRecommendYeasts(m.abv);
     var recIds={};recs.slice(0,3).forEach(function(y){recIds[y.id]=true;});
-    var opts=YEAST_STRAINS.map(function(y){
+    var yeastPool=isCider?YEAST_STRAINS.filter(function(y){return(y.beverageTypes||[]).indexOf('cider')>=0;}):YEAST_STRAINS;
+    var opts=yeastPool.map(function(y){
       var fits=(y.abvMax||14)>=m.abv+0.5;
       return'<option value="'+y.id+'"'+(w.yeast===y.id?' selected':'')+'>'+escHtml(y.name)+' · '+(y.abvMax||'?')+'% max'+(fits?'':' ⚠ below target')+(recIds[y.id]?' ★':'')+'</option>';
     }).join('');
-    var chosen=getYeastById(w.yeast)||YEAST_STRAINS[0];
+    var chosen=getYeastById(w.yeast)||yeastPool[0];
     var fitsTarget=(chosen.abvMax||14)>=m.abv+0.5;
-    body='<div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.5">For <strong>'+m.abv+'% ABV</strong> you need a yeast that tolerates at least that. ★ marks strains recommended for this target (honey-friendly, enough headroom).</div>'
+    body='<div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.5">For <strong>'+m.abv+'% ABV</strong> you need a yeast that tolerates at least that. ★ marks strains recommended for this target ('+(isCider?'cider-appropriate':'honey-friendly')+', enough headroom).</div>'
       +'<div class="form-group"><label class="form-label">Yeast Strain</label><select class="form-select" id="wiz-yeast" onchange="window._wiz.yeast=this.value;renderRecipeWizard()">'+opts+'</select></div>'
       +'<div style="padding:12px;background:var(--bg3);border-radius:var(--radius);border-left:3px solid '+(fitsTarget?'var(--green2)':'var(--red2)')+'">'
       +'<div style="font-size:13px;color:var(--text);font-weight:500">'+escHtml(chosen.name)+'</div>'
@@ -219,14 +300,19 @@ function renderRecipeWizard(){
       +(fitsTarget?'':'<div style="font-size:12px;color:var(--red2);margin-top:6px">⚠ This strain may not reach '+m.abv+'% — it could stall sweet. Pick one with higher tolerance or lower your target.</div>')
       +'</div>'+wizMathBox(m);
   }else if(w.step===2){
-    var st=WIZ_STYLES.find(function(s){return s.key===w.style;})||WIZ_STYLES[0];
+    var st=styleList.find(function(s){return s.key===w.style;})||styleList[0];
     var adjBlock='';
     if(st.adjunct){
-      adjBlock='<div class="form-row"><div class="form-group"><label class="form-label">'+(st.adjunct==='fruit'?'Fruit':st.adjunct==='spice'?'Spice / herb':'Juice')+'</label><input class="form-input" id="wiz-adj-name" value="'+escHtml(w.adjunctName)+'" placeholder="'+(st.adjunct==='fruit'?'Raspberries, frozen':st.adjunct==='spice'?'Cinnamon, vanilla…':'Apple juice')+'"></div>'
-        +'<div class="form-group"><label class="form-label">Amount</label><input class="form-input" id="wiz-adj-amt" value="'+escHtml(w.adjunctAmount)+'" placeholder="'+(st.adjunct==='fruit'?(Math.round(m.vol*0.3*10)/10+' kg'):st.adjunct==='spice'?'2 sticks':(Math.round(m.vol*0.5*10)/10+' L'))+'"></div></div>';
+      adjBlock='<div class="form-row"><div class="form-group"><label class="form-label">'+(st.adjunct==='fruit'?'Fruit':st.adjunct==='spice'?'Spice / herb':'Juice')+'</label><input class="form-input" id="wiz-adj-name" value="'+escHtml(w.adjunctName)+'" placeholder="'+(st.adjunct==='fruit'?(isCider?'Blackberries, frozen':'Raspberries, frozen'):st.adjunct==='spice'?'Cinnamon, vanilla…':'Apple juice')+'"></div>'
+        +'<div class="form-group"><label class="form-label">Amount</label><input class="form-input" id="wiz-adj-amt" value="'+escHtml(w.adjunctAmount)+'" placeholder="'+(st.adjunct==='fruit'?(Math.round(m.vol*(isCider?0.2:0.3)*10)/10+' kg'):st.adjunct==='spice'?'2 sticks':(Math.round(m.vol*0.5*10)/10+' L'))+'"></div></div>';
     }else{
-      adjBlock='<div style="font-size:13px;color:var(--text3);font-style:italic;margin-bottom:12px">'+escHtml(st.label)+' is a base-style mead — no fruit/spice adjuncts. You can still add some in the editor afterwards.</div>';
+      adjBlock='<div style="font-size:13px;color:var(--text3);font-style:italic;margin-bottom:12px">'+escHtml(st.label)+' is a base-style '+(isCider?'cider':'mead')+' — no fruit/spice adjuncts. You can still add some in the editor afterwards.</div>';
     }
+    if(isCider){
+      body=adjBlock
+        +'<div style="font-size:13px;color:var(--text2);line-height:1.5;padding:12px;background:var(--bg3);border-radius:var(--radius)">Cider recipes use a simple two-dose Fermaid-O schedule (half at pitch, half at the 1/3 sugar break) — no protocol picker needed here. Pectic enzyme is included by default since apple/pear juice always carries natural pectin.</div>'
+        +wizMathBox(m);
+    }else{
     body=adjBlock
       +'<div class="form-group"><label class="form-label">Nutrient Protocol</label><select class="form-select" id="wiz-nutrient" onchange="window._wiz.nutrient=this.value">'
       +'<option value="tosca2"'+(w.nutrient==='tosca2'?' selected':'')+'>TOSCA 2.0 — organic, recommended</option>'
@@ -236,6 +322,7 @@ function renderRecipeWizard(){
       +'<option value="sna-high"'+(w.nutrient==='sna-high'?' selected':'')+'>SNA — high-gravity (3 doses)</option>'
       +'</select><div style="font-size:11px;color:var(--text3);margin-top:4px;font-style:italic">Organic (Fermaid-O) protocols give the cleanest honey character. High-gravity (≥15%) batches benefit from the extra dose.</div></div>'
       +wizMathBox(m);
+    }
   }else{
     var built=wizBuildRecipe();
     body='<div style="font-size:13px;color:var(--text2);margin-bottom:12px">Here\'s your designed recipe. Open it in the editor to tweak ingredient amounts, steps, and aging windows before saving.</div>'
@@ -267,11 +354,15 @@ function wizMathBox(m){
     +'<div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.4">'+wizMathNote(m)+'</div></div>';
 }
 function wizMathCells(m){
-  return[['OG',m.og],['FG',m.fg.toFixed(3)],['ABV',m.abv+'%'],['Honey',m.honeyKg+' kg']].map(function(x){
+  var last=m.juiceL!=null?['Juice',m.juiceL+' L']:['Honey',m.honeyKg+' kg'];
+  return[['OG',m.og],['FG',m.fg.toFixed(3)],['ABV',m.abv+'%'],last].map(function(x){
     return'<div style="text-align:center"><div style="font-family:var(--font-display);font-size:18px;color:var(--gold2)">'+x[1]+'</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1px;margin-top:2px">'+x[0]+'</div></div>';
   }).join('');
 }
 function wizMathNote(m){
+  if(m.juiceL!=null){
+    return'Your juice/blend needs to read <strong>OG '+m.og+'</strong> in '+m.vol+' L to finish near FG '+m.fg.toFixed(3)+' for ~'+m.abv+'% ABV. Juice supplies its own sugar — there\'s no honey to weigh out. Blend varieties, add a juice concentrate, or (for high-OG styles like Ice Cider) freeze-concentrate to raise it; dilute with water to lower it. Check your actual juice\'s OG at brew day.';
+  }
   var base='Need <strong>~'+m.honeyKg+' kg honey</strong> in '+m.vol+' L to hit OG '+m.og+', finishing near FG '+m.fg.toFixed(3)+' for ~'+m.abv+'% ABV.';
   if(m.adjunctHoneyEquivKg>0)base+=' Already counts ~'+m.adjunctHoneyEquivKg+' kg of that OG as coming from the '+m.adjunctAmount+' of fruit/juice, not honey.';
   return base;
@@ -280,7 +371,8 @@ function wizMathNote(m){
 // focus in the number inputs on step 0).
 function wizUpdateMath(){
   var grid=document.getElementById('wiz-math-grid');if(!grid||!window._wiz)return;
-  var m=wizComputeMath(window._wiz);
+  var isCider=(typeof activeBevMode==='function')&&activeBevMode()==='cider';
+  var m=isCider?wizComputeCiderMath(window._wiz):wizComputeMath(window._wiz);
   grid.innerHTML=wizMathCells(m);
 }
 
