@@ -12,7 +12,7 @@
 // Trophy shelf: every competition award across all batches, with a medal tally.
 function renderTrophyShelf(){
   var nl=(typeof appLang==='function'&&appLang()==='nl');
-  var bmap={};(APP.batches||[]).forEach(function(b){bmap[b.id]=b;});
+  var bmap={};visibleBatches().forEach(function(b){bmap[b.id]=b;});
   var entries=[];
   Object.keys(APP.competitions||{}).forEach(function(bid){
     var b=bmap[bid];if(!b)return;
@@ -42,8 +42,8 @@ function _insightsTitleBar(){
     +'</div>';
 }
 function renderInsightsView(){
-  var bottled=APP.batches.filter(function(b){return APP.bottling[b.id];});
-  var failed=APP.batches.filter(function(b){return b.failed;});
+  var bottled=visibleBatches().filter(function(b){return APP.bottling[b.id];});
+  var failed=visibleBatches().filter(function(b){return b.failed;});
   if(bottled.length<3&&!failed.length){
     // Pattern-mining needs more data, but the fun lifetime stats are worth
     // showing from batch one.
@@ -98,7 +98,7 @@ function renderIngredientPerformance(){
 
 // Fun + meaningful lifetime insights mined from the whole brewing history.
 function renderFunInsights(){
-  var batches=APP.batches||[];
+  var batches=visibleBatches();
   if(!batches.length)return'';
   var L=(typeof lifetimeStats==='function')?lifetimeStats():null;
   function mode(arr){var c={},best=null,bn=0;arr.forEach(function(v){if(!v)return;c[v]=(c[v]||0)+1;if(c[v]>bn){bn=c[v];best=v;}});return best?{val:best,n:bn}:null;}
@@ -167,7 +167,7 @@ function renderFunInsights(){
 // "what your best batches share". When you have failures, learning from them
 // systematically is more valuable than reviewing them ad-hoc.
 function renderFailedBatchInsights(){
-  var failed=(APP.batches||[]).filter(function(b){return b.failed;});
+  var failed=visibleBatches().filter(function(b){return b.failed;});
   if(!failed.length)return''; // no failures = no card. Keeps the view cleaner.
   // Sort newest-first
   failed.sort(function(a,b){return(b.failed.date||'').localeCompare(a.failed.date||'');});
@@ -221,7 +221,7 @@ function renderFailedBatchInsights(){
     +patternRows.map(function(r){return'<div style="display:flex;justify-content:space-between;font-size:12px;padding:4px 0"><div style="color:var(--text3);font-family:var(--font-mono);font-size:10px;letter-spacing:1px">'+escHtml(r.k.toUpperCase())+'</div><div style="text-align:right"><span style="color:var(--gold2);font-family:var(--font-display);font-size:13px">'+escHtml(r.v)+'</span> <span style="color:var(--text3);font-size:10.5px;font-style:italic">'+escHtml(r.detail)+'</span></div></div>';}).join('')
     +'</div>':'';
 
-  var totalBatches=(APP.batches||[]).length;
+  var totalBatches=visibleBatches().length;
   var failureRate=totalBatches?(failed.length/totalBatches*100).toFixed(0):0;
 
   return'<div class="card" style="margin-bottom:16px;border-left:3px solid var(--red2)"><div class="card-header"><div class="card-title">⚰ POSTMORTEMS</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+failed.length+' FAILED · '+failureRate+'% OF '+totalBatches+'</div></div>'
@@ -237,7 +237,7 @@ function renderFailedBatchInsights(){
 // computes mode/median for each interesting attribute.
 function renderBestTastingInsights(){
   // Build per-batch summary including best tasting rating
-  var batchSummaries=APP.batches.filter(function(b){return APP.bottling[b.id];}).map(function(b){
+  var batchSummaries=visibleBatches().filter(function(b){return APP.bottling[b.id];}).map(function(b){
     var tastings=(APP.tastings[b.id]||[]).filter(function(t){return t.rating;});
     var bestRating=tastings.length?Math.max.apply(null,tastings.map(function(t){return t.rating;})):0;
     var bot=APP.bottling[b.id];
@@ -309,7 +309,7 @@ function renderBestTastingInsights(){
 
 // Personal trend dashboard — year-over-year stats. Useful starting at year 2.
 function renderPersonalTrends(){
-  var bottled=APP.batches.filter(function(b){return APP.bottling[b.id];});
+  var bottled=visibleBatches().filter(function(b){return APP.bottling[b.id];});
   // Group by start-year
   var byYear={};
   bottled.forEach(function(b){
