@@ -51,6 +51,25 @@ function shareTokenForBatch(batchId){
   return tok;
 }
 
+// Read-only check — has a share token already been minted for this batch?
+// Used to decide whether to show the Revoke button without minting one.
+function hasShareToken(batchId){
+  return !!(APP.shareTokens&&Object.keys(APP.shareTokens).some(function(t){return APP.shareTokens[t]===batchId;}));
+}
+
+// Delete the token so the existing URL 404s immediately (server resolves
+// tokens straight out of the synced state blob — nothing else to clean up).
+function revokeShareLink(batchId){
+  if(!APP.shareTokens)return;
+  var tok=Object.keys(APP.shareTokens).find(function(t){return APP.shareTokens[t]===batchId;});
+  if(!tok)return;
+  if(!confirm('Revoke this batch\'s share link? The existing URL will stop working immediately.'))return;
+  delete APP.shareTokens[tok];
+  scheduleSave();
+  toast('✦ Share link revoked');
+  renderMain();
+}
+
 function buildShareURL(batch){
   if(!batch||!batch.id)return null;
   var base=appBaseUrl();

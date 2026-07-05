@@ -408,7 +408,7 @@ var UI_PHRASES={
   "The server keeps your recent saved snapshots. Restore one if something got messed up — restoring first saves the current state, so it's reversible.":'De server bewaart je recente opgeslagen momentopnamen. Herstel er een als er iets misging — herstellen slaat eerst de huidige staat op, dus het is omkeerbaar.',
   'Run the server:':'Start de server:','— serves this app and stores all data in':'— bedient deze app en slaat alle gegevens op in',
   'Share with others:':'Deel met anderen:','anyone who can reach the machine opens':'iedereen die de machine kan bereiken opent','and sees the same shared data.':'en ziet dezelfde gedeelde gegevens.',
-  ', or use Export Backup on the left. The server also keeps the last 50 saves in a history table.':', of gebruik Back-up exporteren links. De server bewaart ook de laatste 50 opslagacties in een geschiedenistabel.',
+  ', or use Export Backup on the left. The server also keeps the last 200 saves in a history table.':', of gebruik Back-up exporteren links. De server bewaart ook de laatste 200 opslagacties in een geschiedenistabel.',
   "add a Webpage/iframe card pointing at this app's URL.":'voeg een Webpagina/iframe-kaart toe die naar de URL van deze app wijst.',
   'Permanently delete all batches, logs, and settings. Cannot be undone.':'Verwijder alle brouwsels, logs en instellingen permanent. Kan niet ongedaan gemaakt worden.',
   'DATA BACKUP':'GEGEVENS BACK-UP','Backup:':'Back-up:','Backup':'Back-up',

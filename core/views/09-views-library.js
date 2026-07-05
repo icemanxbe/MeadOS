@@ -1421,7 +1421,7 @@ function renderSettings(){
     +'<div style="font-size:14px;color:var(--text2);line-height:1.8">'
     +'<strong>Run the server:</strong> <code style="background:var(--bg4);padding:2px 6px;border-radius:3px;font-family:var(--font-mono);font-size:12px">python3 server.py</code> — serves this app and stores all data in <code style="background:var(--bg4);padding:2px 6px;border-radius:3px;font-family:var(--font-mono);font-size:12px">meados.db</code> (SQLite).<br><br>'
     +'<strong>Share with others:</strong> anyone who can reach the machine opens <code style="background:var(--bg4);padding:2px 6px;border-radius:3px;font-family:var(--font-mono);font-size:12px">http://&lt;host&gt;:8080</code> and sees the same shared data.<br><br>'
-    +'<strong>Backup:</strong> copy <code style="background:var(--bg4);padding:2px 6px;border-radius:3px;font-family:var(--font-mono);font-size:12px">meados.db</code>, or use Export Backup on the left. The server also keeps the last 50 saves in a history table.<br><br>'
+    +'<strong>Backup:</strong> copy <code style="background:var(--bg4);padding:2px 6px;border-radius:3px;font-family:var(--font-mono);font-size:12px">meados.db</code>, or use Export Backup on the left. The server also keeps the last 200 saves in a history table.<br><br>'
     +'<strong>Embed in Home Assistant (optional):</strong> add a Webpage/iframe card pointing at this app\'s URL.'
     +'</div></div>'
     +'<div class="card"><div class="card-header"><div class="card-title">DANGER ZONE</div></div>'
