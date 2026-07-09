@@ -39,12 +39,14 @@ function _advItemText(it){
         tolerance:nl?((yn||'De gist')+' nadert mogelijk haar alcoholtolerantie — de gisting kan hier gewoon stoppen in plaats van vastzitten.')
                     :((yn||'The yeast')+' may be nearing its alcohol tolerance — fermentation may simply be finished rather than stuck.'),
         temperature:nl?'De laatste temperatuur ligt buiten het ideale bereik — te koud vertraagt of stalt de gisting.':'The last temperature reading is outside the ideal range — too cold slows or stalls fermentation.',
+        ph:nl?('De pH ('+(d.ph!=null?d.ph.toFixed(2):'?')+') ligt laag. Honing buffert nauwelijks — de pH kan tijdens de gisting ver dalen, en een lage pH stresst/stalt de gist op zichzelf. Buffer omhoog met kaliumcarbonaat.')
+             :('pH ('+(d.ph!=null?d.ph.toFixed(2):'?')+') is low. Honey barely buffers at all — pH can swing a long way over the course of fermentation, and low pH alone stresses/stalls yeast. Buffer it back up with potassium carbonate.'),
         unknown:''
       }[d.cause]||'';
       // Weighted multi-cause (E2): mention a second contributing cause when it's
       // carrying real weight, not just any candidate that happened to match.
       var causeLabel={nutrition:nl?'te weinig voeding':'insufficient nutrients',fructose:nl?'fructoserijke honing':'high-fructose honey',
-        tolerance:nl?'alcoholtolerantie':'alcohol tolerance',temperature:nl?'temperatuur':'temperature'};
+        tolerance:nl?'alcoholtolerantie':'alcohol tolerance',temperature:nl?'temperatuur':'temperature',ph:nl?'lage pH':'low pH'};
       var second=(d.causes&&d.causes.length>1&&d.causes[1].weight>=0.35)?d.causes[1]:null;
       var secondTxt=second?(nl?(' Ook mogelijk een rol: '+(causeLabel[second.cause]||second.cause)+'.'):(' Also possibly contributing: '+(causeLabel[second.cause]||second.cause)+'.')):'';
       // Timeline fact (E10): how long it's actually been flat, not just "stalled".
@@ -62,10 +64,30 @@ function _advItemText(it){
       title:nl?'Stop met beluchten':'Stop aerating',
       reason:nl?('De dichtheid ('+(d.sg!=null?d.sg.toFixed(3):'?')+') is voorbij de 1/3-suikerbreuk ('+(d.sugarBreak||'?')+'). De gist verlaat haar groeifase; zuurstof vanaf nu verhoogt vooral het oxidatierisico in plaats van te helpen.')
               :('Gravity ('+(d.sg!=null?d.sg.toFixed(3):'?')+') is past the 1/3 sugar break ('+(d.sugarBreak||'?')+'). Yeast are leaving their growth phase; oxygen from here mostly raises oxidation risk rather than helping.')},
-    'ferment-complete':{icon:'✓',
-      title:nl?'Gisting lijkt voltooid':'Fermentation looks complete',
-      reason:nl?('De dichtheid ('+(d.sg!=null?d.sg.toFixed(3):'?')+') zit op of nabij het doel ('+(d.targetFG!=null?d.targetFG.toFixed(3):'?')+') bij ~'+d.atten+'% vergisting. Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.')
-              :('Gravity ('+(d.sg!=null?d.sg.toFixed(3):'?')+') is at or near target ('+(d.targetFG!=null?d.targetFG.toFixed(3):'?')+') at ~'+d.atten+'% attenuation. Confirm with two stable readings a few days apart, then rack / bottle.')},
+    'ferment-complete':(function(){
+      // Three real paths land here (projectFermentation's nearFGReason) — each
+      // gets its own honest sentence instead of one vague "gravity stable":
+      // 'numeric' = genuinely at the calculated target; 'historical' = matches
+      // YOUR own past batches on this yeast (the strongest, most concrete
+      // evidence, so it's named specifically); 'attenuation' = rated-vs-real
+      // gap + honey's poor pH buffering (the well-documented dominant real
+      // causes) with non-fermentable sugar content as a smaller contributor —
+      // NOT the other way around, which overstated the sugar angle. Real day
+      // count when the plateau detector has one, instead of "several days".
+      var sgTxt=d.sg!=null?d.sg.toFixed(3):'?', targetTxt=d.targetFG!=null?d.targetFG.toFixed(3):'?';
+      var daysTxt=nl?(d.plateauDays!=null?(d.plateauDays+' dagen'):'enkele dagen'):(d.plateauDays!=null?(d.plateauDays+' days'):'several days');
+      var reason=nl?({
+        historical:'De dichtheid ('+sgTxt+') is al '+daysTxt+' stabiel bij ~'+d.atten+'% vergisting — dat komt overeen met je eigen vorige '+(d.histSampleSize||'')+' brouwsel(s) op deze gist (gemiddeld ~'+d.histAtten+'% vergisting), niet alleen een algemene honingverklaring. Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.',
+        attenuation:'De dichtheid ('+sgTxt+') is al '+daysTxt+' stabiel bij ~'+d.atten+'% vergisting, ook al ligt ze boven het berekende doel ('+targetTxt+'). Dat is normaal — vergistingspercentages op het pakje zijn gemeten onder ideale labomstandigheden, en een honingmost daalt vaak wat verder in pH dan bier of wijn (honing buffert nauwelijks), wat gist vroeger kan afremmen. Honing/fruit\'s kleine aandeel niet-vergistbare suikers speelt ook een (kleinere) rol. Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.',
+        numeric:'De dichtheid ('+sgTxt+') zit op of nabij het doel ('+targetTxt+') bij ~'+d.atten+'% vergisting. Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.'
+      }[d.reason]||('De dichtheid ('+sgTxt+') zit op of nabij het doel ('+targetTxt+') bij ~'+d.atten+'% vergisting.'))
+        :({
+        historical:'Gravity ('+sgTxt+') has held stable for '+daysTxt+' at ~'+d.atten+'% attenuation — that matches your own past '+(d.histSampleSize||'')+' batch(es) on this yeast (averaging ~'+d.histAtten+'% attenuation), not just a general honey explanation. Confirm with two stable readings a few days apart, then rack / bottle.',
+        attenuation:'Gravity ('+sgTxt+') has held stable for '+daysTxt+' at ~'+d.atten+'% attenuation, even though it sits above the calculated target ('+targetTxt+'). That\'s normal — attenuation ratings are measured under ideal lab conditions, and a honey must typically drops further in pH than beer or wine ever does (honey barely buffers), which can slow yeast down for good before every last bit of sugar is gone. Honey/fruit\'s own small share of non-fermentable sugars plays a part too, just usually a smaller one. Confirm with two stable readings a few days apart, then rack / bottle.',
+        numeric:'Gravity ('+sgTxt+') is at or near target ('+targetTxt+') at ~'+d.atten+'% attenuation. Confirm with two stable readings a few days apart, then rack / bottle.'
+      }[d.reason]||('Gravity ('+sgTxt+') is at or near target ('+targetTxt+') at ~'+d.atten+'% attenuation.'));
+      return {icon:'✓',title:nl?'Gisting lijkt voltooid':'Fermentation looks complete',reason:reason};
+    })(),
     'temperature':{icon:'🌡',
       title:nl?(d.cold?'Temperatuur te laag':'Temperatuur te hoog'):(d.cold?'Temperature too low':'Temperature too high'),
       reason:nl?('Laatste meting '+(d.temp!=null?d.temp+'°C':'?')+' ligt buiten het ideale bereik voor '+(_advYeastName(d.yeast)||'deze gist')+' ('+d.low+'–'+d.high+'°C). '+(d.cold?'Te koud vertraagt of stalt de gisting.':'Te warm geeft fusels en scherpe smaken.'))
@@ -143,8 +165,8 @@ function _advItemText(it){
       var bev=_advBevWord(d,nl);
       return {icon:'🔍',
       title:nl?'Koud klaren vóór bottelen':'Cold-crash to clear',
-      reason:nl?('De gisting is bijna klaar. Laat de '+bev+' klaren — koud wegzetten (cold-crash) of simpelweg tijd trekt gist en fijne deeltjes naar de bodem voor een heldere, schonere '+bev+'. Hevel daarna van de droesem.')
-              :('Fermentation is nearly done. Let the '+bev+' clear — a cold-crash (or simply time) drops yeast and fine particles to the bottom for a bright, cleaner '+bev+'. Then rack off the sediment.')};
+      reason:nl?('De gisting is bijna klaar. Zet de '+bev+' koud (net boven vriespunt, dop losjes erop) — reken op 2-4 dagen voor de gist en fijne deeltjes goed bezinken; hevel daarna van de droesem. Nog niet helder genoeg? Hevel over en zet nog eens 3-4 dagen koud.')
+              :('Fermentation is nearly done. Put the '+bev+' somewhere cold (just above freezing, lid on loosely) — 2-4 days is typical for yeast and fine particles to drop out; rack off the sediment after that. Not clear enough yet? Rack again and give it another 3-4 days cold.')};
     })(),
     'ph-low':(function(){
       var isCider=d.beverageType==='cider';
@@ -183,8 +205,8 @@ function _advItemText(it){
               :('Bottled ~'+d.aged+' days ago. Bottle-conditioning typically takes 2–3 weeks — store the bottles upright at room temperature so the yeast can ferment the priming sugar. Chill only just before tasting.')},
     'blowoff-risk':{icon:'🪣',
       title:nl?'Weinig ruimte boven de must — blow-off-risico':'Little headspace above the must — blow-off risk',
-      reason:nl?('Deze partij ('+(d.volume||'?')+' L) laat maar ~'+d.headspacePct+'% lucht over in het vat ('+(d.capacity||'?')+' L). Tijdens de krachtigste fase van de gisting kan schuim/krausen via het waterslot naar buiten geduwd worden. Overweeg een groter vat, of leg een schaal onder het waterslot.')
-              :('This batch ('+(d.volume||'?')+' L) leaves only ~'+d.headspacePct+'% air space in the vessel ('+(d.capacity||'?')+' L). During the most vigorous phase of fermentation, foam/krausen can push out through the airlock. Consider a larger vessel, or set a tray underneath to catch any blow-off.')},
+      reason:nl?('Deze partij ('+(d.volume||'?')+' L) laat maar ~'+d.headspacePct+'% lucht over in het vat ('+(d.capacity||'?')+' L). Tijdens de krachtigste fase van de gisting kan schuim/krausen het waterslot verstoppen en druk opbouwen. De standaardoplossing: vervang het waterslot tijdelijk door een blow-off-buis (een slang van de vatopening naar een pot ontsmettingsmiddel) — dat laat schuim vrij ontsnappen zonder verstopping/drukopbouw. Een schaal onder het waterslot vangt alleen de rommel op áchteraf, dat voorkomt de drukopbouw niet.')
+              :('This batch ('+(d.volume||'?')+' L) leaves only ~'+d.headspacePct+'% air space in the vessel ('+(d.capacity||'?')+' L). During the most vigorous phase of fermentation, foam/krausen can clog the airlock and build up pressure. The standard fix: swap the airlock for a blow-off tube (a hose running from the vessel opening into a jar of sanitizer) — it lets foam escape freely without clogging or building pressure. A tray under the airlock only catches the mess after the fact, it doesn\'t prevent the pressure buildup.')},
     'fermenting-long':(function(){
       var bevPl=d.beverageType==='cider'?(nl?'ciders':'ciders'):(nl?'mede':'meads');
       return {icon:'⏳',
@@ -374,6 +396,10 @@ function renderBatchNarrative(b){
   var nl=_advNL();
   var beats=(typeof mwBatchNarrative==='function')?mwBatchNarrative(b):[];
   if(!beats.length)return '';
+  function fermenterName(id){
+    var f=(typeof getFermenter==='function')?getFermenter(id):null;
+    return f?f.name:(nl?'onbekend vat':'unknown vessel');
+  }
   function line(beat){
     var d=beat.data||{};
     var text={
@@ -381,10 +407,27 @@ function renderBatchNarrative(b){
                 :('Started'+(d.og?(' at OG '+d.og.toFixed(3)):'')+(d.yeast?(' with '+(_advYeastName(d.yeast)||d.yeast)):'')),
       'sugar-break':nl?('1/3-suikerbreuk bereikt (dichtheid '+(d.gravity!=null?d.gravity.toFixed(3):'?')+')'):('Crossed the 1/3 sugar break (gravity '+(d.gravity!=null?d.gravity.toFixed(3):'?')+')'),
       addition:nl?('Toegevoegd: '+(d.item||'?')+(d.amount?(' ('+d.amount+')'):'')):('Added: '+(d.item||'?')+(d.amount?(' ('+d.amount+')'):'')),
+      racked:nl?('Overgeheveld van '+fermenterName(d.from)+' naar '+fermenterName(d.to)+(d.notes?(' — '+d.notes):''))
+                :('Racked from '+fermenterName(d.from)+' to '+fermenterName(d.to)+(d.notes?(' — '+d.notes):'')),
       plateau:nl?('Dichtheid vlak sinds hier — '+d.days+' dagen '+(d.beforeBreak?'vóór de suikerbreuk (ongebruikelijk)':'rond/na de suikerbreuk (normaal)'))
                 :('Gravity flat from here — '+d.days+' days '+(d.beforeBreak?'before the sugar break (unusual)':'around/after the sugar break (normal)')),
+      tasted:nl?('Geproefd'+(d.rating?(' — '+'★'.repeat(d.rating)+'☆'.repeat(5-d.rating)):'')+(d.note?(': '+d.note):''))
+                :('Tasted'+(d.rating?(' — '+'★'.repeat(d.rating)+'☆'.repeat(5-d.rating)):'')+(d.note?(': '+d.note):'')),
+      competition:(function(){
+        var won=d.award&&d.award!=='entered';
+        var scoreTxt=d.score?(' ('+d.score+(d.maxScore?('/'+d.maxScore):'')+')'):'';
+        var catTxt=d.category?(' — '+d.category):'';
+        return nl?(won?(d.award+' bij '+(d.competition||'?')+catTxt+scoreTxt):('Ingezonden voor '+(d.competition||'?')+catTxt+scoreTxt))
+                 :(won?(d.award+' at '+(d.competition||'?')+catTxt+scoreTxt):('Entered '+(d.competition||'?')+catTxt+scoreTxt));
+      })(),
       bottled:nl?('Gebotteld'+(d.fg!=null?(' op FG '+d.fg.toFixed(3)):'')+(d.abv!=null?(' · '+d.abv+'% ABV'):''))
-                :('Bottled'+(d.fg!=null?(' at FG '+d.fg.toFixed(3)):'')+(d.abv!=null?(' · '+d.abv+'% ABV'):''))
+                :('Bottled'+(d.fg!=null?(' at FG '+d.fg.toFixed(3)):'')+(d.abv!=null?(' · '+d.abv+'% ABV'):'')),
+      failed:(function(){
+        var cat=(typeof FAILURE_CATEGORIES!=='undefined')?FAILURE_CATEGORIES.filter(function(c){return c.id===d.category;})[0]:null;
+        var catLabel=cat?(typeof proseL==='function'?proseL(cat.label):cat.label):(d.category||(nl?'onbekende reden':'unknown reason'));
+        return nl?('Batch gefaald — '+catLabel+(d.whatWentWrong?(': '+d.whatWentWrong):''))
+                  :('Batch failed — '+catLabel+(d.whatWentWrong?(': '+d.whatWentWrong):''));
+      })()
     }[beat.type]||'';
     if(!text)return '';
     return '<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">'

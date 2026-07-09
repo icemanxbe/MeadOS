@@ -469,7 +469,7 @@ function showMoreBatches(){APP.filters.batchLimit=(APP.filters.batchLimit||BATCH
 // recent drop rate (regression over the last few points), projected FG, and a
 // rough completion estimate. Linear extrapolation under-counts the tail (a real
 // ferment slows), so the UI labels it as approximate.
-function projectFermentation(b){
+function projectFermentation(b,histArg){
   if(!b)return null;
   var st=(typeof getBatchStatus==='function')?getBatchStatus(b):'';
   if(st==='bottled'||st==='complete'||st==='failed')return null;
@@ -488,15 +488,46 @@ function projectFermentation(b){
   var ratePerDay=denom!==0?-((n*sxy-sx*sy)/denom):0; // positive = dropping
   if(ratePerDay<0)ratePerDay=0;
   var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
-  var estFG=Math.min((recipe&&recipe.fgTarget)||1.000,last.g);
+  var og=parseFloat(b.og)||null;
+  // Prefer the yeast's own attenuation/tolerance ceiling (mwYeastTargets) over
+  // the recipe's flat design target — a recipe aimed dry can sit well below
+  // what THIS yeast, or honey's non-fermentable content, will actually reach.
+  var yt=(og&&b.yeast&&typeof mwYeastTargets==='function')?mwYeastTargets(og,b.yeast):null;
+  var estFG=Math.min((yt&&yt.fg)||(recipe&&recipe.fgTarget)||1.000,last.g);
   var remaining=last.g-estFG;
-  var atten=b.og&&b.og>1?Math.round((b.og-last.g)/(b.og-1)*100):null;
+  var atten=og&&og>1?Math.round((og-last.g)/(og-1)*100):null;
   var STALL=0.0008; // pts/day; below this it's basically not moving
-  var nearFG=remaining<=0.003;
+  // A genuine plateau (mwFermentTimeline) whose REACHED attenuation is already
+  // close to what this yeast is rated for reads as finished, even sitting
+  // above the numeric target — honey/fruit both carry non-fermentable sugars,
+  // so real mead commonly finishes a few points higher than calculated.
+  // "Past the 1/3 sugar break" alone isn't enough (a stall stopped shortly
+  // after the break would wrongly pass) — attenuation-reached-vs-expected is
+  // the real signal, reusing the same ratio mwBatchSignals already computes.
+  var timeline=(typeof mwFermentTimeline==='function')?mwFermentTimeline(logs):null;
+  var attenReached=(og&&typeof mwAttenuation==='function')?mwAttenuation(og,last.g):null;
+  var attenExpected=(og&&typeof mwAttenuation==='function')?mwAttenuation(og,estFG):null;
+  var attenNearTarget=(attenReached!=null&&attenExpected!=null)&&(attenReached>=attenExpected-0.10);
+  // Personal history (mwHistoricalComparison — needs 2+ of the brewer's OWN
+  // past batches on this yeast, honey-matched first) is a tighter, more
+  // grounded reference than the manufacturer's rating once it exists: it's
+  // YOUR honey/process/yeast combo actually finishing, not a lab best-case.
+  // Silent (null) until there's enough real data — same "incubating" gate E3
+  // already uses elsewhere, not a new concept. Callers that already computed
+  // it (mwBatchSignals) pass it in via histArg so it isn't scanned twice.
+  var hist=(typeof histArg!=='undefined')?histArg:((typeof mwHistoricalComparison==='function')?mwHistoricalComparison(b):null);
+  var attenNearHistorical=!!(hist&&hist.avgAttenuation!=null&&attenReached!=null&&(attenReached>=hist.avgAttenuation/100-0.05));
+  var plateaued=!!(timeline&&timeline.plateaued);
+  var nearFG=remaining<=0.003||((attenNearTarget||attenNearHistorical)&&plateaued);
+  // Which signal actually earned "done", most-specific/grounded first — the
+  // view uses this to say something honest and concrete instead of a vague
+  // "gravity stable" (e.g. naming your OWN past batches on this yeast, not
+  // just "honey does this sometimes").
+  var nearFGReason=!nearFG?null:(remaining<=0.003?'numeric':(attenNearHistorical?'historical':'attenuation'));
   var stalled=ratePerDay<STALL&&!nearFG;
   var daysToFG=(ratePerDay>=STALL&&remaining>0)?Math.ceil(remaining/ratePerDay):null;
   var doneMs=daysToFG!=null?(new Date(logs[logs.length-1].date).getTime()+daysToFG*86400000):null;
-  return {ratePerDay:ratePerDay,estFG:estFG,atten:atten,remaining:remaining,daysToFG:daysToFG,doneMs:doneMs,stalled:stalled,nearFG:nearFG,lastG:last.g};
+  return {ratePerDay:ratePerDay,estFG:estFG,atten:atten,remaining:remaining,daysToFG:daysToFG,doneMs:doneMs,stalled:stalled,nearFG:nearFG,nearFGReason:nearFGReason,lastG:last.g};
 }
 function renderFermentationProjection(b){
   var p=projectFermentation(b);
@@ -573,6 +604,7 @@ function renderBatchDetail(){
         var label=ferm.name+(ferm.capacity?' ('+fmtVol(ferm.capacity)+')':'')+(rackingCount?' &nbsp;<span style="font-size:10px;font-family:var(--font-mono);color:var(--text3);letter-spacing:1px">· '+rackingCount+'× RACKED</span>':'');
         return'<tr><td style="color:var(--text3)">Current Vessel</td><td><span style="color:'+(ferm.color||'var(--gold2)')+'">'+escHtml(ferm.name.length>30?ferm.name.slice(0,28)+'…':ferm.name)+'</span>'+(ferm.capacity?' <span style="color:var(--text3);font-size:11px">('+fmtVol(ferm.capacity)+')</span>':'')+(rackingCount?' <span style="font-size:10px;font-family:var(--font-mono);color:var(--text3);letter-spacing:1px;margin-left:6px">· '+rackingCount+'× RACKED</span>':'')+'</td></tr>';
       }()):'')
+      +(!APP.bottling[b.id]?'<tr><td style="color:var(--text3)">Bulk Aging</td><td><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:normal"><input type="checkbox" '+(b.bulkAging?'checked':'')+' onchange="toggleBulkAging(\''+b.id+'\',this.checked);renderMain()" style="cursor:pointer"> Held colder than fermentation on purpose (skips the Advisor\'s fermentation-temperature check)</label></td></tr>':'')
       +(b.honey?'<tr><td style="color:var(--text3)">'+(isCider?'Juice Used':'Honey Used')+'</td><td>'+b.honey+(isCider?' L':' kg')+(b.honeyType?' · '+escHtml(b.honeyType):'')+'</td></tr>':'')
       +(b.yeast?'<tr><td style="color:var(--text3)">Yeast</td><td>'+escHtml((getYeastById(b.yeast)||{}).name||b.yeast)+'</td></tr>':'')
       +(b.nutrient?(function(){
@@ -717,7 +749,7 @@ function renderBatchDetail(){
       +'<div><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">ADD READING</div></div>'
       +'<div class="form-row"><div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="log-date" value="'+today()+'"></div>'
       +'<div class="form-group"><label class="form-label">Gravity (SG)'+(b.gravitySensorEntity?' <span style="font-weight:400;color:var(--gold2);font-size:10px;margin-left:6px;font-family:var(--font-mono)">📡 sensor bound</span>':'')+'</label><div style="display:flex;gap:6px"><input class="form-input" type="number" id="log-gravity" placeholder="1.045" step="0.001" min="0.990" max="1.200" style="flex:1">'+(b.gravitySensorEntity?'<button class="btn btn-secondary btn-sm" onclick="pullGravityFromSensor(\''+b.id+'\')" title="Pull latest reading from '+escHtml(b.gravitySensorEntity)+'" style="padding:0 10px">📡</button>':'')+'</div></div></div>'
-      +'<div class="form-row"><div class="form-group"><label class="form-label">Temperature (°C)'+tempSrcHint+'</label><input class="form-input" type="number" id="log-temp" placeholder="'+(prefilledT!=null?prefilledT.toFixed(1):'20')+'" step="0.5" value="'+(prefilledT!=null?prefilledT.toFixed(1):'')+'"></div>'
+      +'<div class="form-row"><div class="form-group"><label class="form-label">Temperature (°C)'+tempSrcHint+'</label><input class="form-input" type="number" id="log-temp" placeholder="'+(prefilledT!=null?prefilledT.toFixed(1):'20')+'" step="0.5" value="'+(prefilledT!=null?prefilledT.toFixed(1):'')+'"><div style="font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5;font-style:italic">Active fermentation runs ~3-6°C warmer than the room around it (yeast activity generates real heat). If this is a room/ambient reading rather than a probe on the vessel, the must itself is likely running hotter than this number.</div></div>'
       +'<div class="form-group"><label class="form-label">Airlock Activity</label><select class="form-select" id="log-airlock"><option value="">—</option><option>Very active (&lt;30s)</option><option>Active (30-60s)</option><option>Slow (1-3 min)</option><option>Very slow (3+ min)</option><option>None</option></select></div></div>'
       +'<div class="form-row"><div class="form-group"><label class="form-label">pH <span style="font-weight:400;color:var(--text3);font-size:11px;margin-left:6px">optional · only logged if you enter a value</span></label><input class="form-input" type="number" id="log-ph" placeholder="3.2 — typical healthy range 3.0–3.4" step="0.01" min="2.5" max="4.5"><div style="font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5;font-style:italic">Healthy mead pH during ferment: 3.0–3.4. Below 2.9 means yeast stress (raise pH with potassium carbonate). Above 3.5 risks contamination. Leave blank if you don\'t measure — pH never appears in charts or summaries until you log at least one value.</div></div>'
       +'<div class="form-group"></div></div>'
@@ -1108,7 +1140,12 @@ function initBatchCharts(){
     var color=getBatchColor(b);
     var og=b.og||1.095;
     var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
-    var fgTarget=(recipe&&recipe.fgTarget)||1.010;
+    // Yeast-aware target (same source as the Advisor) — a flat recipe.fgTarget
+    // can sit well below what this yeast/honey will actually reach, which used
+    // to draw a dashed "further decline expected" line past a batch that had
+    // already genuinely finished.
+    var yt=(og&&b.yeast&&typeof mwYeastTargets==='function')?mwYeastTargets(og,b.yeast):null;
+    var fgTarget=(yt&&yt.fg)||(recipe&&recipe.fgTarget)||1.010;
     var fermentDays=(recipe&&recipe.fermentDays)||42;
     // Build aligned data series including OG starting point
     var labels=['Day 0'].concat(logs.map(function(l){return'D'+daysSince(b.startDate)-daysSince(b.startDate)+' · '+fmtDateShort(l.date);}));
