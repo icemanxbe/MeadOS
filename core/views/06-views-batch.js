@@ -508,7 +508,15 @@ function projectFermentation(b){
   var attenReached=(og&&typeof mwAttenuation==='function')?mwAttenuation(og,last.g):null;
   var attenExpected=(og&&typeof mwAttenuation==='function')?mwAttenuation(og,estFG):null;
   var attenNearTarget=(attenReached!=null&&attenExpected!=null)&&(attenReached>=attenExpected-0.10);
-  var nearFG=remaining<=0.003||(attenNearTarget&&!!(timeline&&timeline.plateaued));
+  // Personal history (mwHistoricalComparison — needs 2+ of the brewer's OWN
+  // past batches on this yeast, honey-matched first) is a tighter, more
+  // grounded reference than the manufacturer's rating once it exists: it's
+  // YOUR honey/process/yeast combo actually finishing, not a lab best-case.
+  // Silent (null) until there's enough real data — same "incubating" gate E3
+  // already uses elsewhere, not a new concept.
+  var hist=(typeof mwHistoricalComparison==='function')?mwHistoricalComparison(b):null;
+  var attenNearHistorical=!!(hist&&hist.avgAttenuation!=null&&attenReached!=null&&(attenReached>=hist.avgAttenuation/100-0.05));
+  var nearFG=remaining<=0.003||((attenNearTarget||attenNearHistorical)&&!!(timeline&&timeline.plateaued));
   var stalled=ratePerDay<STALL&&!nearFG;
   var daysToFG=(ratePerDay>=STALL&&remaining>0)?Math.ceil(remaining/ratePerDay):null;
   var doneMs=daysToFG!=null?(new Date(logs[logs.length-1].date).getTime()+daysToFG*86400000):null;

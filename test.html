@@ -214,6 +214,33 @@
     APP.batches=[]; APP.logs={}; APP.recipes=BUILTIN_RECIPES();
   })();
 
+  // projectFermentation: personal history (mwHistoricalComparison) can call a
+  // batch "complete" even when it's further from the yeast's RATED attenuation
+  // than the generic 10pp margin allows — because this brewer's own past
+  // batches on this exact yeast+recipe genuinely finish there. EC-1118 is
+  // rated 95%; two past batches on it both finished at 80% attenuation (a real
+  // process/honey ceiling, e.g. a low-fermentability honey) — the current
+  // batch plateaus at ~79%, which the generic rating-based margin (needs
+  // >=85%) would call "still going", but personal history (needs >=75%)
+  // correctly reads as done.
+  (function(){
+    APP.recipes=[{id:'rHist',fgTarget:1.000,fermentDays:30}];
+    var past1={id:'hist1',recipeId:'rHist',startDate:isoAgo(200),og:1.100,yeast:'ec1118'};
+    var past2={id:'hist2',recipeId:'rHist',startDate:isoAgo(150),og:1.100,yeast:'ec1118'};
+    var current={id:'hist3',recipeId:'rHist',startDate:isoAgo(20),og:1.100,yeast:'ec1118'};
+    APP.batches=[past1,past2,current];
+    APP.bottling={hist1:{date:isoAgo(170),fg:1.020},hist2:{date:isoAgo(120),fg:1.020}};
+    APP.logs={
+      hist3:[{date:isoAgo(20),gravity:1.100},{date:isoAgo(14),gravity:1.050},{date:isoAgo(10),gravity:1.021},
+        {date:isoAgo(7),gravity:1.021},{date:isoAgo(4),gravity:1.021},{date:isoAgo(0),gravity:1.021}]
+    };
+    var hist=mwHistoricalComparison(current);
+    ok('historical: avg attenuation from past batches ~80%', hist&&Math.abs(hist.avgAttenuation-80)<1, JSON.stringify(hist));
+    var p=projectFermentation(current);
+    ok('historical: reads as complete via personal history, not generic rating', p&&p.nearFG===true&&p.stalled===false, JSON.stringify(p));
+    APP.batches=[]; APP.logs={}; APP.bottling={}; APP.recipes=BUILTIN_RECIPES();
+  })();
+
   // ---- calculators / conversions (pure logic) ----
   eq('calcABV 1.090 -> 1.000 = 11.8', calcABV(1.090,1.000), '11.8');
   ok('calcABV monotonic (higher OG -> higher ABV)', parseFloat(calcABV(1.120,1.000))>parseFloat(calcABV(1.090,1.000)));
