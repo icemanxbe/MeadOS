@@ -469,7 +469,7 @@ function showMoreBatches(){APP.filters.batchLimit=(APP.filters.batchLimit||BATCH
 // recent drop rate (regression over the last few points), projected FG, and a
 // rough completion estimate. Linear extrapolation under-counts the tail (a real
 // ferment slows), so the UI labels it as approximate.
-function projectFermentation(b){
+function projectFermentation(b,histArg){
   if(!b)return null;
   var st=(typeof getBatchStatus==='function')?getBatchStatus(b):'';
   if(st==='bottled'||st==='complete'||st==='failed')return null;
@@ -513,14 +513,21 @@ function projectFermentation(b){
   // grounded reference than the manufacturer's rating once it exists: it's
   // YOUR honey/process/yeast combo actually finishing, not a lab best-case.
   // Silent (null) until there's enough real data — same "incubating" gate E3
-  // already uses elsewhere, not a new concept.
-  var hist=(typeof mwHistoricalComparison==='function')?mwHistoricalComparison(b):null;
+  // already uses elsewhere, not a new concept. Callers that already computed
+  // it (mwBatchSignals) pass it in via histArg so it isn't scanned twice.
+  var hist=(typeof histArg!=='undefined')?histArg:((typeof mwHistoricalComparison==='function')?mwHistoricalComparison(b):null);
   var attenNearHistorical=!!(hist&&hist.avgAttenuation!=null&&attenReached!=null&&(attenReached>=hist.avgAttenuation/100-0.05));
-  var nearFG=remaining<=0.003||((attenNearTarget||attenNearHistorical)&&!!(timeline&&timeline.plateaued));
+  var plateaued=!!(timeline&&timeline.plateaued);
+  var nearFG=remaining<=0.003||((attenNearTarget||attenNearHistorical)&&plateaued);
+  // Which signal actually earned "done", most-specific/grounded first — the
+  // view uses this to say something honest and concrete instead of a vague
+  // "gravity stable" (e.g. naming your OWN past batches on this yeast, not
+  // just "honey does this sometimes").
+  var nearFGReason=!nearFG?null:(remaining<=0.003?'numeric':(attenNearHistorical?'historical':'attenuation'));
   var stalled=ratePerDay<STALL&&!nearFG;
   var daysToFG=(ratePerDay>=STALL&&remaining>0)?Math.ceil(remaining/ratePerDay):null;
   var doneMs=daysToFG!=null?(new Date(logs[logs.length-1].date).getTime()+daysToFG*86400000):null;
-  return {ratePerDay:ratePerDay,estFG:estFG,atten:atten,remaining:remaining,daysToFG:daysToFG,doneMs:doneMs,stalled:stalled,nearFG:nearFG,lastG:last.g};
+  return {ratePerDay:ratePerDay,estFG:estFG,atten:atten,remaining:remaining,daysToFG:daysToFG,doneMs:doneMs,stalled:stalled,nearFG:nearFG,nearFGReason:nearFGReason,lastG:last.g};
 }
 function renderFermentationProjection(b){
   var p=projectFermentation(b);

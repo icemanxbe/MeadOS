@@ -40,7 +40,12 @@ function mwBatchSignals(b){
   var targetFG=(yt&&yt.fg)||(recipe&&recipe.fgTarget)||1.000;
   var targetABV=(yt&&yt.abv)||(recipe&&recipe.abvTarget)||(og?parseFloat(calcABV(og,targetFG)):null);
 
-  var proj=(typeof projectFermentation==='function')?projectFermentation(b):null;
+  // Historical learning (E3): the brewer's OWN past batches, not generic lore.
+  // Computed once here (not inside projectFermentation too) and threaded
+  // through — mwHistoricalComparison scans+processes every other batch, so
+  // calling it twice per signals pass was pure waste.
+  var historical=(typeof mwHistoricalComparison==='function')?mwHistoricalComparison(b):null;
+  var proj=(typeof projectFermentation==='function')?projectFermentation(b,historical):null;
   var attenuation=(og&&lastG!=null)?mwAttenuation(og,lastG):0;
   var expectedAttenuation=(og)?mwAttenuation(og,targetFG):0;
   var sugarBreak=(og)?mwSugarBreak(og,targetFG):null;
@@ -157,8 +162,6 @@ function mwBatchSignals(b){
     var phase=daysSinceStart<lo?'ahead':daysSinceStart<=hi?'on-track':daysSinceStart<=watchEdge?'watch':'behind';
     return {phase:phase,pct:exp>0?Math.round(daysSinceStart/exp*100):null,days:daysSinceStart,low:lo,high:hi,expected:exp};
   })():null;
-  // Historical learning (E3): the brewer's OWN past batches, not generic lore.
-  var historical=(typeof mwHistoricalComparison==='function')?mwHistoricalComparison(b):null;
 
   // Cider mode: beverageType branches a handful of rules/text below (pH
   // targets, MLF, wording) that otherwise assume mead. styleId + mlfStance
@@ -175,7 +178,7 @@ function mwBatchSignals(b){
     attenuation:attenuation, expectedAttenuation:expectedAttenuation,
     ratePerDay:proj?proj.ratePerDay:null, daysToFG:proj?proj.daysToFG:null,
     doneMs:proj?proj.doneMs:null, estFG:proj?proj.estFG:null,
-    stalled:proj?proj.stalled:false, nearFG:proj?proj.nearFG:false,
+    stalled:proj?proj.stalled:false, nearFG:proj?proj.nearFG:false, nearFGReason:proj?proj.nearFGReason:null,
     sugarBreak:sugarBreak, passedSugarBreak:passedSugarBreak, daysToSugarBreak:daysToSugarBreak,
     timeline:timeline,
     nutrientsDone:nut.done, nutrientsExpected:nut.expected, nutrientsComplete:nutrientsComplete,
@@ -320,7 +323,10 @@ function _advRules(){
     function complete(s){
       if(!s.active||!s.nearFG)return null;
       return {id:'ferment-complete',severity:'recommended',category:'fermentation',
-        data:{sg:s.lastG,targetFG:s.targetFG,atten:Math.round(s.attenuation*100)},
+        data:{sg:s.lastG,targetFG:s.targetFG,atten:Math.round(s.attenuation*100),
+          reason:s.nearFGReason,plateauDays:(s.timeline&&s.timeline.plateauDays)||null,
+          histSampleSize:(s.nearFGReason==='historical'&&s.historical)?s.historical.sampleSize:null,
+          histAtten:(s.nearFGReason==='historical'&&s.historical)?Math.round(s.historical.avgAttenuation):null},
         reasons:['near-fg']};
     },
     function stabiliseFirst(s){
