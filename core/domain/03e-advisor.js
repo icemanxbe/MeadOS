@@ -287,6 +287,15 @@ function _advRules(){
     function finalNutrient(s){
       if(s.nutrientsComplete||s.nutrientsExpected===0)return null;
       if(!s.fermenting)return null;
+      // Once fermentation itself reads as complete, the dosing window is
+      // unambiguously closed — a dose here can't reach yeast still growing
+      // (there isn't any) and only risks feeding spoilage organisms instead
+      // (the same reasoning this rule's own text gives for "past the break").
+      // Without this it fires 'critical: dose now' in the same breath as
+      // 'ferment-complete: go rack/bottle' — a real contradiction, not just
+      // an unlikely edge case (any healthy fast ferment that finishes before
+      // every scheduled dose lands here).
+      if(s.nearFG)return null;
       // Due as we approach the 1/3 break; urgent once past it (window closing).
       var near=s.sugarBreak!=null&&s.lastG!=null&&s.lastG<=(s.sugarBreak+0.006);
       if(!near&&!s.passedSugarBreak)return null;

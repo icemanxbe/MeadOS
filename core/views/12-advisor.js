@@ -62,10 +62,22 @@ function _advItemText(it){
       title:nl?'Stop met beluchten':'Stop aerating',
       reason:nl?('De dichtheid ('+(d.sg!=null?d.sg.toFixed(3):'?')+') is voorbij de 1/3-suikerbreuk ('+(d.sugarBreak||'?')+'). De gist verlaat haar groeifase; zuurstof vanaf nu verhoogt vooral het oxidatierisico in plaats van te helpen.')
               :('Gravity ('+(d.sg!=null?d.sg.toFixed(3):'?')+') is past the 1/3 sugar break ('+(d.sugarBreak||'?')+'). Yeast are leaving their growth phase; oxygen from here mostly raises oxidation risk rather than helping.')},
-    'ferment-complete':{icon:'✓',
-      title:nl?'Gisting lijkt voltooid':'Fermentation looks complete',
-      reason:nl?('De dichtheid ('+(d.sg!=null?d.sg.toFixed(3):'?')+') zit op of nabij het doel ('+(d.targetFG!=null?d.targetFG.toFixed(3):'?')+') bij ~'+d.atten+'% vergisting. Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.')
-              :('Gravity ('+(d.sg!=null?d.sg.toFixed(3):'?')+') is at or near target ('+(d.targetFG!=null?d.targetFG.toFixed(3):'?')+') at ~'+d.atten+'% attenuation. Confirm with two stable readings a few days apart, then rack / bottle.')},
+    'ferment-complete':(function(){
+      // Two real paths land here: numerically close to the calculated target,
+      // or gravity plateaued well past the sugar break despite sitting above
+      // it. The second is completely normal (honey/fruit non-fermentables,
+      // real-world attenuation below the strain's rated ceiling) and deserves
+      // its own honest sentence rather than a slightly-wrong "at target".
+      var aboveTarget=(d.sg!=null&&d.targetFG!=null&&(d.sg-d.targetFG)>0.003);
+      return {icon:'✓',
+        title:nl?'Gisting lijkt voltooid':'Fermentation looks complete',
+        reason:nl?(aboveTarget
+            ?('De dichtheid ('+(d.sg!=null?d.sg.toFixed(3):'?')+') is al enkele dagen stabiel bij ~'+d.atten+'% vergisting, ook al ligt ze boven het berekende doel ('+(d.targetFG!=null?d.targetFG.toFixed(3):'?')+'). Dat is normaal — honing en fruit bevatten niet-vergistbare suikers, en de werkelijke vergistingsgraad blijft vaak onder het opgegeven cijfer. Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.')
+            :('De dichtheid ('+(d.sg!=null?d.sg.toFixed(3):'?')+') zit op of nabij het doel ('+(d.targetFG!=null?d.targetFG.toFixed(3):'?')+') bij ~'+d.atten+'% vergisting. Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.'))
+          :(aboveTarget
+            ?('Gravity ('+(d.sg!=null?d.sg.toFixed(3):'?')+') has held stable for several days at ~'+d.atten+'% attenuation, even though it sits above the calculated target ('+(d.targetFG!=null?d.targetFG.toFixed(3):'?')+'). That\'s normal — honey and fruit carry non-fermentable sugars, and real-world attenuation often lands under the rated figure. Confirm with two stable readings a few days apart, then rack / bottle.')
+            :('Gravity ('+(d.sg!=null?d.sg.toFixed(3):'?')+') is at or near target ('+(d.targetFG!=null?d.targetFG.toFixed(3):'?')+') at ~'+d.atten+'% attenuation. Confirm with two stable readings a few days apart, then rack / bottle.'))};
+    })(),
     'temperature':{icon:'🌡',
       title:nl?(d.cold?'Temperatuur te laag':'Temperatuur te hoog'):(d.cold?'Temperature too low':'Temperature too high'),
       reason:nl?('Laatste meting '+(d.temp!=null?d.temp+'°C':'?')+' ligt buiten het ideale bereik voor '+(_advYeastName(d.yeast)||'deze gist')+' ('+d.low+'–'+d.high+'°C). '+(d.cold?'Te koud vertraagt of stalt de gisting.':'Te warm geeft fusels en scherpe smaken.'))

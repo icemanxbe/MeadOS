@@ -162,6 +162,58 @@
     APP.recipes=BUILTIN_RECIPES();
   })();
 
+  // projectFermentation: a completed traditional mead (OG 1.120, M05) that
+  // plateaus at 1.011 — above the naive recipe target, but well past the
+  // sugar break — must read as done, not stalled (the ChatGPT false-positive
+  // report this fixes: honey/yeast non-fermentables leave FG above the
+  // calculated target even on a healthy, finished ferment).
+  (function(){
+    var b={id:'tm1',recipeId:null,startDate:isoAgo(18),og:1.120,yeast:'m05'};
+    APP.logs={tm1:[
+      {date:isoAgo(18),gravity:1.120},{date:isoAgo(12),gravity:1.070},{date:isoAgo(9),gravity:1.030},
+      {date:isoAgo(6),gravity:1.011},{date:isoAgo(4),gravity:1.011},{date:isoAgo(2),gravity:1.011},{date:isoAgo(0),gravity:1.011}
+    ]};
+    var p=projectFermentation(b);
+    ok('completed mead: not flagged stalled', p&&p.stalled===false, JSON.stringify(p));
+    ok('completed mead: reads as near final gravity', p&&p.nearFG===true, JSON.stringify(p));
+    delete APP.logs.tm1;
+  })();
+
+  // projectFermentation: a genuine early stall (plateaus BEFORE the sugar
+  // break) must still be flagged — the fix above must not blunt real stalls.
+  (function(){
+    var b={id:'st1',recipeId:null,startDate:isoAgo(20),og:1.100,yeast:'m05'};
+    APP.logs={st1:[
+      {date:isoAgo(20),gravity:1.100},{date:isoAgo(14),gravity:1.085},{date:isoAgo(10),gravity:1.070},
+      {date:isoAgo(7),gravity:1.070},{date:isoAgo(4),gravity:1.070},{date:isoAgo(0),gravity:1.070}
+    ]};
+    var p=projectFermentation(b);
+    ok('real stall: still flagged stalled', p&&p.stalled===true, JSON.stringify(p));
+    ok('real stall: not near final gravity', p&&p.nearFG===false, JSON.stringify(p));
+    delete APP.logs.st1;
+  })();
+
+  // detectStuckFermentations (dashboard alert): must reuse the same fixed
+  // signal, not its own flat recipe.fgTarget check — this was a 4th
+  // independent copy of the same false-positive bug, live on the highest-
+  // traffic page in the app (the dashboard shows it before anything else).
+  (function(){
+    APP.recipes=[{id:'rDash',fgTarget:1.000,fermentDays:30}];
+    var completedMead={id:'dash1',recipeId:null,startDate:isoAgo(18),og:1.120,yeast:'m05'};
+    var realStall={id:'dash2',recipeId:null,startDate:isoAgo(20),og:1.100,yeast:'m05'};
+    APP.batches=[completedMead,realStall];
+    APP.logs={
+      dash1:[{date:isoAgo(18),gravity:1.120},{date:isoAgo(12),gravity:1.070},{date:isoAgo(9),gravity:1.030},
+        {date:isoAgo(6),gravity:1.011},{date:isoAgo(4),gravity:1.011},{date:isoAgo(2),gravity:1.011},{date:isoAgo(0),gravity:1.011}],
+      dash2:[{date:isoAgo(20),gravity:1.100},{date:isoAgo(14),gravity:1.085},{date:isoAgo(10),gravity:1.070},
+        {date:isoAgo(7),gravity:1.070},{date:isoAgo(4),gravity:1.070},{date:isoAgo(0),gravity:1.070}]
+    };
+    var stuck=detectStuckFermentations();
+    ok('dashboard: completed mead not flagged stuck', !stuck.some(function(s){return s.batch.id==='dash1';}), JSON.stringify(stuck.map(function(s){return s.batch.id;})));
+    ok('dashboard: real stall still flagged stuck', stuck.some(function(s){return s.batch.id==='dash2';}), JSON.stringify(stuck.map(function(s){return s.batch.id;})));
+    APP.batches=[]; APP.logs={}; APP.recipes=BUILTIN_RECIPES();
+  })();
+
   // ---- calculators / conversions (pure logic) ----
   eq('calcABV 1.090 -> 1.000 = 11.8', calcABV(1.090,1.000), '11.8');
   ok('calcABV monotonic (higher OG -> higher ABV)', parseFloat(calcABV(1.120,1.000))>parseFloat(calcABV(1.090,1.000)));

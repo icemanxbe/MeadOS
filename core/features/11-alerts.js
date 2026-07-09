@@ -53,11 +53,14 @@ function renderStockAlerts(){
 // calls, and anniversary tasting prompts. Designed to be unobtrusive — only
 // renders when there's actually something to flag.
 
-// Detect a stuck fermentation: an active (pre-bottled) batch where the most
-// recent N gravity logs show <0.003 SG drop over 5+ days, AND the gravity is
-// still >0.005 above the recipe's expected FG. False-positive prone if the
-// user simply hasn't been logging, so we require at least 2 logs in the
-// stall window — no logs at all just means "log more often."
+// Detect a stuck fermentation. Defers the actual "is it stalled" call to
+// projectFermentation() — the SAME yeast-attenuation-aware, plateau-shape-aware
+// signal the Advisor uses — instead of re-deriving it from a flat recipe.fgTarget
+// comparison. That naive version used to flag healthy finished meads as "stuck"
+// whenever honey/fruit non-fermentables left the true FG above the recipe's
+// designed target (a real false-positive, not a hypothetical). The 5+ day
+// lookback here is now only for the human-readable "dropped only X in Y days"
+// wording, not for the stall determination itself.
 function detectStuckFermentations(){
   var stuck=[];
   var now=Date.now();
@@ -66,39 +69,31 @@ function detectStuckFermentations(){
     if(status==='bottled'||status==='complete'||status==='failed')return;
     var logs=(APP.logs[b.id]||[]).slice().sort(function(a,b){return(a.date||'').localeCompare(b.date||'');});
     if(logs.length<2)return; // can't detect a stall with one reading
-    var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
-    var targetFG=(recipe&&recipe.fgTarget)||1.000;
-    // Take the last 5+ days of logs and check if they've barely budged
+    var proj=(typeof projectFermentation==='function')?projectFermentation(b):null;
+    if(!proj||!proj.stalled)return;
     var lastLog=logs[logs.length-1];
     var lastDate=new Date(lastLog.date);
     if(isNaN(lastDate.getTime()))return;
     var daysSinceLastLog=Math.floor((now-lastDate.getTime())/86400000);
-    // Find the log that's 5+ days before the last log
+    if(daysSinceLastLog>14)return; // stale data, not a live stall
+    var ageOfBatch=Math.floor((now-new Date(b.startDate).getTime())/86400000);
+    if(ageOfBatch<3)return; // don't flag the lag phase
+    // Find the log that's 5+ days before the last log, purely for the message.
     var stallCandidates=logs.filter(function(l){
       var t=new Date(l.date).getTime();
       return!isNaN(t)&&((lastDate.getTime()-t)/86400000)>=5;
     });
-    if(!stallCandidates.length)return;
-    var stallStart=stallCandidates[stallCandidates.length-1];
+    var stallStart=stallCandidates.length?stallCandidates[stallCandidates.length-1]:logs[0];
     var stallDays=Math.floor((lastDate.getTime()-new Date(stallStart.date).getTime())/86400000);
     var drop=(stallStart.gravity||0)-(lastLog.gravity||0);
-    // Stall conditions:
-    //   - gravity dropped <0.003 over 5+ days
-    //   - current gravity still meaningfully above target FG
-    //   - last log isn't ancient (stale data, not a stall)
-    if(drop<0.003&&(lastLog.gravity||0)>(targetFG+0.005)&&daysSinceLastLog<=14){
-      var ageOfBatch=Math.floor((now-new Date(b.startDate).getTime())/86400000);
-      // Don't flag the lag phase (first 48h is often no-activity-yet)
-      if(ageOfBatch<3)return;
-      stuck.push({
-        batch:b,
-        currentGravity:lastLog.gravity,
-        targetFG:targetFG,
-        stallDays:stallDays,
-        dropOverStall:Math.round(drop*1000)/1000,
-        daysSinceLastLog:daysSinceLastLog
-      });
-    }
+    stuck.push({
+      batch:b,
+      currentGravity:lastLog.gravity,
+      targetFG:proj.estFG,
+      stallDays:stallDays,
+      dropOverStall:Math.round(drop*1000)/1000,
+      daysSinceLastLog:daysSinceLastLog
+    });
   });
   return stuck;
 }

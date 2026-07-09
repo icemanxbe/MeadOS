@@ -488,11 +488,27 @@ function projectFermentation(b){
   var ratePerDay=denom!==0?-((n*sxy-sx*sy)/denom):0; // positive = dropping
   if(ratePerDay<0)ratePerDay=0;
   var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
-  var estFG=Math.min((recipe&&recipe.fgTarget)||1.000,last.g);
+  var og=parseFloat(b.og)||null;
+  // Prefer the yeast's own attenuation/tolerance ceiling (mwYeastTargets) over
+  // the recipe's flat design target — a recipe aimed dry can sit well below
+  // what THIS yeast, or honey's non-fermentable content, will actually reach.
+  var yt=(og&&b.yeast&&typeof mwYeastTargets==='function')?mwYeastTargets(og,b.yeast):null;
+  var estFG=Math.min((yt&&yt.fg)||(recipe&&recipe.fgTarget)||1.000,last.g);
   var remaining=last.g-estFG;
-  var atten=b.og&&b.og>1?Math.round((b.og-last.g)/(b.og-1)*100):null;
+  var atten=og&&og>1?Math.round((og-last.g)/(og-1)*100):null;
   var STALL=0.0008; // pts/day; below this it's basically not moving
-  var nearFG=remaining<=0.003;
+  // A genuine plateau (mwFermentTimeline) whose REACHED attenuation is already
+  // close to what this yeast is rated for reads as finished, even sitting
+  // above the numeric target — honey/fruit both carry non-fermentable sugars,
+  // so real mead commonly finishes a few points higher than calculated.
+  // "Past the 1/3 sugar break" alone isn't enough (a stall stopped shortly
+  // after the break would wrongly pass) — attenuation-reached-vs-expected is
+  // the real signal, reusing the same ratio mwBatchSignals already computes.
+  var timeline=(typeof mwFermentTimeline==='function')?mwFermentTimeline(logs):null;
+  var attenReached=(og&&typeof mwAttenuation==='function')?mwAttenuation(og,last.g):null;
+  var attenExpected=(og&&typeof mwAttenuation==='function')?mwAttenuation(og,estFG):null;
+  var attenNearTarget=(attenReached!=null&&attenExpected!=null)&&(attenReached>=attenExpected-0.10);
+  var nearFG=remaining<=0.003||(attenNearTarget&&!!(timeline&&timeline.plateaued));
   var stalled=ratePerDay<STALL&&!nearFG;
   var daysToFG=(ratePerDay>=STALL&&remaining>0)?Math.ceil(remaining/ratePerDay):null;
   var doneMs=daysToFG!=null?(new Date(logs[logs.length-1].date).getTime()+daysToFG*86400000):null;
@@ -1109,7 +1125,12 @@ function initBatchCharts(){
     var color=getBatchColor(b);
     var og=b.og||1.095;
     var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
-    var fgTarget=(recipe&&recipe.fgTarget)||1.010;
+    // Yeast-aware target (same source as the Advisor) — a flat recipe.fgTarget
+    // can sit well below what this yeast/honey will actually reach, which used
+    // to draw a dashed "further decline expected" line past a batch that had
+    // already genuinely finished.
+    var yt=(og&&b.yeast&&typeof mwYeastTargets==='function')?mwYeastTargets(og,b.yeast):null;
+    var fgTarget=(yt&&yt.fg)||(recipe&&recipe.fgTarget)||1.010;
     var fermentDays=(recipe&&recipe.fermentDays)||42;
     // Build aligned data series including OG starting point
     var labels=['Day 0'].concat(logs.map(function(l){return'D'+daysSince(b.startDate)-daysSince(b.startDate)+' · '+fmtDateShort(l.date);}));
