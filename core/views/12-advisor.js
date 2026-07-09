@@ -392,6 +392,10 @@ function renderBatchNarrative(b){
   var nl=_advNL();
   var beats=(typeof mwBatchNarrative==='function')?mwBatchNarrative(b):[];
   if(!beats.length)return '';
+  function fermenterName(id){
+    var f=(typeof getFermenter==='function')?getFermenter(id):null;
+    return f?f.name:(nl?'onbekend vat':'unknown vessel');
+  }
   function line(beat){
     var d=beat.data||{};
     var text={
@@ -399,10 +403,27 @@ function renderBatchNarrative(b){
                 :('Started'+(d.og?(' at OG '+d.og.toFixed(3)):'')+(d.yeast?(' with '+(_advYeastName(d.yeast)||d.yeast)):'')),
       'sugar-break':nl?('1/3-suikerbreuk bereikt (dichtheid '+(d.gravity!=null?d.gravity.toFixed(3):'?')+')'):('Crossed the 1/3 sugar break (gravity '+(d.gravity!=null?d.gravity.toFixed(3):'?')+')'),
       addition:nl?('Toegevoegd: '+(d.item||'?')+(d.amount?(' ('+d.amount+')'):'')):('Added: '+(d.item||'?')+(d.amount?(' ('+d.amount+')'):'')),
+      racked:nl?('Overgeheveld van '+fermenterName(d.from)+' naar '+fermenterName(d.to)+(d.notes?(' — '+d.notes):''))
+                :('Racked from '+fermenterName(d.from)+' to '+fermenterName(d.to)+(d.notes?(' — '+d.notes):'')),
       plateau:nl?('Dichtheid vlak sinds hier — '+d.days+' dagen '+(d.beforeBreak?'vóór de suikerbreuk (ongebruikelijk)':'rond/na de suikerbreuk (normaal)'))
                 :('Gravity flat from here — '+d.days+' days '+(d.beforeBreak?'before the sugar break (unusual)':'around/after the sugar break (normal)')),
+      tasted:nl?('Geproefd'+(d.rating?(' — '+'★'.repeat(d.rating)+'☆'.repeat(5-d.rating)):'')+(d.note?(': '+d.note):''))
+                :('Tasted'+(d.rating?(' — '+'★'.repeat(d.rating)+'☆'.repeat(5-d.rating)):'')+(d.note?(': '+d.note):'')),
+      competition:(function(){
+        var won=d.award&&d.award!=='entered';
+        var scoreTxt=d.score?(' ('+d.score+(d.maxScore?('/'+d.maxScore):'')+')'):'';
+        var catTxt=d.category?(' — '+d.category):'';
+        return nl?(won?(d.award+' bij '+(d.competition||'?')+catTxt+scoreTxt):('Ingezonden voor '+(d.competition||'?')+catTxt+scoreTxt))
+                 :(won?(d.award+' at '+(d.competition||'?')+catTxt+scoreTxt):('Entered '+(d.competition||'?')+catTxt+scoreTxt));
+      })(),
       bottled:nl?('Gebotteld'+(d.fg!=null?(' op FG '+d.fg.toFixed(3)):'')+(d.abv!=null?(' · '+d.abv+'% ABV'):''))
-                :('Bottled'+(d.fg!=null?(' at FG '+d.fg.toFixed(3)):'')+(d.abv!=null?(' · '+d.abv+'% ABV'):''))
+                :('Bottled'+(d.fg!=null?(' at FG '+d.fg.toFixed(3)):'')+(d.abv!=null?(' · '+d.abv+'% ABV'):'')),
+      failed:(function(){
+        var cat=(typeof FAILURE_CATEGORIES!=='undefined')?FAILURE_CATEGORIES.filter(function(c){return c.id===d.category;})[0]:null;
+        var catLabel=cat?(typeof proseL==='function'?proseL(cat.label):cat.label):(d.category||(nl?'onbekende reden':'unknown reason'));
+        return nl?('Batch gefaald — '+catLabel+(d.whatWentWrong?(': '+d.whatWentWrong):''))
+                  :('Batch failed — '+catLabel+(d.whatWentWrong?(': '+d.whatWentWrong):''));
+      })()
     }[beat.type]||'';
     if(!text)return '';
     return '<div style="display:flex;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">'

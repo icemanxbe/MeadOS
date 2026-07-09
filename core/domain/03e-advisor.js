@@ -223,11 +223,35 @@ function mwBatchNarrative(b){
     .sort(function(a,c){return(a.date||'').localeCompare(c.date||'');})
     .forEach(function(a){beats.push({type:'addition',date:a.date,data:{item:a.item,amount:a.amount}});});
 
+  // Rackings: real, already-logged vessel moves (rackBatch()) — raw fermenter
+  // ids only, same "facts here, sentence in the view" contract as every
+  // other beat; the view resolves names via getFermenter().
+  (b.rackings||[]).forEach(function(r){
+    if(r.date)beats.push({type:'racked',date:r.date,data:{from:r.fromFermenterId||null,to:r.toFermenterId||null,notes:r.notes||null}});
+  });
+
   var timeline=(typeof mwFermentTimeline==='function')?mwFermentTimeline(logs,sugarBreak):null;
   if(timeline&&timeline.plateaued)beats.push({type:'plateau',date:timeline.plateauSince,data:{days:timeline.plateauDays,beforeBreak:timeline.stalledBeforeBreak}});
 
+  // Tastings: real, dated checkpoints the brewer chose to log — can happen
+  // mid-aging, not just after bottling, so they're a genuine part of the
+  // story rather than a separate, disconnected tab.
+  ((typeof APP!=='undefined'&&APP.tastings&&APP.tastings[b.id])||[]).forEach(function(t){
+    if(t.date)beats.push({type:'tasted',date:t.date,data:{rating:t.rating||null,note:t.note||null}});
+  });
+
+  // Competition entries: a real, dated highlight (or just an entry) — often
+  // the single most memorable thing that happened to a batch.
+  ((typeof APP!=='undefined'&&APP.competitions&&APP.competitions[b.id])||[]).forEach(function(c){
+    if(c.date)beats.push({type:'competition',date:c.date,data:{competition:c.competition||null,category:c.category||null,award:c.award||null,score:c.score||null,maxScore:c.maxScore||null}});
+  });
+
   var bottling=(typeof APP!=='undefined'&&APP.bottling)?APP.bottling[b.id]:null;
   if(bottling&&bottling.date)beats.push({type:'bottled',date:bottling.date,data:{fg:bottling.fg,abv:bottling.abv}});
+
+  // Failed: a real terminal event — without it, a failed batch's story just
+  // stops with no explanation, which reads as a gap rather than an ending.
+  if(b.failed&&b.failed.date)beats.push({type:'failed',date:b.failed.date,data:{category:b.failed.category||null,whatWentWrong:b.failed.whatWentWrong||null}});
 
   beats.sort(function(x,y){return(x.date||'').localeCompare(y.date||'');});
   return beats;

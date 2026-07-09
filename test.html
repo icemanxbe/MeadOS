@@ -442,22 +442,40 @@
     // a real plateau, a real bottling record. All in one batch's history.
     (function(){
       ok('narrative: [] for no batch', JSON.stringify(mwBatchNarrative(null))==='[]', '');
-      var bn={id:'nar1',recipeId:'rA',startDate:isoAgo(30),og:1.098,yeast:'ec1118'};
+      var bn={id:'nar1',recipeId:'rA',startDate:isoAgo(30),og:1.098,yeast:'ec1118',
+        rackings:[{date:isoAgo(24),fromFermenterId:'f1',toFermenterId:'f3',notes:'Left lees behind.'}]};
       APP.batches=[bn];
       APP.logs={nar1:[
         {date:isoAgo(30),gravity:1.098},{date:isoAgo(26),gravity:1.070},{date:isoAgo(22),gravity:1.0620},
         {date:isoAgo(18),gravity:1.0618},{date:isoAgo(14),gravity:1.0616},{date:isoAgo(10),gravity:1.0615},{date:isoAgo(6),gravity:1.0614}
       ]};
       APP.additions={nar1:[{id:'ad2',date:isoAgo(20),item:'Fermaid-O',amount:'6g'},{id:'ad1',date:isoAgo(29),item:'Fermaid-O',amount:'6g'}]};
+      APP.tastings={nar1:[{id:'ta1',date:isoAgo(5),rating:4,note:'Coming along nicely.'}]};
       APP.bottling={nar1:{date:isoAgo(2),fg:1.006,abv:12.5,countsAtBottling:{750:6},locations:{cellar:{750:6}}}};
+      APP.competitions={nar1:[{id:'co1',date:isoAgo(1),competition:'Regional Mead Cup',category:'Melomel',award:'Gold',score:'28',maxScore:'30'}]};
       var beats=mwBatchNarrative(bn);
       ok('narrative: opens with the real start date/OG/yeast', beats[0]&&beats[0].type==='started'&&beats[0].date===isoAgo(30)&&beats[0].data.og===1.098&&beats[0].data.yeast==='ec1118', JSON.stringify(beats[0]));
       ok('narrative: includes the real sugar-break crossing', beats.some(function(x){return x.type==='sugar-break';}), JSON.stringify(beats.map(function(x){return x.type;})));
       ok('narrative: includes BOTH real logged additions', beats.filter(function(x){return x.type==='addition';}).length===2, JSON.stringify(beats.filter(function(x){return x.type==='addition';})));
+      ok('narrative: includes the real racking, from/to vessel + notes', beats.some(function(x){return x.type==='racked'&&x.data.from==='f1'&&x.data.to==='f3'&&x.data.notes;}), JSON.stringify(beats.filter(function(x){return x.type==='racked';})));
       ok('narrative: includes the real plateau, with how long it ran', beats.some(function(x){return x.type==='plateau'&&x.data.days>=8;}), JSON.stringify(beats.filter(function(x){return x.type==='plateau';})));
+      ok('narrative: includes the real tasting, with rating + note', beats.some(function(x){return x.type==='tasted'&&x.data.rating===4&&x.data.note;}), JSON.stringify(beats.filter(function(x){return x.type==='tasted';})));
+      ok('narrative: includes the real competition entry, with award + score', beats.some(function(x){return x.type==='competition'&&x.data.award==='Gold'&&x.data.score==='28';}), JSON.stringify(beats.filter(function(x){return x.type==='competition';})));
       ok('narrative: includes the real bottling record', beats.some(function(x){return x.type==='bottled'&&x.data.abv===12.5;}), JSON.stringify(beats.filter(function(x){return x.type==='bottled';})));
       ok('narrative: every beat is in chronological order', beats.every(function(x,i){return i===0||x.date>=beats[i-1].date;}), JSON.stringify(beats.map(function(x){return x.date;})));
-      APP.additions={};APP.bottling={};
+      APP.additions={};APP.bottling={};APP.tastings={};APP.competitions={};
+    })();
+
+    // Batch narrative: a failed batch gets a real closing chapter instead of
+    // just stopping with no explanation.
+    (function(){
+      var bf={id:'nar2',recipeId:'rA',startDate:isoAgo(40),og:1.098,yeast:'m05',
+        failed:{date:isoAgo(20),category:'stuck',whatWentWrong:'Never recovered after two re-pitches.'}};
+      APP.batches=[bf];
+      APP.logs={nar2:[{date:isoAgo(40),gravity:1.098},{date:isoAgo(25),gravity:1.070}]};
+      var beats=mwBatchNarrative(bf);
+      ok('narrative: includes the real failure, category + what went wrong', beats.some(function(x){return x.type==='failed'&&x.data.category==='stuck'&&x.data.whatWentWrong;}), JSON.stringify(beats.filter(function(x){return x.type==='failed';})));
+      APP.batches=[];APP.logs={};
     })();
     // readiness for a bottled, well-aged batch → high
     (function(){
