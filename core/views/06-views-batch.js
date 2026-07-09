@@ -573,6 +573,7 @@ function renderBatchDetail(){
         var label=ferm.name+(ferm.capacity?' ('+fmtVol(ferm.capacity)+')':'')+(rackingCount?' &nbsp;<span style="font-size:10px;font-family:var(--font-mono);color:var(--text3);letter-spacing:1px">· '+rackingCount+'× RACKED</span>':'');
         return'<tr><td style="color:var(--text3)">Current Vessel</td><td><span style="color:'+(ferm.color||'var(--gold2)')+'">'+escHtml(ferm.name.length>30?ferm.name.slice(0,28)+'…':ferm.name)+'</span>'+(ferm.capacity?' <span style="color:var(--text3);font-size:11px">('+fmtVol(ferm.capacity)+')</span>':'')+(rackingCount?' <span style="font-size:10px;font-family:var(--font-mono);color:var(--text3);letter-spacing:1px;margin-left:6px">· '+rackingCount+'× RACKED</span>':'')+'</td></tr>';
       }()):'')
+      +(!APP.bottling[b.id]?'<tr><td style="color:var(--text3)">Bulk Aging</td><td><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:normal"><input type="checkbox" '+(b.bulkAging?'checked':'')+' onchange="toggleBulkAging(\''+b.id+'\',this.checked);renderMain()" style="cursor:pointer"> Held colder than fermentation on purpose (skips the Advisor\'s fermentation-temperature check)</label></td></tr>':'')
       +(b.honey?'<tr><td style="color:var(--text3)">'+(isCider?'Juice Used':'Honey Used')+'</td><td>'+b.honey+(isCider?' L':' kg')+(b.honeyType?' · '+escHtml(b.honeyType):'')+'</td></tr>':'')
       +(b.yeast?'<tr><td style="color:var(--text3)">Yeast</td><td>'+escHtml((getYeastById(b.yeast)||{}).name||b.yeast)+'</td></tr>':'')
       +(b.nutrient?(function(){

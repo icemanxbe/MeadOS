@@ -29,6 +29,11 @@ function mwBatchSignals(b){
   var bottling=(typeof APP!=='undefined'&&APP.bottling)?APP.bottling[b.id]:null;
   var bottled=!!bottling;
   var fermenter=(b.fermenterId&&typeof getFermenter==='function')?getFermenter(b.fermenterId):null;
+  // Explicit brewer flag (see toggleBulkAging): "I've moved this somewhere
+  // deliberately colder than active fermentation." Independent of the
+  // auto-derived status, which is calendar/step-based and can still read
+  // 'conditioning' for a batch that's already racked to bulk age.
+  var bulkAging=!!b.bulkAging;
 
   // Targets: prefer the batch's actual yeast, fall back to recipe targets.
   var yt=(og&&b.yeast&&typeof mwYeastTargets==='function')?mwYeastTargets(og,b.yeast):null;
@@ -174,7 +179,7 @@ function mwBatchSignals(b){
     sugarBreak:sugarBreak, passedSugarBreak:passedSugarBreak, daysToSugarBreak:daysToSugarBreak,
     timeline:timeline,
     nutrientsDone:nut.done, nutrientsExpected:nut.expected, nutrientsComplete:nutrientsComplete,
-    latestTemp:latestTemp, tempSource:tempSource, tempLow:tLow, tempHigh:tHigh, tempInRange:tempInRange, tempStable:tempStable, latestPH:latestPH,
+    latestTemp:latestTemp, tempSource:tempSource, tempLow:tLow, tempHigh:tHigh, tempInRange:tempInRange, tempStable:tempStable, latestPH:latestPH, bulkAging:bulkAging,
     abvMax:abvMax, nearTolerance:nearTolerance, yeastId:b.yeast||null,
     daysSinceLastReading:daysSinceLastReading,
     honeyName:honeyName, honeyFructoseRisk:honeyFructoseRisk, yeastFructophilic:yeastFructophilic, fructoseStallRisk:fructoseStallRisk,
@@ -253,7 +258,7 @@ function mwStalledCauses(s){
   if(!s.nutrientsComplete)causes.push({cause:'nutrition',weight:0.75,evidence:['nutrients-incomplete']});
   if(s.fructoseStallRisk)causes.push({cause:'fructose',weight:0.55,evidence:['high-fructose-honey','non-fructophilic-yeast']});
   if(s.nearTolerance)causes.push({cause:'tolerance',weight:0.7,evidence:['near-abv-tolerance']});
-  if(s.tempInRange===false)causes.push({cause:'temperature',weight:0.5,evidence:['temp-out-of-range']});
+  if(s.tempInRange===false&&!s.bulkAging)causes.push({cause:'temperature',weight:0.5,evidence:['temp-out-of-range']});
   var t=s.timeline;
   if(t&&t.stalledBeforeBreak){
     causes.forEach(function(c){c.weight=Math.min(0.95,mwRound(c.weight+0.1,2));c.evidence.push('stalled-before-break');});
@@ -324,6 +329,10 @@ function _advRules(){
         data:{},reasons:['sparkling-recipe']};
     },
     function temperature(s){
+      // Brewer has flagged this batch as deliberately held cold for bulk
+      // aging/conditioning — checking it against the yeast's FERMENTATION
+      // range would be a false positive (see toggleBulkAging).
+      if(s.bulkAging)return null;
       if(s.tempInRange!==false)return null;
       var cold=s.latestTemp<s.tempLow;
       return {id:'temperature',severity:s.fermenting?'recommended':'info',category:'temperature',
@@ -517,9 +526,12 @@ function mwBatchHealth(s){
   function comp(known,val,code,data){return {known:known,val:known?Math.max(0,Math.min(100,Math.round(val))):null,code:code,data:data||{}};}
 
   // Temperature: known once a temp's been logged; otherwise the axis is
-  // excluded rather than guessed at.
+  // excluded rather than guessed at. Also excluded (not penalised) once the
+  // brewer flags the batch as deliberately cold for bulk aging — the yeast's
+  // fermentation range isn't the right yardstick there (see toggleBulkAging).
   var temp;
-  if(s.tempInRange==null)temp=comp(false,null,'no-data');
+  if(s.bulkAging)temp=comp(false,null,'no-data');
+  else if(s.tempInRange==null)temp=comp(false,null,'no-data');
   else if(!s.tempInRange)temp=comp(true,55,'out-of-range',{temp:s.latestTemp,low:s.tempLow,high:s.tempHigh,cold:s.latestTemp<s.tempLow});
   else if(s.tempStable===false)temp=comp(true,85,'in-range-unstable',{low:s.tempLow,high:s.tempHigh});
   else temp=comp(true,100,'in-range-stable',{low:s.tempLow,high:s.tempHigh});
@@ -611,7 +623,11 @@ function _mwAdviceSig(b){
   // ages, with no midnight-boundary artifact.
   var ageF=(typeof daysSince==='function'&&b.startDate)?daysSince(b.startDate):0;
   var ageB=(typeof daysSince==='function'&&bot&&bot.date)?daysSince(bot.date):0;
-  return [b.id,b.recipeId,b.og,b.yeast,b.startDate,b.failed?1:0,logs.length,last.date,last.gravity,last.temp,last.ph,doneN,bot?bot.date:0,adds,ageF,ageB].join('|');
+  // b.bulkAging is a direct input to the temperature rule/health axis (see
+  // toggleBulkAging) — without it here, flipping the toggle wouldn't
+  // invalidate the memo and the stale advice would linger until some other
+  // tracked field happened to change.
+  return [b.id,b.recipeId,b.og,b.yeast,b.startDate,b.failed?1:0,logs.length,last.date,last.gravity,last.temp,last.ph,doneN,bot?bot.date:0,adds,ageF,ageB,b.bulkAging?1:0].join('|');
 }
 
 // ---- The single snapshot every view consumes ------------------------------

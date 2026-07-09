@@ -284,6 +284,12 @@
       var withTailOff=Object.assign({},multi,{timeline:{stalledBeforeBreak:false,slowedNearFinish:true}});
       ok('stalledCauses: an early-stall timeline boosts confidence in every candidate cause', mwStalledCauses(withEarlyStall)[0].weight>mc[0].weight, JSON.stringify({boosted:mwStalledCauses(withEarlyStall)[0].weight,base:mc[0].weight}));
       ok('stalledCauses: a normal tail-off timeline REDUCES confidence — it may just be finishing', mwStalledCauses(withTailOff)[0].weight<mc[0].weight, JSON.stringify({reduced:mwStalledCauses(withTailOff)[0].weight,base:mc[0].weight}));
+      // bulkAging: a batch deliberately held cold for bulk aging shouldn't have
+      // "temperature" blamed for a stall that (if real) happened before the
+      // brewer moved it somewhere colder on purpose.
+      var bulkAgingMulti=Object.assign({},multi,{bulkAging:true});
+      var bamc=mwStalledCauses(bulkAgingMulti);
+      ok('stalledCauses: bulkAging excludes temperature from the cause list', bamc.length===1&&bamc[0].cause==='nutrition', JSON.stringify(bamc));
     })();
   })();
 
@@ -403,6 +409,22 @@
       var after=mwBatchAdvice(bph);
       ok('advice: changing ONLY pH invalidates the memo and surfaces ph-low', after.items.some(function(i){return i.id==='ph-low';}), JSON.stringify(after.items.map(function(i){return i.id;})));
     })();
+    // Regression: same memo-signature class of bug, this time for
+    // toggleBulkAging — found while building it that _mwAdviceSig() didn't
+    // include b.bulkAging, so flipping the toggle (nothing else on the batch
+    // changes) returned a stale cached snapshot that still showed the
+    // temperature warning.
+    (function(){
+      var bba={id:'adv4c',recipeId:'rA',startDate:isoAgo(5),og:1.098,yeast:'ec1118'};
+      APP.batches=[bba];APP.logs={adv4c:[{date:isoAgo(5),gravity:1.098,temp:3}]};APP.bottling={};
+      var before=mwBatchAdvice(bba);
+      ok('advice: cold reading -> temperature item present before bulkAging is flagged', before.items.some(function(i){return i.id==='temperature';}), JSON.stringify(before.items.map(function(i){return i.id;})));
+      toggleBulkAging('adv4c',true); // ONLY this changes — same date/gravity/temp
+      var after=mwBatchAdvice(bba);
+      ok('advice: toggling bulkAging invalidates the memo and clears the temperature item', !after.items.some(function(i){return i.id==='temperature';}), JSON.stringify(after.items.map(function(i){return i.id;})));
+      toggleBulkAging('adv4c',false);
+      APP.batches=[];APP.bottling={};APP.logs={};
+    })();
     // What-if simulator (E7): re-runs the REAL rules against a hypothetically
     // overridden signal — no invented physics, just the existing pure
     // functions with one field swapped.
@@ -486,6 +508,19 @@
       APP.batches=[bb];APP.logs={bulk1:[{date:isoAgo(10),gravity:1.098},{date:isoAgo(0),gravity:1.070}]};APP.bottling={};
       ok('signals: recipeBulkAgeDays resolves from the recipe', mwBatchSignals(bb).recipeBulkAgeDays===600, mwBatchSignals(bb).recipeBulkAgeDays);
       APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.bottling={};APP.logs={};
+    })();
+    // toggleBulkAging(): the explicit brewer flag round-trips through the
+    // signals pipeline, independent of the auto-derived status.
+    (function(){
+      var bg={id:'bulkflag1',recipeId:'rA',startDate:isoAgo(5),og:1.098,yeast:'ec1118'};
+      APP.batches=[bg];APP.logs={bulkflag1:[{date:isoAgo(5),gravity:1.098}]};APP.bottling={};
+      ok('signals: bulkAging is false by default', mwBatchSignals(bg).bulkAging===false, '');
+      toggleBulkAging('bulkflag1',true);
+      ok('toggleBulkAging: sets the flag on the batch', bg.bulkAging===true, '');
+      ok('signals: bulkAging=true flows through to the signals object', mwBatchSignals(bg).bulkAging===true, '');
+      toggleBulkAging('bulkflag1',false);
+      ok('toggleBulkAging: clears the flag again', bg.bulkAging===false, '');
+      APP.batches=[];APP.bottling={};APP.logs={};
     })();
     // high-fructose honey + non-fructophilic yeast → fructose-stall-risk warning
     (function(){
@@ -576,6 +611,14 @@
       ok('rules: stalled cause=tolerance', stalledRule(Object.assign({},base,{nearTolerance:true})).data.cause==='tolerance', '');
       ok('rules: stalled cause=temperature', stalledRule(Object.assign({},base,{tempInRange:false})).data.cause==='temperature', '');
       ok('rules: stalled cause=unknown when nothing else fits', stalledRule(base).data.cause==='unknown', '');
+      ok('rules: stalled cause=unknown (not temperature) when bulkAging, even if tempInRange is false', stalledRule(Object.assign({},base,{tempInRange:false,bulkAging:true})).data.cause==='unknown', '');
+
+      var tempRule=ruleByName('temperature');
+      ok('rules: temperature fires when out of range', tempRule({tempInRange:false,latestTemp:9,tempLow:16,tempHigh:24,fermenting:true})!==null, '');
+      ok('rules: temperature severity is "recommended" while actively fermenting', tempRule({tempInRange:false,latestTemp:9,tempLow:16,tempHigh:24,fermenting:true}).severity==='recommended', '');
+      ok('rules: temperature severity downgrades to "info" once not fermenting', tempRule({tempInRange:false,latestTemp:9,tempLow:16,tempHigh:24,fermenting:false}).severity==='info', '');
+      ok('rules: temperature stays silent when in range', tempRule({tempInRange:true,latestTemp:19,tempLow:16,tempHigh:24,fermenting:true})===null, '');
+      ok('rules: temperature is silenced entirely once bulkAging is flagged, even out of range', tempRule({tempInRange:false,latestTemp:9,tempLow:16,tempHigh:24,fermenting:false,bulkAging:true})===null, '');
 
       var phRule=ruleByName('phRange');
       ok('rules: ph-low fires below 2.9', phRule({active:true,latestPH:2.5,fermenting:true}).id==='ph-low', '');
@@ -639,6 +682,12 @@
       var h2=mwBatchHealth(Object.assign({},base,{tempInRange:false,latestTemp:9,stalled:true,passedSugarBreak:true,nearTolerance:true}));
       ok('health: temperature out-of-range names cold/temp', h2.axisReasons.temperature.code==='out-of-range'&&h2.axisReasons.temperature.data.cold===true, JSON.stringify(h2.axisReasons.temperature));
       ok('health: gravity stalled', h2.axisReasons.gravity.code==='stalled', '');
+
+      // bulkAging: same cold reading, but the brewer's flagged this as
+      // deliberate bulk aging — the axis should be excluded (known:false),
+      // not scored as a fault, and shouldn't drag the weighted average down.
+      var h3=mwBatchHealth(Object.assign({},base,{tempInRange:false,latestTemp:9,bulkAging:true}));
+      ok('health: bulkAging excludes the temperature axis instead of penalising it', h3.axisReasons.temperature.known===false&&h3.axisReasons.temperature.code==='no-data', JSON.stringify(h3.axisReasons.temperature));
       ok('health: oxygen past-break-fermenting', h2.axisReasons.oxygen.code==='past-break-fermenting', '');
       ok('health: yeast stress-stalled takes priority over near-tolerance', h2.axisReasons.yeast.code==='stress-stalled', h2.axisReasons.yeast.code);
 

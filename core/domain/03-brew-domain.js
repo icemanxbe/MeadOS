@@ -584,6 +584,22 @@ function rackBatch(batchId,toFermenterId,date,notes){
   scheduleSave();
   return true;
 }
+
+// Explicit brewer-set flag: this batch is being held at a deliberately
+// different (usually colder) temperature than active fermentation — bulk
+// aging/conditioning in a wine cooler or cellar, for example. The Advisor's
+// temperature checks compare against the yeast's FERMENTATION-optimal range,
+// which is meaningless (and produces false "too cold" warnings) once a batch
+// has been moved somewhere cooler on purpose. Independent of the auto-derived
+// status (which is calendar/step-based and can still read 'conditioning' for
+// a batch that's already been racked to bulk age), so the brewer controls it
+// directly rather than the app guessing from elapsed days.
+function toggleBulkAging(batchId,val){
+  var b=APP.batches.find(function(x){return x.id===batchId;});
+  if(!b)return;
+  b.bulkAging=!!val;
+  scheduleSave();
+}
 // Returns categorized "drinking window status" for a bottled batch.
 // Status one of: 'pre-window', 'entering', 'in-window-rising', 'peak',
 //                'in-window-falling', 'past-peak', 'past-max'
