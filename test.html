@@ -349,6 +349,15 @@
       // Steadily dropping, no plateau at all yet.
       var steady=[{date:isoAgo(9),gravity:1.100},{date:isoAgo(6),gravity:1.080},{date:isoAgo(3),gravity:1.060},{date:isoAgo(0),gravity:1.040}];
       ok('fermentTimeline: no plateau while gravity is still dropping steadily', mwFermentTimeline(steady,1.069).plateaued===false, JSON.stringify(mwFermentTimeline(steady,1.069)));
+      // Real-world logging cadence (per actual homebrewer practice: OG, one
+      // check near the presumed end, one confirmation a few days later — NOT
+      // a dense daily log). Exactly 3 total readings, so only 2 are flat
+      // relative to each other — must still register as a plateau, or the
+      // "looks complete" reasoning would never fire for how most people
+      // actually log gravity.
+      var sparse=[{date:isoAgo(21),gravity:1.098},{date:isoAgo(6),gravity:1.011},{date:isoAgo(3),gravity:1.010}];
+      var tSparse=mwFermentTimeline(sparse,1.069);
+      ok('fermentTimeline: a plateau shows up from just 2 flat readings (realistic sparse logging)', tSparse&&tSparse.plateaued===true&&tSparse.plateauDays===3, JSON.stringify(tSparse));
     })();
     // Weighted multi-cause stall diagnosis (E2): several ranked causes with
     // evidence, not a single first-match guess — and the timeline signal
@@ -369,6 +378,14 @@
       var bulkAgingMulti=Object.assign({},multi,{bulkAging:true});
       var bamc=mwStalledCauses(bulkAgingMulti);
       ok('stalledCauses: bulkAging excludes temperature from the cause list', bamc.length===1&&bamc[0].cause==='nutrition', JSON.stringify(bamc));
+      // pH: honey barely buffers, so a mead must can swing much further than
+      // beer/wine ever does — real, well-documented, mead-specific stall
+      // cause that was previously entirely absent from this list.
+      var lowPH=Object.assign({},base,{latestPH:2.7});
+      var phc=mwStalledCauses(lowPH);
+      ok('stalledCauses: low pH is a real weighted cause on its own', phc.length===1&&phc[0].cause==='ph'&&phc[0].weight>=0.5, JSON.stringify(phc));
+      var healthyPH=Object.assign({},base,{latestPH:3.2});
+      ok('stalledCauses: healthy pH does not get flagged', mwStalledCauses(healthyPH).every(function(c){return c.cause!=='ph';}), JSON.stringify(mwStalledCauses(healthyPH)));
     })();
   })();
 

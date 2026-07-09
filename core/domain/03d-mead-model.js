@@ -155,11 +155,19 @@ function mwFermentTimeline(logs,sugarBreak){
   // Plateau: walk backward from the latest reading while each step's drop
   // stays under a "basically flat" threshold. plateauSince is the reading
   // where the flat stretch began.
+  //
+  // Needs only 2 flat-relative-to-each-other readings, not 3 — real brewers
+  // commonly log just OG, a check near the presumed end, and one
+  // confirmation reading a few days later (2-3 readings total for the whole
+  // batch, not a dense log). Requiring 3 CONSECUTIVE flat readings needs 4+
+  // total readings to ever fire, which never happens for that realistic
+  // cadence — this used to mean the plateau/"looks complete" reasoning
+  // silently never activated for the most common real logging pattern.
   var FLAT=0.001;
   var i=pts.length-1,flatStart=i;
   while(i>0&&(pts[i-1].g-pts[i].g)<FLAT){flatStart=i-1;i--;}
   var plateauReadings=pts.length-flatStart;
-  var plateauDays=plateauReadings>=3?Math.round((new Date(pts[pts.length-1].date)-new Date(pts[flatStart].date))/86400000):null;
+  var plateauDays=plateauReadings>=2?Math.round((new Date(pts[pts.length-1].date)-new Date(pts[flatStart].date))/86400000):null;
   var plateaued=plateauDays!=null&&plateauDays>=3;
 
   // Early pace vs recent pace — "always this slow" reads differently than

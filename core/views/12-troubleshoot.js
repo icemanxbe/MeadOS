@@ -46,6 +46,7 @@ var TROUBLESHOOT_TOPICS=[
       '<strong>Check temperature.</strong> Too cold (&lt;15°C) → yeast stays dormant. Too hot (&gt;30°C) → may have killed the yeast. Aim for 18-22°C.',
       '<strong>Check airlock water level.</strong> Bubbles travel up through the water. Dry airlock = no visible activity. Refill to the line.',
       '<strong>Confirm yeast was rehydrated correctly.</strong> Sprinkled on warm (not hot) must surface, ideally water 30-35°C. Boiling water kills yeast cells.',
+      '<strong>Old packet? Test it before assuming it\'s dead.</strong> Well-stored dry yeast routinely stays viable years past its date — proof a pinch in warm sugar water (should foam within 20-30 min) before throwing it out and buying more.',
       '<strong>Pitch fresh yeast.</strong> If gravity hasn\'t moved after 5 days, repitch. Make a starter as above.',
       '<strong>Sanitize next time.</strong> A common cause: sanitizer residue killed the yeast. Always rinse food-safe sanitizers thoroughly after contact.'
     ],
@@ -56,6 +57,7 @@ var TROUBLESHOOT_TOPICS=[
       '<strong>Check temperature.</strong> Too cold (&lt;10°C) → yeast stays dormant. Too hot (&gt;32°C) → may have killed the yeast. Aim for 18-20°C for a normal pitch.',
       '<strong>Check airlock water level.</strong> Bubbles travel up through the water. Dry airlock = no visible activity. Refill to the line.',
       '<strong>Confirm yeast was rehydrated correctly.</strong> Sprinkled on warm (not hot) juice surface, ideally water 30-35°C. Boiling water kills yeast cells.',
+      '<strong>Old packet? Test it before assuming it\'s dead.</strong> Well-stored dry yeast routinely stays viable years past its date — proof a pinch in warm sugar water (should foam within 20-30 min) before throwing it out and buying more.',
       '<strong>Pitch fresh yeast.</strong> If gravity hasn\'t moved after 5-7 days and you weren\'t relying on wild yeast, repitch. Make a starter as above.',
       '<strong>Sanitize next time.</strong> A common cause: sanitizer residue killed the yeast. Always rinse food-safe sanitizers thoroughly after contact.'
     ]

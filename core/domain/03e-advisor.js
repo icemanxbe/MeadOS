@@ -283,6 +283,16 @@ function mwConfidence(s){
 function mwStalledCauses(s){
   var causes=[];
   if(!s.nutrientsComplete)causes.push({cause:'nutrition',weight:0.75,evidence:['nutrients-incomplete']});
+  // Honey has very little pH buffering capacity — a must can swing from
+  // ~4.3 to ~3.1 over the course of fermentation, a far bigger drop than
+  // beer or wine ever see (which have much more buffering). A pH below the
+  // same 2.9 threshold the ph-low rule already uses is a well-documented,
+  // mead-specific cause of a real stall on its own — not a secondary note.
+  if(s.latestPH!=null){
+    var isCiderPH=s.beverageType==='cider';
+    var phStallLo=isCiderPH?(typeof CIDER_PH_TARGET_LOW!=='undefined'?CIDER_PH_TARGET_LOW:3.3):2.9;
+    if(s.latestPH<phStallLo)causes.push({cause:'ph',weight:0.65,evidence:['low-ph']});
+  }
   if(s.fructoseStallRisk)causes.push({cause:'fructose',weight:0.55,evidence:['high-fructose-honey','non-fructophilic-yeast']});
   if(s.nearTolerance)causes.push({cause:'tolerance',weight:0.7,evidence:['near-abv-tolerance']});
   if(s.tempInRange===false&&!s.bulkAging)causes.push({cause:'temperature',weight:0.5,evidence:['temp-out-of-range']});
@@ -307,7 +317,7 @@ function _advRules(){
       var causes=(typeof mwStalledCauses==='function')?mwStalledCauses(s):[{cause:'unknown',weight:0.3,evidence:[]}];
       return {id:'stalled',severity:'critical',category:'fermentation',
         data:{atten:Math.round(s.attenuation*100),days:s.daysSinceStart,temp:s.latestTemp,
-          cause:causes[0].cause,causes:causes,honey:s.honeyName,yeast:s.yeastId,
+          cause:causes[0].cause,causes:causes,honey:s.honeyName,yeast:s.yeastId,ph:s.latestPH,
           plateauDays:(s.timeline&&s.timeline.plateauDays)||null},
         reasons:['rate-flat','below-target']};
     },

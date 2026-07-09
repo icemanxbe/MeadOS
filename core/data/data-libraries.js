@@ -1419,7 +1419,7 @@ var NUTRIENT_PRODUCTS=[
     composition:'Inactivated yeast hulls with sterols, fatty acids, micronutrients.',
     description:'Go-Ferm is NOT added to the must. It\'s sprinkled into the yeast rehydration water to give the dry yeast a healthy start. The sterols and unsaturated fatty acids it provides are needed for yeast cell membrane integrity during the lag phase — properly rehydrated yeast has 2-4× the viability and far fewer stuck fermentations.',
     whyChoose:'Almost always. The cost is trivial (~€10/100g, enough for 20+ batches) and the insurance against stuck ferments is enormous.',
-    whyAvoid:'Rare to skip — only when you specifically want a "lazy pitch" or for very low-OG session meads.',
+    whyAvoid:'A genuine, ongoing debate, not just laziness: some experienced brewers direct-pitch dry yeast straight into the must and get good results, citing the extra handling step (and the infection risk that comes with it) as not worth it. Most current mead-specific guidance still recommends rehydrating for the viability boost, so that stays the default here — but direct-pitching is a real, defensible choice, not a shortcut only for low-stakes batches.',
     bestFor:['Every batch above OG 1.090','Stuck ferment restarts','High-stress fermentations'],
     notRecommendedFor:['As a must-stage nutrient (this is rehydration ONLY)'],
     whenToAdd:'Day 0 only. Dissolve in 43°C water at 1.25× the dry yeast weight. Cool to ~35°C, add yeast, wait 15 min, gradually temper to must temperature.',
