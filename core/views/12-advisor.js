@@ -76,26 +76,46 @@ function _advItemText(it){
       // count when the plateau detector has one, instead of "several days".
       var sgTxt=d.sg!=null?d.sg.toFixed(3):'?', targetTxt=d.targetFG!=null?d.targetFG.toFixed(3):'?';
       var daysTxt=nl?(d.plateauDays!=null?(d.plateauDays+' dagen'):'enkele dagen'):(d.plateauDays!=null?(d.plateauDays+' days'):'several days');
+      // History is corroborating evidence, not proof — a plateau that matches
+      // your own past batches is meaningful UNLESS this batch's own nutrient
+      // schedule was also skipped, in which case a repeatable process gap is
+      // at least as likely an explanation as a real yeast ceiling. Only the
+      // historical path leans on past batches at all, so this caveat is
+      // scoped to it alone.
+      var histCaveat=d.nutrientsComplete===false?(nl
+        ?' Let op: de voedingsgiften voor dit brouwsel zijn niet allemaal toegevoegd — als dat vaker gebeurt, kan dat verklaren waarom je batches steeds rond hetzelfde punt uitkomen, niet per se de echte grens van deze gist.'
+        :' Worth noting: this batch\'s nutrient schedule wasn\'t fully completed either — if that\'s a recurring pattern, it may explain why your batches keep landing around the same point, rather than that being this yeast\'s real ceiling.'):'';
       var reason=nl?({
-        historical:'De dichtheid ('+sgTxt+') is al '+daysTxt+' stabiel bij ~'+d.atten+'% vergisting — dat komt overeen met je eigen vorige '+(d.histSampleSize||'')+' brouwsel(s) op deze gist (gemiddeld ~'+d.histAtten+'% vergisting), niet alleen een algemene honingverklaring. Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.',
+        historical:'De dichtheid ('+sgTxt+') is al '+daysTxt+' stabiel bij ~'+d.atten+'% vergisting — dat komt overeen met je eigen vorige '+(d.histSampleSize||'')+' brouwsel(s) op deze gist (gemiddeld ~'+d.histAtten+'% vergisting), niet alleen een algemene honingverklaring.'+histCaveat+' Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.',
         attenuation:'De dichtheid ('+sgTxt+') is al '+daysTxt+' stabiel bij ~'+d.atten+'% vergisting, ook al ligt ze boven het berekende doel ('+targetTxt+'). Dat is normaal — vergistingspercentages op het pakje zijn gemeten onder ideale labomstandigheden, en een honingmost daalt vaak wat verder in pH dan bier of wijn (honing buffert nauwelijks), wat gist vroeger kan afremmen. Honing/fruit\'s kleine aandeel niet-vergistbare suikers speelt ook een (kleinere) rol. Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.',
         numeric:'De dichtheid ('+sgTxt+') zit op of nabij het doel ('+targetTxt+') bij ~'+d.atten+'% vergisting. Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.'
       }[d.reason]||('De dichtheid ('+sgTxt+') zit op of nabij het doel ('+targetTxt+') bij ~'+d.atten+'% vergisting.'))
         :({
-        historical:'Gravity ('+sgTxt+') has held stable for '+daysTxt+' at ~'+d.atten+'% attenuation — that matches your own past '+(d.histSampleSize||'')+' batch(es) on this yeast (averaging ~'+d.histAtten+'% attenuation), not just a general honey explanation. Confirm with two stable readings a few days apart, then rack / bottle.',
+        historical:'Gravity ('+sgTxt+') has held stable for '+daysTxt+' at ~'+d.atten+'% attenuation — that matches your own past '+(d.histSampleSize||'')+' batch(es) on this yeast (averaging ~'+d.histAtten+'% attenuation), not just a general honey explanation.'+histCaveat+' Confirm with two stable readings a few days apart, then rack / bottle.',
         attenuation:'Gravity ('+sgTxt+') has held stable for '+daysTxt+' at ~'+d.atten+'% attenuation, even though it sits above the calculated target ('+targetTxt+'). That\'s normal — attenuation ratings are measured under ideal lab conditions, and a honey must typically drops further in pH than beer or wine ever does (honey barely buffers), which can slow yeast down for good before every last bit of sugar is gone. Honey/fruit\'s own small share of non-fermentable sugars plays a part too, just usually a smaller one. Confirm with two stable readings a few days apart, then rack / bottle.',
         numeric:'Gravity ('+sgTxt+') is at or near target ('+targetTxt+') at ~'+d.atten+'% attenuation. Confirm with two stable readings a few days apart, then rack / bottle.'
       }[d.reason]||('Gravity ('+sgTxt+') is at or near target ('+targetTxt+') at ~'+d.atten+'% attenuation.'));
       return {icon:'✓',title:nl?'Gisting lijkt voltooid':'Fermentation looks complete',reason:reason};
     })(),
-    'temperature':{icon:'🌡',
+    'temperature':(function(){
+      // Hedge the "too cold" case specifically, and only for a live sensor:
+      // a fermenter/room probe isn't necessarily immersed in the must, and
+      // active fermentation is exothermic — the must commonly runs a couple
+      // degrees above its surroundings. That gap can turn a genuinely in-range
+      // must into a false "too cold" reading. It can't produce a false "too
+      // warm" the same way (the must is at least as warm as its surroundings,
+      // likely more), and a hand-logged temp is normally taken IN the must
+      // itself at gravity-check time — so neither of those needs the hedge.
+      var coldHedge=(d.cold&&d.fermenting&&d.source==='live');
+      return {icon:'🌡',
       title:nl?(d.cold?'Temperatuur te laag':'Temperatuur te hoog'):(d.cold?'Temperature too low':'Temperature too high'),
-      reason:nl?('Laatste meting '+(d.temp!=null?d.temp+'°C':'?')+' ligt buiten het ideale bereik voor '+(_advYeastName(d.yeast)||'deze gist')+' ('+d.low+'–'+d.high+'°C). '+(d.cold?'Te koud vertraagt of stalt de gisting.':'Te warm geeft fusels en scherpe smaken.'))
-              :('Last reading '+(d.temp!=null?d.temp+'°C':'?')+' is outside '+(_advYeastName(d.yeast)||'this yeast')+'\'s ideal range ('+d.low+'–'+d.high+'°C). '+(d.cold?'Too cold slows or stalls fermentation.':'Too warm drives fusels and harsh flavours.'))},
+      reason:nl?('Laatste meting '+(d.temp!=null?d.temp+'°C':'?')+' ligt buiten het ideale bereik voor '+(_advYeastName(d.yeast)||'deze gist')+' ('+d.low+'–'+d.high+'°C). '+(d.cold?('Te koud vertraagt of stalt de gisting.'+(coldHedge?' Komt deze meting van een vat-/omgevingssensor en niet van een sonde in de most zelf? Actieve gisting loopt vaak een paar graden warmer dan de omgeving — bevestig indien mogelijk met een thermometer in de vloeistof.':'')):'Te warm geeft fusels en scherpe smaken.'))
+              :('Last reading '+(d.temp!=null?d.temp+'°C':'?')+' is outside '+(_advYeastName(d.yeast)||'this yeast')+'\'s ideal range ('+d.low+'–'+d.high+'°C). '+(d.cold?('Too cold slows or stalls fermentation.'+(coldHedge?' If this reading is from a fermenter/room sensor rather than a probe in the must itself, note that active fermentation commonly runs a couple degrees warmer than its surroundings — worth confirming with a thermometer in the liquid.':'')):'Too warm drives fusels and harsh flavours.'))};
+    })(),
     'abv-ceiling':{icon:'⚠',
       title:nl?'Nadert alcoholtolerantie':'Approaching alcohol tolerance',
-      reason:nl?('Het huidige alcohol (~'+(d.abv!=null?d.abv.toFixed(1):'?')+'%) nadert de tolerantie van '+(_advYeastName(d.yeast)||'de gist')+' ('+d.max+'%). Verwacht dat de gisting hier vanzelf vertraagt — plan eventueel een hogertolerante gist of stapvoeding.')
-              :('Current ABV (~'+(d.abv!=null?d.abv.toFixed(1):'?')+'%) is nearing the tolerance of '+(_advYeastName(d.yeast)||'the yeast')+' ('+d.max+'%). Expect fermentation to slow naturally here — consider a higher-tolerance yeast or step feeding for next time.')},
+      reason:nl?('Het huidige alcohol (~'+(d.abv!=null?d.abv.toFixed(1):'?')+'%) nadert de tolerantie van '+(_advYeastName(d.yeast)||'de gist')+' ('+d.max+'%). Dat opgegeven percentage is een gemiddelde, geen harde grens — sommige gisten stoppen wat eerder, andere gaan er met een gezonde, goed gevoede populatie voorbij. Verwacht dat de gisting hier begint te vertragen; plan eventueel een hogertolerante gist of stapvoeding voor een volgende keer.')
+              :('Current ABV (~'+(d.abv!=null?d.abv.toFixed(1):'?')+'%) is nearing the tolerance of '+(_advYeastName(d.yeast)||'the yeast')+' ('+d.max+'%). That rating is an average, not a hard wall — some yeast quit a bit earlier, others push past it with a healthy, well-fed population. Expect it to start slowing here; consider a higher-tolerance yeast or step feeding for next time.')},
     'on-track':{icon:'✓',
       title:nl?'Gisting verloopt op schema':'Fermentation is on track',
       reason:nl?('~'+d.atten+'% vergist (verwacht eind ~'+d.expected+'%), dichtheid daalt gestaag. Geen actie nodig.')
@@ -116,12 +136,18 @@ function _advItemText(it){
       title:nl?'Temperatuur schommelt':'Temperature is swinging',
       reason:nl?('De temperatuur ligt in het ideale bereik ('+d.low+'–'+d.high+'°C) maar wisselt sterk tussen metingen. Grote schommelingen stressen de gist en geven bijsmaken — houd hem zo stabiel mogelijk.')
               :('Temperature is within the ideal range ('+d.low+'–'+d.high+'°C) but swinging between readings. Big swings stress the yeast and add off-flavours — keep it as steady as you can.')},
-    'log-reading':{icon:'📊',
-      title:nl?(d.first?'Log je eerste meting':'Tijd voor een nieuwe meting'):(d.first?'Log your first reading':'Time for a fresh reading'),
-      reason:nl?(d.first?('De partij gist al '+d.days+' dagen zonder dichtheidsmeting. Log er een (en de OG) zodat de adviseur voortgang, prognose en gezondheid kan berekenen.')
-                        :('Laatste meting was '+d.days+' dagen geleden. Een verse dichtheidsmeting houdt de prognose en stalldetectie scherp.'))
-              :(d.first?('This batch has been fermenting '+d.days+' days with no gravity reading. Log one (and the OG) so the advisor can track progress, projection and health.')
-                        :('Last reading was '+d.days+' days ago. A fresh gravity reading keeps the projection and stall detection accurate.'))},
+    'log-reading-missing':{icon:'📊',
+      title:nl?'Log je eerste meting':'Log your first reading',
+      reason:nl?('De partij gist al '+d.days+' dagen zonder dichtheidsmeting. Log er een (en de OG) zodat de adviseur voortgang, prognose en gezondheid kan berekenen.')
+              :('This batch has been fermenting '+d.days+' days with no gravity reading. Log one (and the OG) so the advisor can track progress, projection and health.')},
+    'log-reading-overdue':{icon:'📊',
+      title:nl?'Tijd voor een nieuwe meting':'Time for a fresh reading',
+      reason:nl?('Laatste meting was '+d.days+' dagen geleden. Een verse dichtheidsmeting houdt de prognose en stalldetectie scherp.')
+              :('Last reading was '+d.days+' days ago. A fresh gravity reading keeps the projection and stall detection accurate.')},
+    'fruit-addition-note':{icon:'🍒',
+      title:nl?'Recente fruittoevoeging kan metingen vertekenen':'Recent fruit addition may skew readings',
+      reason:nl?('Je logde '+(d.item?escHtml(d.item)+' ':'')+'op '+fmtDate(d.date)+' — fruit brengt eigen suiker mee, dus dichtheidsmetingen van de komende paar controles zeggen evenveel over dat fruit als over de gisting zelf. Geef het nog 2-3 metingen voor je de trend vertrouwt.')
+              :('You logged '+(d.item?escHtml(d.item)+' ':'')+'on '+fmtDate(d.date)+' — fruit carries its own sugar, so gravity readings for the next couple of checks reflect the fruit as much as fermentation progress. Give it 2-3 more readings before trusting the trend.')},
     'aging-window':(function(){
       var bev=_advBevWord(d,nl);
       return {icon:'⌛',
@@ -174,8 +200,8 @@ function _advItemText(it){
       var bandNl=band.replace(/\./g,',');
       return {icon:'🧪',
       title:nl?'pH is laag'+(isCider?'':' — gist onder stress'):('pH is low'+(isCider?'':' — yeast under stress')),
-      reason:nl?('Laatste pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' ligt onder de bandbreedte voor '+(isCider?'cider':'mede')+' ('+bandNl+'). '+(isCider?'Dit is vooral scherper van smaak, geen directe giststress.':'Onder 2,9 raakt de gist gestrest, wat tot een trage of vastgelopen gisting kan leiden. Overweeg de pH te verhogen met kaliumcarbonaat.'))
-              :('Last pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' is below the target band for '+(isCider?'cider':'mead')+' ('+band+'). '+(isCider?'This mostly just reads sharper/tarter — not the yeast-stress signal it would be in mead.':'Below 2.9, yeast becomes stressed, which can slow or stall fermentation. Consider raising pH with potassium carbonate.'))};
+      reason:nl?('Laatste pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' ligt onder de bandbreedte voor '+(isCider?'cider':'mede')+' ('+bandNl+'). '+(isCider?'Dit is vooral scherper van smaak, geen directe giststress.':'Onder 2,9 raakt de gist gestrest, wat tot een trage of vastgelopen gisting kan leiden. Bevestig met een tweede meting of een gekalibreerde meter voor je bijstuurt — goedkope pH-strips zitten al snel 0,3-0,5 naast de werkelijke waarde. Klopt de meting? Overweeg de pH te verhogen met kaliumcarbonaat.'))
+              :('Last pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' is below the target band for '+(isCider?'cider':'mead')+' ('+band+'). '+(isCider?'This mostly just reads sharper/tarter — not the yeast-stress signal it would be in mead.':'Below 2.9, yeast becomes stressed, which can slow or stall fermentation. Confirm with a second reading or a calibrated meter before adjusting — cheap pH strips can be off by 0.3-0.5, easily enough to flag a perfectly healthy must. Reading holds up? Consider raising pH with potassium carbonate.'))};
     })(),
     'ph-high':(function(){
       var isCider=d.beverageType==='cider';
@@ -184,8 +210,8 @@ function _advItemText(it){
       var bev=isCider?'cider':'mede';
       return {icon:'🧪',
       title:nl?'pH is hoog — besmettingsrisico':'pH is high — contamination risk',
-      reason:nl?('Laatste pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' ligt boven de bandbreedte voor '+bev+' ('+bandNl+'). Hierboven wordt de '+bev+' kwetsbaarder voor ongewenste micro-organismen.'+(isCider?' Zorg dat je bij het rekken op tijd metabisulfiet toevoegt — zeker bij perry, waar een te hoge pH ook het risico op ongewenste malolactische omzetting (naar azijnzuur) vergroot.':' Overweeg bij te sturen met wijnzuur.'))
-              :('Last pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' is above the target band for '+(isCider?'cider':'mead')+' ('+band+'). Above this, the '+bev+' becomes more vulnerable to unwanted microorganisms.'+(isCider?' Make sure to sulfite promptly at racking — especially for perry, where a high pH also raises the risk of unwanted malolactic conversion (to acetic acid).':' Consider adjusting with tartaric or citric acid.'))};
+      reason:nl?('Laatste pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' ligt boven de bandbreedte voor '+bev+' ('+bandNl+'). Hierboven wordt de '+bev+' kwetsbaarder voor ongewenste micro-organismen.'+(isCider?' Zorg dat je bij het rekken op tijd metabisulfiet toevoegt — zeker bij perry, waar een te hoge pH ook het risico op ongewenste malolactische omzetting (naar azijnzuur) vergroot.':' Bevestig met een tweede meting of een gekalibreerde meter voor je bijstuurt — goedkope pH-strips zitten al snel 0,3-0,5 naast de werkelijke waarde. Overweeg bij te sturen met wijnzuur.'))
+              :('Last pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' is above the target band for '+(isCider?'cider':'mead')+' ('+band+'). Above this, the '+bev+' becomes more vulnerable to unwanted microorganisms.'+(isCider?' Make sure to sulfite promptly at racking — especially for perry, where a high pH also raises the risk of unwanted malolactic conversion (to acetic acid).':' Confirm with a second reading or a calibrated meter before adjusting — cheap pH strips can be off by 0.3-0.5. Consider adjusting with tartaric or citric acid.'))};
     })(),
     'mlf-advisory':(function(){
       var avoid=d.stance==='avoid', perry=!!d.isPerry;
@@ -203,7 +229,11 @@ function _advItemText(it){
       title:nl?'Carbonatie bouwt zich op':'Carbonation is developing',
       reason:nl?('Gebotteld ~'+d.aged+' dagen geleden. Bottelrijping duurt doorgaans 2–3 weken — bewaar de flessen rechtop op kamertemperatuur zodat de gist de priming-suiker kan vergisten. Koel pas vlak voor het proeven.')
               :('Bottled ~'+d.aged+' days ago. Bottle-conditioning typically takes 2–3 weeks — store the bottles upright at room temperature so the yeast can ferment the priming sugar. Chill only just before tasting.')},
-    'blowoff-risk':{icon:'🪣',
+    'blowoff-headspace-critical':{icon:'🪣',
+      title:nl?'Zeer weinig ruimte boven de must — blow-off-risico':'Very little headspace above the must — blow-off risk',
+      reason:nl?('Deze partij ('+(d.volume||'?')+' L) laat maar ~'+d.headspacePct+'% lucht over in het vat ('+(d.capacity||'?')+' L). Tijdens de krachtigste fase van de gisting kan schuim/krausen het waterslot verstoppen en druk opbouwen. De standaardoplossing: vervang het waterslot tijdelijk door een blow-off-buis (een slang van de vatopening naar een pot ontsmettingsmiddel) — dat laat schuim vrij ontsnappen zonder verstopping/drukopbouw. Een schaal onder het waterslot vangt alleen de rommel op áchteraf, dat voorkomt de drukopbouw niet.')
+              :('This batch ('+(d.volume||'?')+' L) leaves only ~'+d.headspacePct+'% air space in the vessel ('+(d.capacity||'?')+' L). During the most vigorous phase of fermentation, foam/krausen can clog the airlock and build up pressure. The standard fix: swap the airlock for a blow-off tube (a hose running from the vessel opening into a jar of sanitizer) — it lets foam escape freely without clogging or building pressure. A tray under the airlock only catches the mess after the fact, it doesn\'t prevent the pressure buildup.')},
+    'blowoff-headspace-tight':{icon:'🪣',
       title:nl?'Weinig ruimte boven de must — blow-off-risico':'Little headspace above the must — blow-off risk',
       reason:nl?('Deze partij ('+(d.volume||'?')+' L) laat maar ~'+d.headspacePct+'% lucht over in het vat ('+(d.capacity||'?')+' L). Tijdens de krachtigste fase van de gisting kan schuim/krausen het waterslot verstoppen en druk opbouwen. De standaardoplossing: vervang het waterslot tijdelijk door een blow-off-buis (een slang van de vatopening naar een pot ontsmettingsmiddel) — dat laat schuim vrij ontsnappen zonder verstopping/drukopbouw. Een schaal onder het waterslot vangt alleen de rommel op áchteraf, dat voorkomt de drukopbouw niet.')
               :('This batch ('+(d.volume||'?')+' L) leaves only ~'+d.headspacePct+'% air space in the vessel ('+(d.capacity||'?')+' L). During the most vigorous phase of fermentation, foam/krausen can clog the airlock and build up pressure. The standard fix: swap the airlock for a blow-off tube (a hose running from the vessel opening into a jar of sanitizer) — it lets foam escape freely without clogging or building pressure. A tray under the airlock only catches the mess after the fact, it doesn\'t prevent the pressure buildup.')},
@@ -232,6 +262,13 @@ function _advItemText(it){
       title:nl?'Al lang niet gebotteld':'Sitting unbottled a long time',
       reason:nl?('Deze partij zit al ~'+d.days+' dagen in bulkrijping zonder gebotteld te zijn'+(d.target?(' — dit recept mikt doorgaans op ~'+d.target+' dagen bulkrijping'):'')+'. Elke keer dat het vat geopend of verplaatst wordt, is er kans op zuurstofcontact — bottelen (ook al is de '+bev+' nog jong) sluit dat risico af. Overweeg binnenkort te bottelen.')
               :('This batch has been sitting in bulk aging for ~'+d.days+' days without being bottled'+(d.target?(' — this recipe typically targets ~'+d.target+' days of bulk aging'):'')+'. Every time the vessel is opened or moved there\'s a chance of oxygen exposure — bottling (even if the '+bev+' is still young) closes off that risk. Consider bottling soon.')};
+    })(),
+    'over-racked':(function(){
+      var bev=_advBevWord(d,nl);
+      return {icon:'🔄',
+      title:nl?'Al vaak overgeheveld':'Racked quite a few times',
+      reason:nl?('Deze partij is al '+d.count+'× overgeheveld. Elke keer komt er wat zuurstof bij — meestal is drie overhevelingen genoeg, zes wordt te veel. Overweeg fijningsmiddelen (bentoniet/sparkolloid) of gewoon tijd in plaats van nog een keer over te hevelen, tenzij er een concrete reden is.')
+              :('This '+bev+' has been racked '+d.count+' times already. Each racking adds a little oxygen — three rackings is usually plenty, six is too many. Consider fining agents (bentonite/sparkolloid) or just time instead of racking again, unless there\'s a concrete reason to.')};
     })()
   };
   return M[it.id]||{icon:'•',title:it.id,reason:''};
@@ -456,12 +493,16 @@ function _advWhyMatters(id){
     temperature:{benefit:'Temperatuur bijstellen houdt de gist in zijn beste bereik.',downside:'Buiten bereik blijven kan de gisting vertragen of ongewenste smaken geven.'},
     'ph-low':{benefit:'Nu weten waar je pH staat helpt je beslissen of bijsturen nodig is.',downside:'Genegeerd kan een lage pH bij mede tot giststress en een vastgelopen gisting leiden.'},
     'record-og':{benefit:'Met een OG kan de adviseur al het overige doorrekenen.',downside:'Zonder OG blijft de adviseur blind voor vergisting, alcohol en prognose.'},
-    'log-reading':{benefit:'Een nieuwe meting houdt het advies scherp.',downside:'Te lang niet meten laat problemen ongemerkt doorlopen.'},
-    'blowoff-risk':{benefit:'Nu voorzorg nemen voorkomt een rommelige overloop.',downside:'Negeren kan schuim/most naar buiten drukken en een besmettingsrisico geven.'},
+    'log-reading-missing':{benefit:'Een eerste meting geeft de adviseur iets om op te rekenen.',downside:'Zonder metingen blijft de adviseur blind voor voortgang, prognose en gezondheid.'},
+    'log-reading-overdue':{benefit:'Een nieuwe meting houdt het advies scherp.',downside:'Te lang niet meten laat problemen ongemerkt doorlopen.'},
+    'blowoff-headspace-critical':{benefit:'Nu voorzorg nemen voorkomt een rommelige overloop.',downside:'Negeren kan schuim/most naar buiten drukken en een besmettingsrisico geven.'},
+    'blowoff-headspace-tight':{benefit:'Nu voorzorg nemen voorkomt een rommelige overloop.',downside:'Negeren kan schuim/most naar buiten drukken en een besmettingsrisico geven.'},
     'ferment-complete':{benefit:'Op tijd rackken/bottelen beperkt verdere zuurstofblootstelling.',downside:'Te lang wachten verlengt onnodig luchtcontact in het vat.',
       considerWaitingIf:'je hem bewust nog even op de gistdroesem laat liggen voor extra body of mondgevoel.'},
     'extended-bulk-aging':{benefit:'Binnenkort bottelen sluit verder zuurstofcontact bij het openen/verplaatsen van het vat af.',downside:'Langer wachten herhaalt dat oxidatierisico elke keer dat het vat verstoord wordt.',
       considerWaitingIf:'je bewust een langere bulk- of vatrijping aanhoudt die bij deze stijl hoort.'},
+    'over-racked':{benefit:'Nu stoppen met overhevelen beperkt verdere cumulatieve zuurstofblootstelling.',downside:'Nog een overheveling erbij herhaalt dat kleine beetje zuurstof — het stapelt op.',
+      considerWaitingIf:'er een concrete reden is (bv. echt nog troebel, of bewust van fruit/kruiden af).'},
     'mlf-advisory':{benefit:'Nu beslissen over sulfiteren voorkomt een onbedoeld resultaat.',downside:'Niets doen laat de malolactische uitkomst aan het toeval over — bij perry riskeert dat een azijnachtige cider.'}
   }:{
     stalled:{benefit:'Acting now can rescue the fermentation.',downside:'Waiting risks a permanently stuck fermentation or spoilage.'},
@@ -472,12 +513,16 @@ function _advWhyMatters(id){
     temperature:{benefit:'Adjusting temperature keeps the yeast in its best range.',downside:'Staying out of range can slow fermentation or produce off-flavors.'},
     'ph-low':{benefit:'Knowing where your pH stands now helps you decide whether adjusting is worth it.',downside:'Ignored, a low pH in mead can cause yeast stress and a stalled fermentation.'},
     'record-og':{benefit:'With an OG, the advisor can compute everything else.',downside:'Without it, the advisor stays blind to attenuation, ABV and the projection.'},
-    'log-reading':{benefit:'A fresh reading keeps the advice sharp.',downside:'Going too long without one lets problems go unnoticed.'},
-    'blowoff-risk':{benefit:'Taking precaution now avoids a messy blow-off.',downside:'Ignoring it can push foam/must out and risk contamination.'},
+    'log-reading-missing':{benefit:'A first reading gives the advisor something to work with.',downside:'Without any readings, the advisor stays blind to progress, projection and health.'},
+    'log-reading-overdue':{benefit:'A fresh reading keeps the advice sharp.',downside:'Going too long without one lets problems go unnoticed.'},
+    'blowoff-headspace-critical':{benefit:'Taking precaution now avoids a messy blow-off.',downside:'Ignoring it can push foam/must out and risk contamination.'},
+    'blowoff-headspace-tight':{benefit:'Taking precaution now avoids a messy blow-off.',downside:'Ignoring it can push foam/must out and risk contamination.'},
     'ferment-complete':{benefit:'Racking/bottling promptly limits further oxygen exposure.',downside:'Waiting too long extends unnecessary air contact in the vessel.',
       considerWaitingIf:'you\'re intentionally leaving it on the yeast lees a while longer for extra body or mouthfeel.'},
     'extended-bulk-aging':{benefit:'Bottling soon closes off further oxygen exposure from opening or moving the vessel.',downside:'Waiting longer repeats that oxidation risk every time the vessel is disturbed.',
       considerWaitingIf:'you\'re deliberately doing an extended bulk- or barrel-aging style that calls for more time before bottling.'},
+    'over-racked':{benefit:'Stopping here limits further cumulative oxygen exposure.',downside:'One more racking repeats that small dose of oxygen — it adds up.',
+      considerWaitingIf:'there\'s a concrete reason (genuinely still cloudy, or deliberately racking off fruit/spices).'},
     'mlf-advisory':{benefit:'Deciding on sulfite timing now avoids an unintended result later.',downside:'Leaving it to chance lets the malolactic outcome go unmanaged — for perry that risks a vinegary cider.'}
   };
   return M[id]||null;

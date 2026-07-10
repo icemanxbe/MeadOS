@@ -21,8 +21,8 @@ var TROUBLESHOOT_TOPICS=[
       '<strong>Rule out nutrient deficiency.</strong> Mead is nitrogen-poor — without staggered nutrient additions (SNA), yeast starves around 1/3 sugar break. Add 3g Fermaid-O or DAP per 5L gently stirred in.',
       '<strong>Rouse the yeast.</strong> Gently swirl the fermenter to re-suspend settled yeast. Don\'t splash (introduces oxygen). If using a carboy, rock it side-to-side.',
       '<strong>Check the gravity ceiling.</strong> M05 tolerates 18% ABV. If your OG was 1.150+, you may have hit the ceiling — residual sweetness is expected.',
-      '<strong>Rescue pitch.</strong> If truly stuck below target: make a starter with 50g sugar + 200ml warm water + nutrient + fresh M05 yeast. When actively fermenting (2-6h), add to your batch.',
-      '<strong>Last resort: high-alcohol yeast.</strong> EC-1118 or K1V-1116 will restart fermentation up to 18-20%. Acclimate it the same way (starter first).'
+      '<strong>Rescue pitch.</strong> If truly stuck below target: make a starter with 50g sugar + 200ml warm water + nutrient + fresh M05, and let it get actively fermenting (2-6h). Then acclimate it to your batch before combining — stir in a splash of the stuck must, wait 15-30 min, repeat with a couple of larger splashes, then add the whole starter. Dumping fresh yeast straight into an already-alcoholic must can shock and kill it before it does anything.',
+      '<strong>Last resort: high-alcohol yeast.</strong> EC-1118 or K1V-1116 will restart fermentation up to 18-20%. Acclimate it the same way (starter first, then step it up with splashes of the stuck must).'
     ],
     ciderTitle:'Stuck or stalled fermentation — gravity won\'t drop',
     ciderSteps:[
@@ -31,8 +31,8 @@ var TROUBLESHOOT_TOPICS=[
       '<strong>Rule out nutrient deficiency.</strong> Apple must is just as nitrogen-poor as honey must — without staggered Fermaid-O, yeast starves around the 1/3 sugar break. Add 1-1.5g Fermaid-O per 5L gently stirred in.',
       '<strong>Rouse the yeast.</strong> Gently swirl the fermenter to re-suspend settled yeast. Don\'t splash (introduces oxygen). If using a carboy, rock it side-to-side.',
       '<strong>Check the gravity ceiling.</strong> Nottingham and 71B tolerate ~14%, Mangrove Jack\'s M02 only ~12%, EC-1118 up to 18%. If your OG was 1.080+ (New England, Applewine) or 1.150+ (Ice/Fire Cider), you may have hit your yeast\'s ceiling.',
-      '<strong>Rescue pitch.</strong> If truly stuck below target: make a starter with 50g sugar + 200ml warm apple juice + nutrient + fresh EC-1118. When actively fermenting (2-6h), add to your batch.',
-      '<strong>Last resort: high-alcohol yeast.</strong> EC-1118 has far more headroom than Nottingham/M02/71B and will restart fermentation up to 18%. Acclimate it the same way (starter first).'
+      '<strong>Rescue pitch.</strong> If truly stuck below target: make a starter with 50g sugar + 200ml warm apple juice + nutrient + fresh EC-1118, and let it get actively fermenting (2-6h). Then acclimate it to your batch before combining — stir in a splash of the stuck cider, wait 15-30 min, repeat with a couple of larger splashes, then add the whole starter. Dumping fresh yeast straight into an already-alcoholic must can shock and kill it before it does anything.',
+      '<strong>Last resort: high-alcohol yeast.</strong> EC-1118 has far more headroom than Nottingham/M02/71B and will restart fermentation up to 18%. Acclimate it the same way (starter first, then step it up with splashes of the stuck cider).'
     ]
   },
   {
@@ -271,6 +271,29 @@ var TROUBLESHOOT_TOPICS=[
       '<strong>What to sanitize:</strong> Everything that touches juice after pressing. Hydrometer, racking cane, siphon, bottles, caps, even your hands.',
       '<strong>Boiling water:</strong> 5 minutes at full boil sanitizes anything heat-safe. Best for hydrometers and siphons.',
       '<strong>Bacterial vs wild yeast contamination.</strong> Sour/vinegar = acetic bacteria — cider\'s biggest real risk. Mousy taint = a different bacterial group entirely. Funky/farmhouse = wild yeast (Brett), which is sometimes desirable in French-style cider and unwanted everywhere else.'
+    ]
+  },
+  {
+    id:'surface-film',
+    title:'Something\'s growing on top — is it mold?',
+    icon:'🫧',
+    category:'Sanitation',
+    steps:[
+      '<strong>Look closely before panicking.</strong> A thin, flat, white or cream-colored film that sits ON the surface (not fuzzy, not raised, doesn\'t grow down into the liquid) is almost always kahm yeast — a harmless wild surface yeast, not mold. It smells mild — yeasty, bready, sometimes faintly solventy — not musty or earthy.',
+      '<strong>True mold looks different.</strong> Fuzzy texture, raised bumps or patches, and usually some color beyond plain white — green, black, orange, pink. It often smells musty or sharply off. This is a real contamination signal, not a cosmetic issue.',
+      '<strong>Kahm yeast: skim it and move on.</strong> It won\'t make you sick and won\'t ruin the batch, though left alone it can add a mild off-flavor over time. Gently skim it off the surface, then smell and taste a small bit of what\'s underneath — if that\'s clean, you\'re fine to continue as normal.',
+      '<strong>Mold: don\'t just skim and hope.</strong> Remove it carefully without disturbing it into the liquid, then check what\'s underneath the same way. If the rest smells and tastes clean, it may be salvageable — watch it closely over the following days. If the must smells off throughout, or the growth had clearly spread below the surface, it\'s not worth the risk — document it as a loss and start the next batch with tighter sanitation.',
+      '<strong>Why it happens.</strong> Both kahm yeast and mold need oxygen and an exposed surface — a loose-fitting lid, too much headspace, or infrequent airlock checks all make it easier for something to take hold on top.',
+      '<strong>Prevent it next time.</strong> Keep the airlock properly filled and sealed, minimize headspace once vigorous primary fermentation has settled down, and don\'t leave a vessel open longer than it needs to be during racking or additions.'
+    ],
+    ciderTitle:'Something\'s growing on top — is it mold?',
+    ciderSteps:[
+      '<strong>Look closely before panicking.</strong> A thin, flat, white or cream-colored film that sits ON the surface (not fuzzy, not raised, doesn\'t grow down into the liquid) is almost always kahm yeast — a harmless wild surface yeast, not mold. It smells mild — yeasty, bready, sometimes faintly solventy — not musty or earthy.',
+      '<strong>True mold looks different.</strong> Fuzzy texture, raised bumps or patches, and usually some color beyond plain white — green, black, orange, pink. It often smells musty or sharply off. This is a real contamination signal, not a cosmetic issue.',
+      '<strong>Kahm yeast: skim it and move on.</strong> It won\'t make you sick and won\'t ruin the batch, though left alone it can add a mild off-flavor over time. Gently skim it off the surface, then smell and taste a small bit of what\'s underneath — if that\'s clean, you\'re fine to continue as normal.',
+      '<strong>Mold: don\'t just skim and hope.</strong> Remove it carefully without disturbing it into the liquid, then check what\'s underneath the same way. If the rest smells and tastes clean, it may be salvageable — watch it closely over the following days. If the juice smells off throughout, or the growth had clearly spread below the surface, it\'s not worth the risk — document it as a loss and start the next batch with tighter sanitation.',
+      '<strong>Why it happens.</strong> Both kahm yeast and mold need oxygen and an exposed surface — open-vessel wild fermentation (Sidra, French Cider) is naturally more exposed to this than a sealed airlock setup, which is part of the real trade-off of that traditional approach.',
+      '<strong>Prevent it next time.</strong> Keep the airlock properly filled and sealed, minimize headspace once vigorous primary fermentation has settled down, and don\'t leave a vessel open longer than it needs to be during racking or additions.'
     ]
   },
   {

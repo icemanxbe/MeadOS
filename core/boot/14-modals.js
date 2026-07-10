@@ -421,6 +421,17 @@ function createBatch(){
   b.beverageType=(r&&r.beverageType)||activeBevMode();
   APP.batches.push(b);
   APP.logs[b.id]=[];
+  // Auto-complete day-0 recipe step(s) ("Brew Day") — filling in this modal
+  // (OG, yeast, honey, all recorded) IS the brew-day action, so requiring a
+  // second, separate manual checkbox for the same thing just produced a
+  // guaranteed false "overdue — DO NOW" nag the moment a day passed, on
+  // every single new batch.
+  (function(){
+    if(!APP.tasksDone)APP.tasksDone={};
+    (getEffectiveSteps(b,r)||[]).forEach(function(s){
+      if(s.day===0)APP.tasksDone[b.id+'-step-0']=today();
+    });
+  })();
   // If this batch was deployed from the brew plan, retire that plan entry now
   // that it's a real, supply-deducting batch.
   if(window._deployingPlanId){

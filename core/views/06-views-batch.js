@@ -41,7 +41,7 @@ function renderDashboard(){
       var pct=Math.min(100,Math.round((d/totalDays)*100));
       var logs=APP.logs[b.id]||[];
       var lastG=logs.length?logs[logs.length-1].gravity:b.og;
-      var abv=b.og&&lastG?calcABV(b.og,lastG)+'%':'—';
+      var abv=b.og&&lastG?calcABV(b.og,lastG)+'%':'—'; // active-only list: never bottled, no fg fallback needed
       var color=getBatchColor(b);
       return'<div class="card" style="cursor:pointer;margin-bottom:12px;padding:0;overflow:hidden" onclick="showView(\'batch\',\''+b.id+'\')">'
         +'<div style="height:3px;background:'+color+'"></div>'
@@ -152,6 +152,29 @@ function renderDashboard(){
       +'</div>';
   }
 
+  // ============ BATCH HEALTH OVERVIEW ============
+  // Same mwBatchHealth() score that powers the batch Overview tab's health
+  // hero (see renderBatchAdvisorStrip in 12-advisor.js), shown across every
+  // active batch at a glance instead of drilling into one at a time.
+  var healthCards='';
+  if(active.length){
+    var healthRows=active.slice(0,6).map(function(b){
+      var adv=(typeof mwBatchAdvice==='function')?mwBatchAdvice(b):null;
+      var h=adv&&adv.health,hm=_advHealthMeta(h&&h.band);
+      return'<div onclick="showView(\'batch\',\''+b.id+'\')" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer">'
+        +'<div style="text-align:center;min-width:36px"><div style="font-family:var(--font-display);font-size:20px;color:'+hm.c+'">'+(h&&h.score!=null?h.score:'—')+'</div></div>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:12.5px;color:'+getBatchColor(b)+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(b.name)+'</div>'
+        +'<div style="font-size:11px;color:'+hm.c+'">'+hm.l+_advTrendChip(h&&h.trend)+'</div>'
+        +'</div></div>';
+    }).join('');
+    healthCards='<div class="card" style="margin-top:16px;padding:0;overflow:hidden">'
+      +'<div class="card-header" style="padding:14px 14px 8px"><div class="card-title">✦ BATCH HEALTH</div></div>'
+      +'<div>'+healthRows+'</div>'
+      +(active.length>6?'<div style="padding:8px 14px;text-align:center;border-top:1px solid var(--border)"><button class="btn btn-secondary btn-sm" onclick="showView(\'batches\')">See all '+active.length+' active →</button></div>':'')
+      +'</div>';
+  }
+
   // "Under your care" = still fermenting or sitting in your cellar. Completed
   // (drunk/gifted away) and failed batches are gone — their stats live on for
   // reference/rebrewing but they aren't in your care anymore.
@@ -179,9 +202,9 @@ function renderDashboard(){
     +renderStockAlerts()
     +renderProactiveAlerts()
     +'<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:20px">'
-    +statCard(L.active,'Active Batches',L.bottledBatches?L.bottledBatches+' aging in cellar':'fermenting now')
+    +statCard(L.active,'Active Batches',L.bottledBatches?'+ '+L.bottledBatches+' aging in cellar':'fermenting now')
     +statCard(L.onHand,'Bottles On Hand',(L.cellar||L.fridge)?L.cellar+' cellar · '+L.fridge+' fridge':null)
-    +statCard(L.total,'Batches Brewed',L.complete+' finished · '+L.active+' active')
+    +statCard(L.total,'Batches Brewed',L.complete+' finished · '+L.bottledBatches+' bottled · '+L.active+' active')
     +statCard(L.bottledEver,'Bottled (lifetime)',sizes||null)
     +statCard(L.gifted,'Gifted Away',L.gifted?'shared with others':null,{color:L.gifted?'var(--purple2)':null})
     +statCard(L.drunk,'Enjoyed',L.drunk?'bottles drunk':null,{color:L.drunk?'var(--gold2)':null})
@@ -199,6 +222,7 @@ function renderDashboard(){
     +(todayTasks.length?'<div style="margin-top:12px"><button class="btn btn-secondary btn-sm" onclick="showView(\'coach\')">See full briefing →</button></div>':'')
     +'</div>'
     +(modeBatches.length?'<div class="card" style="margin-top:16px"><div class="card-header"><div class="card-title">GRAVITY TREND</div></div><div style="position:relative;height:180px"><canvas id="dash-chart"></canvas></div></div>':'')
+    +healthCards
     +renderOnThisDayCard()
     +'</div></div>';
 }
@@ -359,7 +383,12 @@ function _renderBatchGroup(title,arr){
       var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
       var color=getBatchColor(b);
       var logs=APP.logs[b.id]||[];
-      var lastG=logs.length?logs[logs.length-1].gravity:b.og;
+      // Prefer the last logged reading; a bottled batch with no gravity logs
+      // (common — plenty of brewers only record the number at bottling time)
+      // falls back to the bottling record's own FG, not silently back to OG,
+      // which used to read as "1.098 → 1.098" — implying nothing fermented.
+      var bottlingRec=APP.bottling[b.id];
+      var lastG=logs.length?logs[logs.length-1].gravity:((bottlingRec&&bottlingRec.fg!=null)?bottlingRec.fg:b.og);
       return'<div class="card" style="margin-bottom:8px;cursor:pointer;padding:0;overflow:hidden" onclick="showView(\'batch\',\''+b.id+'\')">'
         +'<div style="display:flex;align-items:stretch">'
         +'<div style="width:4px;background:'+color+'"></div>'
@@ -751,7 +780,7 @@ function renderBatchDetail(){
       +'<div class="form-group"><label class="form-label">Gravity (SG)'+(b.gravitySensorEntity?' <span style="font-weight:400;color:var(--gold2);font-size:10px;margin-left:6px;font-family:var(--font-mono)">📡 sensor bound</span>':'')+'</label><div style="display:flex;gap:6px"><input class="form-input" type="number" id="log-gravity" placeholder="1.045" step="0.001" min="0.990" max="1.200" style="flex:1">'+(b.gravitySensorEntity?'<button class="btn btn-secondary btn-sm" onclick="pullGravityFromSensor(\''+b.id+'\')" title="Pull latest reading from '+escHtml(b.gravitySensorEntity)+'" style="padding:0 10px">📡</button>':'')+'</div></div></div>'
       +'<div class="form-row"><div class="form-group"><label class="form-label">Temperature (°C)'+tempSrcHint+'</label><input class="form-input" type="number" id="log-temp" placeholder="'+(prefilledT!=null?prefilledT.toFixed(1):'20')+'" step="0.5" value="'+(prefilledT!=null?prefilledT.toFixed(1):'')+'"><div style="font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5;font-style:italic">Active fermentation runs ~3-6°C warmer than the room around it (yeast activity generates real heat). If this is a room/ambient reading rather than a probe on the vessel, the must itself is likely running hotter than this number.</div></div>'
       +'<div class="form-group"><label class="form-label">Airlock Activity</label><select class="form-select" id="log-airlock"><option value="">—</option><option>Very active (&lt;30s)</option><option>Active (30-60s)</option><option>Slow (1-3 min)</option><option>Very slow (3+ min)</option><option>None</option></select></div></div>'
-      +'<div class="form-row"><div class="form-group"><label class="form-label">pH <span style="font-weight:400;color:var(--text3);font-size:11px;margin-left:6px">optional · only logged if you enter a value</span></label><input class="form-input" type="number" id="log-ph" placeholder="3.2 — typical healthy range 3.0–3.4" step="0.01" min="2.5" max="4.5"><div style="font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5;font-style:italic">Healthy mead pH during ferment: 3.0–3.4. Below 2.9 means yeast stress (raise pH with potassium carbonate). Above 3.5 risks contamination. Leave blank if you don\'t measure — pH never appears in charts or summaries until you log at least one value.</div></div>'
+      +'<div class="form-row"><div class="form-group"><label class="form-label">pH <span style="font-weight:400;color:var(--text3);font-size:11px;margin-left:6px">optional · only logged if you enter a value</span></label><input class="form-input" type="number" id="log-ph" placeholder="3.2 — typical healthy range 3.0–3.4" step="0.01" min="2.5" max="4.5"><div style="font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5;font-style:italic">Healthy mead pH during ferment: 3.0–3.4. Below 2.9 means yeast stress (raise pH with potassium carbonate). Above 3.5 risks contamination. Leave blank if you don\'t measure — pH never appears in charts or summaries until you log at least one value.<br><br>Test strips are only a rough ballpark (±0.3-0.5) — fine for a quick check, but a cheap digital meter reads to ~0.1 and is worth it if you\'re making a decision (like buffering) off the number. A meter drifts between uses though — recalibrate with fresh buffer solution before each session, not just once when it\'s new.</div></div>'
       +'<div class="form-group"></div></div>'
       +'<div class="form-group"><label class="form-label">Notes & Observations</label><textarea class="form-textarea" id="log-note" placeholder="Color, aroma, taste, clarity…"></textarea></div>'
       +'<button class="btn btn-primary" onclick="addLog(\''+b.id+'\')">Log Reading</button></div></div>'

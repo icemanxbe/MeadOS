@@ -48,6 +48,8 @@
 <script src="/core/domain/03-brew-domain.js"></script>
 <script src="/core/domain/03d-mead-model.js"></script>
 <script src="/core/domain/03e-advisor.js"></script>
+<script src="/core/domain/03f-advisor-rules-fermentation.js"></script>
+<script src="/core/domain/03g-advisor-rules-packaging.js"></script>
 <script src="/core/sync/04-server-ha.js"></script>
 <script src="/core/domain/04b-bottle-helpers.js"></script>
 <script src="/core/state/05-utils-nav.js"></script>
@@ -774,6 +776,15 @@
       // long time isn't flagged at the same mark as a quick traditional.
       ok('rules: a LONG recipe bulk-age target raises the threshold well past 270', bulkRule({bottled:false,status:'aging',daysSinceStart:300,recipeBulkAgeDays:600})===null, '');
       ok('rules: a SHORT recipe bulk-age target flags well before the flat 270 default', bulkRule({bottled:false,status:'aging',daysSinceStart:100,recipeBulkAgeDays:60}).id==='extended-bulk-aging', '');
+
+      // over-racked: real, already-logged rackingCount vs the app's own
+      // troubleshooting-guide threshold ("three is plenty, six is too many")
+      // — previously known but never applied to a specific batch.
+      var rackRule=ruleByName('overRacked');
+      ok('rules: over-racked silent under 4 rackings', rackRule({active:true,bottled:false,rackingCount:3})===null, '');
+      ok('rules: over-racked fires info at 4-5 rackings', rackRule({active:true,bottled:false,rackingCount:4}).id==='over-racked'&&rackRule({active:true,bottled:false,rackingCount:4}).severity==='info', '');
+      ok('rules: over-racked escalates to recommended at 6+', rackRule({active:true,bottled:false,rackingCount:6}).severity==='recommended', '');
+      ok('rules: over-racked silent once bottled (history, not ongoing risk)', rackRule({active:true,bottled:true,rackingCount:8})===null, '');
     })();
     // mwBatchHealth(): per-axis explainability — each axis reports WHY it
     // scored what it did (code + supporting data + its weight), not just a bare
@@ -825,7 +836,228 @@
       ok('readiness: never-bottled batch stays in the low fermenting-style band, not a drink-window %', rN&&rN.pct<=30&&rN.phase==='fermenting', JSON.stringify(rN));
       APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};
     })();
+    // ChatGPT review round (2026-07-10): historical completion can become
+    // self-confirming — a plateau matching the brewer's OWN past batches is
+    // real corroborating evidence, but if THIS batch's own nutrient schedule
+    // was also skipped, a repeatable process gap is at least as plausible as
+    // a true yeast ceiling. nutrientsComplete must ride along on the
+    // 'ferment-complete' item so the view can caveat it — and only on the
+    // historical path, since numeric/attenuation don't lean on past batches.
+    (function(){
+      APP.recipes=[{id:'rHist',ogTarget:1.100,fgTarget:1.000,abvTarget:14,fermentDays:30,minAgeDays:60,peakAgeDays:240,
+        steps:[{day:0,title:'Pitch yeast',desc:''},{day:2,title:'Nutrient — Dose 1',desc:''},
+          {day:5,title:'Nutrient — Dose 2',desc:''},{day:10,title:'Nutrient — Dose 3',desc:''}]}];
+      var old1={id:'histOld1',recipeId:'rHist',startDate:isoAgo(200),og:1.100,yeast:'ec1118'};
+      var old2={id:'histOld2',recipeId:'rHist',startDate:isoAgo(150),og:1.100,yeast:'ec1118'};
+      var cur={id:'histCur',recipeId:'rHist',startDate:isoAgo(24),og:1.100,yeast:'ec1118'};
+      APP.batches=[old1,old2,cur];
+      APP.logs={histOld1:[],histOld2:[],histCur:[
+        {date:isoAgo(24),gravity:1.100},{date:isoAgo(18),gravity:1.060},
+        {date:isoAgo(12),gravity:1.0255},{date:isoAgo(8),gravity:1.0250},
+        {date:isoAgo(4),gravity:1.0248},{date:isoAgo(0),gravity:1.0247}
+      ]};
+      // Two past batches on the same recipe+yeast, both finished around the
+      // SAME ~75% attenuation as the current plateau — real history to match.
+      APP.bottling={histOld1:{date:isoAgo(160),fg:1.025,abv:9.8},histOld2:{date:isoAgo(110),fg:1.024,abv:9.9}};
+      APP.additions={};
+      var sHist=mwBatchSignals(cur);
+      ok('signals: historical comparison finds the 2 past same-recipe batches', sHist&&sHist.historical&&sHist.historical.sampleSize===2, JSON.stringify(sHist&&sHist.historical));
+      var aHist=mwBatchAdvice(cur);
+      var completeItem=aHist.items.filter(function(i){return i.id==='ferment-complete';})[0];
+      ok('advice: plateau matching own history → nearFGReason=historical', completeItem&&completeItem.data.reason==='historical', completeItem&&JSON.stringify(completeItem.data));
+      ok('advice: ferment-complete carries nutrientsComplete (this batch skipped its own nutrient schedule)', completeItem&&completeItem.data.nutrientsComplete===false, completeItem&&completeItem.data.nutrientsComplete);
+      APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};APP.additions={};
+    })();
+    // ChatGPT review round: fruit sugar landing mid-ferment shows up as a
+    // gravity rise/slowdown that has nothing to do with yeast activity —
+    // flag it, but ONLY while it's still inside the same lookback window
+    // projectFermentation's own trend uses (last up to 4 readings), and ONLY
+    // for type:'fruit' (backsweetening/oak/etc aren't the same distortion).
+    (function(){
+      APP.recipes=[{id:'rFruit',ogTarget:1.098,fgTarget:1.010,abvTarget:11.5,fermentDays:42,steps:[]}];
+      var b={id:'fruitB',recipeId:'rFruit',startDate:isoAgo(20),og:1.098,yeast:'ec1118'};
+      APP.batches=[b];
+      APP.logs={fruitB:[
+        {date:isoAgo(20),gravity:1.098},{date:isoAgo(15),gravity:1.070},
+        {date:isoAgo(10),gravity:1.040},{date:isoAgo(5),gravity:1.030},{date:isoAgo(0),gravity:1.028}
+      ]};
+      APP.additions={fruitB:[{id:'fr1',date:isoAgo(6),item:'Raspberries',type:'fruit',amount:'1 kg'}]};
+      var sIn=mwBatchSignals(b);
+      ok('signals: fruit addition inside the projection\'s lookback window is flagged', sIn&&sIn.recentFruitAddition&&sIn.recentFruitAddition.item==='Raspberries', sIn&&JSON.stringify(sIn.recentFruitAddition));
+      var aIn=mwBatchAdvice(b);
+      ok('advice: fruit-addition-note fires while a recent fruit addition is in play', aIn.items.some(function(i){return i.id==='fruit-addition-note';}), JSON.stringify(aIn.items.map(function(i){return i.id;})));
+
+      // Same batch, but the fruit went in long before the current 4-reading
+      // window — the trend has absorbed it by now, so no more flag.
+      APP.additions.fruitB=[{id:'fr1',date:isoAgo(19),item:'Raspberries',type:'fruit',amount:'1 kg'}];
+      var sOld=mwBatchSignals(b);
+      ok('signals: an old fruit addition outside the lookback window is NOT flagged', sOld&&sOld.recentFruitAddition===null, sOld&&JSON.stringify(sOld.recentFruitAddition));
+
+      // A non-fruit addition in the same recent window shouldn't trigger this
+      // (oak doesn't add fermentable sugar the way fruit does).
+      APP.additions.fruitB=[{id:'ok1',date:isoAgo(6),item:'Oak cubes',type:'oak',amount:'20g'}];
+      var sOak=mwBatchSignals(b);
+      ok('signals: a non-fruit addition (oak) does not trigger the fruit note', sOak&&sOak.recentFruitAddition===null, sOak&&JSON.stringify(sOak.recentFruitAddition));
+      APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.additions={};
+    })();
+    // ChatGPT review round: the temperature rule now carries WHICH kind of
+    // reading it's judging (live sensor vs hand-logged) so the view can hedge
+    // the "too cold" case for a live sensor during active fermentation — an
+    // ambient-ish probe reads a couple degrees below an actively-fermenting
+    // must, which is exothermic, so a live "cold" reading is the one case
+    // that could plausibly flip once you check the must itself.
+    (function(){
+      window._liveSensorTemps={};
+      APP.recipes=[{id:'rTS',ogTarget:1.100,fgTarget:1.010,abvTarget:12.0,fermentDays:30,steps:[]}];
+      APP.fermenters=[{id:'fTS',tempSensorEntity:'sensor.fts_temp',capacity:20}];
+      var bF={id:'tsF',recipeId:'rTS',startDate:isoAgo(5),og:1.100,yeast:'ec1118',fermenterId:'fTS'};
+      APP.batches=[bF];APP.logs={tsF:[{date:isoAgo(5),gravity:1.100},{date:isoAgo(0),gravity:1.080}]};APP.bottling={};
+      window._liveSensorTemps['sensor.fts_temp']={value:5,unit:'°C'};
+      var aF=mwBatchAdvice(bF);
+      var tempItemLive=aF.items.filter(function(i){return i.id==='temperature';})[0];
+      ok('advice: cold live-sensor reading carries source=live + fermenting=true for the view to hedge', tempItemLive&&tempItemLive.data.source==='live'&&tempItemLive.data.fermenting===true&&tempItemLive.data.cold===true, tempItemLive&&JSON.stringify(tempItemLive.data));
+
+      window._liveSensorTemps={};
+      APP.fermenters=[];
+      var bL={id:'tsL',recipeId:'rTS',startDate:isoAgo(5),og:1.100,yeast:'ec1118'};
+      APP.batches=[bL];APP.logs={tsL:[{date:isoAgo(5),gravity:1.100,temp:19},{date:isoAgo(0),gravity:1.080,temp:5}]};APP.bottling={};
+      var aL=mwBatchAdvice(bL);
+      var tempItemLogged=aL.items.filter(function(i){return i.id==='temperature';})[0];
+      ok('advice: cold hand-logged reading carries source=logged (no hedge — it was taken in the must itself)', tempItemLogged&&tempItemLogged.data.source==='logged', tempItemLogged&&JSON.stringify(tempItemLogged.data));
+      APP.recipes=BUILTIN_RECIPES();APP.fermenters=[];APP.batches=[];APP.logs={};APP.bottling={};
+    })();
+    // ChatGPT review round 2 (2026-07-10): two rules shared one id across
+    // genuinely different triggers (log-reading: no-readings vs stale-
+    // reading; blowoff-risk: critical vs recommended tier). Split into
+    // distinct ids — confirmed via the rule functions directly rather than
+    // fighting getBatchStatus()'s real-world status heuristics. (Computes
+    // its own rules-by-name lookup rather than reusing the ruleByName()
+    // above — that one's a local var scoped to its own IIFE, not this one.)
+    (function(){
+      var _rules=_advRules();
+      function byName(n){return _rules.filter(function(r){return r.name===n;})[0];}
+      var logRule=byName('logReading');
+      ok('rules: log-reading-missing fires with zero readings past day 2', logRule({fermenting:true,readings:0,daysSinceStart:5}).id==='log-reading-missing', '');
+      ok('rules: log-reading-overdue fires for a stale later reading, distinct id from missing', logRule({fermenting:true,readings:3,daysSinceLastReading:8,stalled:false}).id==='log-reading-overdue', '');
+      ok('rules: log-reading silent before day 2 with no readings', logRule({fermenting:true,readings:0,daysSinceStart:1})===null, '');
+
+      var blowRule=byName('blowoffRisk');
+      ok('rules: blowoff-headspace-critical under 8% headspace', blowRule({fermenting:true,passedSugarBreak:false,stalled:false,nearFG:false,headspaceFrac:0.05}).id==='blowoff-headspace-critical', '');
+      ok('rules: blowoff-headspace-tight under 15% headspace, distinct id from critical', blowRule({fermenting:true,passedSugarBreak:false,stalled:false,nearFG:false,headspaceFrac:0.10}).id==='blowoff-headspace-tight', '');
+
+      // No rule anywhere should still emit either retired shared id.
+      var allIds=_rules.map(function(r){return r.name;});
+      ok('rules: no rule function is still named after a pre-split shared id (sanity)', allIds.indexOf('logReading')>=0&&allIds.indexOf('blowoffRisk')>=0, JSON.stringify(allIds));
+    })();
+    // ChatGPT review round 2: nitrogen-contribution ingredient notes are only
+    // actionable while nutrient-dosing decisions are still being made — stale
+    // once fermentation itself is done, even though the batch is still
+    // 'active' (conditioning/bulk aging). Flavor-mismatch is a standing
+    // characteristic of the pairing and should keep showing either way.
+    (function(){
+      var ingRule=_advRules().filter(function(r){return r.name==='ingredientNotes';})[0];
+      // Forest × ec1118 → nitrogen-contribution only (see the ingredientRelationship tests below for why).
+      var nitroFermenting=ingRule({active:true,fermenting:true,honeyName:'Forest',yeastId:'ec1118'});
+      ok('rules: nitrogen-contribution note shows while still fermenting', nitroFermenting&&nitroFermenting.data.notes.some(function(n){return n.type==='nitrogen-contribution';}), JSON.stringify(nitroFermenting));
+      var nitroConditioning=ingRule({active:true,fermenting:false,honeyName:'Forest',yeastId:'ec1118'});
+      ok('rules: nitrogen-contribution note is suppressed once no longer fermenting (conditioning/aging)', nitroConditioning===null, JSON.stringify(nitroConditioning));
+      // Orange Blossom × d47 → flavor-mismatch only.
+      var flavorFermenting=ingRule({active:true,fermenting:true,honeyName:'Orange Blossom',yeastId:'d47'});
+      ok('rules: flavor-mismatch note shows while fermenting', flavorFermenting&&flavorFermenting.data.notes.some(function(n){return n.type==='flavor-mismatch';}), '');
+      var flavorConditioning=ingRule({active:true,fermenting:false,honeyName:'Orange Blossom',yeastId:'d47'});
+      ok('rules: flavor-mismatch note STILL shows once no longer fermenting (standing characteristic, not stale)', flavorConditioning!==null&&flavorConditioning.data.notes.some(function(n){return n.type==='flavor-mismatch';}), JSON.stringify(flavorConditioning));
+    })();
+    // ChatGPT review round 2: the recentFruitAddition signal needs a real
+    // day-based ceiling, not just "inside the last 4 readings" — an
+    // infrequent logger's last 4 readings could span months, long after any
+    // real fruit sugar influence is gone.
+    (function(){
+      APP.recipes=[{id:'rFrDecay',ogTarget:1.098,fgTarget:1.010,fermentDays:60,steps:[]}];
+      var b={id:'frDecay1',recipeId:'rFrDecay',startDate:isoAgo(40),og:1.098,yeast:'ec1118'};
+      APP.batches=[b];
+      // Infrequent logger: 4 readings spanning 40 days. A fruit addition 20
+      // days before the latest reading sits INSIDE the reading window but
+      // is well past the ~10-day ceiling — should NOT be flagged.
+      APP.logs={frDecay1:[
+        {date:isoAgo(40),gravity:1.098},{date:isoAgo(28),gravity:1.060},
+        {date:isoAgo(14),gravity:1.020},{date:isoAgo(0),gravity:1.015}
+      ]};
+      APP.additions={frDecay1:[{id:'oldfr',date:isoAgo(20),item:'Cherries',type:'fruit',amount:'1 kg'}]};
+      var sOldButInWindow=mwBatchSignals(b);
+      ok('signals: a fruit addition inside the reading window but >10 days old is NOT flagged (infrequent-logger case)', sOldButInWindow&&sOldButInWindow.recentFruitAddition===null, sOldButInWindow&&JSON.stringify(sOldButInWindow.recentFruitAddition));
+
+      // Same batch, fruit added 4 days before the latest reading — genuinely
+      // recent by both the window AND the day ceiling — should be flagged.
+      APP.additions.frDecay1=[{id:'newfr',date:isoAgo(4),item:'Cherries',type:'fruit',amount:'1 kg'}];
+      var sRecent=mwBatchSignals(b);
+      ok('signals: a fruit addition within both the window and the day ceiling IS flagged', sRecent&&sRecent.recentFruitAddition&&sRecent.recentFruitAddition.item==='Cherries', sRecent&&JSON.stringify(sRecent.recentFruitAddition));
+      APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.additions={};
+    })();
+    // ChatGPT review round 2: mwBatchAdvice()'s snapshot is shared by
+    // REFERENCE across every consumer that reads it in one render pass
+    // (memoized per signature) — an accidental `item.data.x=y` in any one
+    // consumer would silently corrupt what every other consumer sees for as
+    // long as the memo stays valid. Deep-frozen so that's a loud, immediate
+    // TypeError (every real app file runs 'use strict') instead of a silent,
+    // hard-to-trace bug. Wrapped in a real 'use strict' function here too, so
+    // the test actually exercises strict-mode throw behaviour, not just
+    // Object.isFrozen (a non-strict assignment on a frozen object silently
+    // no-ops instead of throwing — true either way, but only strict mode
+    // proves the protection actually fires where it matters).
+    (function(){
+      APP.recipes=[{id:'rFrz',ogTarget:1.098,fgTarget:1.010,fermentDays:42,steps:[]}];
+      var b={id:'frz1',recipeId:'rFrz',startDate:isoAgo(6),og:1.098,yeast:'ec1118'};
+      APP.batches=[b];APP.logs={frz1:[{date:isoAgo(6),gravity:1.098,temp:19},{date:isoAgo(0),gravity:1.060,temp:19}]};APP.bottling={};APP.additions={};
+      var adv=mwBatchAdvice(b);
+      ok('advice: snapshot is deep-frozen (top level + items[] + items[].data + signals)', Object.isFrozen(adv)&&Object.isFrozen(adv.items)&&Object.isFrozen(adv.items[0].data)&&Object.isFrozen(adv.signals), '');
+      function strictMutationAttempts(){'use strict';
+        var threws={};
+        try{adv.items[0].data.temp=999;threws.itemData=false;}catch(e){threws.itemData=true;}
+        try{adv.signals.og=999;threws.signals=false;}catch(e){threws.signals=true;}
+        try{adv.items.push({fake:true});threws.itemsArray=false;}catch(e){threws.itemsArray=true;}
+        return threws;
+      }
+      var threws=strictMutationAttempts();
+      ok('advice: mutating item.data throws under strict mode', threws.itemData===true, JSON.stringify(threws));
+      ok('advice: mutating signals throws under strict mode', threws.signals===true, JSON.stringify(threws));
+      ok('advice: pushing onto items[] throws under strict mode', threws.itemsArray===true, JSON.stringify(threws));
+      APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};
+    })();
+    // ChatGPT review round 2: _advRules() now concatenates two sibling files
+    // split by lifecycle phase (03f fermentation, 03g packaging/aging) —
+    // pure relocation, verify nothing was dropped or duplicated in the move.
+    (function(){
+      var allRules=_advRules();
+      var names=allRules.map(function(r){return r.name;});
+      var unique=[];names.forEach(function(n){if(unique.indexOf(n)<0)unique.push(n);});
+      ok('rules: split across 03f/03g concatenates back to the full original rule count', allRules.length===27, allRules.length);
+      ok('rules: no duplicate rule function names after the split', unique.length===names.length, JSON.stringify(names));
+      ok('rules: fermentation-phase file contributes 18 rules', (typeof _advRulesFermentation==='function'?_advRulesFermentation().length:0)===18, '');
+      ok('rules: packaging/aging-phase file contributes 9 rules', (typeof _advRulesPackaging==='function'?_advRulesPackaging().length:0)===9, '');
+    })();
     APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};APP.additions={};
+  })();
+
+  // ---- lookup helpers (ChatGPT review round): getRecipe/getBatch/
+  // getBatchLogs/getBottleInfo don't replace the 80-200x each of their inline
+  // equivalents already appear across the codebase (that's a separate, much
+  // larger migration) — they just give new code one obvious way to do the
+  // same lookup. Simple enough to just assert directly.
+  (function(){
+    APP.recipes=[{id:'rLook',ogTarget:1.098}];
+    APP.batches=[{id:'bLook',recipeId:'rLook'}];
+    APP.logs={bLook:[{date:'2026-01-01',gravity:1.050}]};
+    APP.bottling={bLook:{date:'2026-02-01',fg:1.010}};
+    ok('getRecipe: finds by id', getRecipe('rLook')&&getRecipe('rLook').id==='rLook', '');
+    ok('getRecipe: null for missing id', getRecipe('nope')===null, '');
+    ok('getRecipe: null for no id', getRecipe(null)===null, '');
+    ok('getBatch: finds by id', getBatch('bLook')&&getBatch('bLook').id==='bLook', '');
+    ok('getBatch: null for missing id', getBatch('nope')===null, '');
+    ok('getBatchLogs: returns the batch\'s logs array', getBatchLogs('bLook').length===1&&getBatchLogs('bLook')[0].gravity===1.050, JSON.stringify(getBatchLogs('bLook')));
+    ok('getBatchLogs: [] for a batch with none', getBatchLogs('nope').length===0, '');
+    ok('getBottleInfo: returns the bottling record', getBottleInfo('bLook')&&getBottleInfo('bLook').fg===1.010, JSON.stringify(getBottleInfo('bLook')));
+    ok('getBottleInfo: null for a never-bottled batch', getBottleInfo('nope')===null, '');
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};
   })();
 
   // batch list filter + sort (scale: windowing source)
