@@ -274,6 +274,29 @@ var TROUBLESHOOT_TOPICS=[
     ]
   },
   {
+    id:'surface-film',
+    title:'Something\'s growing on top — is it mold?',
+    icon:'🫧',
+    category:'Sanitation',
+    steps:[
+      '<strong>Look closely before panicking.</strong> A thin, flat, white or cream-colored film that sits ON the surface (not fuzzy, not raised, doesn\'t grow down into the liquid) is almost always kahm yeast — a harmless wild surface yeast, not mold. It smells mild — yeasty, bready, sometimes faintly solventy — not musty or earthy.',
+      '<strong>True mold looks different.</strong> Fuzzy texture, raised bumps or patches, and usually some color beyond plain white — green, black, orange, pink. It often smells musty or sharply off. This is a real contamination signal, not a cosmetic issue.',
+      '<strong>Kahm yeast: skim it and move on.</strong> It won\'t make you sick and won\'t ruin the batch, though left alone it can add a mild off-flavor over time. Gently skim it off the surface, then smell and taste a small bit of what\'s underneath — if that\'s clean, you\'re fine to continue as normal.',
+      '<strong>Mold: don\'t just skim and hope.</strong> Remove it carefully without disturbing it into the liquid, then check what\'s underneath the same way. If the rest smells and tastes clean, it may be salvageable — watch it closely over the following days. If the must smells off throughout, or the growth had clearly spread below the surface, it\'s not worth the risk — document it as a loss and start the next batch with tighter sanitation.',
+      '<strong>Why it happens.</strong> Both kahm yeast and mold need oxygen and an exposed surface — a loose-fitting lid, too much headspace, or infrequent airlock checks all make it easier for something to take hold on top.',
+      '<strong>Prevent it next time.</strong> Keep the airlock properly filled and sealed, minimize headspace once vigorous primary fermentation has settled down, and don\'t leave a vessel open longer than it needs to be during racking or additions.'
+    ],
+    ciderTitle:'Something\'s growing on top — is it mold?',
+    ciderSteps:[
+      '<strong>Look closely before panicking.</strong> A thin, flat, white or cream-colored film that sits ON the surface (not fuzzy, not raised, doesn\'t grow down into the liquid) is almost always kahm yeast — a harmless wild surface yeast, not mold. It smells mild — yeasty, bready, sometimes faintly solventy — not musty or earthy.',
+      '<strong>True mold looks different.</strong> Fuzzy texture, raised bumps or patches, and usually some color beyond plain white — green, black, orange, pink. It often smells musty or sharply off. This is a real contamination signal, not a cosmetic issue.',
+      '<strong>Kahm yeast: skim it and move on.</strong> It won\'t make you sick and won\'t ruin the batch, though left alone it can add a mild off-flavor over time. Gently skim it off the surface, then smell and taste a small bit of what\'s underneath — if that\'s clean, you\'re fine to continue as normal.',
+      '<strong>Mold: don\'t just skim and hope.</strong> Remove it carefully without disturbing it into the liquid, then check what\'s underneath the same way. If the rest smells and tastes clean, it may be salvageable — watch it closely over the following days. If the juice smells off throughout, or the growth had clearly spread below the surface, it\'s not worth the risk — document it as a loss and start the next batch with tighter sanitation.',
+      '<strong>Why it happens.</strong> Both kahm yeast and mold need oxygen and an exposed surface — open-vessel wild fermentation (Sidra, French Cider) is naturally more exposed to this than a sealed airlock setup, which is part of the real trade-off of that traditional approach.',
+      '<strong>Prevent it next time.</strong> Keep the airlock properly filled and sealed, minimize headspace once vigorous primary fermentation has settled down, and don\'t leave a vessel open longer than it needs to be during racking or additions.'
+    ]
+  },
+  {
     id:'must-overflow',
     title:'My must overflowed / I lost mead during brewing',
     icon:'💧',
