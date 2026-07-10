@@ -136,12 +136,14 @@ function _advItemText(it){
       title:nl?'Temperatuur schommelt':'Temperature is swinging',
       reason:nl?('De temperatuur ligt in het ideale bereik ('+d.low+'–'+d.high+'°C) maar wisselt sterk tussen metingen. Grote schommelingen stressen de gist en geven bijsmaken — houd hem zo stabiel mogelijk.')
               :('Temperature is within the ideal range ('+d.low+'–'+d.high+'°C) but swinging between readings. Big swings stress the yeast and add off-flavours — keep it as steady as you can.')},
-    'log-reading':{icon:'📊',
-      title:nl?(d.first?'Log je eerste meting':'Tijd voor een nieuwe meting'):(d.first?'Log your first reading':'Time for a fresh reading'),
-      reason:nl?(d.first?('De partij gist al '+d.days+' dagen zonder dichtheidsmeting. Log er een (en de OG) zodat de adviseur voortgang, prognose en gezondheid kan berekenen.')
-                        :('Laatste meting was '+d.days+' dagen geleden. Een verse dichtheidsmeting houdt de prognose en stalldetectie scherp.'))
-              :(d.first?('This batch has been fermenting '+d.days+' days with no gravity reading. Log one (and the OG) so the advisor can track progress, projection and health.')
-                        :('Last reading was '+d.days+' days ago. A fresh gravity reading keeps the projection and stall detection accurate.'))},
+    'log-reading-missing':{icon:'📊',
+      title:nl?'Log je eerste meting':'Log your first reading',
+      reason:nl?('De partij gist al '+d.days+' dagen zonder dichtheidsmeting. Log er een (en de OG) zodat de adviseur voortgang, prognose en gezondheid kan berekenen.')
+              :('This batch has been fermenting '+d.days+' days with no gravity reading. Log one (and the OG) so the advisor can track progress, projection and health.')},
+    'log-reading-overdue':{icon:'📊',
+      title:nl?'Tijd voor een nieuwe meting':'Time for a fresh reading',
+      reason:nl?('Laatste meting was '+d.days+' dagen geleden. Een verse dichtheidsmeting houdt de prognose en stalldetectie scherp.')
+              :('Last reading was '+d.days+' days ago. A fresh gravity reading keeps the projection and stall detection accurate.')},
     'fruit-addition-note':{icon:'🍒',
       title:nl?'Recente fruittoevoeging kan metingen vertekenen':'Recent fruit addition may skew readings',
       reason:nl?('Je logde '+(d.item?escHtml(d.item)+' ':'')+'op '+fmtDate(d.date)+' — fruit brengt eigen suiker mee, dus dichtheidsmetingen van de komende paar controles zeggen evenveel over dat fruit als over de gisting zelf. Geef het nog 2-3 metingen voor je de trend vertrouwt.')
@@ -227,7 +229,11 @@ function _advItemText(it){
       title:nl?'Carbonatie bouwt zich op':'Carbonation is developing',
       reason:nl?('Gebotteld ~'+d.aged+' dagen geleden. Bottelrijping duurt doorgaans 2–3 weken — bewaar de flessen rechtop op kamertemperatuur zodat de gist de priming-suiker kan vergisten. Koel pas vlak voor het proeven.')
               :('Bottled ~'+d.aged+' days ago. Bottle-conditioning typically takes 2–3 weeks — store the bottles upright at room temperature so the yeast can ferment the priming sugar. Chill only just before tasting.')},
-    'blowoff-risk':{icon:'🪣',
+    'blowoff-headspace-critical':{icon:'🪣',
+      title:nl?'Zeer weinig ruimte boven de must — blow-off-risico':'Very little headspace above the must — blow-off risk',
+      reason:nl?('Deze partij ('+(d.volume||'?')+' L) laat maar ~'+d.headspacePct+'% lucht over in het vat ('+(d.capacity||'?')+' L). Tijdens de krachtigste fase van de gisting kan schuim/krausen het waterslot verstoppen en druk opbouwen. De standaardoplossing: vervang het waterslot tijdelijk door een blow-off-buis (een slang van de vatopening naar een pot ontsmettingsmiddel) — dat laat schuim vrij ontsnappen zonder verstopping/drukopbouw. Een schaal onder het waterslot vangt alleen de rommel op áchteraf, dat voorkomt de drukopbouw niet.')
+              :('This batch ('+(d.volume||'?')+' L) leaves only ~'+d.headspacePct+'% air space in the vessel ('+(d.capacity||'?')+' L). During the most vigorous phase of fermentation, foam/krausen can clog the airlock and build up pressure. The standard fix: swap the airlock for a blow-off tube (a hose running from the vessel opening into a jar of sanitizer) — it lets foam escape freely without clogging or building pressure. A tray under the airlock only catches the mess after the fact, it doesn\'t prevent the pressure buildup.')},
+    'blowoff-headspace-tight':{icon:'🪣',
       title:nl?'Weinig ruimte boven de must — blow-off-risico':'Little headspace above the must — blow-off risk',
       reason:nl?('Deze partij ('+(d.volume||'?')+' L) laat maar ~'+d.headspacePct+'% lucht over in het vat ('+(d.capacity||'?')+' L). Tijdens de krachtigste fase van de gisting kan schuim/krausen het waterslot verstoppen en druk opbouwen. De standaardoplossing: vervang het waterslot tijdelijk door een blow-off-buis (een slang van de vatopening naar een pot ontsmettingsmiddel) — dat laat schuim vrij ontsnappen zonder verstopping/drukopbouw. Een schaal onder het waterslot vangt alleen de rommel op áchteraf, dat voorkomt de drukopbouw niet.')
               :('This batch ('+(d.volume||'?')+' L) leaves only ~'+d.headspacePct+'% air space in the vessel ('+(d.capacity||'?')+' L). During the most vigorous phase of fermentation, foam/krausen can clog the airlock and build up pressure. The standard fix: swap the airlock for a blow-off tube (a hose running from the vessel opening into a jar of sanitizer) — it lets foam escape freely without clogging or building pressure. A tray under the airlock only catches the mess after the fact, it doesn\'t prevent the pressure buildup.')},
@@ -487,8 +493,10 @@ function _advWhyMatters(id){
     temperature:{benefit:'Temperatuur bijstellen houdt de gist in zijn beste bereik.',downside:'Buiten bereik blijven kan de gisting vertragen of ongewenste smaken geven.'},
     'ph-low':{benefit:'Nu weten waar je pH staat helpt je beslissen of bijsturen nodig is.',downside:'Genegeerd kan een lage pH bij mede tot giststress en een vastgelopen gisting leiden.'},
     'record-og':{benefit:'Met een OG kan de adviseur al het overige doorrekenen.',downside:'Zonder OG blijft de adviseur blind voor vergisting, alcohol en prognose.'},
-    'log-reading':{benefit:'Een nieuwe meting houdt het advies scherp.',downside:'Te lang niet meten laat problemen ongemerkt doorlopen.'},
-    'blowoff-risk':{benefit:'Nu voorzorg nemen voorkomt een rommelige overloop.',downside:'Negeren kan schuim/most naar buiten drukken en een besmettingsrisico geven.'},
+    'log-reading-missing':{benefit:'Een eerste meting geeft de adviseur iets om op te rekenen.',downside:'Zonder metingen blijft de adviseur blind voor voortgang, prognose en gezondheid.'},
+    'log-reading-overdue':{benefit:'Een nieuwe meting houdt het advies scherp.',downside:'Te lang niet meten laat problemen ongemerkt doorlopen.'},
+    'blowoff-headspace-critical':{benefit:'Nu voorzorg nemen voorkomt een rommelige overloop.',downside:'Negeren kan schuim/most naar buiten drukken en een besmettingsrisico geven.'},
+    'blowoff-headspace-tight':{benefit:'Nu voorzorg nemen voorkomt een rommelige overloop.',downside:'Negeren kan schuim/most naar buiten drukken en een besmettingsrisico geven.'},
     'ferment-complete':{benefit:'Op tijd rackken/bottelen beperkt verdere zuurstofblootstelling.',downside:'Te lang wachten verlengt onnodig luchtcontact in het vat.',
       considerWaitingIf:'je hem bewust nog even op de gistdroesem laat liggen voor extra body of mondgevoel.'},
     'extended-bulk-aging':{benefit:'Binnenkort bottelen sluit verder zuurstofcontact bij het openen/verplaatsen van het vat af.',downside:'Langer wachten herhaalt dat oxidatierisico elke keer dat het vat verstoord wordt.',
@@ -505,8 +513,10 @@ function _advWhyMatters(id){
     temperature:{benefit:'Adjusting temperature keeps the yeast in its best range.',downside:'Staying out of range can slow fermentation or produce off-flavors.'},
     'ph-low':{benefit:'Knowing where your pH stands now helps you decide whether adjusting is worth it.',downside:'Ignored, a low pH in mead can cause yeast stress and a stalled fermentation.'},
     'record-og':{benefit:'With an OG, the advisor can compute everything else.',downside:'Without it, the advisor stays blind to attenuation, ABV and the projection.'},
-    'log-reading':{benefit:'A fresh reading keeps the advice sharp.',downside:'Going too long without one lets problems go unnoticed.'},
-    'blowoff-risk':{benefit:'Taking precaution now avoids a messy blow-off.',downside:'Ignoring it can push foam/must out and risk contamination.'},
+    'log-reading-missing':{benefit:'A first reading gives the advisor something to work with.',downside:'Without any readings, the advisor stays blind to progress, projection and health.'},
+    'log-reading-overdue':{benefit:'A fresh reading keeps the advice sharp.',downside:'Going too long without one lets problems go unnoticed.'},
+    'blowoff-headspace-critical':{benefit:'Taking precaution now avoids a messy blow-off.',downside:'Ignoring it can push foam/must out and risk contamination.'},
+    'blowoff-headspace-tight':{benefit:'Taking precaution now avoids a messy blow-off.',downside:'Ignoring it can push foam/must out and risk contamination.'},
     'ferment-complete':{benefit:'Racking/bottling promptly limits further oxygen exposure.',downside:'Waiting too long extends unnecessary air contact in the vessel.',
       considerWaitingIf:'you\'re intentionally leaving it on the yeast lees a while longer for extra body or mouthfeel.'},
     'extended-bulk-aging':{benefit:'Bottling soon closes off further oxygen exposure from opening or moving the vessel.',downside:'Waiting longer repeats that oxidation risk every time the vessel is disturbed.',

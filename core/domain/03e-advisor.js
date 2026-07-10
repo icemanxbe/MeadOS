@@ -23,15 +23,27 @@ function mwBatchSignals(b){
   // Fruit sugar landing mid-ferment shows up as a gravity RISE (or a slower-
   // than-real drop) that has nothing to do with yeast activity — neither the
   // attenuation math nor projectFermentation's slope can tell the difference.
-  // Flagged only when a logged fruit addition falls inside the SAME lookback
-  // window projectFermentation actually uses for its trend (its own last-up-
-  // to-4-readings slice) — old fruit the trend has long since absorbed isn't
-  // still skewing anything, so it shouldn't still be flagged.
+  // Flagged only when a logged fruit addition is BOTH inside the same
+  // lookback window projectFermentation uses for its trend (its own last-
+  // up-to-4-readings slice) AND genuinely recent in elapsed days. The
+  // reading-window check alone isn't enough for an infrequent logger — 4
+  // readings could span months, long after any real fruit influence is
+  // gone, and would otherwise keep flagging fruit the trend has long since
+  // absorbed. 10 days is a deliberately simple, deterministic ceiling (not a
+  // per-fruit-type decay curve the app has no real data to back) — a bit
+  // past the app's own "fruit typically sits 3-7 days" addition guidance
+  // (ADDITION_TYPES), giving a small buffer for the tail of activity after
+  // the solids come out but dissolved sugar is still working through.
   var recentFruitAddition=null;
   if(logs.length){
     var _fruitWinStart=logs[Math.max(0,logs.length-4)].date;
+    var _fruitLatestMs=new Date(logs[logs.length-1].date).getTime();
     var _fruitAdds=((typeof APP!=='undefined'&&APP.additions&&APP.additions[b.id])||[])
-      .filter(function(a){return a.type==='fruit'&&a.date&&a.date>=_fruitWinStart;})
+      .filter(function(a){
+        if(a.type!=='fruit'||!a.date||a.date<_fruitWinStart)return false;
+        var ageDays=(_fruitLatestMs-new Date(a.date).getTime())/86400000;
+        return ageDays>=0&&ageDays<=10;
+      })
       .sort(function(x,y){return(y.date||'').localeCompare(x.date||'');});
     if(_fruitAdds.length)recentFruitAddition={date:_fruitAdds[0].date,item:_fruitAdds[0].item||null};
   }
@@ -330,298 +342,18 @@ function mwStalledCauses(s){
 // ---- Rules: each reads signals, returns a recommendation or null ----------
 // Every recommendation carries a `category` (fermentation · nutrition · oxygen ·
 // temperature · stabilisation · aging · data) so the view can group them.
+// The rules themselves live in two sibling files, split by lifecycle phase —
+// 03f-advisor-rules-fermentation.js (active fermentation + data-quality) and
+// 03g-advisor-rules-packaging.js (stabilise/carbonate/rack/bottle/age) — this
+// is just the concatenator every caller (mwBatchAdvice, mwWhatIf, test.html's
+// ruleByName) already expects a single flat array from. Guarded with
+// typeof-checks purely for load-order robustness, same convention used
+// throughout this codebase for cross-file calls.
 function _advRules(){
-  return [
-    function stalled(s){
-      if(!s.active||!s.stalled)return null;
-      var causes=(typeof mwStalledCauses==='function')?mwStalledCauses(s):[{cause:'unknown',weight:0.3,evidence:[]}];
-      return {id:'stalled',severity:'critical',category:'fermentation',
-        data:{atten:Math.round(s.attenuation*100),days:s.daysSinceStart,temp:s.latestTemp,
-          cause:causes[0].cause,causes:causes,honey:s.honeyName,yeast:s.yeastId,ph:s.latestPH,
-          plateauDays:(s.timeline&&s.timeline.plateauDays)||null},
-        reasons:['rate-flat','below-target']};
-    },
-    function finalNutrient(s){
-      if(s.nutrientsComplete||s.nutrientsExpected===0)return null;
-      if(!s.fermenting)return null;
-      // Once fermentation itself reads as complete, the dosing window is
-      // unambiguously closed — a dose here can't reach yeast still growing
-      // (there isn't any) and only risks feeding spoilage organisms instead
-      // (the same reasoning this rule's own text gives for "past the break").
-      // Without this it fires 'critical: dose now' in the same breath as
-      // 'ferment-complete: go rack/bottle' — a real contradiction, not just
-      // an unlikely edge case (any healthy fast ferment that finishes before
-      // every scheduled dose lands here).
-      if(s.nearFG)return null;
-      // Due as we approach the 1/3 break; urgent once past it (window closing).
-      var near=s.sugarBreak!=null&&s.lastG!=null&&s.lastG<=(s.sugarBreak+0.006);
-      if(!near&&!s.passedSugarBreak)return null;
-      return {id:'nutrient-final',severity:s.passedSugarBreak?'critical':'recommended',category:'nutrition',
-        data:{done:s.nutrientsDone,expected:s.nutrientsExpected,sugarBreak:s.sugarBreak,past:s.passedSugarBreak},
-        reasons:['near-break']};
-    },
-    function aerate(s){
-      // The positive counterpart to oxygen-stop: aerate/degas during the first third.
-      if(!s.fermenting||s.sugarBreak==null||s.passedSugarBreak||s.stalled||s.nearFG)return null;
-      return {id:'aerate-now',severity:'recommended',category:'oxygen',
-        data:{sugarBreak:s.sugarBreak,sg:s.lastG},
-        reasons:['before-break']};
-    },
-    function oxygen(s){
-      if(!s.passedSugarBreak)return null;
-      if(s.status==='bottled'||s.status==='complete')return null;
-      return {id:'oxygen-stop',severity:'recommended',category:'oxygen',
-        data:{sugarBreak:s.sugarBreak,sg:s.lastG,vigorous:s.fermenting&&!s.nearFG},
-        reasons:['past-break']};
-    },
-    function complete(s){
-      if(!s.active||!s.nearFG)return null;
-      return {id:'ferment-complete',severity:'recommended',category:'fermentation',
-        data:{sg:s.lastG,targetFG:s.targetFG,atten:Math.round(s.attenuation*100),
-          reason:s.nearFGReason,plateauDays:(s.timeline&&s.timeline.plateauDays)||null,
-          histSampleSize:(s.nearFGReason==='historical'&&s.historical)?s.historical.sampleSize:null,
-          histAtten:(s.nearFGReason==='historical'&&s.historical)?Math.round(s.historical.avgAttenuation):null,
-          // A plateau that matches your OWN history is good evidence — unless
-          // this batch's own nutrient schedule was also skipped, in which case
-          // a repeatable process gap (not the yeast's real ceiling) is at
-          // least as plausible an explanation. Only relevant on the historical
-          // path — the numeric/attenuation paths don't lean on past batches at
-          // all, so there's nothing for a chronic mistake to reinforce there.
-          nutrientsComplete:s.nutrientsComplete},
-        reasons:['near-fg']};
-    },
-    function stabiliseFirst(s){
-      // Near the end on a still mead that backsweetens: stabilise (sorbate+meta) first.
-      if(!s.active||!s.nearFG||!s.recipeBacksweetens)return null;
-      if(s.status==='bottled'||s.status==='complete')return null;
-      return {id:'stabilise-first',severity:'recommended',category:'stabilisation',
-        data:{},reasons:['backsweeten-recipe']};
-    },
-    function carbonation(s){
-      // Sparkling/bottle-conditioned: finish dry, do NOT stabilise, prime at bottling.
-      if(!s.sparkling||!s.nearFG)return null;
-      if(s.status==='bottled'||s.status==='complete')return null;
-      return {id:'carbonation',severity:'info',category:'stabilisation',
-        data:{},reasons:['sparkling-recipe']};
-    },
-    function temperature(s){
-      // Brewer has flagged this batch as deliberately held cold for bulk
-      // aging/conditioning — checking it against the yeast's FERMENTATION
-      // range would be a false positive (see toggleBulkAging).
-      if(s.bulkAging)return null;
-      if(s.tempInRange!==false)return null;
-      var cold=s.latestTemp<s.tempLow;
-      // source rides along so the view can hedge the "too cold" case: a
-      // sensor reading (fermenter/cellar probe) isn't necessarily immersed in
-      // the must itself, and active fermentation is exothermic — the must
-      // commonly runs a couple degrees above whatever it's sitting in. That
-      // gap can turn a real in-range must into a false "too cold" from an
-      // ambient-ish reading. It can't produce a false "too warm" the same
-      // way (the must would be at least as warm as the sensor, likely more),
-      // so only the cold branch needs the hedge.
-      return {id:'temperature',severity:s.fermenting?'recommended':'info',category:'temperature',
-        data:{temp:s.latestTemp,low:s.tempLow,high:s.tempHigh,cold:cold,yeast:s.yeastId,source:s.tempSource,fermenting:s.fermenting},
-        reasons:['out-of-range']};
-    },
-    function tempSwing(s){
-      // In range but swinging — distinct from out-of-range; only while fermenting.
-      if(!s.fermenting||s.tempInRange!==true||s.tempStable!==false)return null;
-      return {id:'temp-swing',severity:'info',category:'temperature',
-        data:{temp:s.latestTemp,low:s.tempLow,high:s.tempHigh},
-        reasons:['temp-unstable']};
-    },
-    function tolerance(s){
-      if(!s.fermenting||!s.nearTolerance||s.nearFG)return null;
-      return {id:'abv-ceiling',severity:'info',category:'fermentation',
-        data:{abv:s.currentABV,max:s.abvMax,yeast:s.yeastId},
-        reasons:['near-tolerance']};
-    },
-    function phRange(s){
-      // Optional signal — most brewers never log pH. Relevant throughout active
-      // life, not just fermentation (a spoilage-risk pH doesn't fix itself).
-      // Mead's healthy band (~3.0-3.4) and cider's (~3.3-3.8, malic-acid basis)
-      // don't overlap — using mead's numbers on a cider batch would flag a
-      // perfectly normal cider pH as a false risk, so the bounds branch on
-      // beverageType. low/high ride along in `data` so the view text always
-      // matches the actual bounds that fired, for either beverage.
-      if(!s.active||s.latestPH==null)return null;
-      var isCider=s.beverageType==='cider';
-      var lo=isCider?(typeof CIDER_PH_TARGET_LOW!=='undefined'?CIDER_PH_TARGET_LOW:3.3):2.9;
-      var hi=isCider?(typeof CIDER_PH_TARGET_HIGH!=='undefined'?CIDER_PH_TARGET_HIGH:3.8):3.5;
-      if(s.latestPH<lo)return {id:'ph-low',severity:s.fermenting?'recommended':'info',category:'fermentation',
-        data:{ph:s.latestPH,low:lo,high:hi,beverageType:s.beverageType},reasons:['ph-low']};
-      if(s.latestPH>hi)return {id:'ph-high',severity:'info',category:'fermentation',
-        data:{ph:s.latestPH,low:lo,high:hi,beverageType:s.beverageType},reasons:['ph-high']};
-      return null;
-    },
-    function mlfAdvisory(s){
-      // Cider-only. MLF (malic→lactic acid conversion) has no mead equivalent.
-      // Fires once around the racking/stabilise decision point — the same
-      // moment the 'stabilise-first'/'cold-crash' rules key off (nearFG, not
-      // yet bottled) — since that's when the brewer chooses whether to hold
-      // off sulfite (to allow MLF) or sulfite promptly (to block it).
-      // Perry is a special, higher-severity case: its citric acid converts to
-      // acetic acid (vinegar) under MLF rather than cider's buttery result,
-      // so an 'avoid' stance on perry specifically is 'critical', not just
-      // 'recommended' — the mistake is more costly there than on an applewine.
-      if(s.beverageType!=='cider'||!s.mlfStance||s.mlfStance==='neutral')return null;
-      if(!s.active||!s.nearFG||s.bottled)return null;
-      if(s.status==='bottled'||s.status==='complete')return null;
-      var isPerry=s.styleId==='perry';
-      return {id:'mlf-advisory',
-        severity:s.mlfStance==='avoid'?(isPerry?'critical':'recommended'):'info',
-        category:'stabilisation',
-        data:{stance:s.mlfStance,styleId:s.styleId,isPerry:isPerry},
-        reasons:[s.mlfStance==='avoid'?'mlf-avoid':'mlf-encouraged']};
-    },
-    function logReading(s){
-      if(!s.fermenting)return null;
-      if(s.readings===0){
-        if(s.daysSinceStart==null||s.daysSinceStart<2)return null;
-        return {id:'log-reading',severity:'recommended',category:'data',
-          data:{first:true,days:s.daysSinceStart},reasons:['no-readings']};
-      }
-      if(s.daysSinceLastReading!=null&&s.daysSinceLastReading>=6&&!s.stalled){
-        return {id:'log-reading',severity:s.daysSinceLastReading>=12?'recommended':'info',category:'data',
-          data:{first:false,days:s.daysSinceLastReading},reasons:['stale-reading']};
-      }
-      return null;
-    },
-    function fruitAdditionNote(s){
-      // Purely a data-trust caveat — doesn't change any other rule's verdict,
-      // just names a real reason the CURRENT trend/projection might be off
-      // for a few more readings yet.
-      if(!s.fermenting||!s.recentFruitAddition)return null;
-      return {id:'fruit-addition-note',severity:'info',category:'data',
-        data:{date:s.recentFruitAddition.date,item:s.recentFruitAddition.item},
-        reasons:['recent-fruit-addition']};
-    },
-    function agingWindow(s){
-      // Drinkability milestones for bottled/aging batches (not while still working).
-      if(s.fermenting||s.status==='fermenting'||s.status==='conditioning')return null;
-      if(!s.bottled||s.agedDays==null||s.agePhase==null||s.agePhase==='aging')return null;
-      var approaching=(s.agePhase==='ready'&&s.peakDays&&s.agedDays>=s.peakDays-Math.max(14,Math.round(s.peakDays*0.12)));
-      return {id:'aging-window',severity:'info',category:'aging',
-        data:{phase:s.agePhase,aged:s.agedDays,ready:s.readyDays,peak:s.peakDays,max:s.maxAgeDays,approaching:approaching,beverageType:s.beverageType},
-        reasons:[s.agePhase==='declining'?'past-max':s.agePhase==='peak'?'past-peak':approaching?'approaching-peak':'in-window']};
-    },
-    function onSchedule(s){
-      // Reassuring "all good" note once past the break (before it, aerate-now leads).
-      if(!s.fermenting||s.stalled||s.nearFG||!s.passedSugarBreak)return null;
-      if(s.ratePerDay==null||s.ratePerDay<=0)return null;
-      return {id:'on-track',severity:'info',category:'fermentation',
-        data:{atten:Math.round(s.attenuation*100),expected:Math.round(s.expectedAttenuation*100),daysToFG:s.daysToFG,doneMs:s.doneMs},
-        reasons:['rate-ok']};
-    },
-    function fructoseStall(s){
-      // Pre-emptive: high-fructose honey + non-fructophilic yeast → late-stall risk.
-      if(!s.fermenting||!s.fructoseStallRisk||s.nearFG)return null;
-      return {id:'fructose-stall-risk',severity:'info',category:'fermentation',
-        data:{honey:s.honeyName,risk:s.honeyFructoseRisk,yeast:s.yeastId},
-        reasons:['high-fructose-honey']};
-    },
-    function ingredientNotes(s){
-      // E9: pragmatic honey×yeast relationship facts beyond the fructose case
-      // above (which already has its own dedicated rule). Silent when there's
-      // nothing notable — not meant to praise every combination.
-      if(!s.active||!s.honeyName||!s.yeastId)return null;
-      var notes=(typeof mwIngredientRelationship==='function')?mwIngredientRelationship(s.honeyName,s.yeastId):[];
-      if(!notes.length)return null;
-      return {id:'ingredient-notes',severity:'info',category:'fermentation',
-        data:{notes:notes,honey:s.honeyName,yeast:s.yeastId},
-        reasons:['honey-yeast-pairing']};
-    },
-    function recordOg(s){
-      // Can't project anything without a starting gravity.
-      if(!s.active||s.og!=null)return null;
-      return {id:'record-og',severity:'recommended',category:'data',
-        data:{},reasons:['no-og']};
-    },
-    function headspace(s){
-      // Secondary / bulk conditioning: keep headspace minimal to limit oxidation.
-      if(s.status!=='conditioning')return null;
-      return {id:'headspace',severity:'info',category:'oxygen',
-        data:{},reasons:['secondary-headspace']};
-    },
-    function coldCrash(s){
-      // Finished & still: clear it (cold-crash or time) before bottling.
-      if(!s.active||!s.nearFG||s.sparkling)return null;
-      if(s.status==='bottled'||s.status==='complete')return null;
-      return {id:'cold-crash',severity:'info',category:'clarity',
-        data:{beverageType:s.beverageType},reasons:['clear-before-bottling']};
-    },
-    function carbonationDeveloping(s){
-      // Sparkling + freshly bottled: bottle-conditioning is still building — a
-      // reminder to store upright and warm, distinct from the pre-bottling
-      // 'carbonation' rule (which only fires before bottling).
-      if(!s.sparkling||!s.bottled||s.agedDays==null||s.agedDays>21)return null;
-      return {id:'carbonation-developing',severity:'info',category:'stabilisation',
-        data:{aged:s.agedDays},reasons:['bottle-conditioning']};
-    },
-    function blowoffRisk(s){
-      // Equipment knowledge: too little headspace in a vigorous primary risks a
-      // blow-off (krausen/foam pushed out the airlock). Only while genuinely
-      // vigorous — before the sugar break, not yet stalled or near done.
-      if(!s.fermenting||s.passedSugarBreak||s.stalled||s.nearFG)return null;
-      if(s.headspaceFrac==null)return null;
-      if(s.headspaceFrac<0.08)return {id:'blowoff-risk',severity:'critical',category:'equipment',
-        data:{headspacePct:Math.round(s.headspaceFrac*100),capacity:s.fermenterCapacity,volume:s.volume},reasons:['headspace-critical']};
-      if(s.headspaceFrac<0.15)return {id:'blowoff-risk',severity:'recommended',category:'equipment',
-        data:{headspacePct:Math.round(s.headspaceFrac*100),capacity:s.fermenterCapacity,volume:s.volume},reasons:['headspace-tight']};
-      return null;
-    },
-    function fermentingLong(s){
-      // Reassuring/informational: running past the expected range isn't
-      // necessarily wrong (many meads legitimately take longer), but it's
-      // worth naming so the brewer isn't left guessing. Yields to 'stalled' —
-      // that's the actionable version of "taking too long". Uses the yeast-
-      // speed-aware expected range (Expectations Engine) rather than a flat
-      // recipe-day multiplier, so a slow strain isn't flagged prematurely and
-      // a fast one isn't given too much slack.
-      if(!s.fermenting||s.stalled||s.nearFG)return null;
-      if(!s.expectedFermentRange||s.daysSinceStart==null)return null;
-      if(s.daysSinceStart<=s.expectedFermentRange.high)return null;
-      return {id:'fermenting-long',severity:'info',category:'fermentation',
-        data:{days:s.daysSinceStart,low:s.expectedFermentRange.low,high:s.expectedFermentRange.high,expected:s.expectedFermentRange.expected,yeast:s.yeastId,beverageType:s.beverageType},
-        reasons:['past-expected-range']};
-    },
-    function historicalPace(s){
-      // Compares THIS batch to the brewer's OWN past batches (E3) — not
-      // generic brewing lore. Needs at least 2 real comparable past batches;
-      // mwHistoricalComparison() returns null rather than guess otherwise.
-      if(!s.fermenting||!s.historical||s.historical.avgDaysToFinish==null||s.daysSinceStart==null)return null;
-      return {id:'historical-pace',severity:'info',category:'fermentation',
-        data:{daysSoFar:s.daysSinceStart,avgDays:s.historical.avgDaysToFinish,avgRating:s.historical.avgRating,
-          sampleSize:s.historical.sampleSize,matchedOn:s.historical.matchedOn,yeast:s.historical.yeast,honey:s.historical.honey},
-        reasons:['own-history']};
-    },
-    function extendedBulkAging(s){
-      // A batch held in 'conditioning'/'aging' a long time WITHOUT ever being
-      // bottled means repeated headspace/oxygen exposure the whole time — bottling
-      // (even if still young) removes that risk. Uses the corrected s.bottled
-      // signal so this can't confuse itself with genuine post-bottling aging.
-      // Threshold follows the recipe's OWN bulk-aging target (1.5x it) when
-      // set — a bochet meant to sit for a year shouldn't be flagged at the
-      // same 270-day mark as a quick traditional — falling back to the old
-      // flat 270 days for recipes that don't have one set.
-      if(s.bottled||(s.status!=='conditioning'&&s.status!=='aging'))return null;
-      var threshold=s.recipeBulkAgeDays?Math.round(s.recipeBulkAgeDays*1.5):270;
-      if(s.daysSinceStart==null||s.daysSinceStart<threshold)return null;
-      return {id:'extended-bulk-aging',severity:'info',category:'oxygen',
-        data:{days:s.daysSinceStart,target:s.recipeBulkAgeDays,beverageType:s.beverageType},reasons:['long-unbottled']};
-    },
-    function overRacked(s){
-      // Real, already-logged data (b.rackings, via rackBatch()) — every
-      // racking introduces some oxygen, so a batch racked many times over
-      // its life carries real cumulative oxidation risk even if each
-      // individual racking was done carefully. Once bottled the count is
-      // frozen history, not an ongoing risk, so this only applies pre-bottling.
-      if(s.bottled||!s.active||s.rackingCount==null)return null;
-      if(s.rackingCount<4)return null;
-      return {id:'over-racked',severity:s.rackingCount>=6?'recommended':'info',category:'oxygen',
-        data:{count:s.rackingCount,beverageType:s.beverageType},reasons:['racking-count']};
-    }
-  ];
+  return [].concat(
+    (typeof _advRulesFermentation==='function')?_advRulesFermentation():[],
+    (typeof _advRulesPackaging==='function')?_advRulesPackaging():[]
+  );
 }
 
 // ---- Health score: weighted 0..100 with a breakdown -----------------------
@@ -735,6 +467,18 @@ function _mwAdviceSig(b){
 }
 
 // ---- The single snapshot every view consumes ------------------------------
+// Recursively freezes an object/array tree. The advice snapshot below is
+// handed by REFERENCE to every consumer that reads it in the same render
+// pass (dashboard row + overview strip + advisor tab, per mwBatchAdvice's
+// own memoization comment) — a stray `item.data.x=y` in any one of them
+// would silently corrupt what every other consumer sees, for as long as the
+// memo stays valid. Freezing turns that into an immediate thrown error
+// (files load with 'use strict') instead of a quiet, hard-to-trace bug.
+function _mwDeepFreeze(o){
+  if(o===null||typeof o!=='object'||Object.isFrozen(o))return o;
+  Object.getOwnPropertyNames(o).forEach(function(k){_mwDeepFreeze(o[k]);});
+  return Object.freeze(o);
+}
 function mwBatchAdvice(b){
   if(!b)return null;
   var sig=_mwAdviceSig(b), cached=_mwAdviceMemo[b.id];
@@ -753,6 +497,7 @@ function mwBatchAdvice(b){
     health.trend=health.score-cached.val.health.score;
   }
   var val={signals:s, items:items, health:health, readiness:mwReadiness(b), confidence:conf, confidenceReasons:cf.reasons};
+  _mwDeepFreeze(val);
   _mwAdviceMemo[b.id]={sig:sig,val:val};
   return val;
 }
