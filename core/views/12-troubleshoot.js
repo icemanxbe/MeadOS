@@ -21,8 +21,8 @@ var TROUBLESHOOT_TOPICS=[
       '<strong>Rule out nutrient deficiency.</strong> Mead is nitrogen-poor — without staggered nutrient additions (SNA), yeast starves around 1/3 sugar break. Add 3g Fermaid-O or DAP per 5L gently stirred in.',
       '<strong>Rouse the yeast.</strong> Gently swirl the fermenter to re-suspend settled yeast. Don\'t splash (introduces oxygen). If using a carboy, rock it side-to-side.',
       '<strong>Check the gravity ceiling.</strong> M05 tolerates 18% ABV. If your OG was 1.150+, you may have hit the ceiling — residual sweetness is expected.',
-      '<strong>Rescue pitch.</strong> If truly stuck below target: make a starter with 50g sugar + 200ml warm water + nutrient + fresh M05 yeast. When actively fermenting (2-6h), add to your batch.',
-      '<strong>Last resort: high-alcohol yeast.</strong> EC-1118 or K1V-1116 will restart fermentation up to 18-20%. Acclimate it the same way (starter first).'
+      '<strong>Rescue pitch.</strong> If truly stuck below target: make a starter with 50g sugar + 200ml warm water + nutrient + fresh M05, and let it get actively fermenting (2-6h). Then acclimate it to your batch before combining — stir in a splash of the stuck must, wait 15-30 min, repeat with a couple of larger splashes, then add the whole starter. Dumping fresh yeast straight into an already-alcoholic must can shock and kill it before it does anything.',
+      '<strong>Last resort: high-alcohol yeast.</strong> EC-1118 or K1V-1116 will restart fermentation up to 18-20%. Acclimate it the same way (starter first, then step it up with splashes of the stuck must).'
     ],
     ciderTitle:'Stuck or stalled fermentation — gravity won\'t drop',
     ciderSteps:[
@@ -31,8 +31,8 @@ var TROUBLESHOOT_TOPICS=[
       '<strong>Rule out nutrient deficiency.</strong> Apple must is just as nitrogen-poor as honey must — without staggered Fermaid-O, yeast starves around the 1/3 sugar break. Add 1-1.5g Fermaid-O per 5L gently stirred in.',
       '<strong>Rouse the yeast.</strong> Gently swirl the fermenter to re-suspend settled yeast. Don\'t splash (introduces oxygen). If using a carboy, rock it side-to-side.',
       '<strong>Check the gravity ceiling.</strong> Nottingham and 71B tolerate ~14%, Mangrove Jack\'s M02 only ~12%, EC-1118 up to 18%. If your OG was 1.080+ (New England, Applewine) or 1.150+ (Ice/Fire Cider), you may have hit your yeast\'s ceiling.',
-      '<strong>Rescue pitch.</strong> If truly stuck below target: make a starter with 50g sugar + 200ml warm apple juice + nutrient + fresh EC-1118. When actively fermenting (2-6h), add to your batch.',
-      '<strong>Last resort: high-alcohol yeast.</strong> EC-1118 has far more headroom than Nottingham/M02/71B and will restart fermentation up to 18%. Acclimate it the same way (starter first).'
+      '<strong>Rescue pitch.</strong> If truly stuck below target: make a starter with 50g sugar + 200ml warm apple juice + nutrient + fresh EC-1118, and let it get actively fermenting (2-6h). Then acclimate it to your batch before combining — stir in a splash of the stuck cider, wait 15-30 min, repeat with a couple of larger splashes, then add the whole starter. Dumping fresh yeast straight into an already-alcoholic must can shock and kill it before it does anything.',
+      '<strong>Last resort: high-alcohol yeast.</strong> EC-1118 has far more headroom than Nottingham/M02/71B and will restart fermentation up to 18%. Acclimate it the same way (starter first, then step it up with splashes of the stuck cider).'
     ]
   },
   {
