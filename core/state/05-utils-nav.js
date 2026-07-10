@@ -323,9 +323,14 @@ function getBatchStatus(b){
 function fermentationBadge(b){
   if(!b||b.failed||APP.bottling[b.id])return'';
   var f=getFermentationActivity(b);
-  if(f.state==='stopped')return'<span class="badge" style="background:rgba(122,160,64,0.18);color:#a8d27a;border-color:rgba(122,160,64,0.45)" title="The last gravity readings are flat — fermentation looks finished. Confirm with one more reading, then rack or stabilize.">● fermentation stopped</span>';
-  if(f.state==='maybe')return'<span class="badge" style="background:rgba(200,160,32,0.16);color:var(--honey);border-color:var(--amber)" title="Recent readings barely moved. Take another reading 2–3 days apart to confirm it has truly stopped.">● maybe stopped</span>';
-  if(f.state==='slowing')return'<span class="badge" style="background:rgba(122,160,64,0.10);color:#9bbf6e;border-color:rgba(122,160,64,0.30)" title="Gravity is still dropping, but slowly — fermentation is winding down.">● slowing</span>';
+  // Wording deliberately avoids "fermentation"/"fermenting" — this badge sits
+  // directly next to the status pill, which already says "fermenting", and
+  // "fermenting · fermentation stopped" reads as a flat contradiction at a
+  // glance even though the two mean different things (lifecycle stage vs.
+  // recent gravity trend). Naming the actual conclusion sidesteps the clash.
+  if(f.state==='stopped')return'<span class="badge" style="background:rgba(122,160,64,0.18);color:#a8d27a;border-color:rgba(122,160,64,0.45)" title="The last gravity readings are flat — fermentation looks finished. Confirm with one more reading, then rack or stabilize.">● looks done</span>';
+  if(f.state==='maybe')return'<span class="badge" style="background:rgba(200,160,32,0.16);color:var(--honey);border-color:var(--amber)" title="Recent readings barely moved. Take another reading 2–3 days apart to confirm it has truly stopped.">● maybe done</span>';
+  if(f.state==='slowing')return'<span class="badge" style="background:rgba(122,160,64,0.10);color:#9bbf6e;border-color:rgba(122,160,64,0.30)" title="Gravity is still dropping, but slowly — fermentation is winding down.">● slowing down</span>';
   return'';
 }
 
