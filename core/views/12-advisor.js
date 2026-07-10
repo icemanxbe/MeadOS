@@ -232,6 +232,13 @@ function _advItemText(it){
       title:nl?'Al lang niet gebotteld':'Sitting unbottled a long time',
       reason:nl?('Deze partij zit al ~'+d.days+' dagen in bulkrijping zonder gebotteld te zijn'+(d.target?(' — dit recept mikt doorgaans op ~'+d.target+' dagen bulkrijping'):'')+'. Elke keer dat het vat geopend of verplaatst wordt, is er kans op zuurstofcontact — bottelen (ook al is de '+bev+' nog jong) sluit dat risico af. Overweeg binnenkort te bottelen.')
               :('This batch has been sitting in bulk aging for ~'+d.days+' days without being bottled'+(d.target?(' — this recipe typically targets ~'+d.target+' days of bulk aging'):'')+'. Every time the vessel is opened or moved there\'s a chance of oxygen exposure — bottling (even if the '+bev+' is still young) closes off that risk. Consider bottling soon.')};
+    })(),
+    'over-racked':(function(){
+      var bev=_advBevWord(d,nl);
+      return {icon:'🔄',
+      title:nl?'Al vaak overgeheveld':'Racked quite a few times',
+      reason:nl?('Deze partij is al '+d.count+'× overgeheveld. Elke keer komt er wat zuurstof bij — meestal is drie overhevelingen genoeg, zes wordt te veel. Overweeg fijningsmiddelen (bentoniet/sparkolloid) of gewoon tijd in plaats van nog een keer over te hevelen, tenzij er een concrete reden is.')
+              :('This '+bev+' has been racked '+d.count+' times already. Each racking adds a little oxygen — three rackings is usually plenty, six is too many. Consider fining agents (bentonite/sparkolloid) or just time instead of racking again, unless there\'s a concrete reason to.')};
     })()
   };
   return M[it.id]||{icon:'•',title:it.id,reason:''};
@@ -462,6 +469,8 @@ function _advWhyMatters(id){
       considerWaitingIf:'je hem bewust nog even op de gistdroesem laat liggen voor extra body of mondgevoel.'},
     'extended-bulk-aging':{benefit:'Binnenkort bottelen sluit verder zuurstofcontact bij het openen/verplaatsen van het vat af.',downside:'Langer wachten herhaalt dat oxidatierisico elke keer dat het vat verstoord wordt.',
       considerWaitingIf:'je bewust een langere bulk- of vatrijping aanhoudt die bij deze stijl hoort.'},
+    'over-racked':{benefit:'Nu stoppen met overhevelen beperkt verdere cumulatieve zuurstofblootstelling.',downside:'Nog een overheveling erbij herhaalt dat kleine beetje zuurstof — het stapelt op.',
+      considerWaitingIf:'er een concrete reden is (bv. echt nog troebel, of bewust van fruit/kruiden af).'},
     'mlf-advisory':{benefit:'Nu beslissen over sulfiteren voorkomt een onbedoeld resultaat.',downside:'Niets doen laat de malolactische uitkomst aan het toeval over — bij perry riskeert dat een azijnachtige cider.'}
   }:{
     stalled:{benefit:'Acting now can rescue the fermentation.',downside:'Waiting risks a permanently stuck fermentation or spoilage.'},
@@ -478,6 +487,8 @@ function _advWhyMatters(id){
       considerWaitingIf:'you\'re intentionally leaving it on the yeast lees a while longer for extra body or mouthfeel.'},
     'extended-bulk-aging':{benefit:'Bottling soon closes off further oxygen exposure from opening or moving the vessel.',downside:'Waiting longer repeats that oxidation risk every time the vessel is disturbed.',
       considerWaitingIf:'you\'re deliberately doing an extended bulk- or barrel-aging style that calls for more time before bottling.'},
+    'over-racked':{benefit:'Stopping here limits further cumulative oxygen exposure.',downside:'One more racking repeats that small dose of oxygen — it adds up.',
+      considerWaitingIf:'there\'s a concrete reason (genuinely still cloudy, or deliberately racking off fruit/spices).'},
     'mlf-advisory':{benefit:'Deciding on sulfite timing now avoids an unintended result later.',downside:'Leaving it to chance lets the malolactic outcome go unmanaged — for perry that risks a vinegary cider.'}
   };
   return M[id]||null;

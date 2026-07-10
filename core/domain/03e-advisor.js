@@ -140,6 +140,11 @@ function mwBatchSignals(b){
   // (fermenter itself was resolved earlier — needed there for temperature source.)
   var volume=parseFloat(b.volume)||null;
   var fermenterCapacity=(fermenter&&parseFloat(fermenter.capacity))||null;
+  // Racking history: real, already-logged (rackBatch()) — every racking
+  // introduces some oxygen, and the app's own troubleshooting guide already
+  // says "three is plenty, six is too many", but nothing applied that to a
+  // specific batch's actual count until now.
+  var rackingCount=(b.rackings||[]).length;
   var headspaceFrac=(fermenterCapacity&&volume)?((fermenterCapacity-volume)/fermenterCapacity):null;
   var recipeFermentDays=(recipe&&recipe.fermentDays)||null;
   // Recipe's own target for bulk/secondary aging BEFORE bottling — distinct
@@ -188,7 +193,7 @@ function mwBatchSignals(b){
     honeyName:honeyName, honeyFructoseRisk:honeyFructoseRisk, yeastFructophilic:yeastFructophilic, fructoseStallRisk:fructoseStallRisk,
     sparkling:sparkling, recipeBacksweetens:recipeBacksweetens,
     bottled:bottled, agedDays:agedDays, readyDays:readyDays, peakDays:peakDays, maxAgeDays:maxAgeDays, agePhase:agePhase,
-    volume:volume, fermenterCapacity:fermenterCapacity, headspaceFrac:headspaceFrac, recipeFermentDays:recipeFermentDays, recipeBulkAgeDays:recipeBulkAgeDays,
+    volume:volume, fermenterCapacity:fermenterCapacity, headspaceFrac:headspaceFrac, rackingCount:rackingCount, recipeFermentDays:recipeFermentDays, recipeBulkAgeDays:recipeBulkAgeDays,
     yeastSpeed:yeastSpeed, expectedFermentRange:expectedFermentRange, fermentProgress:fermentProgress,
     historical:historical,
     beverageType:beverageType, styleId:styleId, mlfStance:mlfStance
@@ -565,6 +570,17 @@ function _advRules(){
       if(s.daysSinceStart==null||s.daysSinceStart<threshold)return null;
       return {id:'extended-bulk-aging',severity:'info',category:'oxygen',
         data:{days:s.daysSinceStart,target:s.recipeBulkAgeDays,beverageType:s.beverageType},reasons:['long-unbottled']};
+    },
+    function overRacked(s){
+      // Real, already-logged data (b.rackings, via rackBatch()) — every
+      // racking introduces some oxygen, so a batch racked many times over
+      // its life carries real cumulative oxidation risk even if each
+      // individual racking was done carefully. Once bottled the count is
+      // frozen history, not an ongoing risk, so this only applies pre-bottling.
+      if(s.bottled||!s.active||s.rackingCount==null)return null;
+      if(s.rackingCount<4)return null;
+      return {id:'over-racked',severity:s.rackingCount>=6?'recommended':'info',category:'oxygen',
+        data:{count:s.rackingCount,beverageType:s.beverageType},reasons:['racking-count']};
     }
   ];
 }

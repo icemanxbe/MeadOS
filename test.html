@@ -774,6 +774,15 @@
       // long time isn't flagged at the same mark as a quick traditional.
       ok('rules: a LONG recipe bulk-age target raises the threshold well past 270', bulkRule({bottled:false,status:'aging',daysSinceStart:300,recipeBulkAgeDays:600})===null, '');
       ok('rules: a SHORT recipe bulk-age target flags well before the flat 270 default', bulkRule({bottled:false,status:'aging',daysSinceStart:100,recipeBulkAgeDays:60}).id==='extended-bulk-aging', '');
+
+      // over-racked: real, already-logged rackingCount vs the app's own
+      // troubleshooting-guide threshold ("three is plenty, six is too many")
+      // — previously known but never applied to a specific batch.
+      var rackRule=ruleByName('overRacked');
+      ok('rules: over-racked silent under 4 rackings', rackRule({active:true,bottled:false,rackingCount:3})===null, '');
+      ok('rules: over-racked fires info at 4-5 rackings', rackRule({active:true,bottled:false,rackingCount:4}).id==='over-racked'&&rackRule({active:true,bottled:false,rackingCount:4}).severity==='info', '');
+      ok('rules: over-racked escalates to recommended at 6+', rackRule({active:true,bottled:false,rackingCount:6}).severity==='recommended', '');
+      ok('rules: over-racked silent once bottled (history, not ongoing risk)', rackRule({active:true,bottled:true,rackingCount:8})===null, '');
     })();
     // mwBatchHealth(): per-axis explainability — each axis reports WHY it
     // scored what it did (code + supporting data + its weight), not just a bare
