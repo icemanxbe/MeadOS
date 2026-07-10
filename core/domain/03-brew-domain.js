@@ -436,6 +436,28 @@ function getFermenter(id){
   return APP.fermenters.find(function(f){return f.id===id;})||null;
 }
 
+// ==================== LOOKUP HELPERS ====================
+// APP.recipes.find(...) / APP.logs[id] / APP.batches.find(...) / APP.bottling[id]
+// are each repeated inline dozens of times across the codebase (recipes.find
+// alone: 80+). These don't replace any of those existing call sites — that's
+// a much larger, separate cleanup — they just give new code one obvious,
+// consistent way to do the same lookup instead of adding yet another inline
+// copy of the same four-line pattern.
+function getRecipe(id){
+  if(!id||!APP.recipes)return null;
+  return APP.recipes.find(function(r){return r.id===id;})||null;
+}
+function getBatch(id){
+  if(!id||!APP.batches)return null;
+  return APP.batches.find(function(b){return b.id===id;})||null;
+}
+function getBatchLogs(id){
+  return (id&&APP.logs&&APP.logs[id])||[];
+}
+function getBottleInfo(id){
+  return (id&&APP.bottling&&APP.bottling[id])||null;
+}
+
 // Returns the batch currently occupying a given fermenter, or null.
 // "Active" = batch exists, not yet bottled (status is 'active' or 'aging' but
 // not 'bottled' or 'complete'). Bottled batches free up the fermenter.

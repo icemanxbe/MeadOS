@@ -76,26 +76,46 @@ function _advItemText(it){
       // count when the plateau detector has one, instead of "several days".
       var sgTxt=d.sg!=null?d.sg.toFixed(3):'?', targetTxt=d.targetFG!=null?d.targetFG.toFixed(3):'?';
       var daysTxt=nl?(d.plateauDays!=null?(d.plateauDays+' dagen'):'enkele dagen'):(d.plateauDays!=null?(d.plateauDays+' days'):'several days');
+      // History is corroborating evidence, not proof — a plateau that matches
+      // your own past batches is meaningful UNLESS this batch's own nutrient
+      // schedule was also skipped, in which case a repeatable process gap is
+      // at least as likely an explanation as a real yeast ceiling. Only the
+      // historical path leans on past batches at all, so this caveat is
+      // scoped to it alone.
+      var histCaveat=d.nutrientsComplete===false?(nl
+        ?' Let op: de voedingsgiften voor dit brouwsel zijn niet allemaal toegevoegd — als dat vaker gebeurt, kan dat verklaren waarom je batches steeds rond hetzelfde punt uitkomen, niet per se de echte grens van deze gist.'
+        :' Worth noting: this batch\'s nutrient schedule wasn\'t fully completed either — if that\'s a recurring pattern, it may explain why your batches keep landing around the same point, rather than that being this yeast\'s real ceiling.'):'';
       var reason=nl?({
-        historical:'De dichtheid ('+sgTxt+') is al '+daysTxt+' stabiel bij ~'+d.atten+'% vergisting — dat komt overeen met je eigen vorige '+(d.histSampleSize||'')+' brouwsel(s) op deze gist (gemiddeld ~'+d.histAtten+'% vergisting), niet alleen een algemene honingverklaring. Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.',
+        historical:'De dichtheid ('+sgTxt+') is al '+daysTxt+' stabiel bij ~'+d.atten+'% vergisting — dat komt overeen met je eigen vorige '+(d.histSampleSize||'')+' brouwsel(s) op deze gist (gemiddeld ~'+d.histAtten+'% vergisting), niet alleen een algemene honingverklaring.'+histCaveat+' Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.',
         attenuation:'De dichtheid ('+sgTxt+') is al '+daysTxt+' stabiel bij ~'+d.atten+'% vergisting, ook al ligt ze boven het berekende doel ('+targetTxt+'). Dat is normaal — vergistingspercentages op het pakje zijn gemeten onder ideale labomstandigheden, en een honingmost daalt vaak wat verder in pH dan bier of wijn (honing buffert nauwelijks), wat gist vroeger kan afremmen. Honing/fruit\'s kleine aandeel niet-vergistbare suikers speelt ook een (kleinere) rol. Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.',
         numeric:'De dichtheid ('+sgTxt+') zit op of nabij het doel ('+targetTxt+') bij ~'+d.atten+'% vergisting. Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.'
       }[d.reason]||('De dichtheid ('+sgTxt+') zit op of nabij het doel ('+targetTxt+') bij ~'+d.atten+'% vergisting.'))
         :({
-        historical:'Gravity ('+sgTxt+') has held stable for '+daysTxt+' at ~'+d.atten+'% attenuation — that matches your own past '+(d.histSampleSize||'')+' batch(es) on this yeast (averaging ~'+d.histAtten+'% attenuation), not just a general honey explanation. Confirm with two stable readings a few days apart, then rack / bottle.',
+        historical:'Gravity ('+sgTxt+') has held stable for '+daysTxt+' at ~'+d.atten+'% attenuation — that matches your own past '+(d.histSampleSize||'')+' batch(es) on this yeast (averaging ~'+d.histAtten+'% attenuation), not just a general honey explanation.'+histCaveat+' Confirm with two stable readings a few days apart, then rack / bottle.',
         attenuation:'Gravity ('+sgTxt+') has held stable for '+daysTxt+' at ~'+d.atten+'% attenuation, even though it sits above the calculated target ('+targetTxt+'). That\'s normal — attenuation ratings are measured under ideal lab conditions, and a honey must typically drops further in pH than beer or wine ever does (honey barely buffers), which can slow yeast down for good before every last bit of sugar is gone. Honey/fruit\'s own small share of non-fermentable sugars plays a part too, just usually a smaller one. Confirm with two stable readings a few days apart, then rack / bottle.',
         numeric:'Gravity ('+sgTxt+') is at or near target ('+targetTxt+') at ~'+d.atten+'% attenuation. Confirm with two stable readings a few days apart, then rack / bottle.'
       }[d.reason]||('Gravity ('+sgTxt+') is at or near target ('+targetTxt+') at ~'+d.atten+'% attenuation.'));
       return {icon:'✓',title:nl?'Gisting lijkt voltooid':'Fermentation looks complete',reason:reason};
     })(),
-    'temperature':{icon:'🌡',
+    'temperature':(function(){
+      // Hedge the "too cold" case specifically, and only for a live sensor:
+      // a fermenter/room probe isn't necessarily immersed in the must, and
+      // active fermentation is exothermic — the must commonly runs a couple
+      // degrees above its surroundings. That gap can turn a genuinely in-range
+      // must into a false "too cold" reading. It can't produce a false "too
+      // warm" the same way (the must is at least as warm as its surroundings,
+      // likely more), and a hand-logged temp is normally taken IN the must
+      // itself at gravity-check time — so neither of those needs the hedge.
+      var coldHedge=(d.cold&&d.fermenting&&d.source==='live');
+      return {icon:'🌡',
       title:nl?(d.cold?'Temperatuur te laag':'Temperatuur te hoog'):(d.cold?'Temperature too low':'Temperature too high'),
-      reason:nl?('Laatste meting '+(d.temp!=null?d.temp+'°C':'?')+' ligt buiten het ideale bereik voor '+(_advYeastName(d.yeast)||'deze gist')+' ('+d.low+'–'+d.high+'°C). '+(d.cold?'Te koud vertraagt of stalt de gisting.':'Te warm geeft fusels en scherpe smaken.'))
-              :('Last reading '+(d.temp!=null?d.temp+'°C':'?')+' is outside '+(_advYeastName(d.yeast)||'this yeast')+'\'s ideal range ('+d.low+'–'+d.high+'°C). '+(d.cold?'Too cold slows or stalls fermentation.':'Too warm drives fusels and harsh flavours.'))},
+      reason:nl?('Laatste meting '+(d.temp!=null?d.temp+'°C':'?')+' ligt buiten het ideale bereik voor '+(_advYeastName(d.yeast)||'deze gist')+' ('+d.low+'–'+d.high+'°C). '+(d.cold?('Te koud vertraagt of stalt de gisting.'+(coldHedge?' Komt deze meting van een vat-/omgevingssensor en niet van een sonde in de most zelf? Actieve gisting loopt vaak een paar graden warmer dan de omgeving — bevestig indien mogelijk met een thermometer in de vloeistof.':'')):'Te warm geeft fusels en scherpe smaken.'))
+              :('Last reading '+(d.temp!=null?d.temp+'°C':'?')+' is outside '+(_advYeastName(d.yeast)||'this yeast')+'\'s ideal range ('+d.low+'–'+d.high+'°C). '+(d.cold?('Too cold slows or stalls fermentation.'+(coldHedge?' If this reading is from a fermenter/room sensor rather than a probe in the must itself, note that active fermentation commonly runs a couple degrees warmer than its surroundings — worth confirming with a thermometer in the liquid.':'')):'Too warm drives fusels and harsh flavours.'))};
+    })(),
     'abv-ceiling':{icon:'⚠',
       title:nl?'Nadert alcoholtolerantie':'Approaching alcohol tolerance',
-      reason:nl?('Het huidige alcohol (~'+(d.abv!=null?d.abv.toFixed(1):'?')+'%) nadert de tolerantie van '+(_advYeastName(d.yeast)||'de gist')+' ('+d.max+'%). Verwacht dat de gisting hier vanzelf vertraagt — plan eventueel een hogertolerante gist of stapvoeding.')
-              :('Current ABV (~'+(d.abv!=null?d.abv.toFixed(1):'?')+'%) is nearing the tolerance of '+(_advYeastName(d.yeast)||'the yeast')+' ('+d.max+'%). Expect fermentation to slow naturally here — consider a higher-tolerance yeast or step feeding for next time.')},
+      reason:nl?('Het huidige alcohol (~'+(d.abv!=null?d.abv.toFixed(1):'?')+'%) nadert de tolerantie van '+(_advYeastName(d.yeast)||'de gist')+' ('+d.max+'%). Dat opgegeven percentage is een gemiddelde, geen harde grens — sommige gisten stoppen wat eerder, andere gaan er met een gezonde, goed gevoede populatie voorbij. Verwacht dat de gisting hier begint te vertragen; plan eventueel een hogertolerante gist of stapvoeding voor een volgende keer.')
+              :('Current ABV (~'+(d.abv!=null?d.abv.toFixed(1):'?')+'%) is nearing the tolerance of '+(_advYeastName(d.yeast)||'the yeast')+' ('+d.max+'%). That rating is an average, not a hard wall — some yeast quit a bit earlier, others push past it with a healthy, well-fed population. Expect it to start slowing here; consider a higher-tolerance yeast or step feeding for next time.')},
     'on-track':{icon:'✓',
       title:nl?'Gisting verloopt op schema':'Fermentation is on track',
       reason:nl?('~'+d.atten+'% vergist (verwacht eind ~'+d.expected+'%), dichtheid daalt gestaag. Geen actie nodig.')
@@ -122,6 +142,10 @@ function _advItemText(it){
                         :('Laatste meting was '+d.days+' dagen geleden. Een verse dichtheidsmeting houdt de prognose en stalldetectie scherp.'))
               :(d.first?('This batch has been fermenting '+d.days+' days with no gravity reading. Log one (and the OG) so the advisor can track progress, projection and health.')
                         :('Last reading was '+d.days+' days ago. A fresh gravity reading keeps the projection and stall detection accurate.'))},
+    'fruit-addition-note':{icon:'🍒',
+      title:nl?'Recente fruittoevoeging kan metingen vertekenen':'Recent fruit addition may skew readings',
+      reason:nl?('Je logde '+(d.item?escHtml(d.item)+' ':'')+'op '+fmtDate(d.date)+' — fruit brengt eigen suiker mee, dus dichtheidsmetingen van de komende paar controles zeggen evenveel over dat fruit als over de gisting zelf. Geef het nog 2-3 metingen voor je de trend vertrouwt.')
+              :('You logged '+(d.item?escHtml(d.item)+' ':'')+'on '+fmtDate(d.date)+' — fruit carries its own sugar, so gravity readings for the next couple of checks reflect the fruit as much as fermentation progress. Give it 2-3 more readings before trusting the trend.')},
     'aging-window':(function(){
       var bev=_advBevWord(d,nl);
       return {icon:'⌛',
@@ -174,8 +198,8 @@ function _advItemText(it){
       var bandNl=band.replace(/\./g,',');
       return {icon:'🧪',
       title:nl?'pH is laag'+(isCider?'':' — gist onder stress'):('pH is low'+(isCider?'':' — yeast under stress')),
-      reason:nl?('Laatste pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' ligt onder de bandbreedte voor '+(isCider?'cider':'mede')+' ('+bandNl+'). '+(isCider?'Dit is vooral scherper van smaak, geen directe giststress.':'Onder 2,9 raakt de gist gestrest, wat tot een trage of vastgelopen gisting kan leiden. Overweeg de pH te verhogen met kaliumcarbonaat.'))
-              :('Last pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' is below the target band for '+(isCider?'cider':'mead')+' ('+band+'). '+(isCider?'This mostly just reads sharper/tarter — not the yeast-stress signal it would be in mead.':'Below 2.9, yeast becomes stressed, which can slow or stall fermentation. Consider raising pH with potassium carbonate.'))};
+      reason:nl?('Laatste pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' ligt onder de bandbreedte voor '+(isCider?'cider':'mede')+' ('+bandNl+'). '+(isCider?'Dit is vooral scherper van smaak, geen directe giststress.':'Onder 2,9 raakt de gist gestrest, wat tot een trage of vastgelopen gisting kan leiden. Bevestig met een tweede meting of een gekalibreerde meter voor je bijstuurt — goedkope pH-strips zitten al snel 0,3-0,5 naast de werkelijke waarde. Klopt de meting? Overweeg de pH te verhogen met kaliumcarbonaat.'))
+              :('Last pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' is below the target band for '+(isCider?'cider':'mead')+' ('+band+'). '+(isCider?'This mostly just reads sharper/tarter — not the yeast-stress signal it would be in mead.':'Below 2.9, yeast becomes stressed, which can slow or stall fermentation. Confirm with a second reading or a calibrated meter before adjusting — cheap pH strips can be off by 0.3-0.5, easily enough to flag a perfectly healthy must. Reading holds up? Consider raising pH with potassium carbonate.'))};
     })(),
     'ph-high':(function(){
       var isCider=d.beverageType==='cider';
@@ -184,8 +208,8 @@ function _advItemText(it){
       var bev=isCider?'cider':'mede';
       return {icon:'🧪',
       title:nl?'pH is hoog — besmettingsrisico':'pH is high — contamination risk',
-      reason:nl?('Laatste pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' ligt boven de bandbreedte voor '+bev+' ('+bandNl+'). Hierboven wordt de '+bev+' kwetsbaarder voor ongewenste micro-organismen.'+(isCider?' Zorg dat je bij het rekken op tijd metabisulfiet toevoegt — zeker bij perry, waar een te hoge pH ook het risico op ongewenste malolactische omzetting (naar azijnzuur) vergroot.':' Overweeg bij te sturen met wijnzuur.'))
-              :('Last pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' is above the target band for '+(isCider?'cider':'mead')+' ('+band+'). Above this, the '+bev+' becomes more vulnerable to unwanted microorganisms.'+(isCider?' Make sure to sulfite promptly at racking — especially for perry, where a high pH also raises the risk of unwanted malolactic conversion (to acetic acid).':' Consider adjusting with tartaric or citric acid.'))};
+      reason:nl?('Laatste pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' ligt boven de bandbreedte voor '+bev+' ('+bandNl+'). Hierboven wordt de '+bev+' kwetsbaarder voor ongewenste micro-organismen.'+(isCider?' Zorg dat je bij het rekken op tijd metabisulfiet toevoegt — zeker bij perry, waar een te hoge pH ook het risico op ongewenste malolactische omzetting (naar azijnzuur) vergroot.':' Bevestig met een tweede meting of een gekalibreerde meter voor je bijstuurt — goedkope pH-strips zitten al snel 0,3-0,5 naast de werkelijke waarde. Overweeg bij te sturen met wijnzuur.'))
+              :('Last pH '+(d.ph!=null?d.ph.toFixed(2):'?')+' is above the target band for '+(isCider?'cider':'mead')+' ('+band+'). Above this, the '+bev+' becomes more vulnerable to unwanted microorganisms.'+(isCider?' Make sure to sulfite promptly at racking — especially for perry, where a high pH also raises the risk of unwanted malolactic conversion (to acetic acid).':' Confirm with a second reading or a calibrated meter before adjusting — cheap pH strips can be off by 0.3-0.5. Consider adjusting with tartaric or citric acid.'))};
     })(),
     'mlf-advisory':(function(){
       var avoid=d.stance==='avoid', perry=!!d.isPerry;

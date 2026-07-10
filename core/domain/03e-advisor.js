@@ -20,6 +20,21 @@ function mwBatchSignals(b){
   var status=(typeof getBatchStatus==='function')?getBatchStatus(b):'';
   var logs=((typeof APP!=='undefined'&&APP.logs&&APP.logs[b.id])||[]).filter(function(l){return l.gravity;})
     .slice().sort(function(a,c){return(a.date||'').localeCompare(c.date||'');});
+  // Fruit sugar landing mid-ferment shows up as a gravity RISE (or a slower-
+  // than-real drop) that has nothing to do with yeast activity — neither the
+  // attenuation math nor projectFermentation's slope can tell the difference.
+  // Flagged only when a logged fruit addition falls inside the SAME lookback
+  // window projectFermentation actually uses for its trend (its own last-up-
+  // to-4-readings slice) — old fruit the trend has long since absorbed isn't
+  // still skewing anything, so it shouldn't still be flagged.
+  var recentFruitAddition=null;
+  if(logs.length){
+    var _fruitWinStart=logs[Math.max(0,logs.length-4)].date;
+    var _fruitAdds=((typeof APP!=='undefined'&&APP.additions&&APP.additions[b.id])||[])
+      .filter(function(a){return a.type==='fruit'&&a.date&&a.date>=_fruitWinStart;})
+      .sort(function(x,y){return(y.date||'').localeCompare(x.date||'');});
+    if(_fruitAdds.length)recentFruitAddition={date:_fruitAdds[0].date,item:_fruitAdds[0].item||null};
+  }
   var og=parseFloat(b.og)||(recipe&&recipe.ogTarget)||null;
   var lastG=logs.length?parseFloat(logs[logs.length-1].gravity):null;
   var readings=logs.length;
@@ -178,7 +193,7 @@ function mwBatchSignals(b){
 
   return {
     recipeId:b.recipeId, status:status, active:active, fermenting:fermenting,
-    og:og, lastG:lastG, readings:readings, daysSinceStart:daysSinceStart,
+    og:og, lastG:lastG, readings:readings, daysSinceStart:daysSinceStart, recentFruitAddition:recentFruitAddition,
     targetFG:targetFG, targetABV:targetABV, currentABV:currentABV,
     attenuation:attenuation, expectedAttenuation:expectedAttenuation,
     ratePerDay:proj?proj.ratePerDay:null, daysToFG:proj?proj.daysToFG:null,
@@ -365,7 +380,14 @@ function _advRules(){
         data:{sg:s.lastG,targetFG:s.targetFG,atten:Math.round(s.attenuation*100),
           reason:s.nearFGReason,plateauDays:(s.timeline&&s.timeline.plateauDays)||null,
           histSampleSize:(s.nearFGReason==='historical'&&s.historical)?s.historical.sampleSize:null,
-          histAtten:(s.nearFGReason==='historical'&&s.historical)?Math.round(s.historical.avgAttenuation):null},
+          histAtten:(s.nearFGReason==='historical'&&s.historical)?Math.round(s.historical.avgAttenuation):null,
+          // A plateau that matches your OWN history is good evidence — unless
+          // this batch's own nutrient schedule was also skipped, in which case
+          // a repeatable process gap (not the yeast's real ceiling) is at
+          // least as plausible an explanation. Only relevant on the historical
+          // path — the numeric/attenuation paths don't lean on past batches at
+          // all, so there's nothing for a chronic mistake to reinforce there.
+          nutrientsComplete:s.nutrientsComplete},
         reasons:['near-fg']};
     },
     function stabiliseFirst(s){
@@ -389,8 +411,16 @@ function _advRules(){
       if(s.bulkAging)return null;
       if(s.tempInRange!==false)return null;
       var cold=s.latestTemp<s.tempLow;
+      // source rides along so the view can hedge the "too cold" case: a
+      // sensor reading (fermenter/cellar probe) isn't necessarily immersed in
+      // the must itself, and active fermentation is exothermic — the must
+      // commonly runs a couple degrees above whatever it's sitting in. That
+      // gap can turn a real in-range must into a false "too cold" from an
+      // ambient-ish reading. It can't produce a false "too warm" the same
+      // way (the must would be at least as warm as the sensor, likely more),
+      // so only the cold branch needs the hedge.
       return {id:'temperature',severity:s.fermenting?'recommended':'info',category:'temperature',
-        data:{temp:s.latestTemp,low:s.tempLow,high:s.tempHigh,cold:cold,yeast:s.yeastId},
+        data:{temp:s.latestTemp,low:s.tempLow,high:s.tempHigh,cold:cold,yeast:s.yeastId,source:s.tempSource,fermenting:s.fermenting},
         reasons:['out-of-range']};
     },
     function tempSwing(s){
@@ -456,6 +486,15 @@ function _advRules(){
           data:{first:false,days:s.daysSinceLastReading},reasons:['stale-reading']};
       }
       return null;
+    },
+    function fruitAdditionNote(s){
+      // Purely a data-trust caveat — doesn't change any other rule's verdict,
+      // just names a real reason the CURRENT trend/projection might be off
+      // for a few more readings yet.
+      if(!s.fermenting||!s.recentFruitAddition)return null;
+      return {id:'fruit-addition-note',severity:'info',category:'data',
+        data:{date:s.recentFruitAddition.date,item:s.recentFruitAddition.item},
+        reasons:['recent-fruit-addition']};
     },
     function agingWindow(s){
       // Drinkability milestones for bottled/aging batches (not while still working).

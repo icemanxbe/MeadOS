@@ -365,6 +365,7 @@ function wizMathNote(m){
   }
   var base='Need <strong>~'+m.honeyKg+' kg honey</strong> in '+m.vol+' L to hit OG '+m.og+', finishing near FG '+m.fg.toFixed(3)+' for ~'+m.abv+'% ABV.';
   if(m.adjunctHoneyEquivKg>0)base+=' Already counts ~'+m.adjunctHoneyEquivKg+' kg of that OG as coming from the '+m.adjunctAmount+' of fruit/juice, not honey.';
+  base+=' A starting point, not a guarantee — honey\'s fermentable sugar content varies by source and moisture (roughly ±5%), so take a hydrometer reading once mixed and adjust with a little water or honey before pitching.';
   return base;
 }
 // Live-update only the math box without re-rendering the whole modal (keeps
