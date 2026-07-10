@@ -77,6 +77,7 @@
 <script src="/core/views/12-troubleshoot-nl.js"></script>
 <script src="/core/views/12-offflavor-nl.js"></script>
 <script src="/core/views/12-insights.js"></script>
+<script src="/core/views/12-advisor.js"></script>
 <script src="/core/features/12-tasting-analysis.js"></script>
 <script src="/core/features/12-records.js"></script>
 <script src="/core/tools/12-blending-yeast.js"></script>
@@ -1250,6 +1251,32 @@
     ok('blend: weighted OG (1.075)', Math.abs(r.og-1.075)<1e-9, r.og);
     ok('blend: total volume', r.vol===4, r.vol);
     ok('blend: empty → zero volume', mwBlend([]).vol===0, '');
+  })();
+
+  // "Known unknowns" (2026-07-11): the advisor's "everything looks good" /
+  // "nothing needs attention" fallbacks fire whenever there's simply nothing
+  // to say — which sparse/early data produces just as easily as a genuinely
+  // healthy batch. _advMissingInputs(s) names the gap so silence doesn't
+  // double as a false all-clear. Deliberately excludes OG/gravity-readings
+  // (already covered by their own dedicated record-og / log-reading-missing
+  // recommendation cards) and excludes bulk-aging batches from the
+  // temperature check (deliberately not judged against fermentation range).
+  (function(){
+    var full={active:true,bulkAging:false,latestTemp:19,nutrientsExpected:3,nutrientsDone:1};
+    ok('missingInputs: [] when temperature and nutrients are both tracked', _advMissingInputs(full).length===0, JSON.stringify(_advMissingInputs(full)));
+    ok('missingInputs: [] for an inactive/bottled batch (not this signal\'s job)', _advMissingInputs(Object.assign({},full,{active:false})).length===0, '');
+    ok('missingInputs: [] for null signals', _advMissingInputs(null).length===0, '');
+
+    var noTemp=Object.assign({},full,{latestTemp:null});
+    ok('missingInputs: flags temperature when never logged', _advMissingInputs(noTemp).indexOf('temperature')>=0, JSON.stringify(_advMissingInputs(noTemp)));
+    ok('missingInputs: does NOT flag temperature for a bulk-aging batch (deliberately not judged against ferment range)', _advMissingInputs(Object.assign({},noTemp,{bulkAging:true})).indexOf('temperature')<0, JSON.stringify(_advMissingInputs(Object.assign({},noTemp,{bulkAging:true}))));
+
+    var noNutr=Object.assign({},full,{nutrientsExpected:0,nutrientsDone:0});
+    ok('missingInputs: flags nutrient dosing when no schedule AND nothing logged', _advMissingInputs(noNutr).indexOf('nutrient dosing')>=0, JSON.stringify(_advMissingInputs(noNutr)));
+    ok('missingInputs: does NOT flag nutrient dosing when doses were logged manually, even with no formal schedule', _advMissingInputs(Object.assign({},full,{nutrientsExpected:0,nutrientsDone:2})).indexOf('nutrient dosing')<0, '');
+
+    var bothMissing={active:true,bulkAging:false,latestTemp:null,nutrientsExpected:0,nutrientsDone:0};
+    ok('missingInputs: flags both together for a truly sparse batch', _advMissingInputs(bothMissing).length===2, JSON.stringify(_advMissingInputs(bothMissing)));
   })();
 
   var s=document.getElementById('summary');
