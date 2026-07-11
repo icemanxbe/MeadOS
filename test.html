@@ -77,6 +77,7 @@
 <script src="/core/views/12-troubleshoot-nl.js"></script>
 <script src="/core/views/12-offflavor-nl.js"></script>
 <script src="/core/views/12-insights.js"></script>
+<script src="/core/views/12-advisor.js"></script>
 <script src="/core/features/12-tasting-analysis.js"></script>
 <script src="/core/features/12-records.js"></script>
 <script src="/core/tools/12-blending-yeast.js"></script>
@@ -1035,6 +1036,127 @@
       ok('rules: fermentation-phase file contributes 18 rules', (typeof _advRulesFermentation==='function'?_advRulesFermentation().length:0)===18, '');
       ok('rules: packaging/aging-phase file contributes 9 rules', (typeof _advRulesPackaging==='function'?_advRulesPackaging().length:0)===9, '');
     })();
+    // ChatGPT review round 3 (2026-07-11): the fruit-addition ceiling was
+    // anchored to the LAST READING's date, not real elapsed time — an
+    // infrequent logger who reads once shortly after adding fruit, then goes
+    // quiet for weeks, would keep the fruit flagged indefinitely because the
+    // (stale) last reading was still inside the 10-day ceiling. Must be
+    // anchored to today.
+    (function(){
+      APP.recipes=[{id:'rFrClock',ogTarget:1.098,fgTarget:1.010,fermentDays:60,steps:[]}];
+      var b={id:'frClock1',recipeId:'rFrClock',startDate:isoAgo(40),og:1.098,yeast:'ec1118'};
+      APP.batches=[b];
+      // Fruit added 40 days ago; a reading landed just 4 days after that
+      // (well inside the old, wrong "last reading" ceiling) — then nothing
+      // logged since. Opening the batch today, 40 real days have passed.
+      APP.logs={frClock1:[
+        {date:isoAgo(40),gravity:1.098},{date:isoAgo(36),gravity:1.060},
+        {date:isoAgo(30),gravity:1.020},{date:isoAgo(28),gravity:1.015}
+      ]};
+      APP.additions={frClock1:[{id:'oldfr2',date:isoAgo(40),item:'Peaches',type:'fruit',amount:'1 kg'}]};
+      var s=mwBatchSignals(b);
+      ok('signals: fruit addition is judged against REAL elapsed days, not the last reading\'s date', s&&s.recentFruitAddition===null, s&&JSON.stringify(s.recentFruitAddition));
+      APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.additions={};
+    })();
+    // ChatGPT review round 3: audited _mwAdviceSig(b) against every real
+    // input mwBatchSignals() reads — confirmed 6 gaps where a real change
+    // wouldn't invalidate the cached/frozen advice. Fixed all 6; tested here
+    // directly against the signature function rather than the full memoized
+    // mwBatchAdvice(), since that's the precise thing that changed.
+    (function(){
+      APP.recipes=[{id:'rSig',ogTarget:1.098,fgTarget:1.010,fermentDays:30,steps:[]}];
+      var b={id:'sig1',recipeId:'rSig',startDate:isoAgo(10),og:1.098,yeast:'ec1118'};
+      APP.batches=[b];APP.logs={sig1:[{date:isoAgo(10),gravity:1.098}]};APP.bottling={};APP.additions={};
+      window._liveSensorTemps={};
+      var base=_mwAdviceSig(b);
+      ok('sig: identical inputs produce the identical signature (memo still works)', _mwAdviceSig(b)===base, '');
+
+      b.fermenterId='fSig1';
+      ok('sig: fermenterId change invalidates (reassignment changes temp sensor + headspace)', _mwAdviceSig(b)!==base, '');
+      b.fermenterId=null;
+      ok('sig: reverting fermenterId restores the original signature', _mwAdviceSig(b)===base, '');
+
+      APP.bottling={sig1:{date:isoAgo(1),cellarShelfId:'shelfX'}};
+      var withShelf=_mwAdviceSig(b);
+      ok('sig: bottling record invalidates', withShelf!==base, '');
+      APP.bottling.sig1.cellarShelfId='shelfY';
+      ok('sig: changing JUST the cellar shelf (same bottling date) still invalidates', _mwAdviceSig(b)!==withShelf, '');
+      APP.bottling={};
+
+      var beforeRecipe=_mwAdviceSig(b);
+      APP.recipes[0].ogTarget=1.110;
+      ok('sig: editing the IN-USE recipe\'s own fields invalidates, not just recipeId', _mwAdviceSig(b)!==beforeRecipe, '');
+      APP.recipes[0].ogTarget=1.098;
+
+      var beforeAdds=_mwAdviceSig(b);
+      APP.additions={sig1:[{id:'a1',date:isoAgo(2),item:'Oak',type:'oak',amount:'10g'}]};
+      var oneOak=_mwAdviceSig(b);
+      ok('sig: adding an addition invalidates', oneOak!==beforeAdds, '');
+      APP.additions.sig1[0].type='fruit';
+      ok('sig: editing an EXISTING addition\'s content (same count) still invalidates — this is exactly what the fruit-addition-note feature depends on', _mwAdviceSig(b)!==oneOak, '');
+      APP.additions={};
+
+      var beforeSteps=_mwAdviceSig(b);
+      b.customSteps=[{day:2,title:'Nutrient',desc:'x'}];
+      ok('sig: customSteps invalidates', _mwAdviceSig(b)!==beforeSteps, '');
+      delete b.customSteps;
+
+      var beforeSensor=_mwAdviceSig(b);
+      window._liveSensorTemps={'sensor.somewhere':{value:20,lastChanged:new Date().toISOString()}};
+      ok('sig: a live sensor updating ANYWHERE invalidates (coarse but safe — recompute is cheap)', _mwAdviceSig(b)!==beforeSensor, '');
+      window._liveSensorTemps={};
+
+      APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};APP.additions={};
+    })();
+    // ChatGPT review round 3: a live sensor can keep reporting its last-known
+    // value forever without HA marking it 'unavailable' — trusting it
+    // indefinitely would prefer a stale reading over a fresher logged one.
+    (function(){
+      window._liveSensorTemps={};
+      APP.recipes=[{id:'rFresh',ogTarget:1.100,fgTarget:1.010,fermentDays:30,steps:[]}];
+      APP.fermenters=[{id:'fFresh',tempSensorEntity:'sensor.ffresh_temp',capacity:20}];
+      var b={id:'freshB',recipeId:'rFresh',startDate:isoAgo(5),og:1.100,yeast:'ec1118',fermenterId:'fFresh'};
+      APP.batches=[b];APP.bottling={};
+
+      // Stale: sensor's OWN last-changed timestamp is 18 hours old.
+      APP.logs={freshB:[{date:isoAgo(5),gravity:1.100,temp:20},{date:isoAgo(0),gravity:1.080,temp:19}]};
+      window._liveSensorTemps['sensor.ffresh_temp']={value:9,lastChanged:new Date(Date.now()-18*3600000).toISOString()};
+      var sStale=mwBatchSignals(b);
+      ok('signals: a live reading whose lastChanged is 18h old is treated as stale and falls back to the logged temp', sStale&&sStale.tempSource==='logged'&&sStale.latestTemp===19, sStale&&JSON.stringify({src:sStale.tempSource,temp:sStale.latestTemp}));
+
+      // Fresh: same sensor, lastChanged only 2 hours ago.
+      window._liveSensorTemps['sensor.ffresh_temp']={value:9,lastChanged:new Date(Date.now()-2*3600000).toISOString()};
+      var sFresh=mwBatchSignals(b);
+      ok('signals: a live reading whose lastChanged is 2h old is trusted', sFresh&&sFresh.tempSource==='live'&&sFresh.latestTemp===9, sFresh&&JSON.stringify({src:sFresh.tempSource,temp:sFresh.latestTemp}));
+
+      // Unknown freshness (no lastChanged supplied at all) — trust it rather
+      // than guess it's stale, so older cached data / other sources don't
+      // silently lose live-sensor behaviour.
+      window._liveSensorTemps['sensor.ffresh_temp']={value:9};
+      var sUnknown=mwBatchSignals(b);
+      ok('signals: a live reading with no lastChanged at all is still trusted (can\'t tell it\'s stale, so don\'t assume it is)', sUnknown&&sUnknown.tempSource==='live', sUnknown&&sUnknown.tempSource);
+
+      window._liveSensorTemps={};APP.fermenters=[];APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};
+    })();
+    // ChatGPT review round 3: a failed (contaminated/dumped) batch never
+    // reached a normal finish and shouldn't skew "your own past batches"
+    // averages the way a real completed batch does.
+    (function(){
+      APP.recipes=[{id:'rFail',fgTarget:1.000,fermentDays:30}];
+      var good1={id:'failGood1',recipeId:'rFail',startDate:isoAgo(200),og:1.100,yeast:'ec1118'};
+      var good2={id:'failGood2',recipeId:'rFail',startDate:isoAgo(150),og:1.100,yeast:'ec1118'};
+      // A failed batch with wildly different numbers — if it leaked into the
+      // pool it would visibly skew the average away from the 2 good batches.
+      var failed={id:'failBad1',recipeId:'rFail',startDate:isoAgo(100),og:1.100,yeast:'ec1118',failed:{date:isoAgo(90),category:'contamination'}};
+      var current={id:'failCur',recipeId:'rFail',startDate:isoAgo(20),og:1.100,yeast:'ec1118'};
+      APP.batches=[good1,good2,failed,current];
+      APP.bottling={failGood1:{date:isoAgo(170),fg:1.020},failGood2:{date:isoAgo(120),fg:1.020},failBad1:{date:isoAgo(90),fg:1.070}};
+      APP.logs={};
+      var hist=mwHistoricalComparison(current);
+      ok('historical: failed batches are excluded from the comparison pool', hist&&hist.sampleSize===2, hist&&JSON.stringify(hist));
+      ok('historical: average reflects only the 2 real completions, not the failed one\'s very different numbers', hist&&Math.abs(hist.avgAttenuation-80)<1, hist&&hist.avgAttenuation);
+      APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.bottling={};
+    })();
     APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};APP.additions={};
   })();
 
@@ -1160,7 +1282,11 @@
     APP.tastings={h1:[{rating:5}],h3:[{rating:3}]};APP.logs={};
     var cur=APP.batches[0];
     var hc=mwHistoricalComparison(cur);
-    ok('historicalComparison: matches on the SAME recipe first', hc&&hc.matchedOn==='recipe'&&hc.sampleSize===3, JSON.stringify(hc));
+    // h2 is failed and never bottled — ChatGPT review round 3: a failed batch
+    // never reached a normal finish, so it's excluded from the pool entirely
+    // rather than just silently contributing null to the averages. sampleSize
+    // reflects only h1+h3, the 2 batches that actually finished normally.
+    ok('historicalComparison: matches on the SAME recipe first, excluding the failed batch from the pool', hc&&hc.matchedOn==='recipe'&&hc.sampleSize===2, JSON.stringify(hc));
     ok('historicalComparison: avg days-to-finish uses only BOTTLED past batches (30,36→33)', hc&&Math.abs(hc.avgDaysToFinish-33)<0.6, hc&&hc.avgDaysToFinish);
     ok('historicalComparison: avg rating (5,3→4)', hc&&Math.abs(hc.avgRating-4)<1e-9, hc&&hc.avgRating);
     ok('historicalComparison: null for a batch with no past history at all', mwHistoricalComparison({id:'lonely',recipeId:'nobody-else',og:1.1,startDate:isoAgo(5)})===null, '');
@@ -1250,6 +1376,32 @@
     ok('blend: weighted OG (1.075)', Math.abs(r.og-1.075)<1e-9, r.og);
     ok('blend: total volume', r.vol===4, r.vol);
     ok('blend: empty → zero volume', mwBlend([]).vol===0, '');
+  })();
+
+  // "Known unknowns" (2026-07-11): the advisor's "everything looks good" /
+  // "nothing needs attention" fallbacks fire whenever there's simply nothing
+  // to say — which sparse/early data produces just as easily as a genuinely
+  // healthy batch. _advMissingInputs(s) names the gap so silence doesn't
+  // double as a false all-clear. Deliberately excludes OG/gravity-readings
+  // (already covered by their own dedicated record-og / log-reading-missing
+  // recommendation cards) and excludes bulk-aging batches from the
+  // temperature check (deliberately not judged against fermentation range).
+  (function(){
+    var full={active:true,bulkAging:false,latestTemp:19,nutrientsExpected:3,nutrientsDone:1};
+    ok('missingInputs: [] when temperature and nutrients are both tracked', _advMissingInputs(full).length===0, JSON.stringify(_advMissingInputs(full)));
+    ok('missingInputs: [] for an inactive/bottled batch (not this signal\'s job)', _advMissingInputs(Object.assign({},full,{active:false})).length===0, '');
+    ok('missingInputs: [] for null signals', _advMissingInputs(null).length===0, '');
+
+    var noTemp=Object.assign({},full,{latestTemp:null});
+    ok('missingInputs: flags temperature when never logged', _advMissingInputs(noTemp).indexOf('temperature')>=0, JSON.stringify(_advMissingInputs(noTemp)));
+    ok('missingInputs: does NOT flag temperature for a bulk-aging batch (deliberately not judged against ferment range)', _advMissingInputs(Object.assign({},noTemp,{bulkAging:true})).indexOf('temperature')<0, JSON.stringify(_advMissingInputs(Object.assign({},noTemp,{bulkAging:true}))));
+
+    var noNutr=Object.assign({},full,{nutrientsExpected:0,nutrientsDone:0});
+    ok('missingInputs: flags nutrient dosing when no schedule AND nothing logged', _advMissingInputs(noNutr).indexOf('nutrient dosing')>=0, JSON.stringify(_advMissingInputs(noNutr)));
+    ok('missingInputs: does NOT flag nutrient dosing when doses were logged manually, even with no formal schedule', _advMissingInputs(Object.assign({},full,{nutrientsExpected:0,nutrientsDone:2})).indexOf('nutrient dosing')<0, '');
+
+    var bothMissing={active:true,bulkAging:false,latestTemp:null,nutrientsExpected:0,nutrientsDone:0};
+    ok('missingInputs: flags both together for a truly sparse batch', _advMissingInputs(bothMissing).length===2, JSON.stringify(_advMissingInputs(bothMissing)));
   })();
 
   var s=document.getElementById('summary');

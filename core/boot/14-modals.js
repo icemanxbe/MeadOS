@@ -538,7 +538,13 @@ function openEditBatchModal(id){
       yeastOpts='<option value="'+escHtml(currentYeast)+'" selected>'+escHtml(currentYeast)+' (custom)</option>'+yeastOpts;
     }
   }
-  var yeastRow=yeastOpts?'<div class="form-group"><label class="form-label">Yeast</label><select class="form-select" id="eb-yeast">'+yeastOpts+'</select></div>':'';
+  // Only worth the warning once there's actual gravity history that a yeast
+  // change could retroactively reinterpret — a fresh batch with no readings
+  // yet has nothing to misattribute.
+  var hasGravityHistory=((APP.logs&&APP.logs[b.id])||[]).some(function(l){return l.gravity!=null&&l.gravity!=='';});
+  var yeastRow=yeastOpts?'<div class="form-group"><label class="form-label">Yeast</label><select class="form-select" id="eb-yeast">'+yeastOpts+'</select>'
+    +(hasGravityHistory?'<div style="font-size:11px;color:var(--text3);margin-top:4px;font-style:italic">Changing this updates how the advisor judges temperature range, attenuation and tolerance for the WHOLE batch going forward — it doesn\'t reinterpret past readings differently. If this is correcting a mistake, that\'s exactly right. If it\'s recording a real mid-ferment repitch, know that early-fermentation advice will now be judged against the new strain, not the one that was actually there.</div>':'')
+    +'</div>':'';
   var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-title">EDIT BATCH</div>'
     +'<div class="form-group"><label class="form-label">Name</label><input class="form-input" id="eb-name" value="'+escHtml(b.name)+'"></div>'
     +fermenterRow
