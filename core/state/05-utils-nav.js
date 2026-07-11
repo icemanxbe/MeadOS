@@ -158,7 +158,7 @@ function updateModeToggle(){
 
 function getBatchColor(b){
   if(b&&b.recipeId){
-    var r=APP.recipes.find(function(x){return x.id===b.recipeId;});
+    var r=getRecipe(b.recipeId);
     if(r&&r.brandColor)return r.brandColor;
   }
   return'#c9a84c';
@@ -257,7 +257,7 @@ function findBatchByRef(ref){
   }
   // Fallback to internal id — covers legacy URLs predating serials and any
   // batch that somehow missed the v8 backfill.
-  return APP.batches.find(function(b){return b.id===ref;})||null;
+  return getBatch(ref)||null;
 }
 
 // Read the recent gravity trend to tell whether fermentation is still moving.
@@ -266,7 +266,7 @@ function findBatchByRef(ref){
 // "slowing"  — still dropping, but only a little
 // "active"   — dropping normally   ·   "unknown" — fewer than two readings
 function getFermentationActivity(b){
-  var logs=(APP.logs[b.id]||[]).filter(function(l){return l&&l.gravity!=null;})
+  var logs=(getBatchLogs(b.id)).filter(function(l){return l&&l.gravity!=null;})
     .slice().sort(function(a,c){return (a.date||'').localeCompare(c.date||'');});
   if(logs.length<2)return{state:'unknown',count:logs.length};
   var last=logs[logs.length-1],prev=logs[logs.length-2];
@@ -294,7 +294,7 @@ function getBatchStatus(b){
   // Pre-bottling lifecycle follows what's ACTUALLY happened — completed brew-coach
   // steps and the gravity trend — not just elapsed days. So a batch won't jump to
   // the next stage on the calendar if you haven't racked / marked the steps.
-  var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+  var recipe=getRecipe(b.recipeId);
   var steps=(recipe&&typeof getEffectiveSteps==='function')?getEffectiveSteps(b,recipe):[];
   var anyStepDone=false,rackDone=false,ageDone=false;
   steps.forEach(function(s){
@@ -304,7 +304,7 @@ function getBatchStatus(b){
     if(/rack|secondary|transfer/i.test(t))rackDone=true;
     if(/aging|bulk|stabil|clarif|cold ?crash|oak|back-?sweet/i.test(t))ageDone=true;
   });
-  var hasLogs=(APP.logs[b.id]||[]).some(function(l){return l&&l.gravity!=null;});
+  var hasLogs=(getBatchLogs(b.id)).some(function(l){return l&&l.gravity!=null;});
   // No tracking data at all → fall back to the original calendar estimate so the
   // stage isn't stuck at "fermenting" for someone who doesn't use the coach.
   if(!anyStepDone&&!hasLogs){

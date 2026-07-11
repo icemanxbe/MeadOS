@@ -310,14 +310,14 @@ function handleBottleScannerURL(url){
   var pm=/\/share\/([A-Za-z0-9_-]+)/.exec(url);
   if(pm){
     var bid=(APP.shareTokens||{})[decodeURIComponent(pm[1])];
-    if(bid)batch=APP.batches.find(function(b){return b.id===bid;});
+    if(bid)batch=getBatch(bid);
   }
   if(!batch){
     // Legacy hash forms: #share=<ref> / #batch=<ref> (serial or hex id).
     var m=/#(?:share|batch)=([^&]+)/.exec(url);
     if(m){
       var ref=decodeURIComponent(m[1]);
-      batch=(typeof findBatchByRef==='function')?findBatchByRef(ref):APP.batches.find(function(b){return b.id===ref;});
+      batch=(typeof findBatchByRef==='function')?findBatchByRef(ref):getBatch(ref);
     }
   }
   if(!batch){toast('⚠ URL doesn\'t match any batch in this database');return;}

@@ -345,7 +345,7 @@ function getOverdueAdditions(){
   var now=Date.now();
   var out=[];
   Object.keys(APP.additions).forEach(function(bid){
-    var b=APP.batches.find(function(x){return x.id===bid;});
+    var b=getBatch(bid);
     if(!b||(typeof inActiveMode==='function'&&!inActiveMode(b)))return;
     (APP.additions[bid]||[]).forEach(function(a){
       if(a.removedDate)return;
@@ -364,7 +364,7 @@ function getOverdueAdditions(){
 // over the lifetime of the batch (or last 14 days, whichever is shorter — HA recorder default).
 
 async function fetchTempHistory(batchId,hoursBack){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b)return null;
   var st=(typeof getBatchStatus==='function')?getBatchStatus(b):'';
   var bottled=(st==='bottled'||st==='complete');
@@ -441,7 +441,7 @@ async function renderTempHistoryChart(canvasId,batchId){
   var minV=Math.min.apply(null,values),maxV=Math.max.apply(null,values);
   var avgV=values.reduce(function(s,v){return s+v;},0)/values.length;
   // Strain-specific bands — pull this batch's actual yeast ranges.
-  var chartBatch=APP.batches.find(function(x){return x.id===batchId;});
+  var chartBatch=getBatch(batchId);
   var chartStatus=(chartBatch&&typeof getBatchStatus==='function')?getBatchStatus(chartBatch):'';
   var storageChart=(chartStatus==='bottled'||chartStatus==='complete');
   var oL,oH,sL,sH,yName;

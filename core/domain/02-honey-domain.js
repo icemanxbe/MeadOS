@@ -146,7 +146,7 @@ function recipesAlternativeForHoney(honeyName){
       // here ("also works in") — skip curated entries flagged workable/poor/clash.
       var fitOk=!a.fit||a.fit==='great'||a.fit==='good'||a.fit==='recommended';
       if(a.honey===honeyName&&a.shift&&fitOk){
-        var r=APP.recipes&&APP.recipes.find(function(x){return x.id===rid;});
+        var r=APP.recipes&&getRecipe(rid);
         if(r){matches.push({recipeId:rid,recipeName:r.name,recipeStyle:r.style,recipeColor:r.brandColor,shift:a.shift});}
       }
     });

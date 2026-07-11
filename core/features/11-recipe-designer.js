@@ -366,6 +366,17 @@ function wizMathNote(m){
   var base='Need <strong>~'+m.honeyKg+' kg honey</strong> in '+m.vol+' L to hit OG '+m.og+', finishing near FG '+m.fg.toFixed(3)+' for ~'+m.abv+'% ABV.';
   if(m.adjunctHoneyEquivKg>0)base+=' Already counts ~'+m.adjunctHoneyEquivKg+' kg of that OG as coming from the '+m.adjunctAmount+' of fruit/juice, not honey.';
   base+=' A starting point, not a guarantee — honey\'s fermentable sugar content varies by source and moisture (roughly ±5%), so take a hydrometer reading once mixed and adjust with a little water or honey before pitching.';
+  // Same >=1.090 "high OG" threshold diagnoseStuckFermentation already uses
+  // for its nutrient-deficiency check (03-brew-domain.js) — honey's weak pH
+  // buffering (a must can swing ~4.3→3.1 over fermentation, far more than
+  // beer/wine) is most likely to bite at this gravity. This is a real,
+  // specific, community-documented technique (potassium bicarbonate,
+  // targeting a starting pH before fermentation), not invented dosing — but
+  // it's a proactive step some experienced brewers take, not settled
+  // consensus that every high-OG batch needs it, so it's framed as a
+  // heads-up here rather than a rule that fires mid-ferment implying
+  // something's already wrong.
+  if(m.og>=1.090)base+=' At this OG, honey\'s weak natural pH buffering can start the must low enough to slow or stall fermentation later — some brewers proactively check must pH before pitching and raise it toward 3.6–3.9 with potassium bicarbonate if it\'s already below ~3.5, rather than waiting to see if it stalls.';
   return base;
 }
 // Live-update only the math box without re-rendering the whole modal (keeps
@@ -379,7 +390,7 @@ function wizUpdateMath(){
 
 function openCustomRecipeModal(seedId){
   closeModal();
-  var seed=seedId?APP.recipes.find(function(r){return r.id===seedId;}):null;
+  var seed=seedId?getRecipe(seedId):null;
   var isCider=(typeof activeBevMode==='function')&&activeBevMode()==='cider';
   var r=seed?JSON.parse(JSON.stringify(seed)):JSON.parse(JSON.stringify(isCider?DEFAULT_CIDER_RECIPE_TEMPLATE:DEFAULT_RECIPE_TEMPLATE));
   if(seed){r.name=seed.name+' (My Version)';r.id=null;}

@@ -95,7 +95,7 @@ function updateGlobalSearchResults(){
     recordFirst(act);
     return'<div onclick="'+act+'" style="padding:10px 12px;background:var(--bg);border-left:3px solid '+getBatchColor(b)+';border-radius:var(--radius);cursor:pointer;margin-bottom:4px;transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
       +'<div style="font-family:var(--font-display);font-size:13.5px;color:'+getBatchColor(b)+'">'+highlight(b.name,q)+(b.serial?'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);padding:1px 6px;border-radius:6px;margin-left:8px">#'+highlight(b.serial,q)+'</span>':'')+'</div>'
-      +'<div style="font-size:11.5px;color:var(--text3);margin-top:2px">'+escHtml(fmtDate(b.startDate))+' · '+escHtml(b.style||(APP.recipes.find(function(r){return r.id===b.recipeId;})||{}).style||'Custom')
+      +'<div style="font-size:11.5px;color:var(--text3);margin-top:2px">'+escHtml(fmtDate(b.startDate))+' · '+escHtml(b.style||(getRecipe(b.recipeId)||{}).style||'Custom')
       +(b.notes&&b.notes.toLowerCase().indexOf(q)>=0?'<br><span style="font-style:italic">'+highlight(b.notes,q)+'</span>':'')
       +'</div></div>';
   });
@@ -162,7 +162,7 @@ function _buildGlobalSearchIndex(){
   });
   Object.keys(APP.logs||{}).forEach(function(bid){
     var b=bmap[bid];if(!b)return;
-    (APP.logs[bid]||[]).forEach(function(l){
+    (getBatchLogs(bid)).forEach(function(l){
       if(l.note)docs.push({kind:'log',b:b,l:l,hay:l.note.toLowerCase()});
     });
   });

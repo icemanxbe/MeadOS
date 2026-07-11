@@ -67,7 +67,7 @@ function detectStuckFermentations(){
   (typeof visibleBatches==='function'?visibleBatches():(APP.batches||[])).forEach(function(b){
     var status=getBatchStatus(b);
     if(status==='bottled'||status==='complete'||status==='failed')return;
-    var logs=(APP.logs[b.id]||[]).slice().sort(function(a,b){return(a.date||'').localeCompare(b.date||'');});
+    var logs=(getBatchLogs(b.id)).slice().sort(function(a,b){return(a.date||'').localeCompare(b.date||'');});
     if(logs.length<2)return; // can't detect a stall with one reading
     var proj=(typeof projectFermentation==='function')?projectFermentation(b):null;
     if(!proj||!proj.stalled)return;
