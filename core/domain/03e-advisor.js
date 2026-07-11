@@ -37,6 +37,36 @@ function mwIsSparkling(recipe){
   return !!(recipe&&(recipe.category==='Sparkling'||recipe.style==='Sparkling'||(recipe.tags&&(recipe.tags.indexOf('Sparkling')>=0||recipe.tags.indexOf('Carbonated')>=0))));
 }
 
+// Whether a fruit addition's item text describes a JUICE/concentrate form
+// rather than whole/frozen/puree fruit. Real, researched mechanism (not
+// invented): juice's sugar is already dissolved and available, so it lands
+// FULLY in the very next gravity reading with no real extraction lag —
+// unlike whole/frozen fruit, where cell walls take days to break down and
+// release sugar (frozen actually breaks down faster than fresh, since
+// freezing ruptures the cell walls itself, but still over days, not
+// instantly). recentFruitAddition below uses this to size its "how long
+// might this skew the trend" window differently per form.
+//
+// The additions data model (ADDITION_TYPES, 11-ha-additions-temp.js) has no
+// structured fruit-form field, only the brewer's own free-text `item`
+// description — this matches a small, unambiguous word list against text
+// the brewer wrote themselves about their OWN ingredient, which is a
+// meaningfully safer signal than pattern-matching arbitrary external text:
+// a miss just keeps the existing flat window (the safe prior default,
+// nothing regresses), and a brewer who added juice overwhelmingly describes
+// it with a word like "juice" — that's the common case, not an edge case
+// being guessed at. Checked English AND Dutch since the app is bilingual
+// throughout — Dutch "sap" (juice) needs its own pattern since Dutch
+// compounds it onto the fruit name with no space (appelsap, kersensap,
+// druivensap), so a boundary BEFORE "sap" would never match; matching a
+// boundary AFTER it instead ("…sap" at the end of a word) still correctly
+// excludes an unrelated word that merely CONTAINS "sap" mid-word (e.g. the
+// fruit "sapote", where "sap" isn't followed by a boundary at all).
+function mwIsJuiceForm(item){
+  var s=item||'';
+  return /\b(juice|concentr|nectar)/i.test(s)||/sap\b/i.test(s);
+}
+
 // ---- Signals: derived facts about a batch ---------------------------------
 function mwBatchSignals(b){
   if(!b)return null;
@@ -62,6 +92,14 @@ function mwBatchSignals(b){
   // "fruit typically sits 3-7 days" addition guidance (ADDITION_TYPES),
   // giving a small buffer for the tail of activity after the solids come
   // out but dissolved sugar is still working through.
+  //
+  // Juice/concentrate is the one real exception this app DOES have data to
+  // back (see mwIsJuiceForm): its sugar is already dissolved, so it lands in
+  // the very next reading with no multi-day extraction tail — a 10-day
+  // ceiling would keep flagging the trend as fruit-skewed long after the
+  // one-time step change already happened and was absorbed. Short ceiling
+  // covers just "the very next reading might be a jump", not a lingering
+  // trend distortion.
   var recentFruitAddition=null;
   if(logs.length){
     var _fruitWinStart=logs[Math.max(0,logs.length-4)].date;
@@ -69,10 +107,11 @@ function mwBatchSignals(b){
       .filter(function(a){
         if(a.type!=='fruit'||!a.date||a.date<_fruitWinStart)return false;
         var ageDays=(typeof daysSince==='function')?daysSince(a.date):0;
-        return ageDays>=0&&ageDays<=10;
+        var ceiling=mwIsJuiceForm(a.item)?2:10;
+        return ageDays>=0&&ageDays<=ceiling;
       })
       .sort(function(x,y){return(y.date||'').localeCompare(x.date||'');});
-    if(_fruitAdds.length)recentFruitAddition={date:_fruitAdds[0].date,item:_fruitAdds[0].item||null};
+    if(_fruitAdds.length)recentFruitAddition={date:_fruitAdds[0].date,item:_fruitAdds[0].item||null,juiceForm:mwIsJuiceForm(_fruitAdds[0].item)};
   }
   var og=parseFloat(b.og)||(recipe&&recipe.ogTarget)||null;
   var lastG=logs.length?parseFloat(logs[logs.length-1].gravity):null;
@@ -136,11 +175,17 @@ function mwBatchSignals(b){
   // goes stale the moment the batch moves on (and stops being taken at all
   // once bottled). Falls back to the last logged temp when no live sensor is
   // bound/available — Home Assistant is optional throughout this app.
-  var liveTempReading=null;
+  var liveTempReading=null, liveTempEntity=null;
   if(bottled){
     var shelfHit=(bottling&&bottling.cellarShelfId&&typeof findShelfById==='function')?findShelfById(bottling.cellarShelfId):null;
-    liveTempReading=(typeof getCellarLiveTemp==='function')?getCellarLiveTemp(shelfHit&&shelfHit.cabinet):null;
+    var shelfCab=shelfHit&&shelfHit.cabinet;
+    // Same entity resolution getCellarLiveTemp uses internally (cabinet's own
+    // sensor, else the legacy single cellar sensor) — captured here too since
+    // tempStable below needs the entity ID, not just the cached value.
+    liveTempEntity=(shelfCab&&shelfCab.tempSensorEntity)||(typeof APP!=='undefined'&&APP.settings&&APP.settings.cellarTempSensorEntity)||null;
+    liveTempReading=(typeof getCellarLiveTemp==='function')?getCellarLiveTemp(shelfCab):null;
   }else{
+    liveTempEntity=(fermenter&&fermenter.tempSensorEntity)||null;
     liveTempReading=(fermenter&&typeof getFermenterLiveTemp==='function')?getFermenterLiveTemp(fermenter):null;
   }
   // A sensor can keep reporting its last-known value indefinitely without HA
@@ -177,9 +222,25 @@ function mwBatchSignals(b){
   var y=(typeof YEAST_STRAINS!=='undefined'&&b.yeast)?YEAST_STRAINS.filter(function(x){return x.id===b.yeast;})[0]:null;
   var tLow=(y&&y.optimalTempLow!=null)?y.optimalTempLow:16, tHigh=(y&&y.optimalTempHigh!=null)?y.optimalTempHigh:24;
   var tempInRange=(latestTemp!=null)?(latestTemp>=tLow-0.5&&latestTemp<=tHigh+0.5):null;
-  // stability: spread of the last 3 temps
-  var recentT=logs.filter(function(l){return l.temp!=null&&l.temp!=='';}).slice(-3).map(function(l){return parseFloat(l.temp);});
-  var tempStable=recentT.length>=2?((Math.max.apply(null,recentT)-Math.min.apply(null,recentT))<=2.0):null;
+  // Stability: prefer the LIVE sensor's own recent history — a real continuous
+  // record, not just whatever happened to be hand-logged at gravity-check
+  // time — when the current reading is actually coming from a fresh live
+  // sensor (tempSource==='live'). refreshAllSensorHistories() (04-server-ha.js)
+  // polls HA's history endpoint on its own slower interval and caches it
+  // exactly like window._liveSensorTemps does for the latest value, so this
+  // stays a synchronous read here — mwBatchSignals() doesn't do I/O itself.
+  // Falls back to the spread of the last 3 hand-logged temps when there's no
+  // live history cached yet (HA not configured, or the history poll hasn't
+  // run since load) — same threshold either way, not a different calibration.
+  var liveHistory=(tempSource==='live'&&liveTempEntity&&typeof window!=='undefined')?(window._liveSensorHistory||{})[liveTempEntity]:null;
+  var tempStable;
+  if(liveHistory&&liveHistory.length>=2){
+    var hVals=liveHistory.map(function(p){return p.value;});
+    tempStable=(Math.max.apply(null,hVals)-Math.min.apply(null,hVals))<=2.0;
+  }else{
+    var recentT=logs.filter(function(l){return l.temp!=null&&l.temp!=='';}).slice(-3).map(function(l){return parseFloat(l.temp);});
+    tempStable=recentT.length>=2?((Math.max.apply(null,recentT)-Math.min.apply(null,recentT))<=2.0):null;
+  }
 
   // ABV headroom vs the strain's tolerance
   var currentABV=(og&&lastG!=null)?parseFloat(calcABV(og,lastG)):null;
@@ -551,14 +612,48 @@ function _mwAdviceSig(b){
   //  - b.bulkAging: a direct input to the temperature rule/health axis (see
   //    toggleBulkAging) — without it, flipping the toggle wouldn't invalidate
   //    the memo and stale advice would linger until something else changed.
+  //  - live sensor HISTORY cache: the same real gap as liveTemps below, now
+  //    that tempStable can read window._liveSensorHistory too (see the live-
+  //    history branch in mwBatchSignals). A compact fingerprint (entity +
+  //    point count + last value), not the full point arrays — a 72h history
+  //    per sensor can be hundreds of points, too heavy to stringify whole on
+  //    every signature computation for no extra invalidation accuracy.
+  //  - sibling-batch fingerprint: mwHistoricalComparison() reads EVERY OTHER
+  //    batch's yeast/honey/recipe/bottling/tastings, not just b's own fields
+  //    hashed above — editing or deleting a DIFFERENT batch changes what
+  //    "your own average" means for THIS one (previously a documented,
+  //    accepted gap — see mwHistoricalComparison's own comment). A per-
+  //    mutation-site version counter would need a bump at every batch
+  //    create/edit/delete/bottle/tasting call site — the same piecemeal
+  //    approach that produced several of the gaps above when done for a
+  //    single batch's own fields. Hashing a cheap summary of the whole pool
+  //    here instead can't miss a site, and at this app's real scale (a few
+  //    dozen batches, ever) an O(n) pass per signature is free.
   var liveTemps=(typeof window!=='undefined'&&window._liveSensorTemps)||{};
+  var liveHistoryCache=(typeof window!=='undefined'&&window._liveSensorHistory)||{};
+  var liveHistorySig=Object.keys(liveHistoryCache).sort().map(function(k){
+    var pts=liveHistoryCache[k]||[];
+    var lastPt=pts.length?pts[pts.length-1]:null;
+    return k+':'+pts.length+':'+(lastPt?lastPt.value:'');
+  }).join(',');
+  var siblingFingerprint=((typeof APP!=='undefined'&&APP.batches)||[]).map(function(o){
+    if(o.id===b.id)return '';
+    var obot=(typeof APP!=='undefined'&&APP.bottling&&APP.bottling[o.id])||null;
+    var ologs=(typeof APP!=='undefined'&&APP.logs&&APP.logs[o.id])||[];
+    var olast=ologs.length?ologs[ologs.length-1]:null;
+    var ots=(typeof APP!=='undefined'&&APP.tastings&&APP.tastings[o.id])||[];
+    return [o.id,o.recipeId,o.yeast,o.og,mwResolveHoney(o),o.failed?1:0,
+      obot?obot.date+','+obot.fg:'',olast?olast.date:'',
+      ots.map(function(t){return t.rating;}).join(',')].join(':');
+  }).join('|');
   return [b.id,b.recipeId,b.og,b.yeast,b.startDate,b.failed?1:0,b.fermenterId||0,
     logs.length,last.date,last.gravity,last.temp,last.ph,doneKeys.join(','),
     bot?JSON.stringify(bot):0,ageF,ageB,b.bulkAging?1:0,
     JSON.stringify(recipe||{}),
     JSON.stringify(((typeof APP!=='undefined'&&APP.additions&&APP.additions[b.id])||[])),
     JSON.stringify(b.customSteps||[]),
-    JSON.stringify(liveTemps)
+    JSON.stringify(liveTemps),
+    liveHistorySig, siblingFingerprint
   ].join('|');
 }
 
@@ -670,17 +765,15 @@ function mwIngredientStats(){
 // Honest about needing real history: null (not a guess) with fewer than 2
 // comparable past batches.
 //
-// Known, accepted cache-invalidation gap: _mwAdviceSig(b) only hashes b's
-// OWN fields — it has no way to know this function also reads every OTHER
-// batch's yeast/honey/bottling/tastings. Editing or deleting a SIBLING batch
-// doesn't invalidate the CURRENT batch's cached advice, so a stale
-// historical-pace/ferment-complete:historical reference could briefly
-// reference data that's since changed. Fixing this properly needs a global
-// "batch pool changed" version counter threaded into every signature — a
-// real architectural addition, not a one-line fix like the gaps above — and
-// the failure mode is narrow (requires editing/deleting a DIFFERENT batch
-// than the one currently being viewed, then viewing this one again before
-// any of ITS OWN fields change). Documented rather than built here.
+// Cache invalidation: _mwAdviceSig(b) hashes a fingerprint of every OTHER
+// batch's yeast/honey/recipe/bottling/tastings too (not just b's own fields),
+// specifically because this function reads all of that. Editing or deleting
+// a SIBLING batch changes what "your own average" means for THIS one, so it
+// has to invalidate THIS one's cached advice even though none of b's own
+// fields moved. Previously an accepted, documented gap (a real per-mutation-
+// site version counter felt like too big an addition for how narrow the
+// failure mode was); fixed by fingerprinting the whole pool instead, which
+// needed no new counter and can't miss a mutation site.
 //
 // Separate, deliberate semantic decision (not a bug, and not the same as the
 // caching gap above — this would be equally true with PERFECT invalidation):

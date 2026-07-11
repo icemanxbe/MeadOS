@@ -1594,6 +1594,177 @@
     APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};
   })();
 
+  // Follow-up (2026-07-11), user-authorized future-proofing pass: juice/
+  // concentrate fruit additions get a much shorter "might still be skewing
+  // the trend" window than whole/frozen fruit, since juice's sugar is
+  // already dissolved (no multi-day extraction lag — a real, researched
+  // mechanism, not a per-fruit-type curve invented without data).
+  (function(){
+    ok('mwIsJuiceForm: detects "juice" in item text', mwIsJuiceForm('apple juice'), '');
+    ok('mwIsJuiceForm: detects "concentrate"', mwIsJuiceForm('cranberry juice concentrate'), '');
+    ok('mwIsJuiceForm: detects Dutch "sap" compounded onto the fruit name (no space)', mwIsJuiceForm('appelsap')&&mwIsJuiceForm('kersensap')&&mwIsJuiceForm('druivensap'), '');
+    ok('mwIsJuiceForm: whole fruit is NOT juice-form', !mwIsJuiceForm('frozen blackberries'), '');
+    ok('mwIsJuiceForm: a fruit name that merely CONTAINS "sap" mid-word is NOT a false positive', !mwIsJuiceForm('sapote'), '');
+    ok('mwIsJuiceForm: null/empty item is NOT juice-form', !mwIsJuiceForm(null)&&!mwIsJuiceForm(''), '');
+
+    APP.recipes=[{id:'rFruit',ogTarget:1.100,fgTarget:1.010,fermentDays:30}];
+    var b={id:'fruitB',recipeId:'rFruit',startDate:isoAgo(20),og:1.100,yeast:'ec1118'};
+    APP.batches=[b];APP.bottling={};
+    APP.logs={fruitB:[{date:isoAgo(20),gravity:1.100},{date:isoAgo(10),gravity:1.060},{date:isoAgo(0),gravity:1.030}]};
+
+    APP.additions={fruitB:[{id:'a1',type:'fruit',item:'cherry juice',date:isoAgo(5)}]};
+    var sJuiceOld=mwBatchSignals(b);
+    ok('signals: juice-form addition 5 days ago is OUTSIDE the 2-day juice ceiling — not flagged', !sJuiceOld.recentFruitAddition, sJuiceOld.recentFruitAddition&&JSON.stringify(sJuiceOld.recentFruitAddition));
+
+    APP.additions={fruitB:[{id:'a1',type:'fruit',item:'cherry juice',date:isoAgo(1)}]};
+    var sJuiceRecent=mwBatchSignals(b);
+    ok('signals: juice-form addition 1 day ago IS inside the 2-day ceiling, flagged juiceForm:true', sJuiceRecent.recentFruitAddition&&sJuiceRecent.recentFruitAddition.juiceForm===true, sJuiceRecent.recentFruitAddition&&JSON.stringify(sJuiceRecent.recentFruitAddition));
+
+    APP.additions={fruitB:[{id:'a1',type:'fruit',item:'frozen cherries',date:isoAgo(5)}]};
+    var sWholeOld=mwBatchSignals(b);
+    ok('signals: whole/frozen fruit 5 days ago is still inside the existing 10-day ceiling, juiceForm:false', sWholeOld.recentFruitAddition&&sWholeOld.recentFruitAddition.juiceForm===false, sWholeOld.recentFruitAddition&&JSON.stringify(sWholeOld.recentFruitAddition));
+
+    APP.additions={};APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};
+  })();
+
+  // Follow-up (2026-07-11): mwHistoricalComparison(b) reads every OTHER
+  // batch's yeast/honey/recipe/bottling/tastings — _mwAdviceSig(b) now
+  // fingerprints the whole sibling pool so editing/deleting a DIFFERENT
+  // batch correctly invalidates b's own cached advice (previously a
+  // documented, accepted gap).
+  (function(){
+    APP.recipes=[{id:'rSib',ogTarget:1.100,fgTarget:1.010,fermentDays:30}];
+    var b={id:'sibCur',recipeId:'rSib',startDate:isoAgo(10),og:1.100,yeast:'ec1118'};
+    var sibling={id:'sibOther',recipeId:'rSib',startDate:isoAgo(50),og:1.100,yeast:'ec1118'};
+    APP.batches=[b,sibling];APP.logs={};APP.bottling={};APP.tastings={};
+
+    var sigBefore=_mwAdviceSig(b);
+    sibling.yeast='k1v1116';
+    var sigAfterYeastEdit=_mwAdviceSig(b);
+    ok('sig: editing a SIBLING batch\'s yeast invalidates b\'s own signature', sigBefore!==sigAfterYeastEdit, '');
+
+    sibling.yeast='ec1118';
+    var sigReverted=_mwAdviceSig(b);
+    ok('sig: reverting the sibling edit restores the original signature (a pure fingerprint of current state, not a one-way counter)', sigReverted===sigBefore, '');
+
+    APP.bottling={sibOther:{date:isoAgo(10),fg:1.010}};
+    var sigAfterBottling=_mwAdviceSig(b);
+    ok('sig: bottling a SIBLING batch invalidates b\'s own signature', sigReverted!==sigAfterBottling, '');
+
+    APP.tastings={sibOther:[{rating:4}]};
+    var sigAfterTasting=_mwAdviceSig(b);
+    ok('sig: a new tasting on a SIBLING batch invalidates b\'s own signature', sigAfterBottling!==sigAfterTasting, '');
+
+    APP.batches=[b];
+    var sigAfterDelete=_mwAdviceSig(b);
+    ok('sig: deleting a SIBLING batch invalidates b\'s own signature', sigAfterTasting!==sigAfterDelete, '');
+
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};APP.tastings={};
+  })();
+
+  // Follow-up (2026-07-11): tempStable prefers the live sensor's own recent
+  // HISTORY (window._liveSensorHistory, refreshAllSensorHistories) over the
+  // last-3-hand-logged-temps spread, when the current reading is actually
+  // coming from a fresh live sensor — falls back to the hand-logged spread
+  // when no history is cached yet.
+  (function(){
+    window._liveSensorTemps={};window._liveSensorHistory={};
+    APP.recipes=[{id:'rHist',ogTarget:1.100,fgTarget:1.010,fermentDays:30}];
+    APP.fermenters=[{id:'fHist',tempSensorEntity:'sensor.hist_temp',capacity:20}];
+    var b={id:'histB',recipeId:'rHist',startDate:isoAgo(5),og:1.100,yeast:'ec1118',fermenterId:'fHist'};
+    APP.batches=[b];APP.bottling={};
+    // Hand-logged spread alone would read UNSTABLE (7° apart).
+    APP.logs={histB:[{date:isoAgo(5),gravity:1.100,temp:18},{date:isoAgo(0),gravity:1.080,temp:25}]};
+
+    window._liveSensorTemps['sensor.hist_temp']={value:18.5,lastChanged:new Date().toISOString()};
+    window._liveSensorHistory['sensor.hist_temp']=[{timestamp:new Date(),value:18.2},{timestamp:new Date(),value:18.6},{timestamp:new Date(),value:18.4}];
+    var sStableHist=mwBatchSignals(b);
+    ok('signals: tempStable prefers live history over the wider hand-logged spread when a fresh live reading exists', sStableHist&&sStableHist.tempSource==='live'&&sStableHist.tempStable===true, sStableHist&&JSON.stringify({src:sStableHist.tempSource,stable:sStableHist.tempStable}));
+
+    window._liveSensorHistory['sensor.hist_temp']=[{timestamp:new Date(),value:15},{timestamp:new Date(),value:22}];
+    var sUnstableHist=mwBatchSignals(b);
+    ok('signals: tempStable reflects a genuinely unstable live history too (not always true just because history exists)', sUnstableHist&&sUnstableHist.tempStable===false, sUnstableHist&&sUnstableHist.tempStable);
+
+    window._liveSensorHistory={};
+    var sNoHist=mwBatchSignals(b);
+    ok('signals: falls back to the hand-logged spread when no live history is cached yet', sNoHist&&sNoHist.tempSource==='live'&&sNoHist.tempStable===false, sNoHist&&JSON.stringify({src:sNoHist.tempSource,stable:sNoHist.tempStable}));
+
+    window._liveSensorTemps={};window._liveSensorHistory={};APP.fermenters=[];APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};
+  })();
+
+  // Follow-up (2026-07-11): causal cross-reference — 'stalled' already
+  // computes a weighted cause list (mwStalledCauses, E2); _advStalledCauseItemIds
+  // reuses it to find which OTHER present items correspond to a named cause,
+  // instead of inventing a separate relationship map.
+  (function(){
+    var items=[
+      {id:'stalled',data:{causes:[{cause:'nutrition',weight:0.75},{cause:'temperature',weight:0.5}]}},
+      {id:'nutrient-final',data:{}},
+      {id:'ph-low',data:{}}
+    ];
+    var ids=_advStalledCauseItemIds(items);
+    ok('stalledCauseItemIds: matches a co-occurring item for a named cause (nutrition→nutrient-final)', ids.indexOf('nutrient-final')>=0, JSON.stringify(ids));
+    ok('stalledCauseItemIds: excludes a named cause with no matching PRESENT item (temperature→temperature, not present here)', ids.indexOf('temperature')<0, JSON.stringify(ids));
+    ok('stalledCauseItemIds: excludes an unrelated present item (ph-low isn\'t one of stalled\'s named causes here)', ids.indexOf('ph-low')<0, JSON.stringify(ids));
+    ok('stalledCauseItemIds: [] when there\'s no stalled item at all', _advStalledCauseItemIds([{id:'ph-low',data:{}}]).length===0, '');
+    ok('stalledCauseItemIds: [] when stalled has no causes data', _advStalledCauseItemIds([{id:'stalled',data:{}}]).length===0, '');
+    ok('stalledCauseItemIds: [] for an empty items array', _advStalledCauseItemIds([]).length===0, '');
+  })();
+
+  // Follow-up (2026-07-11): the "all quiet" summary line is backed by a real,
+  // already-computed fact (historical match / ahead-of-pace / peak window)
+  // when one applies, instead of the same static sentence every time.
+  (function(){
+    ok('quietFact: null for null signals', _advQuietFact(null)===null, '');
+    ok('quietFact: null when nothing distinguishing applies', _advQuietFact({fermenting:true,fermentProgress:{phase:'on-track'}})===null, '');
+
+    var histFact=_advQuietFact({historical:{matchedOn:'yeast',sampleSize:3,yeast:'ec1118',honey:null}});
+    ok('quietFact: names the historical match when sampleSize>=2', histFact&&histFact.indexOf('3')>=0, histFact);
+
+    var aheadFact=_advQuietFact({fermenting:true,fermentProgress:{phase:'ahead'}});
+    ok('quietFact: names "ahead of pace" when fermenting and ahead', /ahead/i.test(aheadFact||''), aheadFact);
+
+    var peakFact=_advQuietFact({bottled:true,agePhase:'peak'});
+    ok('quietFact: names the peak window for a bottled batch at peak', /peak/i.test(peakFact||''), peakFact);
+
+    var bothFact=_advQuietFact({historical:{matchedOn:'recipe',sampleSize:2,yeast:'ec1118',honey:null},fermenting:true,fermentProgress:{phase:'ahead'}});
+    ok('quietFact: prefers the historical match over fermentProgress when both apply', /2/.test(bothFact||'')&&!/ahead/i.test(bothFact||''), bothFact);
+  })();
+
+  // Follow-up (2026-07-11): next-step guidance varies for the one id where
+  // the data genuinely changes what "next" means (juice vs whole fruit);
+  // unknown ids return null rather than fabricated guidance.
+  (function(){
+    var juiceNext=_advNextStep({id:'fruit-addition-note',data:{juiceForm:true}});
+    ok('nextStep: juice-form fruit-addition-note gets the shorter guidance', /one more reading/i.test(juiceNext), juiceNext);
+    var wholeNext=_advNextStep({id:'fruit-addition-note',data:{juiceForm:false}});
+    ok('nextStep: whole-fruit fruit-addition-note keeps the original guidance', /2-3 more readings/i.test(wholeNext), wholeNext);
+    ok('nextStep: a known actionable id returns a non-empty string', !!_advNextStep({id:'stalled',data:{}}), '');
+    ok('nextStep: an unknown id returns null rather than fabricated guidance', _advNextStep({id:'not-a-real-id',data:{}})===null, '');
+  })();
+
+  // Follow-up (2026-07-11): transient (non-persistent) resolved-item
+  // acknowledgment — snapshot real advice items BEFORE a mutating action,
+  // diff against the real recomputed advice AFTER.
+  (function(){
+    APP.recipes=[{id:'rResolve',ogTarget:1.100,fgTarget:1.010,fermentDays:30,steps:[]}];
+    var b={id:'resolveB',recipeId:'rResolve',startDate:isoAgo(5),og:1.100,yeast:'ec1118'};
+    APP.batches=[b];APP.bottling={};APP.logs={};
+
+    var before=_advSnapshotItems(b);
+    ok('resolvedSuffix: snapshot captures log-reading-missing while it\'s firing (no readings yet)', before.some(function(i){return i.id==='log-reading-missing';}), JSON.stringify(before.map(function(i){return i.id;})));
+
+    APP.logs={resolveB:[{date:isoAgo(0),gravity:1.060,temp:18}]};
+    var suffix=_advResolvedSuffix(b,before);
+    ok('resolvedSuffix: names the resolved item once logging a reading clears it', /resolved/i.test(suffix)&&/reading/i.test(suffix), suffix);
+
+    var noChangeSuffix=_advResolvedSuffix(b,_advSnapshotItems(b));
+    ok('resolvedSuffix: empty string when nothing actually resolved (snapshot taken AFTER the change)', noChangeSuffix==='', JSON.stringify(noChangeSuffix));
+    ok('resolvedSuffix: empty string for an empty before-list', _advResolvedSuffix(b,[])==='', '');
+
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};
+  })();
+
   var s=document.getElementById('summary');
   s.textContent=(fail===0?'✓ ALL PASS':'✗ '+fail+' FAILED')+'  ('+pass+'/'+(pass+fail)+')';
   s.className=fail===0?'pass':'fail';

@@ -593,6 +593,12 @@ function saveBatchEdit(id){
 }
 
 function addLog(batchId){
+  // Snapshot BEFORE the mutation — logging a reading is the single most
+  // common action that resolves a stalled/missing-reading/complete-ferment
+  // recommendation, so it's the highest-value hook for the transient
+  // resolved-item acknowledgment (see _advResolvedSuffix, 12-advisor.js).
+  var _advBatch=(typeof APP!=='undefined'&&APP.batches)?APP.batches.find(function(x){return x.id===batchId;}):null;
+  var _advBefore=(_advBatch&&typeof _advSnapshotItems==='function')?_advSnapshotItems(_advBatch):[];
   var rawG=parseFloat(document.getElementById('log-gravity').value);
   if(!rawG){toast('⚠ Gravity required');return;}
   var temp=parseFloat(document.getElementById('log-temp').value);
@@ -629,7 +635,9 @@ function addLog(batchId){
   APP.logs[batchId].push(entry);
   APP.logs[batchId].sort(function(a,b){return a.date.localeCompare(b.date);});
   scheduleSave();
-  toast(corrApplied?'✦ Logged (corrected '+rawG.toFixed(3)+' → '+correctedG.toFixed(3)+' @ '+temp+'°C)':'✦ Reading logged');
+  var _advMsg=corrApplied?'✦ Logged (corrected '+rawG.toFixed(3)+' → '+correctedG.toFixed(3)+' @ '+temp+'°C)':'✦ Reading logged';
+  if(_advBatch&&typeof _advResolvedSuffix==='function')_advMsg+=_advResolvedSuffix(_advBatch,_advBefore);
+  toast(_advMsg);
   renderMain();
 }
 
@@ -838,6 +846,12 @@ function updateBottlingTotalDisplay(){
 }
 
 function saveBottling(batchId){
+  // Bottling resolves the whole packaging-phase recommendation cluster
+  // (ferment-complete, cold-crash, stabilise-first, extended-bulk-aging) in
+  // one action — snapshot before the mutation for the transient
+  // acknowledgment on the final toast below (see _advResolvedSuffix).
+  var _advBatch=(typeof APP!=='undefined'&&APP.batches)?APP.batches.find(function(x){return x.id===batchId;}):null;
+  var _advBefore=(_advBatch&&typeof _advSnapshotItems==='function')?_advSnapshotItems(_advBatch):[];
   var count500=parseInt(document.getElementById('bt-count-500').value)||0;
   var count750=parseInt(document.getElementById('bt-count-750').value)||0;
   var customSize=parseInt((document.getElementById('bt-count-custom-size')||{}).value)||0;
@@ -925,7 +939,9 @@ function saveBottling(batchId){
   }
   scheduleSave();
   try{console.log('[MeadOS] saveBottling — total',total,'counts',countsAtBottling,'locations',JSON.parse(JSON.stringify(locations)));}catch(e){}
-  toast('✦ '+total+' bottle'+(total!==1?'s':'')+' bottled · cellar populated');
+  var _advMsg='✦ '+total+' bottle'+(total!==1?'s':'')+' bottled · cellar populated';
+  if(_advBatch&&typeof _advResolvedSuffix==='function')_advMsg+=_advResolvedSuffix(_advBatch,_advBefore);
+  toast(_advMsg);
   showView('cellar');
 }
 

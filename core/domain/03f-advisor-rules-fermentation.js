@@ -152,7 +152,7 @@ function _advRulesFermentation(){
       // for a few more readings yet.
       if(!s.fermenting||!s.recentFruitAddition)return null;
       return {id:'fruit-addition-note',severity:'info',category:'data',
-        data:{date:s.recentFruitAddition.date,item:s.recentFruitAddition.item},
+        data:{date:s.recentFruitAddition.date,item:s.recentFruitAddition.item,juiceForm:s.recentFruitAddition.juiceForm},
         reasons:['recent-fruit-addition']};
     },
     function onSchedule(s){
