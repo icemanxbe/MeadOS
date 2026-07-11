@@ -657,7 +657,13 @@ async function haReadEntityTemperature(entityId){
   if(!s||s.state==null||s.state==='unavailable'||s.state==='unknown')return null;
   var val=parseFloat(s.state);
   if(isNaN(val))return null;
-  return{value:val,unit:(s.attributes&&s.attributes.unit_of_measurement)||'°C',ts:new Date(),entity:entityId};
+  // lastChanged is HA's own timestamp for when the ENTITY's state last
+  // actually changed — distinct from `ts` (when WE polled it, which is
+  // fresh every poll cycle regardless of whether the sensor is still really
+  // reporting). A dying/disconnected sensor can keep returning the same
+  // last-known value indefinitely without HA ever marking it 'unavailable';
+  // lastChanged is what lets a consumer notice that and stop trusting it.
+  return{value:val,unit:(s.attributes&&s.attributes.unit_of_measurement)||'°C',ts:new Date(),lastChanged:s.last_changed||null,entity:entityId};
 }
 
 // In-memory cache of latest readings keyed by entity ID. Refreshed by the

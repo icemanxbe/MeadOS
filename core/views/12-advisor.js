@@ -51,10 +51,18 @@ function _advItemText(it){
       var secondTxt=second?(nl?(' Ook mogelijk een rol: '+(causeLabel[second.cause]||second.cause)+'.'):(' Also possibly contributing: '+(causeLabel[second.cause]||second.cause)+'.')):'';
       // Timeline fact (E10): how long it's actually been flat, not just "stalled".
       var plateauTxt=(d.plateauDays!=null)?(nl?(' De dichtheid staat al '+d.plateauDays+' dagen vrijwel stil.'):(' Gravity has been essentially flat for '+d.plateauDays+' days.')):'';
+      // nutrientsComplete===true means nutrition wasn't even considered as a
+      // candidate cause (see the rule) — worth saying plainly, since "all
+      // doses logged" can otherwise read as "nutrition's been ruled out"
+      // when it really only means the planned events were recorded, not
+      // that the right product/amount/timing reached the must.
+      var nutrCaveat=d.nutrientsComplete===true?(nl
+        ?' (Alle geplande voedingsgiften zijn gelogd, dus voeding is hier niet als oorzaak meegenomen — een verkeerd product, te weinig, of verkeerd getimed zou dat niet laten zien.)'
+        :' (All planned nutrient doses are logged, so nutrition wasn\'t considered a likely cause here — a wrong product, under-dose, or bad timing wouldn\'t show up in that alone.)'):'';
       return {icon:'🧊',
         title:nl?'Gisting lijkt stil te vallen':'Fermentation appears stalled',
-        reason:nl?('De dichtheid is nauwelijks bewogen en zit nog op ~'+d.atten+'% vergisting, ver van het doel.'+plateauTxt+' '+(causeTxt||'Controleer temperatuur en voeding.')+secondTxt+' Overweeg anders een herstart-gist (zie Problemen oplossen).')
-                :('Gravity has barely moved and is still ~'+d.atten+'% attenuated, well short of target.'+plateauTxt+' '+(causeTxt||'Check temperature and nutrients.')+secondTxt+' Otherwise consider a restart yeast (see Troubleshoot).')};
+        reason:nl?('De dichtheid is nauwelijks bewogen en zit nog op ~'+d.atten+'% vergisting, ver van het doel.'+plateauTxt+' '+(causeTxt||'Controleer temperatuur en voeding.')+secondTxt+nutrCaveat+' Overweeg anders een herstart-gist (zie Problemen oplossen).')
+                :('Gravity has barely moved and is still ~'+d.atten+'% attenuated, well short of target.'+plateauTxt+' '+(causeTxt||'Check temperature and nutrients.')+secondTxt+nutrCaveat+' Otherwise consider a restart yeast (see Troubleshoot).')};
     })(),
     'nutrient-final':{icon:'⚗',
       title:nl?'Laatste voedingsgift is nodig':'Final nutrient addition due',
@@ -107,10 +115,18 @@ function _advItemText(it){
       // likely more), and a hand-logged temp is normally taken IN the must
       // itself at gravity-check time — so neither of those needs the hedge.
       var coldHedge=(d.cold&&d.fermenting&&d.source==='live');
+      // Published strain ranges are the manufacturer's typical window, not a
+      // hard pass/fail line — deliberately fermenting outside it (cooler for
+      // cleaner esters, warmer for a faster finish) is a real, sometimes-
+      // successful technique, not just a beginner mistake. Say so without
+      // softening the underlying mechanism (still genuinely true either way).
+      var deliberateHedge=nl
+        ?' Gepubliceerde bereiken zijn typisch, geen harde grens — sommige brouwers gisten bewust erbuiten (kouder voor zuiverdere esters, warmer voor een snellere afronding) met goed resultaat. Was dit bewust? Dan is dit vooral een controle, geen gegarandeerd probleem.'
+        :' Published ranges are typical, not absolute — some brewers deliberately ferment outside them (cooler for cleaner esters, warmer for a faster finish) with good results. If this was on purpose, treat this as a check-in, not a guaranteed problem.';
       return {icon:'🌡',
       title:nl?(d.cold?'Temperatuur te laag':'Temperatuur te hoog'):(d.cold?'Temperature too low':'Temperature too high'),
-      reason:nl?('Laatste meting '+(d.temp!=null?d.temp+'°C':'?')+' ligt buiten het ideale bereik voor '+(_advYeastName(d.yeast)||'deze gist')+' ('+d.low+'–'+d.high+'°C). '+(d.cold?('Te koud vertraagt of stalt de gisting.'+(coldHedge?' Komt deze meting van een vat-/omgevingssensor en niet van een sonde in de most zelf? Actieve gisting loopt vaak een paar graden warmer dan de omgeving — bevestig indien mogelijk met een thermometer in de vloeistof.':'')):'Te warm geeft fusels en scherpe smaken.'))
-              :('Last reading '+(d.temp!=null?d.temp+'°C':'?')+' is outside '+(_advYeastName(d.yeast)||'this yeast')+'\'s ideal range ('+d.low+'–'+d.high+'°C). '+(d.cold?('Too cold slows or stalls fermentation.'+(coldHedge?' If this reading is from a fermenter/room sensor rather than a probe in the must itself, note that active fermentation commonly runs a couple degrees warmer than its surroundings — worth confirming with a thermometer in the liquid.':'')):'Too warm drives fusels and harsh flavours.'))};
+      reason:nl?('Laatste meting '+(d.temp!=null?d.temp+'°C':'?')+' ligt buiten het ideale bereik voor '+(_advYeastName(d.yeast)||'deze gist')+' ('+d.low+'–'+d.high+'°C). '+(d.cold?('Te koud vertraagt of stalt de gisting.'+(coldHedge?' Komt deze meting van een vat-/omgevingssensor en niet van een sonde in de most zelf? Actieve gisting loopt vaak een paar graden warmer dan de omgeving — bevestig indien mogelijk met een thermometer in de vloeistof.':'')):'Te warm geeft fusels en scherpe smaken.')+deliberateHedge)
+              :('Last reading '+(d.temp!=null?d.temp+'°C':'?')+' is outside '+(_advYeastName(d.yeast)||'this yeast')+'\'s ideal range ('+d.low+'–'+d.high+'°C). '+(d.cold?('Too cold slows or stalls fermentation.'+(coldHedge?' If this reading is from a fermenter/room sensor rather than a probe in the must itself, note that active fermentation commonly runs a couple degrees warmer than its surroundings — worth confirming with a thermometer in the liquid.':'')):'Too warm drives fusels and harsh flavours.')+deliberateHedge)};
     })(),
     'abv-ceiling':{icon:'⚠',
       title:nl?'Nadert alcoholtolerantie':'Approaching alcohol tolerance',
@@ -297,6 +313,23 @@ function _advHealthMeta(band){
   return M[band]||M.unknown;
 }
 
+// "Known unknowns": which key inputs this batch is missing right now — surfaced
+// specifically where the advisor would otherwise say "everything looks good" /
+// "nothing needs attention", so silence caused by missing data doesn't get
+// mistaken for a genuine all-clear (a brewer reading "✓ looks good" has no way
+// to tell that apart from "nothing has been logged yet" otherwise). Only the
+// two gaps with no dedicated recommendation of their own: a batch with no OG
+// or no gravity readings already gets a prominent record-og / log-reading-
+// missing card, so repeating that here would just be the same gap said twice.
+function _advMissingInputs(s){
+  if(!s||!s.active)return [];
+  var nl=_advNL();
+  var missing=[];
+  if(!s.bulkAging&&s.latestTemp==null)missing.push(nl?'temperatuur':'temperature');
+  if(s.nutrientsExpected===0&&s.nutrientsDone===0)missing.push(nl?'voedingsdosering':'nutrient dosing');
+  return missing;
+}
+
 // Plain-language explanation for one health axis: why it scored what it did.
 // `ar` is {code,data,weight,known} from mwBatchHealth()'s axisReasons. Every
 // numeric field is guarded — this map is evaluated for every axis regardless
@@ -345,12 +378,21 @@ function renderBatchAdvisorStrip(b){
   var h=adv.health, r=adv.readiness, hm=_advHealthMeta(h&&h.band);
   var top=adv.items.filter(function(i){return i.severity!=='info';})[0]||adv.items[0];
   var topTxt=top?_advItemText(top):null, topMeta=top?_advSeverityMeta(top.severity):null;
+  // "Everything looks good" only fires when there's NOTHING to say at all —
+  // which sparse/early data produces just as easily as a genuinely healthy
+  // batch. Name what's actually missing right under it so silence doesn't
+  // read as confirmation.
+  var missingTxt='';
+  if(!top){
+    var missing=_advMissingInputs(adv.signals);
+    if(missing.length)missingTxt='<div style="font-size:11px;color:var(--text3);margin-top:2px">'+(nl?'Kan nog niet alles beoordelen — geen '+missing.join(', ')+' gelogd.':'Can\'t fully evaluate yet — no '+missing.join(', ')+' logged.')+'</div>';
+  }
   return '<div class="card" style="margin-bottom:16px;border-left:3px solid '+hm.c+'">'
     +'<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">'
     +'<div style="text-align:center;min-width:62px"><div style="font-family:var(--font-display);font-size:30px;line-height:1;color:'+hm.c+'">'+(h&&h.score!=null?h.score:'—')+_advTrendChip(h&&h.trend)+'</div><div class="micro-label">'+(nl?'GEZONDHEID':'HEALTH')+'</div></div>'
     +'<div style="flex:1;min-width:180px">'
     +(top?'<div style="font-size:13px;color:'+topMeta.color+';font-family:var(--font-display)">'+topTxt.icon+' '+escHtml(topTxt.title)+'</div><div style="font-size:11.5px;color:var(--text3);margin-top:2px">'+escHtml(topTxt.reason.length>120?topTxt.reason.slice(0,118)+'…':topTxt.reason)+'</div>'
-        :'<div style="font-size:13px;color:var(--green2)">'+(nl?'✓ Alles ziet er goed uit':'✓ Everything looks good')+'</div>')
+        :'<div style="font-size:13px;color:var(--green2)">'+(nl?'✓ Alles ziet er goed uit':'✓ Everything looks good')+'</div>'+missingTxt)
     +(r?'<div style="font-size:11px;color:var(--text3);margin-top:5px;font-family:var(--font-mono)">'+(nl?'DRINKBAARHEID':'READINESS')+' '+r.pct+'%</div>':'')
     +'</div>'
     +'<button class="btn btn-secondary btn-sm" onclick="setBatchTab(\''+b.id+'\',\'coach\')">'+(nl?'Adviseur →':'Advisor →')+'</button>'
@@ -608,10 +650,14 @@ function renderBatchAdvisor(b){
   if(sevCounts.info)sumParts.push(sevCounts.info+' '+(nl?(sevCounts.info>1?'inzichten':'inzicht'):(sevCounts.info>1?'insights':'insight')));
   // The reassuring case gets a warmer sentence, not just a label — brewing
   // carries enough anxiety on its own; "nothing needs your attention today"
-  // reads calmer than a bare "✓ Everything looks good".
+  // reads calmer than a bare "✓ Everything looks good". But sparse/early
+  // data produces this exact same silence just as easily as a genuinely
+  // healthy batch does — name what's actually missing right underneath it
+  // so the calm reading doesn't double as a false all-clear.
   var summaryLine=sumParts.length
     ?('<div style="font-size:13.5px;color:var(--text2);margin-top:10px">'+sumParts.join(' · ')+'</div>')
-    :('<div style="font-size:13.5px;color:var(--green2);margin-top:10px">✓ '+(nl?'Verloopt normaal — niets vraagt vandaag je aandacht.':'Progressing normally — nothing needs your attention today.')+'</div>');
+    :('<div style="font-size:13.5px;color:var(--green2);margin-top:10px">✓ '+(nl?'Verloopt normaal — niets vraagt vandaag je aandacht.':'Progressing normally — nothing needs your attention today.')+'</div>'
+      +(function(){var missing=_advMissingInputs(s);return missing.length?('<div style="font-size:11.5px;color:var(--text3);margin-top:4px">'+(nl?'Kan nog niet alles beoordelen — geen '+missing.join(', ')+' gelogd.':'Can\'t fully evaluate yet — no '+missing.join(', ')+' logged.')+'</div>'):'';})());
   var healthCard='<div class="card" style="margin-bottom:16px;border-left:3px solid '+hm.c+'">'
     +'<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">'
     +'<div style="text-align:center;min-width:96px"><div style="font-family:var(--font-display);font-size:42px;line-height:1;color:'+hm.c+'">'+(h&&h.score!=null?h.score:'—')+_advTrendChip(h&&h.trend)+'</div>'

@@ -15,7 +15,14 @@ function _advRulesFermentation(){
       return {id:'stalled',severity:'critical',category:'fermentation',
         data:{atten:Math.round(s.attenuation*100),days:s.daysSinceStart,temp:s.latestTemp,
           cause:causes[0].cause,causes:causes,honey:s.honeyName,yeast:s.yeastId,ph:s.latestPH,
-          plateauDays:(s.timeline&&s.timeline.plateauDays)||null},
+          plateauDays:(s.timeline&&s.timeline.plateauDays)||null,
+          // nutrientsComplete only means the PLANNED doses were logged as
+          // added — not that the right product/amount actually reached the
+          // must. It's true exactly when mwStalledCauses() didn't consider
+          // nutrition a candidate cause at all, which is the one moment the
+          // view needs to say that plainly instead of letting the absence
+          // read as "nutrition's been ruled out."
+          nutrientsComplete:s.nutrientsComplete},
         reasons:['rate-flat','below-target']};
     },
     function finalNutrient(s){

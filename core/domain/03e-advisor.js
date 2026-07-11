@@ -25,23 +25,26 @@ function mwBatchSignals(b){
   // attenuation math nor projectFermentation's slope can tell the difference.
   // Flagged only when a logged fruit addition is BOTH inside the same
   // lookback window projectFermentation uses for its trend (its own last-
-  // up-to-4-readings slice) AND genuinely recent in elapsed days. The
-  // reading-window check alone isn't enough for an infrequent logger — 4
-  // readings could span months, long after any real fruit influence is
-  // gone, and would otherwise keep flagging fruit the trend has long since
-  // absorbed. 10 days is a deliberately simple, deterministic ceiling (not a
-  // per-fruit-type decay curve the app has no real data to back) — a bit
-  // past the app's own "fruit typically sits 3-7 days" addition guidance
-  // (ADDITION_TYPES), giving a small buffer for the tail of activity after
-  // the solids come out but dissolved sugar is still working through.
+  // up-to-4-readings slice) AND genuinely recent — checked against TODAY,
+  // not the last logged reading. Those are different clocks: the window
+  // check answers "is this addition inside the data feeding the CURRENT
+  // trend calc", but the 10-day ceiling answers "has enough real time
+  // passed that the fruit's influence is likely gone" — a batch that gets
+  // a reading 4 days after the addition and then goes quiet for 6 weeks has
+  // genuinely dormant fruit by the time anyone opens it again, even though
+  // the last reading itself was well inside the ceiling. 10 days is a
+  // deliberately simple, deterministic ceiling (not a per-fruit-type decay
+  // curve the app has no real data to back) — a bit past the app's own
+  // "fruit typically sits 3-7 days" addition guidance (ADDITION_TYPES),
+  // giving a small buffer for the tail of activity after the solids come
+  // out but dissolved sugar is still working through.
   var recentFruitAddition=null;
   if(logs.length){
     var _fruitWinStart=logs[Math.max(0,logs.length-4)].date;
-    var _fruitLatestMs=new Date(logs[logs.length-1].date).getTime();
     var _fruitAdds=((typeof APP!=='undefined'&&APP.additions&&APP.additions[b.id])||[])
       .filter(function(a){
         if(a.type!=='fruit'||!a.date||a.date<_fruitWinStart)return false;
-        var ageDays=(_fruitLatestMs-new Date(a.date).getTime())/86400000;
+        var ageDays=(typeof daysSince==='function')?daysSince(a.date):0;
         return ageDays>=0&&ageDays<=10;
       })
       .sort(function(x,y){return(y.date||'').localeCompare(x.date||'');});
@@ -63,6 +66,19 @@ function mwBatchSignals(b){
   var bulkAging=!!b.bulkAging;
 
   // Targets: prefer the batch's actual yeast, fall back to recipe targets.
+  // b.yeast is a single field with no history — an explicit decision, not an
+  // oversight: it means "best-known yeast to reason about this batch with
+  // GOING FORWARD", not a historical record of what fermented which part of
+  // it. Editing it after a real mid-ferment repitch (e.g. the stuck-
+  // fermentation rescue this app's own troubleshooting guide recommends)
+  // retroactively applies the new strain's temperature range/attenuation/
+  // tolerance/historical-matching to the WHOLE batch, including the days
+  // the original strain was actually the one working. That's a real, known
+  // simplification — modeling a true split (which strain did how much of
+  // the fermentation) would need data this app has no way to capture, and
+  // guessing at it would be exactly the fake precision this project
+  // consistently avoids elsewhere. See the Edit Batch modal's yeast field
+  // for the brewer-facing side of this same note.
   var yt=(og&&b.yeast&&typeof mwYeastTargets==='function')?mwYeastTargets(og,b.yeast):null;
   var targetFG=(yt&&yt.fg)||(recipe&&recipe.fgTarget)||1.000;
   var targetABV=(yt&&yt.abv)||(recipe&&recipe.abvTarget)||(og?parseFloat(calcABV(og,targetFG)):null);
@@ -103,8 +119,22 @@ function mwBatchSignals(b){
   }else{
     liveTempReading=(fermenter&&typeof getFermenterLiveTemp==='function')?getFermenterLiveTemp(fermenter):null;
   }
+  // A sensor can keep reporting its last-known value indefinitely without HA
+  // ever marking it 'unavailable' (dead battery, disconnected probe, network
+  // drop) — trusting it forever would silently prefer a stale number over a
+  // fresher hand-logged one. lastChanged is HA's own "when did this reading
+  // actually change" timestamp, not ours, so it's the real freshness signal.
+  // 12h is generous relative to how often these sensors normally report
+  // (minutes, not hours) while still catching a genuinely dead one — missing
+  // lastChanged entirely (older cached data, or a source that doesn't supply
+  // it) trusts the reading rather than guessing it's stale.
+  var STALE_SENSOR_HOURS=12;
+  var liveIsFresh=!!(liveTempReading&&liveTempReading.value!=null&&(
+    liveTempReading.lastChanged==null||
+    (Date.now()-new Date(liveTempReading.lastChanged).getTime())/3600000<=STALE_SENSOR_HOURS
+  ));
   var latestTemp=null, tempSource=null;
-  if(liveTempReading&&liveTempReading.value!=null){
+  if(liveIsFresh){
     latestTemp=parseFloat(liveTempReading.value);
     tempSource='live';
   }else{
@@ -448,22 +478,59 @@ function mwReadiness(b){
 // render (dashboard row + overview + advisor tab) cost nothing. Not serialised.
 var _mwAdviceMemo={};
 function _mwAdviceSig(b){
-  var logs=(typeof APP!=='undefined'&&APP.logs&&APP.logs[b.id])||[];
+  var logs=(typeof getBatchLogs==='function')?getBatchLogs(b.id):((typeof APP!=='undefined'&&APP.logs&&APP.logs[b.id])||[]);
   var last=logs.length?logs[logs.length-1]:{};
-  var doneN=0,td=(typeof APP!=='undefined'&&APP.tasksDone)||{},pre=b.id+'-step-';
-  for(var k in td){if(td.hasOwnProperty(k)&&k.indexOf(pre)===0)doneN++;}
-  var bot=(typeof APP!=='undefined'&&APP.bottling&&APP.bottling[b.id])||null;
-  var adds=((typeof APP!=='undefined'&&APP.additions&&APP.additions[b.id])||[]).length;
+  // Content, not just count — un-marking one step and marking a different one
+  // in the same edit would leave a plain count unchanged, and getNutrientStatus
+  // reads WHICH steps are done, not how many.
+  var doneKeys=[],td=(typeof APP!=='undefined'&&APP.tasksDone)||{},pre=b.id+'-step-';
+  for(var k in td){if(td.hasOwnProperty(k)&&k.indexOf(pre)===0)doneKeys.push(k);}
+  doneKeys.sort();
+  var bot=(typeof getBottleInfo==='function')?getBottleInfo(b.id):((typeof APP!=='undefined'&&APP.bottling&&APP.bottling[b.id])||null);
+  var recipe=(typeof getRecipe==='function')?getRecipe(b.recipeId):null;
   // Domain-aligned time: key off the actual age integers the output depends on
   // (fermentation age + days bottled), not wall-clock — invalidates as the batch
   // ages, with no midnight-boundary artifact.
   var ageF=(typeof daysSince==='function'&&b.startDate)?daysSince(b.startDate):0;
   var ageB=(typeof daysSince==='function'&&bot&&bot.date)?daysSince(bot.date):0;
-  // b.bulkAging is a direct input to the temperature rule/health axis (see
-  // toggleBulkAging) — without it here, flipping the toggle wouldn't
-  // invalidate the memo and the stale advice would linger until some other
-  // tracked field happened to change.
-  return [b.id,b.recipeId,b.og,b.yeast,b.startDate,b.failed?1:0,logs.length,last.date,last.gravity,last.temp,last.ph,doneN,bot?bot.date:0,adds,ageF,ageB,b.bulkAging?1:0].join('|');
+  // Everything below closes real invalidation gaps found in review: each is a
+  // real input to mwBatchSignals() that could change WITHOUT touching any of
+  // the fields above, silently leaving stale (and now frozen, so unfixable by
+  // accidental mutation) advice cached.
+  //  - b.fermenterId: reassigning the batch to a different fermenter changes
+  //    both its live-temp sensor binding and its headspace/capacity.
+  //  - bot (whole record, not just .date): a bottled batch's cellarShelfId
+  //    picks which cabinet's live sensor applies; stringifying the whole
+  //    record is simpler and safer than hand-picking fields that could drift
+  //    out of sync with whatever mwBatchSignals ends up reading from it.
+  //  - recipe (whole object): editing an in-use recipe's targets/steps/aging
+  //    windows previously didn't invalidate any batch already using it.
+  //  - additions (whole array, not just .length): editing an existing
+  //    addition's date/type/item — e.g. correcting it to type:'fruit' — kept
+  //    the same length and silently never invalidated the fruit-addition
+  //    signal that depends on exactly that content.
+  //  - b.customSteps: a per-batch step override changes nutrient-schedule
+  //    math without touching any recipe or logged field.
+  //  - live sensor cache: an HA sensor updating is the single most frequent
+  //    real-world change of all, and previously invalidated NOTHING on its
+  //    own — advice could go stale on temperature specifically until some
+  //    unrelated field happened to change too. Hashing the whole cache
+  //    over-invalidates slightly (an unrelated sensor updating also
+  //    invalidates batches that don't care) but that's cheap insurance, not
+  //    a real cost — recompute is pure and inexpensive next to getting this
+  //    wrong.
+  //  - b.bulkAging: a direct input to the temperature rule/health axis (see
+  //    toggleBulkAging) — without it, flipping the toggle wouldn't invalidate
+  //    the memo and stale advice would linger until something else changed.
+  var liveTemps=(typeof window!=='undefined'&&window._liveSensorTemps)||{};
+  return [b.id,b.recipeId,b.og,b.yeast,b.startDate,b.failed?1:0,b.fermenterId||0,
+    logs.length,last.date,last.gravity,last.temp,last.ph,doneKeys.join(','),
+    bot?JSON.stringify(bot):0,ageF,ageB,b.bulkAging?1:0,
+    JSON.stringify(recipe||{}),
+    JSON.stringify(((typeof APP!=='undefined'&&APP.additions&&APP.additions[b.id])||[])),
+    JSON.stringify(b.customSteps||[]),
+    JSON.stringify(liveTemps)
+  ].join('|');
 }
 
 // ---- The single snapshot every view consumes ------------------------------
@@ -573,14 +640,44 @@ function mwIngredientStats(){
 // recipe; falls back to same yeast if there aren't at least 2 of those.
 // Honest about needing real history: null (not a guess) with fewer than 2
 // comparable past batches.
+//
+// Known, accepted cache-invalidation gap: _mwAdviceSig(b) only hashes b's
+// OWN fields — it has no way to know this function also reads every OTHER
+// batch's yeast/honey/bottling/tastings. Editing or deleting a SIBLING batch
+// doesn't invalidate the CURRENT batch's cached advice, so a stale
+// historical-pace/ferment-complete:historical reference could briefly
+// reference data that's since changed. Fixing this properly needs a global
+// "batch pool changed" version counter threaded into every signature — a
+// real architectural addition, not a one-line fix like the gaps above — and
+// the failure mode is narrow (requires editing/deleting a DIFFERENT batch
+// than the one currently being viewed, then viewing this one again before
+// any of ITS OWN fields change). Documented rather than built here.
+//
+// Separate, deliberate semantic decision (not a bug, and not the same as the
+// caching gap above — this would be equally true with PERFECT invalidation):
+// this function always reads APP.batches as it stands TODAY, not a frozen
+// snapshot of "who had finished, and with what numbers, at the moment THIS
+// batch first got compared." If you go back and correct a typo'd OG on an
+// old batch, every future comparison against it uses the corrected number —
+// including for a batch that was already advised using the old, wrong one.
+// "Your own past batches" means CURRENT best-known truth about them, same
+// philosophy as the yeast-edit decision above mwBatchSignals — not an
+// immutable historical record. The alternative (snapshotting each past
+// batch's stats at comparison time) would need real persisted state for a
+// property nobody's asked for; this app doesn't persist advisor state
+// anywhere else either (see mwBatchAdvice's own comment).
 function mwHistoricalComparison(b){
   if(!b)return null;
   // Scoped to b's OWN beverage type (not the ambient active-mode toggle) —
   // this reasons about a specific batch, so it must stay correct regardless
   // of whatever mode the header happens to be showing. Otherwise a mead
-  // batch on EC-1118 could get pooled with a cider batch on EC-1118.
+  // batch on EC-1118 could get pooled with a cider batch on EC-1118. Also
+  // excludes failed batches — a contaminated/dumped batch never reached a
+  // normal attenuation or finish time, so it says nothing about "how long
+  // does MY process normally take" and would only skew the average toward
+  // an outcome nobody's actually aiming to repeat.
   var bBev=b.beverageType||'mead';
-  var all=((typeof APP!=='undefined'&&APP.batches)||[]).filter(function(o){return(o.beverageType||'mead')===bBev;});
+  var all=((typeof APP!=='undefined'&&APP.batches)||[]).filter(function(o){return(o.beverageType||'mead')===bBev&&!o.failed;});
   // Honey resolves the same way mwBatchSignals() does: explicit batch field,
   // else the recipe's first honey — so batches sharing a recipe still match.
   function honeyOf(o){
