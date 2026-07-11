@@ -9,7 +9,7 @@
 
 function openGiftRecipientModal(batchId,deltaCount,size){
   closeModal();
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b)return;
   size=size||DEFAULT_BOTTLE_SIZE;
   // Suggest recipient names from prior gifts
@@ -130,7 +130,7 @@ function showGiftDetails(batchId){
   closeModal();
   var bot=APP.bottling[batchId];
   if(!bot||!bot.gifts||!bot.gifts.length)return;
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   var rows=bot.gifts.slice().sort(function(a,c){return(c.date||'').localeCompare(a.date||'');}).map(function(g){
     return'<div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);align-items:flex-start">'
       +'<div style="flex:1"><div style="font-family:var(--font-display);font-size:14px;color:var(--gold2)">'+escHtml(g.recipient)+'</div>'
@@ -181,14 +181,14 @@ var bottlingWorkflowState={
 };
 
 function startBottlingWorkflow(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b){toast('⚠ Batch not found');return;}
   var existing=APP.bottling[batchId]||{};
   // Previously this used `APP.logs[batchId][batchId.length-1]` — indexing by
   // the batch *ID's* string length, which silently returned undefined for
   // anything other than ~24-element log arrays. Fix: index by the log array's
   // own length minus one.
-  var batchLogs=APP.logs[batchId]||[];
+  var batchLogs=getBatchLogs(batchId);
   var lastLog=batchLogs.length?batchLogs[batchLogs.length-1]:null;
   // Try to read existing per-size counts
   var existingCounts=existing.countsAtBottling?_coerceLocations(existing.countsAtBottling):{};
@@ -261,7 +261,7 @@ function resetSanitizeTimer(){
 function renderBottlingWorkflow(){
   closeModal();
   var s=bottlingWorkflowState;
-  var b=APP.batches.find(function(x){return x.id===s.batchId;});
+  var b=getBatch(s.batchId);
   if(!b)return;
   var step=BOTTLING_STEPS[s.stepIdx];
   // Stepper header
@@ -371,7 +371,7 @@ function renderBottlingStepContent(stepId,s,b){
       +'<div id="bw-cellar-info" style="padding:10px;background:var(--bg4);border-left:3px solid var(--gold);border-radius:var(--radius);font-size:12px;color:var(--text2);margin-top:8px;'+(totalBot>0?'':'display:none')+'">All '+totalBot+' bottle'+(totalBot!==1?'s':'')+' will land in the cellar by default. You can split into fridge/gifted/other from the Cellar view later.</div>';
   }
   if(stepId==='label'){
-    var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+    var recipe=getRecipe(b.recipeId);
     var abvForLabel=s.abv||(b.og&&s.fg?parseFloat(calcABV(b.og,s.fg)):null);
     return'<div style="font-size:13px;color:var(--text2);margin-bottom:14px">Your label is ready. Save as PNG, print directly, or skip if you\'ll label later. The ABV is baked into the hexagon — no separate sticker needed.</div>'
       +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius2);padding:14px;margin-bottom:14px;text-align:center">'
@@ -384,7 +384,7 @@ function renderBottlingStepContent(stepId,s,b){
       +'</div>';
   }
   if(stepId==='finish'){
-    var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+    var recipe=getRecipe(b.recipeId);
     var totalBot=s.counts[500]+s.counts[750]+(s.customSize>0?s.customQty:0);
     var totalMl=s.counts[500]*500+s.counts[750]*750+(s.customSize>0?s.customQty*s.customSize:0);
     var sizeParts=[];
@@ -436,7 +436,7 @@ function updateBwNextButton(){
 
 function updateBwFG(val){
   var s=bottlingWorkflowState;
-  var b=APP.batches.find(function(x){return x.id===s.batchId;});
+  var b=getBatch(s.batchId);
   s.fg=parseFloat(val);if(isNaN(s.fg))s.fg=null;
   s.abv=(b&&b.og&&s.fg)?parseFloat(calcABV(b.og,s.fg)):null;
   var fgEl=document.getElementById('bw-fg-val');
@@ -451,7 +451,7 @@ function updateBwAbvOverride(val){
   var v=parseFloat(val);
   if(!isNaN(v))s.abv=v;
   else{
-    var b=APP.batches.find(function(x){return x.id===s.batchId;});
+    var b=getBatch(s.batchId);
     s.abv=(b&&b.og&&s.fg)?parseFloat(calcABV(b.og,s.fg)):null;
   }
   var abvEl=document.getElementById('bw-abv-val');
@@ -531,7 +531,7 @@ function consumePackagingSupplies(countsBySize,totalBottles,closure){
 
 function finishBottlingWorkflow(){
   var s=bottlingWorkflowState;
-  var b=APP.batches.find(function(x){return x.id===s.batchId;});
+  var b=getBatch(s.batchId);
   // Build size counts map
   var countsAtBottling={};
   if(s.counts[500]>0)countsAtBottling[500]=s.counts[500];

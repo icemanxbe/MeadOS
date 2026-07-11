@@ -43,10 +43,10 @@ function renderBlendingTool(){
 function createBlendedBatch(){
   var nl=(typeof appLang==='function'&&appLang()==='nl');
   var idA=window._blendA,idB=window._blendB,fa=(window._blendRatio||50)/100,vol=parseFloat(window._blendVol)||5;
-  var bA=APP.batches.find(function(x){return x.id===idA;});
+  var bA=getBatch(idA);
   if(!bA||!APP.bottling[bA.id]){toast(nl?'⚠ Kies geldige partijen':'⚠ Pick valid batches');return;}
   var isWater=(idB==='__water'),botA=APP.bottling[bA.id];
-  var bB=isWater?null:APP.batches.find(function(x){return x.id===idB;});
+  var bB=isWater?null:getBatch(idB);
   if(!isWater&&(!bB||!APP.bottling[bB.id])){toast(nl?'⚠ Kies geldige partijen':'⚠ Pick valid batches');return;}
   var botB=isWater?null:APP.bottling[bB.id];
   function abvOf(b,bot){return bot.abv?parseFloat(bot.abv):((b.og&&bot.fg)?parseFloat(calcABV(b.og,bot.fg)):null);}
@@ -73,7 +73,7 @@ function createBlendedBatch(){
 // (updateBlendOutput).
 function computeBlendOutputHTML(idA,idB,ratioA){
   if(!idA||!idB)return'';
-  var bA=APP.batches.find(function(x){return x.id===idA;});
+  var bA=getBatch(idA);
   if(!bA)return'';
   var botA=APP.bottling[bA.id];
   if(!botA)return'';
@@ -82,7 +82,7 @@ function computeBlendOutputHTML(idA,idB,ratioA){
   // over-sweet mead. Treat it as a pseudo-batch so the rest of the math is
   // identical.
   var isWater=(idB==='__water');
-  var bB=isWater?null:APP.batches.find(function(x){return x.id===idB;});
+  var bB=isWater?null:getBatch(idB);
   var botB=isWater?null:(bB&&APP.bottling[bB.id]);
   if(!isWater&&(!bB||!botB))return'';
   var fa=ratioA/100,fb=1-fa;

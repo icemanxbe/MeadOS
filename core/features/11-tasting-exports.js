@@ -174,7 +174,7 @@ function exportCalendarICS(){
   var now=new Date();
   var dtstamp=fmtICSDT(now);
   active.forEach(function(b){
-    var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+    var recipe=getRecipe(b.recipeId);
     if(!recipe)return;
     var startDate=new Date(b.startDate);
     var steps=(typeof getEffectiveSteps==='function')?getEffectiveSteps(b,recipe):recipe.steps;
@@ -207,11 +207,11 @@ function exportCalendarICS(){
 
 // ==================== BATCH CERTIFICATE (printable) ====================
 function printBatchCertificate(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b){toast('⚠ Batch not found');return;}
-  var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+  var recipe=getRecipe(b.recipeId);
   var bot=APP.bottling[b.id]||{};
-  var logs=APP.logs[b.id]||[];
+  var logs=getBatchLogs(b.id);
   var tastings=APP.tastings[b.id]||[];
   var lastG=logs.length?logs[logs.length-1].gravity:null;
   var abv=bot.abv||(b.og&&bot.fg?calcABV(b.og,bot.fg):(b.og&&lastG?calcABV(b.og,lastG):null));

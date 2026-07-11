@@ -84,7 +84,7 @@ function buildBestDrinkBoxSVG(batch,cfg){
   if(!batch)return'';
   var bot=APP.bottling&&APP.bottling[batch.id];
   if(!bot||!bot.date)return'';
-  var recipe=APP.recipes.find(function(r){return r.id===batch.recipeId;});
+  var recipe=getRecipe(batch.recipeId);
   if(!recipe)return'';
   var minD=recipe.minAgeDays||recipe.minDays||30;
   var peakD=recipe.peakAgeDays||recipe.peakDays||(minD*3);
@@ -222,14 +222,14 @@ function renderLabelWithABV(recipeId,abvText,opts){
 // meant Designer tweaks (font size, position, theme) silently vanished on
 // export.
 function downloadLabel(batchId,side){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b){toast('⚠ Batch not found');return;}
-  var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+  var recipe=getRecipe(b.recipeId);
   if(!recipe){toast('⚠ Recipe not found');return;}
   // Prefer the Label Studio design when the recipe has one. side ('front'/'back'/
   // 'both') only applies here — the legacy single-image path below has no back.
   if(typeof studioHasDesign==='function'&&studioHasDesign(recipe.id)){studioDownloadFor(recipe.id,b.id,side);return;}
-  var logs=APP.logs[b.id]||[];
+  var logs=getBatchLogs(b.id);
   var lastG=logs.length?logs[logs.length-1].gravity:null;
   var bot=APP.bottling[b.id];
   var abv=(bot&&bot.abv)||(b.og&&lastG?calcABV(b.og,lastG):null);
@@ -293,12 +293,12 @@ function downloadLabel(batchId,side){
 
 // Print the label via a popup window — opens browser print dialog with just the label sized to fit.
 function printLabel(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b)return;
-  var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+  var recipe=getRecipe(b.recipeId);
   if(!recipe)return;
   if(typeof studioHasDesign==='function'&&studioHasDesign(recipe.id)){studioPrintFor(recipe.id,b.id,studioAskSides(recipe.id));return;}
-  var logs=APP.logs[b.id]||[];
+  var logs=getBatchLogs(b.id);
   var lastG=logs.length?logs[logs.length-1].gravity:null;
   var bot=APP.bottling[b.id];
   var abv=(bot&&bot.abv)||(b.og&&lastG?calcABV(b.og,lastG):'');
@@ -335,9 +335,9 @@ function printLabel(batchId){
 // rasterize-to-PNG pipeline as the bottle label download.
 
 function renderStorageLabelSVG(b){
-  var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+  var recipe=getRecipe(b.recipeId);
   var bot=APP.bottling[b.id]||{};
-  var logs=APP.logs[b.id]||[];
+  var logs=getBatchLogs(b.id);
   var lastG=logs.length?logs[logs.length-1].gravity:null;
   var abv=bot.abv||(b.og&&(bot.fg||lastG)?calcABV(b.og,bot.fg||lastG):null);
   var color=(recipe&&recipe.brandColor)||getBatchColor(b)||'#c9a84c';
@@ -477,7 +477,7 @@ function renderStorageLabelSVG(b){
 
 // Open a print-ready window with a single storage label. Cardboard-stick size.
 function printStorageLabel(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b){toast('⚠ Batch not found');return;}
   var bot=APP.bottling[b.id];
   if(!bot){toast('⚠ Batch is not bottled — bottle it first to generate a storage label');return;}
@@ -508,7 +508,7 @@ function printStorageLabel(batchId){
 // Rasterize the storage label SVG to a high-DPI PNG. Same SVG → canvas pipeline
 // used for bottle labels — single source of truth.
 function downloadStorageLabel(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b){toast('⚠ Batch not found');return;}
   var bot=APP.bottling[b.id];
   if(!bot){toast('⚠ Batch is not bottled — bottle it first to generate a storage label');return;}
@@ -557,7 +557,7 @@ function openStorageLabelPicker(){
   if(!window._storagePrintSel)window._storagePrintSel={};
   // Drop any selections referring to batches that no longer exist
   Object.keys(window._storagePrintSel).forEach(function(id){
-    if(!APP.batches.find(function(b){return b.id===id;}))delete window._storagePrintSel[id];
+    if(!getBatch(id))delete window._storagePrintSel[id];
   });
   renderStorageLabelPicker();
 }
@@ -579,7 +579,7 @@ function renderStorageLabelPicker(){
     var bot=APP.bottling[b.id];
     var isSel=!!sel[b.id];
     var color=getBatchColor(b);
-    var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+    var recipe=getRecipe(b.recipeId);
     var style=(recipe&&recipe.style)||b.style||'Custom';
     var bottleDate=bot.date?fmtDate(bot.date):'—';
     var ageDays=bot.date?Math.floor((new Date()-new Date(bot.date))/86400000):null;
@@ -815,14 +815,14 @@ function generateLabelSheet(){
     if(side==='back')return'';
     var labelImg=getLabelImage(b.recipeId);
     if(!labelImg)return'<div class="lbl placeholder">No label</div>';
-    var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+    var recipe=getRecipe(b.recipeId);
     var overlay=(typeof renderOverlayLayer==='function')?renderOverlayLayer(recipe,b,abv||''):'';
     return'<div class="lbl"><svg viewBox="0 0 900 900" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg">'
       +'<image href="'+labelImg+'" x="0" y="0" width="900" height="900" preserveAspectRatio="xMidYMid meet"/>'+overlay+'</svg></div>';
   }
   // Render labels (front, plus back when 'both' sides chosen)
   var labelHtmls=queue.map(function(item){
-    var b=APP.batches.find(function(x){return x.id===item.id;});
+    var b=getBatch(item.id);
     if(!b)return'';
     var bot=APP.bottling[item.id]||{};
     var abv=bot.abv||(b.og&&bot.fg?calcABV(b.og,bot.fg):null);

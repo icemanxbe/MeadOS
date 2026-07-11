@@ -89,6 +89,7 @@ async function init(){
   setInterval(updateTopbarDate,60000);
   // Start temp polling + check for due-today notifications
   startTempPolling();
+  if(typeof startHistoryPolling==='function')startHistoryPolling();
   setTimeout(function(){maybeNotifyForToday();},2000);
   // Check for batch milestones (ready age, anniversaries) — fires confetti once per milestone
   setTimeout(function(){if(typeof checkMilestoneConfetti==='function')checkMilestoneConfetti();},3500);
@@ -214,7 +215,7 @@ function handleHashRoute(){
     toast('⚠ Batch not found');
   }
   if(params.recipe){
-    var r=APP.recipes.find(function(x){return x.id===params.recipe;});
+    var r=getRecipe(params.recipe);
     if(r){window.currentRecipeId=params.recipe;showView('recipe-detail');return;}
     toast('⚠ Recipe not found');
   }

@@ -15,7 +15,14 @@ function _advRulesFermentation(){
       return {id:'stalled',severity:'critical',category:'fermentation',
         data:{atten:Math.round(s.attenuation*100),days:s.daysSinceStart,temp:s.latestTemp,
           cause:causes[0].cause,causes:causes,honey:s.honeyName,yeast:s.yeastId,ph:s.latestPH,
-          plateauDays:(s.timeline&&s.timeline.plateauDays)||null},
+          plateauDays:(s.timeline&&s.timeline.plateauDays)||null,
+          // nutrientsComplete only means the PLANNED doses were logged as
+          // added — not that the right product/amount actually reached the
+          // must. It's true exactly when mwStalledCauses() didn't consider
+          // nutrition a candidate cause at all, which is the one moment the
+          // view needs to say that plainly instead of letting the absence
+          // read as "nutrition's been ruled out."
+          nutrientsComplete:s.nutrientsComplete},
         reasons:['rate-flat','below-target']};
     },
     function finalNutrient(s){
@@ -58,6 +65,10 @@ function _advRulesFermentation(){
           reason:s.nearFGReason,plateauDays:(s.timeline&&s.timeline.plateauDays)||null,
           histSampleSize:(s.nearFGReason==='historical'&&s.historical)?s.historical.sampleSize:null,
           histAtten:(s.nearFGReason==='historical'&&s.historical)?Math.round(s.historical.avgAttenuation):null,
+          // How many of histSampleSize actually had a computable attenuation
+          // (needs at least one real gravity reading) — usually equal to
+          // histSampleSize, but not guaranteed for a batch with no logs yet.
+          histAttenN:(s.nearFGReason==='historical'&&s.historical)?s.historical.avgAttenuationN:null,
           // A plateau that matches your OWN history is good evidence — unless
           // this batch's own nutrient schedule was also skipped, in which case
           // a repeatable process gap (not the yeast's real ceiling) is at
@@ -141,7 +152,7 @@ function _advRulesFermentation(){
       // for a few more readings yet.
       if(!s.fermenting||!s.recentFruitAddition)return null;
       return {id:'fruit-addition-note',severity:'info',category:'data',
-        data:{date:s.recentFruitAddition.date,item:s.recentFruitAddition.item},
+        data:{date:s.recentFruitAddition.date,item:s.recentFruitAddition.item,juiceForm:s.recentFruitAddition.juiceForm},
         reasons:['recent-fruit-addition']};
     },
     function onSchedule(s){
@@ -220,7 +231,10 @@ function _advRulesFermentation(){
       if(!s.fermenting||!s.historical||s.historical.avgDaysToFinish==null||s.daysSinceStart==null)return null;
       return {id:'historical-pace',severity:'info',category:'fermentation',
         data:{daysSoFar:s.daysSinceStart,avgDays:s.historical.avgDaysToFinish,avgRating:s.historical.avgRating,
-          sampleSize:s.historical.sampleSize,matchedOn:s.historical.matchedOn,yeast:s.historical.yeast,honey:s.historical.honey},
+          sampleSize:s.historical.sampleSize,matchedOn:s.historical.matchedOn,yeast:s.historical.yeast,honey:s.historical.honey,
+          // How many of sampleSize actually fed avgDays/avgRating — not every
+          // comparable batch is bottled or rated, so this can be smaller.
+          avgDaysN:s.historical.avgDaysToFinishN,avgRatingN:s.historical.avgRatingN},
         reasons:['own-history']};
     }
   ];

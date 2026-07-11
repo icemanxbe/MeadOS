@@ -114,7 +114,7 @@ function suggestFoodPairings(s){
 
 // Copy share URL for a batch to clipboard
 async function copyShareLink(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b){toast('⚠ Batch not found');return;}
   var url=buildShareURL(b);
   if(!url){toast('⚠ Failed to build share link');return;}
@@ -315,9 +315,9 @@ function renderPublicShareView(b){
   }
   window._shareBatch=b;                       // for the language toggle to re-render
   var bot=APP.bottling[b.id]||{};
-  var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+  var recipe=getRecipe(b.recipeId);
   var tastings=APP.tastings[b.id]||[];
-  var logs=APP.logs[b.id]||[];
+  var logs=getBatchLogs(b.id);
   var avgRating=tastings.length
     ?tastings.reduce(function(s,t){return s+(t.rating||0);},0)/tastings.length
     :0;

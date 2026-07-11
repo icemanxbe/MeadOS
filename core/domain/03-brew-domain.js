@@ -66,7 +66,7 @@ function makeTemplateFromBatch(b){
 }
 
 function saveAsTemplate(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b)return;
   if(!APP.templates)APP.templates=[];
   var existing=APP.templates.find(function(t){return t.createdFrom===batchId;});
@@ -111,7 +111,7 @@ function deleteTemplate(tplId){
 // Heuristic prediction of tasting wheel scores based on batch params + recipe defaults.
 // Used to set expectations BEFORE the first tasting, and as a baseline to compare to actual.
 function predictTastingProfile(batch){
-  var recipe=APP.recipes.find(function(r){return r.id===batch.recipeId;});
+  var recipe=getRecipe(batch.recipeId);
   var bot=APP.bottling[batch.id]||{};
   var sweetness=bot.sweetness||'';
   var abv=bot.abv||(batch.og?(batch.og-1)*131.25:null);  // rough est
@@ -171,7 +171,7 @@ function getNutrientStatus(batch,recipe){
   ((APP.additions&&APP.additions[batch.id])||[]).forEach(function(a){
     if(nutRe.test((a.what||a.name||'')+''))manual++;
   });
-  recipe=recipe||APP.recipes.find(function(r){return r.id===batch.recipeId;});
+  recipe=recipe||getRecipe(batch.recipeId);
   var expected=0,done=0;
   if(recipe&&typeof getEffectiveSteps==='function'){
     (getEffectiveSteps(batch,recipe)||[]).forEach(function(s){
@@ -186,7 +186,7 @@ function getNutrientStatus(batch,recipe){
 // Decision-tree based diagnostic. Returns step-by-step recommendations
 // given current batch state.
 function diagnoseStuckFermentation(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b)return null;
   var logs=APP.logs[b.id]||[];
   var lastLog=logs[logs.length-1];
@@ -195,7 +195,7 @@ function diagnoseStuckFermentation(batchId){
   var daysSinceStart=Math.floor((new Date()-new Date(b.startDate))/86400000);
   var daysSinceLastReading=lastLog?Math.floor((new Date()-new Date(lastLog.date))/86400000):null;
   var attenuation=b.og?(b.og-lastG)/(b.og-1):0;
-  var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+  var recipe=getRecipe(b.recipeId);
   var yeast=getYeastById(b.yeast||'m05');
   var diagnoses=[];
   // Test 1: Is it actually stuck? Need to confirm gravity stable
@@ -477,7 +477,7 @@ function fermenterOccupiedBy(fermenterId){
 function fermenterFreeWhen(fermenterId){
   var occ=fermenterOccupiedBy(fermenterId);
   if(!occ)return null;
-  var recipe=APP.recipes.find(function(r){return r.id===occ.recipeId;});
+  var recipe=getRecipe(occ.recipeId);
   if(!recipe)return null;
   // Use recipe's expected bottling day
   return addDays(occ.startDate,recipe.fermentDays||42);
@@ -564,7 +564,7 @@ function getBatchVesselHistory(b){
     var st=getBatchStatus(b);
     if(st==='failed'||st==='complete'){
       var lg=(APP.logs&&APP.logs[b.id])||[];
-      var rec=APP.recipes.find(function(r){return r.id===b.recipeId;});
+      var rec=getRecipe(b.recipeId);
       var fd=(rec&&rec.fermentDays)||42;
       endDate=lg.length?lg[lg.length-1].date:new Date(new Date(b.startDate).getTime()+fd*86400000).toISOString().slice(0,10);
     }
@@ -591,7 +591,7 @@ function getBatchVesselHistory(b){
 // Record a racking event. Validates that target vessel exists and isn't the
 // same as current. Updates b.fermenterId and appends to b.rackings.
 function rackBatch(batchId,toFermenterId,date,notes){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b){toast('⚠ Batch not found');return false;}
   if(!toFermenterId||toFermenterId===b.fermenterId){toast('⚠ Pick a different vessel');return false;}
   if(!getFermenter(toFermenterId)){toast('⚠ Target vessel not found');return false;}
@@ -617,7 +617,7 @@ function rackBatch(batchId,toFermenterId,date,notes){
 // a batch that's already been racked to bulk age), so the brewer controls it
 // directly rather than the app guessing from elapsed days.
 function toggleBulkAging(batchId,val){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b)return;
   b.bulkAging=!!val;
   scheduleSave();
@@ -628,7 +628,7 @@ function toggleBulkAging(batchId,val){
 function getDrinkingWindowStatus(batch){
   var bot=APP.bottling&&APP.bottling[batch.id];
   if(!bot||!bot.date)return null;
-  var recipe=APP.recipes.find(function(r){return r.id===batch.recipeId;});
+  var recipe=getRecipe(batch.recipeId);
   if(!recipe)return null;
   var minD=recipe.minAgeDays||recipe.minDays||30;
   var peakD=recipe.peakAgeDays||recipe.peakDays||(minD*3);

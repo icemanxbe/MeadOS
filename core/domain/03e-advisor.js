@@ -13,10 +13,64 @@
 // a confidence 0..1 with the reasons behind it, and structured data the view
 // formats + localizes. Strings live in the view layer (12-advisor.js), not here.
 
+// Resolves which honey a batch is actually using: the batch's own explicit
+// field, else its recipe's first honey. Shared by mwBatchSignals() (for the
+// CURRENT batch, recipe already resolved there) and mwHistoricalComparison()
+// (for every candidate batch it scans, recipe not pre-resolved — pass none
+// and it looks it up via getRecipe). Previously duplicated inline in both
+// places; extracted so there's one definition of "which honey", not two that
+// could drift apart.
+function mwResolveHoney(b,recipe){
+  if(!b)return null;
+  if(b.honeyType)return b.honeyType;
+  var r=recipe||((typeof getRecipe==='function')?getRecipe(b.recipeId):null);
+  return (r&&typeof honeyTypesInRecipe==='function')?((honeyTypesInRecipe(r)||[])[0]||null):null;
+}
+
+// Whether a recipe is a sparkling/bottle-conditioned style — finished dry and
+// primed at bottling rather than stabilised, which means it typically gets
+// bottled sooner (no stabilise-and-clear wait) than a still mead on the same
+// yeast+honey. Shared for the same reason as mwResolveHoney above: used by
+// mwBatchSignals() for the current batch AND mwHistoricalComparison() for
+// every candidate it scans, one definition instead of two that could drift.
+function mwIsSparkling(recipe){
+  return !!(recipe&&(recipe.category==='Sparkling'||recipe.style==='Sparkling'||(recipe.tags&&(recipe.tags.indexOf('Sparkling')>=0||recipe.tags.indexOf('Carbonated')>=0))));
+}
+
+// Whether a fruit addition's item text describes a JUICE/concentrate form
+// rather than whole/frozen/puree fruit. Real, researched mechanism (not
+// invented): juice's sugar is already dissolved and available, so it lands
+// FULLY in the very next gravity reading with no real extraction lag —
+// unlike whole/frozen fruit, where cell walls take days to break down and
+// release sugar (frozen actually breaks down faster than fresh, since
+// freezing ruptures the cell walls itself, but still over days, not
+// instantly). recentFruitAddition below uses this to size its "how long
+// might this skew the trend" window differently per form.
+//
+// The additions data model (ADDITION_TYPES, 11-ha-additions-temp.js) has no
+// structured fruit-form field, only the brewer's own free-text `item`
+// description — this matches a small, unambiguous word list against text
+// the brewer wrote themselves about their OWN ingredient, which is a
+// meaningfully safer signal than pattern-matching arbitrary external text:
+// a miss just keeps the existing flat window (the safe prior default,
+// nothing regresses), and a brewer who added juice overwhelmingly describes
+// it with a word like "juice" — that's the common case, not an edge case
+// being guessed at. Checked English AND Dutch since the app is bilingual
+// throughout — Dutch "sap" (juice) needs its own pattern since Dutch
+// compounds it onto the fruit name with no space (appelsap, kersensap,
+// druivensap), so a boundary BEFORE "sap" would never match; matching a
+// boundary AFTER it instead ("…sap" at the end of a word) still correctly
+// excludes an unrelated word that merely CONTAINS "sap" mid-word (e.g. the
+// fruit "sapote", where "sap" isn't followed by a boundary at all).
+function mwIsJuiceForm(item){
+  var s=item||'';
+  return /\b(juice|concentr|nectar)/i.test(s)||/sap\b/i.test(s);
+}
+
 // ---- Signals: derived facts about a batch ---------------------------------
 function mwBatchSignals(b){
   if(!b)return null;
-  var recipe=(typeof APP!=='undefined'&&APP.recipes)?APP.recipes.find(function(r){return r.id===b.recipeId;}):null;
+  var recipe=(typeof APP!=='undefined'&&APP.recipes)?getRecipe(b.recipeId):null;
   var status=(typeof getBatchStatus==='function')?getBatchStatus(b):'';
   var logs=((typeof APP!=='undefined'&&APP.logs&&APP.logs[b.id])||[]).filter(function(l){return l.gravity;})
     .slice().sort(function(a,c){return(a.date||'').localeCompare(c.date||'');});
@@ -25,27 +79,39 @@ function mwBatchSignals(b){
   // attenuation math nor projectFermentation's slope can tell the difference.
   // Flagged only when a logged fruit addition is BOTH inside the same
   // lookback window projectFermentation uses for its trend (its own last-
-  // up-to-4-readings slice) AND genuinely recent in elapsed days. The
-  // reading-window check alone isn't enough for an infrequent logger — 4
-  // readings could span months, long after any real fruit influence is
-  // gone, and would otherwise keep flagging fruit the trend has long since
-  // absorbed. 10 days is a deliberately simple, deterministic ceiling (not a
-  // per-fruit-type decay curve the app has no real data to back) — a bit
-  // past the app's own "fruit typically sits 3-7 days" addition guidance
-  // (ADDITION_TYPES), giving a small buffer for the tail of activity after
-  // the solids come out but dissolved sugar is still working through.
+  // up-to-4-readings slice) AND genuinely recent — checked against TODAY,
+  // not the last logged reading. Those are different clocks: the window
+  // check answers "is this addition inside the data feeding the CURRENT
+  // trend calc", but the 10-day ceiling answers "has enough real time
+  // passed that the fruit's influence is likely gone" — a batch that gets
+  // a reading 4 days after the addition and then goes quiet for 6 weeks has
+  // genuinely dormant fruit by the time anyone opens it again, even though
+  // the last reading itself was well inside the ceiling. 10 days is a
+  // deliberately simple, deterministic ceiling (not a per-fruit-type decay
+  // curve the app has no real data to back) — a bit past the app's own
+  // "fruit typically sits 3-7 days" addition guidance (ADDITION_TYPES),
+  // giving a small buffer for the tail of activity after the solids come
+  // out but dissolved sugar is still working through.
+  //
+  // Juice/concentrate is the one real exception this app DOES have data to
+  // back (see mwIsJuiceForm): its sugar is already dissolved, so it lands in
+  // the very next reading with no multi-day extraction tail — a 10-day
+  // ceiling would keep flagging the trend as fruit-skewed long after the
+  // one-time step change already happened and was absorbed. Short ceiling
+  // covers just "the very next reading might be a jump", not a lingering
+  // trend distortion.
   var recentFruitAddition=null;
   if(logs.length){
     var _fruitWinStart=logs[Math.max(0,logs.length-4)].date;
-    var _fruitLatestMs=new Date(logs[logs.length-1].date).getTime();
     var _fruitAdds=((typeof APP!=='undefined'&&APP.additions&&APP.additions[b.id])||[])
       .filter(function(a){
         if(a.type!=='fruit'||!a.date||a.date<_fruitWinStart)return false;
-        var ageDays=(_fruitLatestMs-new Date(a.date).getTime())/86400000;
-        return ageDays>=0&&ageDays<=10;
+        var ageDays=(typeof daysSince==='function')?daysSince(a.date):0;
+        var ceiling=mwIsJuiceForm(a.item)?2:10;
+        return ageDays>=0&&ageDays<=ceiling;
       })
       .sort(function(x,y){return(y.date||'').localeCompare(x.date||'');});
-    if(_fruitAdds.length)recentFruitAddition={date:_fruitAdds[0].date,item:_fruitAdds[0].item||null};
+    if(_fruitAdds.length)recentFruitAddition={date:_fruitAdds[0].date,item:_fruitAdds[0].item||null,juiceForm:mwIsJuiceForm(_fruitAdds[0].item)};
   }
   var og=parseFloat(b.og)||(recipe&&recipe.ogTarget)||null;
   var lastG=logs.length?parseFloat(logs[logs.length-1].gravity):null;
@@ -63,6 +129,19 @@ function mwBatchSignals(b){
   var bulkAging=!!b.bulkAging;
 
   // Targets: prefer the batch's actual yeast, fall back to recipe targets.
+  // b.yeast is a single field with no history — an explicit decision, not an
+  // oversight: it means "best-known yeast to reason about this batch with
+  // GOING FORWARD", not a historical record of what fermented which part of
+  // it. Editing it after a real mid-ferment repitch (e.g. the stuck-
+  // fermentation rescue this app's own troubleshooting guide recommends)
+  // retroactively applies the new strain's temperature range/attenuation/
+  // tolerance/historical-matching to the WHOLE batch, including the days
+  // the original strain was actually the one working. That's a real, known
+  // simplification — modeling a true split (which strain did how much of
+  // the fermentation) would need data this app has no way to capture, and
+  // guessing at it would be exactly the fake precision this project
+  // consistently avoids elsewhere. See the Edit Batch modal's yeast field
+  // for the brewer-facing side of this same note.
   var yt=(og&&b.yeast&&typeof mwYeastTargets==='function')?mwYeastTargets(og,b.yeast):null;
   var targetFG=(yt&&yt.fg)||(recipe&&recipe.fgTarget)||1.000;
   var targetABV=(yt&&yt.abv)||(recipe&&recipe.abvTarget)||(og?parseFloat(calcABV(og,targetFG)):null);
@@ -96,15 +175,41 @@ function mwBatchSignals(b){
   // goes stale the moment the batch moves on (and stops being taken at all
   // once bottled). Falls back to the last logged temp when no live sensor is
   // bound/available — Home Assistant is optional throughout this app.
-  var liveTempReading=null;
+  var liveTempReading=null, liveTempEntity=null;
   if(bottled){
     var shelfHit=(bottling&&bottling.cellarShelfId&&typeof findShelfById==='function')?findShelfById(bottling.cellarShelfId):null;
-    liveTempReading=(typeof getCellarLiveTemp==='function')?getCellarLiveTemp(shelfHit&&shelfHit.cabinet):null;
+    var shelfCab=shelfHit&&shelfHit.cabinet;
+    // Same entity resolution getCellarLiveTemp uses internally (cabinet's own
+    // sensor, else the legacy single cellar sensor) — captured here too since
+    // tempStable below needs the entity ID, not just the cached value.
+    liveTempEntity=(shelfCab&&shelfCab.tempSensorEntity)||(typeof APP!=='undefined'&&APP.settings&&APP.settings.cellarTempSensorEntity)||null;
+    liveTempReading=(typeof getCellarLiveTemp==='function')?getCellarLiveTemp(shelfCab):null;
   }else{
+    liveTempEntity=(fermenter&&fermenter.tempSensorEntity)||null;
     liveTempReading=(fermenter&&typeof getFermenterLiveTemp==='function')?getFermenterLiveTemp(fermenter):null;
   }
+  // A sensor can keep reporting its last-known value indefinitely without HA
+  // ever marking it 'unavailable' (dead battery, disconnected probe, network
+  // drop) — trusting it forever would silently prefer a stale number over a
+  // fresher hand-logged one. lastChanged is HA's own "when did this reading
+  // actually change" timestamp, not ours, so it's the real freshness signal.
+  // 12h is generous relative to how often these sensors normally report
+  // (minutes, not hours) while still catching a genuinely dead one — missing
+  // lastChanged entirely (older cached data, or a source that doesn't supply
+  // it) trusts the reading rather than guessing it's stale.
+  var STALE_SENSOR_HOURS=12;
+  var _sensorAgeHrs=liveTempReading&&liveTempReading.lastChanged!=null
+    ?(Date.now()-new Date(liveTempReading.lastChanged).getTime())/3600000:null;
+  // Guard against clock skew: if HA's clock (or the browser's) runs ahead,
+  // lastChanged can land in the future, making the age negative — which
+  // would otherwise satisfy "<=12h" as the freshest possible reading. A
+  // negative age is nonsense, not evidence of freshness, so it's treated
+  // the same as "too old" rather than "trust it more than anything else."
+  var liveIsFresh=!!(liveTempReading&&liveTempReading.value!=null&&(
+    _sensorAgeHrs==null||(_sensorAgeHrs>=0&&_sensorAgeHrs<=STALE_SENSOR_HOURS)
+  ));
   var latestTemp=null, tempSource=null;
-  if(liveTempReading&&liveTempReading.value!=null){
+  if(liveIsFresh){
     latestTemp=parseFloat(liveTempReading.value);
     tempSource='live';
   }else{
@@ -117,9 +222,25 @@ function mwBatchSignals(b){
   var y=(typeof YEAST_STRAINS!=='undefined'&&b.yeast)?YEAST_STRAINS.filter(function(x){return x.id===b.yeast;})[0]:null;
   var tLow=(y&&y.optimalTempLow!=null)?y.optimalTempLow:16, tHigh=(y&&y.optimalTempHigh!=null)?y.optimalTempHigh:24;
   var tempInRange=(latestTemp!=null)?(latestTemp>=tLow-0.5&&latestTemp<=tHigh+0.5):null;
-  // stability: spread of the last 3 temps
-  var recentT=logs.filter(function(l){return l.temp!=null&&l.temp!=='';}).slice(-3).map(function(l){return parseFloat(l.temp);});
-  var tempStable=recentT.length>=2?((Math.max.apply(null,recentT)-Math.min.apply(null,recentT))<=2.0):null;
+  // Stability: prefer the LIVE sensor's own recent history — a real continuous
+  // record, not just whatever happened to be hand-logged at gravity-check
+  // time — when the current reading is actually coming from a fresh live
+  // sensor (tempSource==='live'). refreshAllSensorHistories() (04-server-ha.js)
+  // polls HA's history endpoint on its own slower interval and caches it
+  // exactly like window._liveSensorTemps does for the latest value, so this
+  // stays a synchronous read here — mwBatchSignals() doesn't do I/O itself.
+  // Falls back to the spread of the last 3 hand-logged temps when there's no
+  // live history cached yet (HA not configured, or the history poll hasn't
+  // run since load) — same threshold either way, not a different calibration.
+  var liveHistory=(tempSource==='live'&&liveTempEntity&&typeof window!=='undefined')?(window._liveSensorHistory||{})[liveTempEntity]:null;
+  var tempStable;
+  if(liveHistory&&liveHistory.length>=2){
+    var hVals=liveHistory.map(function(p){return p.value;});
+    tempStable=(Math.max.apply(null,hVals)-Math.min.apply(null,hVals))<=2.0;
+  }else{
+    var recentT=logs.filter(function(l){return l.temp!=null&&l.temp!=='';}).slice(-3).map(function(l){return parseFloat(l.temp);});
+    tempStable=recentT.length>=2?((Math.max.apply(null,recentT)-Math.min.apply(null,recentT))<=2.0):null;
+  }
 
   // ABV headroom vs the strain's tolerance
   var currentABV=(og&&lastG!=null)?parseFloat(calcABV(og,lastG)):null;
@@ -128,8 +249,7 @@ function mwBatchSignals(b){
 
   // Honey/yeast interaction: high-fructose honey (acacia, tupelo…) with a
   // non-fructophilic yeast is the classic late-stall risk. Facts only.
-  var honeyName=b.honeyType||null;
-  if(!honeyName&&recipe&&typeof honeyTypesInRecipe==='function'){var _ht=honeyTypesInRecipe(recipe);honeyName=(_ht&&_ht[0])||null;}
+  var honeyName=mwResolveHoney(b,recipe);
   var honeyProf=(honeyName&&typeof HONEY_PROFILES!=='undefined')?HONEY_PROFILES[honeyName]:null;
   var honeyFructoseRisk=(honeyProf&&honeyProf.tech)?honeyProf.tech.fructoseRisk:null;   // 'critical'|'high'|'medium'|'low'
   var yeastFructophilic=!!(y&&y.fructophilic);
@@ -143,7 +263,7 @@ function mwBatchSignals(b){
   var daysSinceLastReading=(lastLogDate&&typeof daysSince==='function')?daysSince(lastLogDate):null;
   // Recipe character: sparkling (deliberately NOT stabilised) vs a still mead that
   // backsweetens (detected from a sorbate/stabilise step in the recipe).
-  var sparkling=!!(recipe&&(recipe.category==='Sparkling'||recipe.style==='Sparkling'||(recipe.tags&&(recipe.tags.indexOf('Sparkling')>=0||recipe.tags.indexOf('Carbonated')>=0))));
+  var sparkling=mwIsSparkling(recipe);
   var recipeBacksweetens=!sparkling&&!!(recipe&&recipe.steps&&recipe.steps.some(function(st){return /back-?sweeten|sorbate|stabili/i.test((st.title||'')+' '+(st.desc||''));}));
   // Aging model (shared with readiness): days since bottling vs ready→peak.
   // (bottling/bottled were resolved earlier — needed there for temperature source.)
@@ -242,7 +362,7 @@ function mwBatchNarrative(b){
     .slice().sort(function(a,c){return(a.date||'').localeCompare(c.date||'');});
 
   var og=parseFloat(b.og)||null;
-  var recipe=(typeof APP!=='undefined'&&APP.recipes)?APP.recipes.find(function(r){return r.id===b.recipeId;}):null;
+  var recipe=(typeof APP!=='undefined'&&APP.recipes)?getRecipe(b.recipeId):null;
   var yt=(og&&b.yeast&&typeof mwYeastTargets==='function')?mwYeastTargets(og,b.yeast):null;
   var targetFG=(yt&&yt.fg)||(recipe&&recipe.fgTarget)||1.000;
   var sugarBreak=(og&&typeof mwSugarBreak==='function')?mwSugarBreak(og,targetFG):null;
@@ -448,22 +568,102 @@ function mwReadiness(b){
 // render (dashboard row + overview + advisor tab) cost nothing. Not serialised.
 var _mwAdviceMemo={};
 function _mwAdviceSig(b){
-  var logs=(typeof APP!=='undefined'&&APP.logs&&APP.logs[b.id])||[];
+  var logs=(typeof getBatchLogs==='function')?getBatchLogs(b.id):((typeof APP!=='undefined'&&APP.logs&&APP.logs[b.id])||[]);
   var last=logs.length?logs[logs.length-1]:{};
-  var doneN=0,td=(typeof APP!=='undefined'&&APP.tasksDone)||{},pre=b.id+'-step-';
-  for(var k in td){if(td.hasOwnProperty(k)&&k.indexOf(pre)===0)doneN++;}
-  var bot=(typeof APP!=='undefined'&&APP.bottling&&APP.bottling[b.id])||null;
-  var adds=((typeof APP!=='undefined'&&APP.additions&&APP.additions[b.id])||[]).length;
+  // Content, not just count — un-marking one step and marking a different one
+  // in the same edit would leave a plain count unchanged, and getNutrientStatus
+  // reads WHICH steps are done, not how many.
+  var doneKeys=[],td=(typeof APP!=='undefined'&&APP.tasksDone)||{},pre=b.id+'-step-';
+  for(var k in td){if(td.hasOwnProperty(k)&&k.indexOf(pre)===0)doneKeys.push(k);}
+  doneKeys.sort();
+  var bot=(typeof getBottleInfo==='function')?getBottleInfo(b.id):((typeof APP!=='undefined'&&APP.bottling&&APP.bottling[b.id])||null);
+  var recipe=(typeof getRecipe==='function')?getRecipe(b.recipeId):null;
   // Domain-aligned time: key off the actual age integers the output depends on
   // (fermentation age + days bottled), not wall-clock — invalidates as the batch
   // ages, with no midnight-boundary artifact.
   var ageF=(typeof daysSince==='function'&&b.startDate)?daysSince(b.startDate):0;
   var ageB=(typeof daysSince==='function'&&bot&&bot.date)?daysSince(bot.date):0;
-  // b.bulkAging is a direct input to the temperature rule/health axis (see
-  // toggleBulkAging) — without it here, flipping the toggle wouldn't
-  // invalidate the memo and the stale advice would linger until some other
-  // tracked field happened to change.
-  return [b.id,b.recipeId,b.og,b.yeast,b.startDate,b.failed?1:0,logs.length,last.date,last.gravity,last.temp,last.ph,doneN,bot?bot.date:0,adds,ageF,ageB,b.bulkAging?1:0].join('|');
+  // Everything below closes real invalidation gaps found in review: each is a
+  // real input to mwBatchSignals() that could change WITHOUT touching any of
+  // the fields above, silently leaving stale (and now frozen, so unfixable by
+  // accidental mutation) advice cached.
+  //  - b.fermenterId: reassigning the batch to a different fermenter changes
+  //    both its live-temp sensor binding and its headspace/capacity.
+  //  - bot (whole record, not just .date): a bottled batch's cellarShelfId
+  //    picks which cabinet's live sensor applies; stringifying the whole
+  //    record is simpler and safer than hand-picking fields that could drift
+  //    out of sync with whatever mwBatchSignals ends up reading from it.
+  //  - recipe (whole object): editing an in-use recipe's targets/steps/aging
+  //    windows previously didn't invalidate any batch already using it.
+  //  - additions (whole array, not just .length): editing an existing
+  //    addition's date/type/item — e.g. correcting it to type:'fruit' — kept
+  //    the same length and silently never invalidated the fruit-addition
+  //    signal that depends on exactly that content.
+  //  - b.customSteps: a per-batch step override changes nutrient-schedule
+  //    math without touching any recipe or logged field.
+  //  - live sensor cache: an HA sensor updating is the single most frequent
+  //    real-world change of all, and previously invalidated NOTHING on its
+  //    own — advice could go stale on temperature specifically until some
+  //    unrelated field happened to change too. Hashing the whole cache
+  //    over-invalidates slightly (an unrelated sensor updating also
+  //    invalidates batches that don't care) but that's cheap insurance, not
+  //    a real cost — recompute is pure and inexpensive next to getting this
+  //    wrong.
+  //  - b.bulkAging: a direct input to the temperature rule/health axis (see
+  //    toggleBulkAging) — without it, flipping the toggle wouldn't invalidate
+  //    the memo and stale advice would linger until something else changed.
+  //  - live sensor HISTORY cache: the same real gap as liveTemps below, now
+  //    that tempStable can read window._liveSensorHistory too (see the live-
+  //    history branch in mwBatchSignals). A compact fingerprint (entity +
+  //    point count + last value), not the full point arrays — a 72h history
+  //    per sensor can be hundreds of points, too heavy to stringify whole on
+  //    every signature computation for no extra invalidation accuracy.
+  //  - sibling-batch fingerprint: mwHistoricalComparison() reads EVERY OTHER
+  //    batch's yeast/honey/recipe/bottling/tastings, not just b's own fields
+  //    hashed above — editing or deleting a DIFFERENT batch changes what
+  //    "your own average" means for THIS one (previously a documented,
+  //    accepted gap — see mwHistoricalComparison's own comment). A per-
+  //    mutation-site version counter would need a bump at every batch
+  //    create/edit/delete/bottle/tasting call site — the same piecemeal
+  //    approach that produced several of the gaps above when done for a
+  //    single batch's own fields. Hashing a cheap summary of the whole pool
+  //    here instead can't miss a site, and at this app's real scale (a few
+  //    dozen batches, ever) an O(n) pass per signature is free. Includes each
+  //    sibling's own RECIPE object (whole, not cherry-picked fields — same
+  //    "stringify the whole record" reasoning as `recipe` below): a sibling
+  //    with no explicit og/honeyType falls back to ITS recipe's
+  //    ogTarget/honey list inside mwHistoricalComparison's statsFor(), and
+  //    the fallback-tier matching also depends on mwIsSparkling(that
+  //    recipe) — hashing only o.recipeId (an id that doesn't change when
+  //    the recipe IT POINTS TO is edited) missed exactly that case.
+  var liveTemps=(typeof window!=='undefined'&&window._liveSensorTemps)||{};
+  var liveHistoryCache=(typeof window!=='undefined'&&window._liveSensorHistory)||{};
+  var liveHistorySig=Object.keys(liveHistoryCache).sort().map(function(k){
+    var pts=liveHistoryCache[k]||[];
+    var lastPt=pts.length?pts[pts.length-1]:null;
+    return k+':'+pts.length+':'+(lastPt?lastPt.value:'');
+  }).join(',');
+  var siblingFingerprint=((typeof APP!=='undefined'&&APP.batches)||[]).map(function(o){
+    if(o.id===b.id)return '';
+    var obot=(typeof APP!=='undefined'&&APP.bottling&&APP.bottling[o.id])||null;
+    var ologs=(typeof APP!=='undefined'&&APP.logs&&APP.logs[o.id])||[];
+    var olast=ologs.length?ologs[ologs.length-1]:null;
+    var ots=(typeof APP!=='undefined'&&APP.tastings&&APP.tastings[o.id])||[];
+    var orecipe=(typeof getRecipe==='function')?getRecipe(o.recipeId):null;
+    return [o.id,o.recipeId,o.yeast,o.og,mwResolveHoney(o,orecipe),o.failed?1:0,
+      JSON.stringify(orecipe||{}),
+      obot?obot.date+','+obot.fg:'',olast?olast.date:'',
+      ots.map(function(t){return t.rating;}).join(',')].join(':');
+  }).join('|');
+  return [b.id,b.recipeId,b.og,b.yeast,b.startDate,b.failed?1:0,b.fermenterId||0,
+    logs.length,last.date,last.gravity,last.temp,last.ph,doneKeys.join(','),
+    bot?JSON.stringify(bot):0,ageF,ageB,b.bulkAging?1:0,
+    JSON.stringify(recipe||{}),
+    JSON.stringify(((typeof APP!=='undefined'&&APP.additions&&APP.additions[b.id])||[])),
+    JSON.stringify(b.customSteps||[]),
+    JSON.stringify(liveTemps),
+    liveHistorySig, siblingFingerprint
+  ].join('|');
 }
 
 // ---- The single snapshot every view consumes ------------------------------
@@ -573,38 +773,70 @@ function mwIngredientStats(){
 // recipe; falls back to same yeast if there aren't at least 2 of those.
 // Honest about needing real history: null (not a guess) with fewer than 2
 // comparable past batches.
+//
+// Cache invalidation: _mwAdviceSig(b) hashes a fingerprint of every OTHER
+// batch's yeast/honey/recipe/bottling/tastings too (not just b's own fields),
+// specifically because this function reads all of that. Editing or deleting
+// a SIBLING batch changes what "your own average" means for THIS one, so it
+// has to invalidate THIS one's cached advice even though none of b's own
+// fields moved. Previously an accepted, documented gap (a real per-mutation-
+// site version counter felt like too big an addition for how narrow the
+// failure mode was); fixed by fingerprinting the whole pool instead, which
+// needed no new counter and can't miss a mutation site.
+//
+// Separate, deliberate semantic decision (not a bug, and not the same as the
+// caching gap above — this would be equally true with PERFECT invalidation):
+// this function always reads APP.batches as it stands TODAY, not a frozen
+// snapshot of "who had finished, and with what numbers, at the moment THIS
+// batch first got compared." If you go back and correct a typo'd OG on an
+// old batch, every future comparison against it uses the corrected number —
+// including for a batch that was already advised using the old, wrong one.
+// "Your own past batches" means CURRENT best-known truth about them, same
+// philosophy as the yeast-edit decision above mwBatchSignals — not an
+// immutable historical record. The alternative (snapshotting each past
+// batch's stats at comparison time) would need real persisted state for a
+// property nobody's asked for; this app doesn't persist advisor state
+// anywhere else either (see mwBatchAdvice's own comment).
 function mwHistoricalComparison(b){
   if(!b)return null;
   // Scoped to b's OWN beverage type (not the ambient active-mode toggle) —
   // this reasons about a specific batch, so it must stay correct regardless
   // of whatever mode the header happens to be showing. Otherwise a mead
-  // batch on EC-1118 could get pooled with a cider batch on EC-1118.
+  // batch on EC-1118 could get pooled with a cider batch on EC-1118. Also
+  // excludes failed batches — a contaminated/dumped batch never reached a
+  // normal attenuation or finish time, so it says nothing about "how long
+  // does MY process normally take" and would only skew the average toward
+  // an outcome nobody's actually aiming to repeat.
   var bBev=b.beverageType||'mead';
-  var all=((typeof APP!=='undefined'&&APP.batches)||[]).filter(function(o){return(o.beverageType||'mead')===bBev;});
+  var all=((typeof APP!=='undefined'&&APP.batches)||[]).filter(function(o){return(o.beverageType||'mead')===bBev&&!o.failed;});
   // Honey resolves the same way mwBatchSignals() does: explicit batch field,
   // else the recipe's first honey — so batches sharing a recipe still match.
-  function honeyOf(o){
-    if(o.honeyType)return o.honeyType;
-    var r=(typeof APP!=='undefined'&&APP.recipes)?APP.recipes.filter(function(rr){return rr.id===o.recipeId;})[0]:null;
-    return (r&&typeof honeyTypesInRecipe==='function')?((honeyTypesInRecipe(r)||[])[0]||null):null;
-  }
-  var bHoney=honeyOf(b);
+  var bHoney=mwResolveHoney(b);
+  // Sparkling recipes finish dry and get primed at bottling — no stabilise-
+  // and-clear wait — so they typically get bottled sooner than a still mead
+  // on the same yeast+honey. That's a real, mechanistic difference in "days
+  // to finish", not a hypothetical one, so the looser fallback tiers (which
+  // pool across DIFFERENT recipes) shouldn't mix the two. The exact-recipe
+  // tier doesn't need this check — a single recipe can't be both.
+  var bSparkling=mwIsSparkling((typeof getRecipe==='function')?getRecipe(b.recipeId):null);
   var pool=all.filter(function(o){return o.id!==b.id&&o.recipeId===b.recipeId;});
   var matchedOn='recipe';
   if(pool.length<2){
     // Same yeast+honey combo (e.g. every EC-1118 orange-blossom batch you've
     // made, regardless of recipe tweaks) is a closer match than yeast alone.
-    var byYeastHoney=(b.yeast&&bHoney)?all.filter(function(o){return o.id!==b.id&&o.yeast===b.yeast&&honeyOf(o)===bHoney;}):[];
+    var byYeastHoney=(b.yeast&&bHoney)?all.filter(function(o){return o.id!==b.id&&o.yeast===b.yeast&&mwResolveHoney(o)===bHoney
+      &&mwIsSparkling((typeof getRecipe==='function')?getRecipe(o.recipeId):null)===bSparkling;}):[];
     if(byYeastHoney.length>=2){pool=byYeastHoney;matchedOn='yeast-honey';}
     else{
-      var byYeast=b.yeast?all.filter(function(o){return o.id!==b.id&&o.yeast===b.yeast;}):[];
+      var byYeast=b.yeast?all.filter(function(o){return o.id!==b.id&&o.yeast===b.yeast
+        &&mwIsSparkling((typeof getRecipe==='function')?getRecipe(o.recipeId):null)===bSparkling;}):[];
       if(byYeast.length>=2){pool=byYeast;matchedOn='yeast';}
     }
   }
   if(pool.length<2)return null;
 
   function statsFor(o){
-    var recipe=(typeof APP!=='undefined'&&APP.recipes)?APP.recipes.find(function(r){return r.id===o.recipeId;}):null;
+    var recipe=(typeof APP!=='undefined'&&APP.recipes)?getRecipe(o.recipeId):null;
     var og=parseFloat(o.og)||(recipe&&recipe.ogTarget)||null;
     var logs=((typeof APP!=='undefined'&&APP.logs&&APP.logs[o.id])||[]).filter(function(l){return l.gravity;})
       .slice().sort(function(a,c){return(a.date||'').localeCompare(c.date||'');});
@@ -613,20 +845,44 @@ function mwHistoricalComparison(b){
     var finalG=(bot&&parseFloat(bot.fg))||lastG||null;
     var atten=(og&&finalG!=null)?mwAttenuation(og,finalG)*100:null;
     // Only bottled batches give a fair "days to finish" — an in-progress one
-    // hasn't finished yet, so counting it would bias the average short.
-    var daysToFinish=(o.startDate&&bot&&bot.date)?Math.round((new Date(bot.date)-new Date(o.startDate))/86400000):null;
+    // hasn't finished yet, so counting it would bias the average short. But
+    // the DURATION itself prefers the last logged gravity reading over the
+    // bottling date: this gets compared against a currently-fermenting
+    // batch's elapsed days (pure fermentation time) in historical-pace's
+    // text, and bottling can happen months after fermentation actually
+    // finished (bulk aging) — using the bottling date would silently fold
+    // aging time into what's supposed to be a fermentation-pace comparison,
+    // getting worse the longer this brewer's past batches happened to bulk
+    // age. Falls back to the bottling date only if there's no gravity log
+    // to anchor to at all.
+    var lastReadingDate=logs.length?logs[logs.length-1].date:null;
+    var daysToFinish=(o.startDate&&bot&&bot.date)
+      ?Math.round((new Date(lastReadingDate||bot.date)-new Date(o.startDate))/86400000):null;
     var ts=(typeof APP!=='undefined'&&APP.tastings&&APP.tastings[o.id])||[];
     var rated=ts.filter(function(t){return t.rating;});
     var rating=rated.length?Math.max.apply(null,rated.map(function(t){return t.rating;})):null;
     return {daysToFinish:daysToFinish,atten:atten,rating:rating};
   }
   var stats=pool.map(statsFor);
-  function avg(arr){var v=arr.filter(function(x){return x!=null;});return v.length?mwRound(v.reduce(function(s,x){return s+x;},0)/v.length,1):null;}
+  // sampleSize is the whole comparable POOL, but each metric only draws from
+  // whichever of those batches actually has that fact — daysToFinish needs a
+  // real bottling record, rating needs a logged tasting, neither is
+  // guaranteed just because a batch matched on recipe/yeast. Returning the
+  // count that actually FED each average (not just the pool size) lets the
+  // view say "averaging ~24 days (2 of 8)" instead of implying all 8
+  // contributed when most were silently filtered out as null.
+  function avg(arr){
+    var v=arr.filter(function(x){return x!=null;});
+    return {value:v.length?mwRound(v.reduce(function(s,x){return s+x;},0)/v.length,1):null, n:v.length};
+  }
+  var daysStat=avg(stats.map(function(s){return s.daysToFinish;}));
+  var attenStat=avg(stats.map(function(s){return s.atten;}));
+  var ratingStat=avg(stats.map(function(s){return s.rating;}));
   return {
     matchedOn:matchedOn, sampleSize:pool.length, yeast:b.yeast||null, honey:bHoney,
-    avgDaysToFinish:avg(stats.map(function(s){return s.daysToFinish;})),
-    avgAttenuation:avg(stats.map(function(s){return s.atten;})),
-    avgRating:avg(stats.map(function(s){return s.rating;}))
+    avgDaysToFinish:daysStat.value, avgDaysToFinishN:daysStat.n,
+    avgAttenuation:attenStat.value, avgAttenuationN:attenStat.n,
+    avgRating:ratingStat.value, avgRatingN:ratingStat.n
   };
 }
 

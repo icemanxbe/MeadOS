@@ -405,7 +405,7 @@ function renderTastingEvolution(tastings){
 // State lives on window._tastingCompare = { batchId, selectedIds: [] }.
 
 function openTastingCompareModal(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b){toast('⚠ Batch not found');return;}
   var tastings=APP.tastings[batchId]||[];
   if(tastings.length<2){toast('⚠ Need at least 2 tastings to compare');return;}
@@ -422,7 +422,7 @@ function renderTastingCompareModal(){
   closeModal();
   var s=window._tastingCompare;
   if(!s)return;
-  var b=APP.batches.find(function(x){return x.id===s.batchId;});
+  var b=getBatch(s.batchId);
   if(!b)return;
   var tastings=(APP.tastings[s.batchId]||[]).slice().sort(function(a,b){return(a.date||'').localeCompare(b.date||'');});
 
