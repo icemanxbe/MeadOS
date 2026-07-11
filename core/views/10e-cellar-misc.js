@@ -22,7 +22,7 @@ async function testNotification(){
 
 // ==================== YEAST ATTENUATION ANALYTICS ====================
 function calcAttenuationStats(){
-  var bottled=APP.batches.filter(function(b){return APP.bottling[b.id]&&b.og&&(APP.bottling[b.id].fg||(APP.logs[b.id]||[]).length);});
+  var bottled=APP.batches.filter(function(b){return APP.bottling[b.id]&&b.og&&(APP.bottling[b.id].fg||(getBatchLogs(b.id)).length);});
   if(!bottled.length)return null;
   var vals=bottled.map(function(b){
     var bot=APP.bottling[b.id];

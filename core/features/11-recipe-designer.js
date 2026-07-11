@@ -390,7 +390,7 @@ function wizUpdateMath(){
 
 function openCustomRecipeModal(seedId){
   closeModal();
-  var seed=seedId?APP.recipes.find(function(r){return r.id===seedId;}):null;
+  var seed=seedId?getRecipe(seedId):null;
   var isCider=(typeof activeBevMode==='function')&&activeBevMode()==='cider';
   var r=seed?JSON.parse(JSON.stringify(seed)):JSON.parse(JSON.stringify(isCider?DEFAULT_CIDER_RECIPE_TEMPLATE:DEFAULT_RECIPE_TEMPLATE));
   if(seed){r.name=seed.name+' (My Version)';r.id=null;}

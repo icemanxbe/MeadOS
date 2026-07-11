@@ -167,7 +167,7 @@ function computeRecipeAnalytics(){
       }
     }
     // OG deviation from recipe target
-    var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+    var recipe=getRecipe(b.recipeId);
     if(recipe&&recipe.ogTarget&&b.og){
       s.ogDeviations.push(b.og-recipe.ogTarget);
     }
@@ -180,7 +180,7 @@ function computeRecipeAnalytics(){
   // Compute averages
   var results=Object.values(statsByRecipe).map(function(s){
     function avg(arr){return arr.length?arr.reduce(function(a,b){return a+b;},0)/arr.length:null;}
-    var recipe=APP.recipes.find(function(r){return r.id===s.recipeId;});
+    var recipe=getRecipe(s.recipeId);
     return{
       recipe:recipe,
       batchCount:s.batchCount,
@@ -613,7 +613,7 @@ function renderRecipeConfigurator(r){
     +'</div>';
 }
 function setRecipeConfig(recipeId,field,value){
-  var r=APP.recipes.find(function(x){return x.id===recipeId;});if(!r)return;
+  var r=getRecipe(recipeId);if(!r)return;
   ensureRecipeConfig(r)[field]=value;
   var sl=document.getElementById('scale-slider');
   updateRecipeScale(recipeId,sl?sl.value:(window.recipeScaleVol||r.volume||5));
@@ -677,7 +677,7 @@ function updateRecipeScale(recipeId,val){
   if(isNaN(disp))return;
   var vol=(u==='metric')?disp:disp*UNIT_VOL[u].toSI;   // convert slider value → litres (canonical)
   window.recipeScaleVol=vol;
-  var r=APP.recipes.find(function(x){return x.id===recipeId;});
+  var r=getRecipe(recipeId);
   if(!r)return;
   var valEl=document.getElementById('scale-slider-val');
   if(valEl)valEl.textContent=fmtRecipeScale(vol);
@@ -1020,7 +1020,7 @@ function renderCiderCostEstimate(r,scaleVol){
 }
 
 function renderRecipeDetail(){
-  var r=APP.recipes.find(function(x){return x.id===currentRecipeId;});
+  var r=getRecipe(currentRecipeId);
   if(!r)return renderRecipes();
   // Clamp to the new wider scale range (1-20L). If the stored scale is way
   // outside this window (e.g., schema migration leftover), reset to base.
@@ -1066,7 +1066,7 @@ function renderRecipeDetail(){
       // Cross-links between tied recipes (e.g. fruit-in-primary vs fruit-in-secondary).
       if(!Array.isArray(r.linked)||!r.linked.length)return'';
       var chips=r.linked.map(function(lk){
-        var lr=APP.recipes.find(function(x){return x.id===lk.id;});
+        var lr=getRecipe(lk.id);
         if(!lr)return'';
         return'<span onclick="currentRecipeId=\''+lr.id+'\';showView(\'recipe-detail\')" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;background:var(--bg3);border:1px solid '+lr.brandColor+'99;color:var(--text);padding:5px 11px;border-radius:14px">↔ '+escHtml(proseL(lr.name))+(lk.label?' · <span style="color:var(--text3)">'+escHtml(proseL(lk.label))+'</span>':'')+'</span>';
       }).join('');
@@ -1200,7 +1200,7 @@ function renderRecipeDetail(){
 // estimated active time, and pre-flight sanitation steps onto one page so you
 // can print it and have everything beside the brewing surface.
 function openBrewSessionPlanner(recipeId,volume){
-  var r=APP.recipes.find(function(x){return x.id===recipeId;});
+  var r=getRecipe(recipeId);
   if(!r){toast('⚠ Recipe not found');return;}
   var vol=parseFloat(volume)||r.volume||5;
   var scaleFactor=vol/(r.volume||5);
@@ -1389,7 +1389,7 @@ function renderCalendar(){
   var events={};
   (typeof visibleBatches==='function'?visibleBatches():APP.batches).forEach(function(b){
     if(getBatchStatus(b)==='complete'||getBatchStatus(b)==='bottled'||getBatchStatus(b)==='failed')return;
-    var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+    var recipe=getRecipe(b.recipeId);
     if(!recipe)return;
     var color=getBatchColor(b);
     (typeof getEffectiveSteps==='function'?getEffectiveSteps(b,recipe):recipe.steps).forEach(function(s){
@@ -1471,7 +1471,7 @@ function showCalDayModal(dateStr){
   var items=[];
   (typeof visibleBatches==='function'?visibleBatches():APP.batches).forEach(function(b){
     if(getBatchStatus(b)==='complete'||getBatchStatus(b)==='bottled'||getBatchStatus(b)==='failed')return;
-    var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+    var recipe=getRecipe(b.recipeId);
     if(!recipe)return;
     var color=getBatchColor(b);
     (typeof getEffectiveSteps==='function'?getEffectiveSteps(b,recipe):recipe.steps).forEach(function(s){

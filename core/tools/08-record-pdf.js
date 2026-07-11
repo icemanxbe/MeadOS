@@ -9,13 +9,13 @@
 // ready single document — the brewing equivalent of a chain-of-custody form
 // or a winemaker's logbook page. Archive-quality output.
 function openPermanentRecord(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b){toast('⚠ Batch not found');return;}
   var bot=APP.bottling[b.id]||{};
-  var logs=(APP.logs[b.id]||[]).slice().sort(function(a,b){return(a.date||'').localeCompare(b.date||'');});
+  var logs=(getBatchLogs(b.id)).slice().sort(function(a,b){return(a.date||'').localeCompare(b.date||'');});
   var additions=(APP.additions[b.id]||[]).slice().sort(function(a,b){return(a.date||'').localeCompare(b.date||'');});
   var tastings=(APP.tastings[b.id]||[]).slice().sort(function(a,b){return(a.date||'').localeCompare(b.date||'');});
-  var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+  var recipe=getRecipe(b.recipeId);
   var isCider=(b.beverageType||'mead')==='cider';
   var brandName=APP.settings.brewerName||'MeadOS';
   var ccy=APP.settings.currency||'€';
@@ -194,7 +194,7 @@ function openProductionReport(){
   function rmap(){var m={};(APP.recipes||[]).forEach(function(r){m[r.id]=r;});return m;}
   var R=rmap();
   function batchCost(b){return((b.cost&&b.cost.honey)||0)+((b.cost&&b.cost.extras)||0);}
-  function batchFG(b){var bot=APP.bottling[b.id]||{};if(bot.fg)return bot.fg;var lg=(APP.logs[b.id]||[]);return lg.length?lg[lg.length-1].gravity:null;}
+  function batchFG(b){var bot=APP.bottling[b.id]||{};if(bot.fg)return bot.fg;var lg=(getBatchLogs(b.id));return lg.length?lg[lg.length-1].gravity:null;}
   function batchABV(b){var bot=APP.bottling[b.id]||{};if(bot.abv)return parseFloat(bot.abv);var fg=batchFG(b);return(b.og&&fg)?parseFloat(calcABV(b.og,fg)):null;}
   function bestRating(b){var t=(APP.tastings[b.id]||[]).filter(function(x){return x.rating;});return t.length?Math.max.apply(null,t.map(function(x){return x.rating;})):null;}
   function bottlesOf(b){var bot=APP.bottling[b.id];return bot?(typeof bottlesOriginal==='function'?bottlesOriginal(bot):(bot.bottleCount||0)):0;}

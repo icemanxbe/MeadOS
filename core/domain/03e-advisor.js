@@ -70,7 +70,7 @@ function mwIsJuiceForm(item){
 // ---- Signals: derived facts about a batch ---------------------------------
 function mwBatchSignals(b){
   if(!b)return null;
-  var recipe=(typeof APP!=='undefined'&&APP.recipes)?APP.recipes.find(function(r){return r.id===b.recipeId;}):null;
+  var recipe=(typeof APP!=='undefined'&&APP.recipes)?getRecipe(b.recipeId):null;
   var status=(typeof getBatchStatus==='function')?getBatchStatus(b):'';
   var logs=((typeof APP!=='undefined'&&APP.logs&&APP.logs[b.id])||[]).filter(function(l){return l.gravity;})
     .slice().sort(function(a,c){return(a.date||'').localeCompare(c.date||'');});
@@ -362,7 +362,7 @@ function mwBatchNarrative(b){
     .slice().sort(function(a,c){return(a.date||'').localeCompare(c.date||'');});
 
   var og=parseFloat(b.og)||null;
-  var recipe=(typeof APP!=='undefined'&&APP.recipes)?APP.recipes.find(function(r){return r.id===b.recipeId;}):null;
+  var recipe=(typeof APP!=='undefined'&&APP.recipes)?getRecipe(b.recipeId):null;
   var yt=(og&&b.yeast&&typeof mwYeastTargets==='function')?mwYeastTargets(og,b.yeast):null;
   var targetFG=(yt&&yt.fg)||(recipe&&recipe.fgTarget)||1.000;
   var sugarBreak=(og&&typeof mwSugarBreak==='function')?mwSugarBreak(og,targetFG):null;
@@ -628,7 +628,14 @@ function _mwAdviceSig(b){
   //    approach that produced several of the gaps above when done for a
   //    single batch's own fields. Hashing a cheap summary of the whole pool
   //    here instead can't miss a site, and at this app's real scale (a few
-  //    dozen batches, ever) an O(n) pass per signature is free.
+  //    dozen batches, ever) an O(n) pass per signature is free. Includes each
+  //    sibling's own RECIPE object (whole, not cherry-picked fields — same
+  //    "stringify the whole record" reasoning as `recipe` below): a sibling
+  //    with no explicit og/honeyType falls back to ITS recipe's
+  //    ogTarget/honey list inside mwHistoricalComparison's statsFor(), and
+  //    the fallback-tier matching also depends on mwIsSparkling(that
+  //    recipe) — hashing only o.recipeId (an id that doesn't change when
+  //    the recipe IT POINTS TO is edited) missed exactly that case.
   var liveTemps=(typeof window!=='undefined'&&window._liveSensorTemps)||{};
   var liveHistoryCache=(typeof window!=='undefined'&&window._liveSensorHistory)||{};
   var liveHistorySig=Object.keys(liveHistoryCache).sort().map(function(k){
@@ -642,7 +649,9 @@ function _mwAdviceSig(b){
     var ologs=(typeof APP!=='undefined'&&APP.logs&&APP.logs[o.id])||[];
     var olast=ologs.length?ologs[ologs.length-1]:null;
     var ots=(typeof APP!=='undefined'&&APP.tastings&&APP.tastings[o.id])||[];
-    return [o.id,o.recipeId,o.yeast,o.og,mwResolveHoney(o),o.failed?1:0,
+    var orecipe=(typeof getRecipe==='function')?getRecipe(o.recipeId):null;
+    return [o.id,o.recipeId,o.yeast,o.og,mwResolveHoney(o,orecipe),o.failed?1:0,
+      JSON.stringify(orecipe||{}),
       obot?obot.date+','+obot.fg:'',olast?olast.date:'',
       ots.map(function(t){return t.rating;}).join(',')].join(':');
   }).join('|');
@@ -827,7 +836,7 @@ function mwHistoricalComparison(b){
   if(pool.length<2)return null;
 
   function statsFor(o){
-    var recipe=(typeof APP!=='undefined'&&APP.recipes)?APP.recipes.find(function(r){return r.id===o.recipeId;}):null;
+    var recipe=(typeof APP!=='undefined'&&APP.recipes)?getRecipe(o.recipeId):null;
     var og=parseFloat(o.og)||(recipe&&recipe.ogTarget)||null;
     var logs=((typeof APP!=='undefined'&&APP.logs&&APP.logs[o.id])||[]).filter(function(l){return l.gravity;})
       .slice().sort(function(a,c){return(a.date||'').localeCompare(c.date||'');});

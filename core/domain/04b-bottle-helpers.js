@@ -152,7 +152,7 @@ function getReservedBottleCount(batch){
 }
 
 function addTimeCapsule(batchId,count,openDate,reason){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b){toast('⚠ Batch not found');return;}
   if(!Array.isArray(b.timeCapsules))b.timeCapsules=[];
   count=parseInt(count)||0;
@@ -174,7 +174,7 @@ function addTimeCapsule(batchId,count,openDate,reason){
 }
 
 function removeTimeCapsule(batchId,capsuleId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b||!Array.isArray(b.timeCapsules))return;
   b.timeCapsules=b.timeCapsules.filter(function(tc){return tc.id!==capsuleId;});
   scheduleSave();toast('Reservation removed');renderMain();

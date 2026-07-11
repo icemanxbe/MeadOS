@@ -126,7 +126,7 @@ async function haWriteState(entityId,state,attributes){
 // because automated logging from these sensors produces noisy data full of
 // transient spikes during yeast activity.
 async function pullGravityFromSensor(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b||!b.gravitySensorEntity){toast('⚠ No gravity sensor bound to this batch');return;}
   if(!haConfigured()){toast('⚠ Home Assistant not connected');return;}
   var state=await haReadState(b.gravitySensorEntity);
@@ -354,7 +354,7 @@ function exportBatchesCSV(){
 function exportGravityCSV(){
   var rows=[];
   (APP.batches||[]).forEach(function(b){
-    (APP.logs[b.id]||[]).forEach(function(l){
+    (getBatchLogs(b.id)).forEach(function(l){
       rows.push([b.serial||b.id,b.name,l.date,l.gravity,(l.temp==null?'':l.temp),(l.ph==null?'':l.ph)]);
     });
   });
@@ -424,7 +424,7 @@ function computeHASummary(){
     var s=getBatchStatus(b);
     if(s==='bottled'||s==='complete')return;
     var d=daysSince(b.startDate);
-    var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+    var recipe=getRecipe(b.recipeId);
     var fermDays=(recipe&&recipe.fermentDays)||42;
     var pct=Math.min(100,Math.round(d/fermDays*100));
     var ferm=getFermenter(b.fermenterId);
@@ -1133,8 +1133,8 @@ async function checkSmartNotifications(todayKey){
   var active=APP.batches.filter(function(b){var s=getBatchStatus(b);return s!=='complete'&&s!=='bottled'&&s!=='failed';});
   for(var i=0;i<active.length;i++){
     var b=active[i];
-    var logs=APP.logs[b.id]||[];
-    var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+    var logs=getBatchLogs(b.id);
+    var recipe=getRecipe(b.recipeId);
     // ---- a) Stale: 7+ days since last reading on an active batch ----
     var lastLog=logs.length?logs[logs.length-1]:null;
     var daysSinceLog=lastLog?Math.floor((Date.now()-new Date(lastLog.date).getTime())/86400000):daysSince(b.startDate);
@@ -1189,7 +1189,7 @@ async function checkSmartNotifications(todayKey){
   for(var j=0;j<bottledKeys.length;j++){
     var bid=bottledKeys[j];
     var bot=APP.bottling[bid];
-    var b=APP.batches.find(function(x){return x.id===bid;});
+    var b=getBatch(bid);
     if(!b||!bot.date)continue;
     if(bottlesOnHand(bot)===0)continue;
     var profile=getAgingProfile(b);
@@ -1242,7 +1242,7 @@ async function checkAnniversaryNotifications(todayKey){
   for(var i=0;i<bids.length;i++){
     var bid=bids[i];
     var bot=APP.bottling[bid];
-    var b=APP.batches.find(function(x){return x.id===bid;});
+    var b=getBatch(bid);
     if(!b||!bot.date)continue;
     var bDate=new Date(bot.date);
     if(bDate.getMonth()===todayMonth&&bDate.getDate()===todayDate){

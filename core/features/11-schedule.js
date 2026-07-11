@@ -190,7 +190,7 @@ function renderFermenterTimeline(){
           // bar to end at whichever is LATEST: brew-start + recipe fermDays,
           // or today + 21 days (so a long-aging batch in secondary still has
           // a visible bar extending into the near future).
-          var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+          var recipe=getRecipe(b.recipeId);
           var fermDays=(recipe&&recipe.fermentDays)||42;
           var projectedFromBrew=new Date(b.startDate).getTime()+fermDays*86400000;
           var projectedFromToday=now.getTime()+21*86400000;
@@ -217,7 +217,7 @@ function renderFermenterTimeline(){
       if(pb.fermenterId!==f.id)return;
       var pStartMs=new Date(pb.plannedStart).getTime();
       if(isNaN(pStartMs))return;
-      var prec=APP.recipes.find(function(r){return r.id===pb.recipeId;});
+      var prec=getRecipe(pb.recipeId);
       var pFermDays=(prec&&prec.fermentDays)||42;
       var pEndMs=pStartMs+pFermDays*86400000;
       if(pEndMs<startMs||pStartMs>endMs)return;
@@ -275,7 +275,7 @@ function renderFermenterTimeline(){
     if(bot&&bot.date){
       freeWhenMs=new Date(bot.date).getTime();
     }else{
-      var recipe=APP.recipes.find(function(r){return r.id===occ.recipeId;});
+      var recipe=getRecipe(occ.recipeId);
       if(recipe)freeWhenMs=new Date(occ.startDate).getTime()+(recipe.fermentDays||42)*86400000;
     }
     var daysUntil=freeWhenMs?Math.ceil((freeWhenMs-now.getTime())/86400000):null;
@@ -313,7 +313,7 @@ function renderBrewPlanCard(){
   }
   var now=new Date();
   var rows=plans.map(function(pb){
-    var r=APP.recipes.find(function(x){return x.id===pb.recipeId;});
+    var r=getRecipe(pb.recipeId);
     var f=getFermenter(pb.fermenterId);
     var startMs=new Date(pb.plannedStart).getTime();
     var daysOut=isNaN(startMs)?null:Math.round((startMs-now.getTime())/86400000);
@@ -325,7 +325,7 @@ function renderBrewPlanCard(){
       if(occ){
         var freeMs=null;var bot=APP.bottling[occ.id];
         if(bot&&bot.date)freeMs=new Date(bot.date).getTime();
-        else{var orec=APP.recipes.find(function(x){return x.id===occ.recipeId;});if(orec)freeMs=new Date(occ.startDate).getTime()+(orec.fermentDays||42)*86400000;}
+        else{var orec=getRecipe(occ.recipeId);if(orec)freeMs=new Date(occ.startDate).getTime()+(orec.fermentDays||42)*86400000;}
         if(freeMs&&!isNaN(startMs)&&freeMs>startMs){
           conflict='<span style="font-family:var(--font-mono);font-size:10px;color:var(--red2);letter-spacing:0.5px"> · ⚠ '+escHtml(f.name)+' busy until ~'+fmtDate(new Date(freeMs).toISOString())+'</span>';
         }
@@ -382,7 +382,7 @@ function computeShoppingNeeds(){
   var honeyTypes={},juiceTypes={},yeastNames={};
   var extras={}; // key -> {item, amounts, batches}
   plans.forEach(function(pb){
-    var r=APP.recipes.find(function(x){return x.id===pb.recipeId;});
+    var r=getRecipe(pb.recipeId);
     if(!r)return;
     var vol=parseFloat(pb.volume)||r.volume||4.5;
     var og=r.ogTarget||1.095;
@@ -781,7 +781,7 @@ function onPlanUnitChange(sys){
 // When the recipe changes, refresh the derived defaults (volume, yeast,
 // nutrient, honey) so the plan reflects the new recipe.
 function onPlanRecipeChange(){
-  var r=APP.recipes.find(function(x){return x.id===document.getElementById('pb-recipe').value;});
+  var r=getRecipe(document.getElementById('pb-recipe').value);
   if(!r)return;
   var us=currentUnitSystem();
   var volEl=document.getElementById('pb-vol');if(volEl)volEl.value=(r.volume/UNIT_VOL[us].toSI).toFixed(us==='metric'?2:3);
@@ -809,7 +809,7 @@ function savePlannedBatch(planId){
   // schema migration's own default-fill for pre-existing plans) has
   // something real to match on — inherit from the chosen recipe, falling
   // back to whichever mode was active when the plan was created.
-  var planRecipe=APP.recipes.find(function(x){return x.id===data.recipeId;});
+  var planRecipe=getRecipe(data.recipeId);
   data.beverageType=(planRecipe&&planRecipe.beverageType)||activeBevMode();
   if(!APP.plannedBatches)APP.plannedBatches=[];
   if(planId){
@@ -825,7 +825,7 @@ function savePlannedBatch(planId){
 function removePlannedBatch(planId){
   var pb=(APP.plannedBatches||[]).find(function(p){return p.id===planId;});
   if(!pb)return;
-  var r=APP.recipes.find(function(x){return x.id===pb.recipeId;});
+  var r=getRecipe(pb.recipeId);
   if(!confirm('Remove '+(r?r.name:'this batch')+' from your brew plan?'))return;
   APP.plannedBatches=APP.plannedBatches.filter(function(p){return p.id!==planId;});
   scheduleSave();toast('Removed from plan');renderMain();

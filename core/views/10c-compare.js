@@ -17,7 +17,7 @@ function renderCompare(){
     var color=getBatchColor(b);
     var sel=selected.indexOf(b.id)!==-1;
     var status=getBatchStatus(b);
-    var logs=APP.logs[b.id]||[];
+    var logs=getBatchLogs(b.id);
     var lastG=logs.length?logs[logs.length-1].gravity:b.og;
     return'<div class="compare-card '+(sel?'selected':'')+'" onclick="toggleCompare(\''+b.id+'\')" style="border-left:3px solid '+color+'">'
       +'<div class="check">✓</div>'
@@ -30,9 +30,9 @@ function renderCompare(){
   // Build comparison panel
   var comparisonHtml='';
   if(selected.length>=1){
-    var selBatches=selected.map(function(id){return APP.batches.find(function(b){return b.id===id;});});
+    var selBatches=selected.map(function(id){return getBatch(id);});
     // Value helpers
-    function lastG(b){var lg=APP.logs[b.id]||[];return lg.length?lg[lg.length-1].gravity:null;}
+    function lastG(b){var lg=getBatchLogs(b.id);return lg.length?lg[lg.length-1].gravity:null;}
     function protoLabel(b){
       var pr=b.nutrientProtocol;
       var map={tosca2:'TOSCA 2.0',tosna2:'TOSNA',tiosna:'TiOSNA',sna:'SNA','sna-high':'SNA (high-gravity)'};
@@ -49,8 +49,8 @@ function renderCompare(){
     // Comprehensive, grouped rows. {section} = sub-header; [label,fn] = data.
     var statRows=[
       {section:'🍯 Recipe & ingredients'},
-      ['Recipe',function(b){var r=APP.recipes.find(function(x){return x.id===b.recipeId;});return r?r.name:(b.style||'—');}],
-      ['Style',function(b){var r=APP.recipes.find(function(x){return x.id===b.recipeId;});return(r&&r.style)||b.style||'—';}],
+      ['Recipe',function(b){var r=getRecipe(b.recipeId);return r?r.name:(b.style||'—');}],
+      ['Style',function(b){var r=getRecipe(b.recipeId);return(r&&r.style)||b.style||'—';}],
       ['Honey type',function(b){return b.honeyType||'—';}],
       ['Honey amount',function(b){return b.honey?fmtWt(b.honey):'—';}],
       ['F:G · stall risk',honeyRisk],
@@ -64,7 +64,7 @@ function renderCompare(){
       ['Est. ABV',function(b){var g=lastG(b);return b.og&&g?calcABV(b.og,g)+'%':'—';}],
       ['Attenuation',function(b){var g=lastG(b);return b.og&&g?((b.og-g)/(b.og-1)*100).toFixed(1)+'%':'—';}],
       ['Fermenter',function(b){var f=getFermenter&&getFermenter(b.fermenterId);return f?f.name:'—';}],
-      ['Readings logged',function(b){return(APP.logs[b.id]||[]).length;}],
+      ['Readings logged',function(b){return(getBatchLogs(b.id)).length;}],
       ['Status',function(b){return getBatchStatus(b);}],
       {section:'🍾 Outcome'},
       ['Bottled',function(b){var bo=APP.bottling[b.id];return bo&&bo.date?fmtDate(bo.date):'—';}],
@@ -140,11 +140,11 @@ function initCompareCharts(){
   setTimeout(function(){
     var sel=APP.compareSelection||[];
     if(sel.length<2)return;
-    var selBatches=sel.map(function(id){return APP.batches.find(function(b){return b.id===id;});}).filter(Boolean);
+    var selBatches=sel.map(function(id){return getBatch(id);}).filter(Boolean);
     // Days-since-start as x axis for fair overlay
     function buildSeries(b){
       var og=b.og||1.095;
-      var logs=APP.logs[b.id]||[];
+      var logs=getBatchLogs(b.id);
       var data=[{x:0,y:og}].concat(logs.map(function(l){return{x:daysSince(b.startDate)-daysSince(l.date)+daysSince(l.date)-daysSince(b.startDate),y:l.gravity};}));
       // Recompute x properly: days from batch start to reading date
       var startMs=new Date(b.startDate).getTime();
@@ -153,7 +153,7 @@ function initCompareCharts(){
     }
     function buildAbv(b){
       var og=b.og||1.095;
-      var logs=APP.logs[b.id]||[];
+      var logs=getBatchLogs(b.id);
       var startMs=new Date(b.startDate).getTime();
       return[{x:0,y:0}].concat(logs.map(function(l){return{x:Math.max(0,Math.round((new Date(l.date)-startMs)/86400000)),y:l.gravity?parseFloat(calcABV(og,l.gravity)):0};}));
     }

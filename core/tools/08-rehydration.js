@@ -185,7 +185,7 @@ function renderTOSNAPlan(){
   var out=document.getElementById('tp-output');
   if(!sel||!out)return;
   var batchId=sel.value;
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b){out.innerHTML='';return;}
   var vol=parseFloat(b.volume)||5;
   var og=parseFloat(b.og)||1.095;
@@ -242,7 +242,7 @@ function renderTOSNAPlan(){
 }
 
 function applyTOSNAToBatch(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b){toast('⚠ Batch not found');return;}
   if(!confirm('Apply TOSNA schedule to "'+b.name+'"?\n\nThis will:\n  • Set the nutrient to Fermaid-O (TOSNA protocol)\n  • Write 4 dose entries into the additions log\n\nExisting additions are untouched.'))return;
   b.nutrient='fermaid-o';
