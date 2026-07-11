@@ -27,6 +27,16 @@ function mwResolveHoney(b,recipe){
   return (r&&typeof honeyTypesInRecipe==='function')?((honeyTypesInRecipe(r)||[])[0]||null):null;
 }
 
+// Whether a recipe is a sparkling/bottle-conditioned style — finished dry and
+// primed at bottling rather than stabilised, which means it typically gets
+// bottled sooner (no stabilise-and-clear wait) than a still mead on the same
+// yeast+honey. Shared for the same reason as mwResolveHoney above: used by
+// mwBatchSignals() for the current batch AND mwHistoricalComparison() for
+// every candidate it scans, one definition instead of two that could drift.
+function mwIsSparkling(recipe){
+  return !!(recipe&&(recipe.category==='Sparkling'||recipe.style==='Sparkling'||(recipe.tags&&(recipe.tags.indexOf('Sparkling')>=0||recipe.tags.indexOf('Carbonated')>=0))));
+}
+
 // ---- Signals: derived facts about a batch ---------------------------------
 function mwBatchSignals(b){
   if(!b)return null;
@@ -192,7 +202,7 @@ function mwBatchSignals(b){
   var daysSinceLastReading=(lastLogDate&&typeof daysSince==='function')?daysSince(lastLogDate):null;
   // Recipe character: sparkling (deliberately NOT stabilised) vs a still mead that
   // backsweetens (detected from a sorbate/stabilise step in the recipe).
-  var sparkling=!!(recipe&&(recipe.category==='Sparkling'||recipe.style==='Sparkling'||(recipe.tags&&(recipe.tags.indexOf('Sparkling')>=0||recipe.tags.indexOf('Carbonated')>=0))));
+  var sparkling=mwIsSparkling(recipe);
   var recipeBacksweetens=!sparkling&&!!(recipe&&recipe.steps&&recipe.steps.some(function(st){return /back-?sweeten|sorbate|stabili/i.test((st.title||'')+' '+(st.desc||''));}));
   // Aging model (shared with readiness): days since bottling vs ready→peak.
   // (bottling/bottled were resolved earlier — needed there for temperature source.)
@@ -700,15 +710,24 @@ function mwHistoricalComparison(b){
   // Honey resolves the same way mwBatchSignals() does: explicit batch field,
   // else the recipe's first honey — so batches sharing a recipe still match.
   var bHoney=mwResolveHoney(b);
+  // Sparkling recipes finish dry and get primed at bottling — no stabilise-
+  // and-clear wait — so they typically get bottled sooner than a still mead
+  // on the same yeast+honey. That's a real, mechanistic difference in "days
+  // to finish", not a hypothetical one, so the looser fallback tiers (which
+  // pool across DIFFERENT recipes) shouldn't mix the two. The exact-recipe
+  // tier doesn't need this check — a single recipe can't be both.
+  var bSparkling=mwIsSparkling((typeof getRecipe==='function')?getRecipe(b.recipeId):null);
   var pool=all.filter(function(o){return o.id!==b.id&&o.recipeId===b.recipeId;});
   var matchedOn='recipe';
   if(pool.length<2){
     // Same yeast+honey combo (e.g. every EC-1118 orange-blossom batch you've
     // made, regardless of recipe tweaks) is a closer match than yeast alone.
-    var byYeastHoney=(b.yeast&&bHoney)?all.filter(function(o){return o.id!==b.id&&o.yeast===b.yeast&&mwResolveHoney(o)===bHoney;}):[];
+    var byYeastHoney=(b.yeast&&bHoney)?all.filter(function(o){return o.id!==b.id&&o.yeast===b.yeast&&mwResolveHoney(o)===bHoney
+      &&mwIsSparkling((typeof getRecipe==='function')?getRecipe(o.recipeId):null)===bSparkling;}):[];
     if(byYeastHoney.length>=2){pool=byYeastHoney;matchedOn='yeast-honey';}
     else{
-      var byYeast=b.yeast?all.filter(function(o){return o.id!==b.id&&o.yeast===b.yeast;}):[];
+      var byYeast=b.yeast?all.filter(function(o){return o.id!==b.id&&o.yeast===b.yeast
+        &&mwIsSparkling((typeof getRecipe==='function')?getRecipe(o.recipeId):null)===bSparkling;}):[];
       if(byYeast.length>=2){pool=byYeast;matchedOn='yeast';}
     }
   }
@@ -724,8 +743,19 @@ function mwHistoricalComparison(b){
     var finalG=(bot&&parseFloat(bot.fg))||lastG||null;
     var atten=(og&&finalG!=null)?mwAttenuation(og,finalG)*100:null;
     // Only bottled batches give a fair "days to finish" — an in-progress one
-    // hasn't finished yet, so counting it would bias the average short.
-    var daysToFinish=(o.startDate&&bot&&bot.date)?Math.round((new Date(bot.date)-new Date(o.startDate))/86400000):null;
+    // hasn't finished yet, so counting it would bias the average short. But
+    // the DURATION itself prefers the last logged gravity reading over the
+    // bottling date: this gets compared against a currently-fermenting
+    // batch's elapsed days (pure fermentation time) in historical-pace's
+    // text, and bottling can happen months after fermentation actually
+    // finished (bulk aging) — using the bottling date would silently fold
+    // aging time into what's supposed to be a fermentation-pace comparison,
+    // getting worse the longer this brewer's past batches happened to bulk
+    // age. Falls back to the bottling date only if there's no gravity log
+    // to anchor to at all.
+    var lastReadingDate=logs.length?logs[logs.length-1].date:null;
+    var daysToFinish=(o.startDate&&bot&&bot.date)
+      ?Math.round((new Date(lastReadingDate||bot.date)-new Date(o.startDate))/86400000):null;
     var ts=(typeof APP!=='undefined'&&APP.tastings&&APP.tastings[o.id])||[];
     var rated=ts.filter(function(t){return t.rating;});
     var rating=rated.length?Math.max.apply(null,rated.map(function(t){return t.rating;})):null;

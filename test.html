@@ -1530,6 +1530,70 @@
     APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};
   })();
 
+  // Follow-up (2026-07-11): sparkling batches finish dry and get primed at
+  // bottling — no stabilise-and-clear wait — so they typically bottle sooner
+  // than a still mead on the same yeast. The looser fallback tiers
+  // (yeast-only here) shouldn't pool the two together.
+  (function(){
+    APP.recipes=[
+      {id:'rCurStill',ogTarget:1.098,fgTarget:1.010,fermentDays:30,category:'Traditional'},
+      {id:'rOtherStill',ogTarget:1.098,fgTarget:1.010,fermentDays:30,category:'Traditional'},
+      {id:'rSpark',ogTarget:1.070,fgTarget:1.000,fermentDays:21,category:'Sparkling'}
+    ];
+    var current={id:'sparkCur',recipeId:'rCurStill',startDate:isoAgo(10),og:1.098,yeast:'ec1118'};
+    // Only 1 other batch on the exact same recipe — not enough for the
+    // recipe tier (needs 2), forces the yeast-only fallback.
+    var otherStill1={id:'sparkOS1',recipeId:'rOtherStill',startDate:isoAgo(200),og:1.098,yeast:'ec1118'};
+    var otherStill2={id:'sparkOS2',recipeId:'rOtherStill',startDate:isoAgo(150),og:1.098,yeast:'ec1118'};
+    var sparkling1={id:'sparkSP1',recipeId:'rSpark',startDate:isoAgo(100),og:1.070,yeast:'ec1118'};
+    var sparkling2={id:'sparkSP2',recipeId:'rSpark',startDate:isoAgo(80),og:1.070,yeast:'ec1118'};
+    APP.batches=[current,otherStill1,otherStill2,sparkling1,sparkling2];
+    APP.bottling={
+      sparkOS1:{date:isoAgo(170),fg:1.010},sparkOS2:{date:isoAgo(120),fg:1.010},
+      sparkSP1:{date:isoAgo(90),fg:1.000},sparkSP2:{date:isoAgo(70),fg:1.000}
+    };
+    APP.logs={};
+    var hist=mwHistoricalComparison(current);
+    ok('historical: yeast-only fallback pools the 2 STILL batches, not the 2 sparkling ones', hist&&hist.matchedOn==='yeast'&&hist.sampleSize===2, hist&&JSON.stringify(hist));
+
+    // Flip it: a sparkling CURRENT batch shouldn't get pooled with the still ones either.
+    var currentSpark={id:'sparkCur2',recipeId:'rSpark',startDate:isoAgo(5),og:1.070,yeast:'ec1118'};
+    APP.batches=[currentSpark,otherStill1,otherStill2,sparkling1,sparkling2];
+    var histSpark=mwHistoricalComparison(currentSpark);
+    ok('historical: a sparkling current batch pools with sparkling history, not still', histSpark&&histSpark.sampleSize===2&&histSpark.avgAttenuation!=null, histSpark&&JSON.stringify(histSpark));
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.bottling={};
+  })();
+
+  // Follow-up (2026-07-11): daysToFinish now prefers the last logged gravity
+  // reading's date over the bottling date — bottling can happen months
+  // after fermentation actually finished (bulk aging), which would
+  // otherwise silently fold aging time into what's meant to be a pure
+  // fermentation-pace comparison.
+  (function(){
+    APP.recipes=[{id:'rBulk',ogTarget:1.098,fgTarget:1.010,fermentDays:30}];
+    // Fermentation itself wrapped up ~20 days in (last gravity reading), but
+    // bulk-aged for a long time before actually being bottled at day ~200.
+    var bulkAged1={id:'bulkP1',recipeId:'rBulk',startDate:isoAgo(400),og:1.098,yeast:'ec1118'};
+    var bulkAged2={id:'bulkP2',recipeId:'rBulk',startDate:isoAgo(300),og:1.098,yeast:'ec1118'};
+    var current={id:'bulkCur',recipeId:'rBulk',startDate:isoAgo(15),og:1.098,yeast:'ec1118'};
+    APP.batches=[bulkAged1,bulkAged2,current];
+    APP.logs={
+      bulkP1:[{date:isoAgo(400),gravity:1.098},{date:isoAgo(380),gravity:1.010}], // last reading ~20 days in
+      bulkP2:[{date:isoAgo(300),gravity:1.098},{date:isoAgo(279),gravity:1.010}]  // last reading ~21 days in
+    };
+    // Bottled MUCH later — ~200 days in — after months of bulk aging.
+    APP.bottling={bulkP1:{date:isoAgo(200),fg:1.010},bulkP2:{date:isoAgo(100),fg:1.010}};
+    var hist=mwHistoricalComparison(current);
+    ok('historical: daysToFinish reflects real fermentation length (~20d), not bulk-aged-until-bottled (~200d)', hist&&hist.avgDaysToFinish<30, hist&&hist.avgDaysToFinish);
+
+    // No gravity logs at all for either past batch — falls back to the
+    // bottling date rather than returning nothing.
+    APP.logs={};
+    var histFallback=mwHistoricalComparison(current);
+    ok('historical: falls back to the bottling date when there\'s no gravity log to anchor to', histFallback&&histFallback.avgDaysToFinish>100, histFallback&&histFallback.avgDaysToFinish);
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};
+  })();
+
   var s=document.getElementById('summary');
   s.textContent=(fail===0?'✓ ALL PASS':'✗ '+fail+' FAILED')+'  ('+pass+'/'+(pass+fail)+')';
   s.className=fail===0?'pass':'fail';
