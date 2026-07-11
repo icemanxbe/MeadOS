@@ -51,10 +51,18 @@ function _advItemText(it){
       var secondTxt=second?(nl?(' Ook mogelijk een rol: '+(causeLabel[second.cause]||second.cause)+'.'):(' Also possibly contributing: '+(causeLabel[second.cause]||second.cause)+'.')):'';
       // Timeline fact (E10): how long it's actually been flat, not just "stalled".
       var plateauTxt=(d.plateauDays!=null)?(nl?(' De dichtheid staat al '+d.plateauDays+' dagen vrijwel stil.'):(' Gravity has been essentially flat for '+d.plateauDays+' days.')):'';
+      // nutrientsComplete===true means nutrition wasn't even considered as a
+      // candidate cause (see the rule) — worth saying plainly, since "all
+      // doses logged" can otherwise read as "nutrition's been ruled out"
+      // when it really only means the planned events were recorded, not
+      // that the right product/amount/timing reached the must.
+      var nutrCaveat=d.nutrientsComplete===true?(nl
+        ?' (Alle geplande voedingsgiften zijn gelogd, dus voeding is hier niet als oorzaak meegenomen — een verkeerd product, te weinig, of verkeerd getimed zou dat niet laten zien.)'
+        :' (All planned nutrient doses are logged, so nutrition wasn\'t considered a likely cause here — a wrong product, under-dose, or bad timing wouldn\'t show up in that alone.)'):'';
       return {icon:'🧊',
         title:nl?'Gisting lijkt stil te vallen':'Fermentation appears stalled',
-        reason:nl?('De dichtheid is nauwelijks bewogen en zit nog op ~'+d.atten+'% vergisting, ver van het doel.'+plateauTxt+' '+(causeTxt||'Controleer temperatuur en voeding.')+secondTxt+' Overweeg anders een herstart-gist (zie Problemen oplossen).')
-                :('Gravity has barely moved and is still ~'+d.atten+'% attenuated, well short of target.'+plateauTxt+' '+(causeTxt||'Check temperature and nutrients.')+secondTxt+' Otherwise consider a restart yeast (see Troubleshoot).')};
+        reason:nl?('De dichtheid is nauwelijks bewogen en zit nog op ~'+d.atten+'% vergisting, ver van het doel.'+plateauTxt+' '+(causeTxt||'Controleer temperatuur en voeding.')+secondTxt+nutrCaveat+' Overweeg anders een herstart-gist (zie Problemen oplossen).')
+                :('Gravity has barely moved and is still ~'+d.atten+'% attenuated, well short of target.'+plateauTxt+' '+(causeTxt||'Check temperature and nutrients.')+secondTxt+nutrCaveat+' Otherwise consider a restart yeast (see Troubleshoot).')};
     })(),
     'nutrient-final':{icon:'⚗',
       title:nl?'Laatste voedingsgift is nodig':'Final nutrient addition due',
@@ -107,10 +115,18 @@ function _advItemText(it){
       // likely more), and a hand-logged temp is normally taken IN the must
       // itself at gravity-check time — so neither of those needs the hedge.
       var coldHedge=(d.cold&&d.fermenting&&d.source==='live');
+      // Published strain ranges are the manufacturer's typical window, not a
+      // hard pass/fail line — deliberately fermenting outside it (cooler for
+      // cleaner esters, warmer for a faster finish) is a real, sometimes-
+      // successful technique, not just a beginner mistake. Say so without
+      // softening the underlying mechanism (still genuinely true either way).
+      var deliberateHedge=nl
+        ?' Gepubliceerde bereiken zijn typisch, geen harde grens — sommige brouwers gisten bewust erbuiten (kouder voor zuiverdere esters, warmer voor een snellere afronding) met goed resultaat. Was dit bewust? Dan is dit vooral een controle, geen gegarandeerd probleem.'
+        :' Published ranges are typical, not absolute — some brewers deliberately ferment outside them (cooler for cleaner esters, warmer for a faster finish) with good results. If this was on purpose, treat this as a check-in, not a guaranteed problem.';
       return {icon:'🌡',
       title:nl?(d.cold?'Temperatuur te laag':'Temperatuur te hoog'):(d.cold?'Temperature too low':'Temperature too high'),
-      reason:nl?('Laatste meting '+(d.temp!=null?d.temp+'°C':'?')+' ligt buiten het ideale bereik voor '+(_advYeastName(d.yeast)||'deze gist')+' ('+d.low+'–'+d.high+'°C). '+(d.cold?('Te koud vertraagt of stalt de gisting.'+(coldHedge?' Komt deze meting van een vat-/omgevingssensor en niet van een sonde in de most zelf? Actieve gisting loopt vaak een paar graden warmer dan de omgeving — bevestig indien mogelijk met een thermometer in de vloeistof.':'')):'Te warm geeft fusels en scherpe smaken.'))
-              :('Last reading '+(d.temp!=null?d.temp+'°C':'?')+' is outside '+(_advYeastName(d.yeast)||'this yeast')+'\'s ideal range ('+d.low+'–'+d.high+'°C). '+(d.cold?('Too cold slows or stalls fermentation.'+(coldHedge?' If this reading is from a fermenter/room sensor rather than a probe in the must itself, note that active fermentation commonly runs a couple degrees warmer than its surroundings — worth confirming with a thermometer in the liquid.':'')):'Too warm drives fusels and harsh flavours.'))};
+      reason:nl?('Laatste meting '+(d.temp!=null?d.temp+'°C':'?')+' ligt buiten het ideale bereik voor '+(_advYeastName(d.yeast)||'deze gist')+' ('+d.low+'–'+d.high+'°C). '+(d.cold?('Te koud vertraagt of stalt de gisting.'+(coldHedge?' Komt deze meting van een vat-/omgevingssensor en niet van een sonde in de most zelf? Actieve gisting loopt vaak een paar graden warmer dan de omgeving — bevestig indien mogelijk met een thermometer in de vloeistof.':'')):'Te warm geeft fusels en scherpe smaken.')+deliberateHedge)
+              :('Last reading '+(d.temp!=null?d.temp+'°C':'?')+' is outside '+(_advYeastName(d.yeast)||'this yeast')+'\'s ideal range ('+d.low+'–'+d.high+'°C). '+(d.cold?('Too cold slows or stalls fermentation.'+(coldHedge?' If this reading is from a fermenter/room sensor rather than a probe in the must itself, note that active fermentation commonly runs a couple degrees warmer than its surroundings — worth confirming with a thermometer in the liquid.':'')):'Too warm drives fusels and harsh flavours.')+deliberateHedge)};
     })(),
     'abv-ceiling':{icon:'⚠',
       title:nl?'Nadert alcoholtolerantie':'Approaching alcohol tolerance',

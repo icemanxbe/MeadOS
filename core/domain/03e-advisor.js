@@ -652,6 +652,20 @@ function mwIngredientStats(){
 // the failure mode is narrow (requires editing/deleting a DIFFERENT batch
 // than the one currently being viewed, then viewing this one again before
 // any of ITS OWN fields change). Documented rather than built here.
+//
+// Separate, deliberate semantic decision (not a bug, and not the same as the
+// caching gap above — this would be equally true with PERFECT invalidation):
+// this function always reads APP.batches as it stands TODAY, not a frozen
+// snapshot of "who had finished, and with what numbers, at the moment THIS
+// batch first got compared." If you go back and correct a typo'd OG on an
+// old batch, every future comparison against it uses the corrected number —
+// including for a batch that was already advised using the old, wrong one.
+// "Your own past batches" means CURRENT best-known truth about them, same
+// philosophy as the yeast-edit decision above mwBatchSignals — not an
+// immutable historical record. The alternative (snapshotting each past
+// batch's stats at comparison time) would need real persisted state for a
+// property nobody's asked for; this app doesn't persist advisor state
+// anywhere else either (see mwBatchAdvice's own comment).
 function mwHistoricalComparison(b){
   if(!b)return null;
   // Scoped to b's OWN beverage type (not the ambient active-mode toggle) —

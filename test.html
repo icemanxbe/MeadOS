@@ -1404,6 +1404,61 @@
     ok('missingInputs: flags both together for a truly sparse batch', _advMissingInputs(bothMissing).length===2, JSON.stringify(_advMissingInputs(bothMissing)));
   })();
 
+  // ChatGPT review round 4 (2026-07-11): rather than a hand-maintained
+  // ADV_IDS constants object (would mean rewriting 50+ object-literal keys
+  // across 3 files into ES6 computed-key syntax, a style departure this
+  // codebase deliberately avoids), extract every id:'...' literal directly
+  // out of each rule function's OWN source via .toString()+regex, then
+  // verify _advItemText actually has a working entry for each. Zero
+  // production-code changes, and a STRONGER guarantee than a constants
+  // object would give — this checks the two systems actually agree, not
+  // just that someone remembered to update a shared list.
+  (function(){
+    var seen=[];
+    _advRules().forEach(function(rule){
+      var src=rule.toString();
+      var re=/id\s*:\s*'([a-z0-9-]+)'/g,m;
+      while((m=re.exec(src))){if(seen.indexOf(m[1])<0)seen.push(m[1]);}
+    });
+    ok('rules: every rule\'s source yields at least a few ids (sanity — extraction actually works)', seen.length>=20, seen.length);
+    // ingredient-notes builds its reason by joining a notes[] array the real
+    // rule only ever emits non-empty — a generic empty data:{} probe reflects
+    // that honestly (empty reason), not a real missing-entry bug, so it gets
+    // a minimally realistic fixture instead of the shared empty one.
+    var fixtures={'ingredient-notes':{notes:[{type:'flavor-mismatch'}]}};
+    var missing=seen.filter(function(id){
+      try{var t=_advItemText({id:id,data:fixtures[id]||{}});return !t||!t.title||!t.reason;}
+      catch(e){return true;}
+    });
+    ok('rules: every id any rule can emit has a working _advItemText entry (catches a rename/typo either side)', missing.length===0, JSON.stringify(missing));
+  })();
+
+  // ChatGPT review round 4: the "stalled" card's nutrition cause is only
+  // ever considered when nutrientsComplete is false — when it's true,
+  // nutrition wasn't even a candidate, which needs saying plainly instead
+  // of letting "all doses logged" read as "nutrition ruled out."
+  (function(){
+    var base={icon:'',atten:75,days:20,temp:19,cause:'temperature',causes:[{cause:'temperature',weight:0.5,evidence:[]}],yeast:'ec1118',plateauDays:5};
+    var withCaveat=_advItemText({id:'stalled',data:Object.assign({},base,{nutrientsComplete:true})});
+    ok('stalled: caveats that nutrition wasn\'t considered when doses were logged complete', /nutrition wasn't considered/.test(withCaveat.reason), withCaveat.reason);
+    var withoutCaveat=_advItemText({id:'stalled',data:Object.assign({},base,{nutrientsComplete:false})});
+    ok('stalled: no caveat when nutrition genuinely IS incomplete (the caveat would be redundant/wrong there)', !/nutrition wasn't considered/.test(withoutCaveat.reason), withoutCaveat.reason);
+  })();
+
+  // ChatGPT review round 4: published yeast temperature ranges are the
+  // manufacturer's typical window, not a hard pass/fail line — some brewers
+  // deliberately ferment outside it. The hedge should appear either
+  // direction (too cold or too warm), without removing the real mechanism
+  // text already there.
+  (function(){
+    var cold=_advItemText({id:'temperature',data:{temp:10,low:16,high:24,cold:true,yeast:'ec1118',source:'logged',fermenting:true}});
+    ok('temperature: cold case still states the real mechanism', /slows or stalls/.test(cold.reason), cold.reason);
+    ok('temperature: cold case includes the deliberate-off-range hedge', /Published ranges are typical/.test(cold.reason), cold.reason);
+    var warm=_advItemText({id:'temperature',data:{temp:30,low:16,high:24,cold:false,yeast:'ec1118',source:'logged',fermenting:true}});
+    ok('temperature: warm case still states the real mechanism', /fusels/.test(warm.reason), warm.reason);
+    ok('temperature: warm case ALSO includes the deliberate-off-range hedge', /Published ranges are typical/.test(warm.reason), warm.reason);
+  })();
+
   var s=document.getElementById('summary');
   s.textContent=(fail===0?'✓ ALL PASS':'✗ '+fail+' FAILED')+'  ('+pass+'/'+(pass+fail)+')';
   s.className=fail===0?'pass':'fail';
