@@ -13,6 +13,20 @@
 // a confidence 0..1 with the reasons behind it, and structured data the view
 // formats + localizes. Strings live in the view layer (12-advisor.js), not here.
 
+// Resolves which honey a batch is actually using: the batch's own explicit
+// field, else its recipe's first honey. Shared by mwBatchSignals() (for the
+// CURRENT batch, recipe already resolved there) and mwHistoricalComparison()
+// (for every candidate batch it scans, recipe not pre-resolved — pass none
+// and it looks it up via getRecipe). Previously duplicated inline in both
+// places; extracted so there's one definition of "which honey", not two that
+// could drift apart.
+function mwResolveHoney(b,recipe){
+  if(!b)return null;
+  if(b.honeyType)return b.honeyType;
+  var r=recipe||((typeof getRecipe==='function')?getRecipe(b.recipeId):null);
+  return (r&&typeof honeyTypesInRecipe==='function')?((honeyTypesInRecipe(r)||[])[0]||null):null;
+}
+
 // ---- Signals: derived facts about a batch ---------------------------------
 function mwBatchSignals(b){
   if(!b)return null;
@@ -129,9 +143,15 @@ function mwBatchSignals(b){
   // lastChanged entirely (older cached data, or a source that doesn't supply
   // it) trusts the reading rather than guessing it's stale.
   var STALE_SENSOR_HOURS=12;
+  var _sensorAgeHrs=liveTempReading&&liveTempReading.lastChanged!=null
+    ?(Date.now()-new Date(liveTempReading.lastChanged).getTime())/3600000:null;
+  // Guard against clock skew: if HA's clock (or the browser's) runs ahead,
+  // lastChanged can land in the future, making the age negative — which
+  // would otherwise satisfy "<=12h" as the freshest possible reading. A
+  // negative age is nonsense, not evidence of freshness, so it's treated
+  // the same as "too old" rather than "trust it more than anything else."
   var liveIsFresh=!!(liveTempReading&&liveTempReading.value!=null&&(
-    liveTempReading.lastChanged==null||
-    (Date.now()-new Date(liveTempReading.lastChanged).getTime())/3600000<=STALE_SENSOR_HOURS
+    _sensorAgeHrs==null||(_sensorAgeHrs>=0&&_sensorAgeHrs<=STALE_SENSOR_HOURS)
   ));
   var latestTemp=null, tempSource=null;
   if(liveIsFresh){
@@ -158,8 +178,7 @@ function mwBatchSignals(b){
 
   // Honey/yeast interaction: high-fructose honey (acacia, tupelo…) with a
   // non-fructophilic yeast is the classic late-stall risk. Facts only.
-  var honeyName=b.honeyType||null;
-  if(!honeyName&&recipe&&typeof honeyTypesInRecipe==='function'){var _ht=honeyTypesInRecipe(recipe);honeyName=(_ht&&_ht[0])||null;}
+  var honeyName=mwResolveHoney(b,recipe);
   var honeyProf=(honeyName&&typeof HONEY_PROFILES!=='undefined')?HONEY_PROFILES[honeyName]:null;
   var honeyFructoseRisk=(honeyProf&&honeyProf.tech)?honeyProf.tech.fructoseRisk:null;   // 'critical'|'high'|'medium'|'low'
   var yeastFructophilic=!!(y&&y.fructophilic);
@@ -680,18 +699,13 @@ function mwHistoricalComparison(b){
   var all=((typeof APP!=='undefined'&&APP.batches)||[]).filter(function(o){return(o.beverageType||'mead')===bBev&&!o.failed;});
   // Honey resolves the same way mwBatchSignals() does: explicit batch field,
   // else the recipe's first honey — so batches sharing a recipe still match.
-  function honeyOf(o){
-    if(o.honeyType)return o.honeyType;
-    var r=(typeof APP!=='undefined'&&APP.recipes)?APP.recipes.filter(function(rr){return rr.id===o.recipeId;})[0]:null;
-    return (r&&typeof honeyTypesInRecipe==='function')?((honeyTypesInRecipe(r)||[])[0]||null):null;
-  }
-  var bHoney=honeyOf(b);
+  var bHoney=mwResolveHoney(b);
   var pool=all.filter(function(o){return o.id!==b.id&&o.recipeId===b.recipeId;});
   var matchedOn='recipe';
   if(pool.length<2){
     // Same yeast+honey combo (e.g. every EC-1118 orange-blossom batch you've
     // made, regardless of recipe tweaks) is a closer match than yeast alone.
-    var byYeastHoney=(b.yeast&&bHoney)?all.filter(function(o){return o.id!==b.id&&o.yeast===b.yeast&&honeyOf(o)===bHoney;}):[];
+    var byYeastHoney=(b.yeast&&bHoney)?all.filter(function(o){return o.id!==b.id&&o.yeast===b.yeast&&mwResolveHoney(o)===bHoney;}):[];
     if(byYeastHoney.length>=2){pool=byYeastHoney;matchedOn='yeast-honey';}
     else{
       var byYeast=b.yeast?all.filter(function(o){return o.id!==b.id&&o.yeast===b.yeast;}):[];
@@ -718,12 +732,25 @@ function mwHistoricalComparison(b){
     return {daysToFinish:daysToFinish,atten:atten,rating:rating};
   }
   var stats=pool.map(statsFor);
-  function avg(arr){var v=arr.filter(function(x){return x!=null;});return v.length?mwRound(v.reduce(function(s,x){return s+x;},0)/v.length,1):null;}
+  // sampleSize is the whole comparable POOL, but each metric only draws from
+  // whichever of those batches actually has that fact — daysToFinish needs a
+  // real bottling record, rating needs a logged tasting, neither is
+  // guaranteed just because a batch matched on recipe/yeast. Returning the
+  // count that actually FED each average (not just the pool size) lets the
+  // view say "averaging ~24 days (2 of 8)" instead of implying all 8
+  // contributed when most were silently filtered out as null.
+  function avg(arr){
+    var v=arr.filter(function(x){return x!=null;});
+    return {value:v.length?mwRound(v.reduce(function(s,x){return s+x;},0)/v.length,1):null, n:v.length};
+  }
+  var daysStat=avg(stats.map(function(s){return s.daysToFinish;}));
+  var attenStat=avg(stats.map(function(s){return s.atten;}));
+  var ratingStat=avg(stats.map(function(s){return s.rating;}));
   return {
     matchedOn:matchedOn, sampleSize:pool.length, yeast:b.yeast||null, honey:bHoney,
-    avgDaysToFinish:avg(stats.map(function(s){return s.daysToFinish;})),
-    avgAttenuation:avg(stats.map(function(s){return s.atten;})),
-    avgRating:avg(stats.map(function(s){return s.rating;}))
+    avgDaysToFinish:daysStat.value, avgDaysToFinishN:daysStat.n,
+    avgAttenuation:attenStat.value, avgAttenuationN:attenStat.n,
+    avgRating:ratingStat.value, avgRatingN:ratingStat.n
   };
 }
 

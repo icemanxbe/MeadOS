@@ -1459,6 +1459,77 @@
     ok('temperature: warm case ALSO includes the deliberate-off-range hedge', /Published ranges are typical/.test(warm.reason), warm.reason);
   })();
 
+  // ChatGPT review round 5 (2026-07-11): sensor-freshness clock-skew guard —
+  // a lastChanged timestamp in the FUTURE (HA or browser clock ahead) used
+  // to satisfy "age <= 12h" as the freshest possible reading. Must be
+  // treated as untrustworthy, same as too-old, not as extra-fresh.
+  (function(){
+    window._liveSensorTemps={};
+    APP.recipes=[{id:'rSkew',ogTarget:1.100,fgTarget:1.010,fermentDays:30,steps:[]}];
+    APP.fermenters=[{id:'fSkew',tempSensorEntity:'sensor.skew_temp',capacity:20}];
+    var b={id:'skewB',recipeId:'rSkew',startDate:isoAgo(5),og:1.100,yeast:'ec1118',fermenterId:'fSkew'};
+    APP.batches=[b];APP.logs={skewB:[{date:isoAgo(5),gravity:1.100,temp:19},{date:isoAgo(0),gravity:1.080,temp:18}]};APP.bottling={};
+    // lastChanged 2 hours in the FUTURE — clock skew, not real freshness.
+    window._liveSensorTemps['sensor.skew_temp']={value:9,lastChanged:new Date(Date.now()+2*3600000).toISOString()};
+    var sSkew=mwBatchSignals(b);
+    ok('signals: a future-dated lastChanged (clock skew) is NOT treated as fresh', sSkew&&sSkew.tempSource==='logged', sSkew&&JSON.stringify({src:sSkew.tempSource,temp:sSkew.latestTemp}));
+    // Sanity: a genuinely fresh (past, recent) timestamp still works as before.
+    window._liveSensorTemps['sensor.skew_temp']={value:9,lastChanged:new Date(Date.now()-1*3600000).toISOString()};
+    var sOk=mwBatchSignals(b);
+    ok('signals: a genuinely recent lastChanged still counts as live (regression check)', sOk&&sOk.tempSource==='live', sOk&&sOk.tempSource);
+    window._liveSensorTemps={};APP.fermenters=[];APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};
+  })();
+
+  // ChatGPT review round 5: historical-comparison sampleSize is the whole
+  // comparable POOL, but avgDaysToFinish only draws from whichever of those
+  // are actually bottled. Verify the real denominator is reported alongside
+  // the pool size instead of silently implying every pool member finished.
+  (function(){
+    APP.recipes=[{id:'rDenom',fgTarget:1.000,fermentDays:30}];
+    var bottled1={id:'denomB1',recipeId:'rDenom',startDate:isoAgo(200),og:1.100,yeast:'ec1118'};
+    var bottled2={id:'denomB2',recipeId:'rDenom',startDate:isoAgo(150),og:1.100,yeast:'ec1118'};
+    // Still active — no bottling record, so it can't contribute a finish time,
+    // but it DOES still count toward the comparable pool (same recipe+yeast).
+    var stillActive={id:'denomA1',recipeId:'rDenom',startDate:isoAgo(10),og:1.100,yeast:'ec1118'};
+    var current={id:'denomCur',recipeId:'rDenom',startDate:isoAgo(5),og:1.100,yeast:'ec1118'};
+    APP.batches=[bottled1,bottled2,stillActive,current];
+    APP.bottling={denomB1:{date:isoAgo(170),fg:1.000},denomB2:{date:isoAgo(120),fg:1.000}};
+    APP.logs={};
+    var hist=mwHistoricalComparison(current);
+    ok('historical: sampleSize counts the whole pool (3, including the still-active one)', hist&&hist.sampleSize===3, hist&&JSON.stringify(hist));
+    ok('historical: avgDaysToFinishN only counts the 2 that were actually bottled', hist&&hist.avgDaysToFinishN===2, hist&&hist.avgDaysToFinishN);
+    ok('historical: avgDaysToFinishN is LESS than sampleSize (the exact case the view needs to hedge)', hist&&hist.avgDaysToFinishN<hist.sampleSize, hist&&JSON.stringify({n:hist.avgDaysToFinishN,pool:hist.sampleSize}));
+
+    var txt=_advItemText({id:'historical-pace',data:{daysSoFar:5,avgDays:hist.avgDaysToFinish,avgDaysN:hist.avgDaysToFinishN,avgRating:null,avgRatingN:null,sampleSize:hist.sampleSize,matchedOn:'recipe',yeast:'ec1118',honey:null}});
+    ok('historical-pace text: mentions the smaller real denominator when it diverges from the pool', /bottled/.test(txt.reason), txt.reason);
+
+    var txtEqual=_advItemText({id:'historical-pace',data:{daysSoFar:5,avgDays:30,avgDaysN:2,avgRating:null,avgRatingN:null,sampleSize:2,matchedOn:'recipe',yeast:'ec1118',honey:null}});
+    ok('historical-pace text: says nothing extra when the denominator equals the pool (no pointless "2 of 2")', !/bottled/.test(txtEqual.reason), txtEqual.reason);
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.bottling={};
+  })();
+
+  // ChatGPT review round 5: mwResolveHoney() replaces the honey-lookup logic
+  // that used to be duplicated inline in mwBatchSignals() and as a private
+  // honeyOf() closure inside mwHistoricalComparison(). Same behavior, one
+  // definition — verify both call sites still resolve honey correctly.
+  (function(){
+    ok('resolveHoney: null for no batch', mwResolveHoney(null)===null, '');
+    ok('resolveHoney: uses the batch\'s own explicit honeyType first', mwResolveHoney({honeyType:'Forest',recipeId:'nope'})==='Forest', '');
+
+    APP.recipes=[{id:'rHoney',ogTarget:1.098,ingredients:[{item:'Honey',amount:'1 kg',notes:'Wildflower blend'}]}];
+    var noExplicit={recipeId:'rHoney'};
+    var resolved=mwResolveHoney(noExplicit);
+    ok('resolveHoney: falls back to the recipe\'s first honey when the batch has none set', resolved!=null, resolved);
+
+    // Regression: mwBatchSignals' fructose-risk signal still resolves honey
+    // the same way now that it goes through the shared helper.
+    var bWithHoney={id:'honeyB',recipeId:'rHoney',startDate:isoAgo(3),og:1.098,yeast:'ec1118',honeyType:'Tupelo'};
+    APP.batches=[bWithHoney];APP.logs={honeyB:[{date:isoAgo(3),gravity:1.098}]};APP.bottling={};
+    var s=mwBatchSignals(bWithHoney);
+    ok('signals: honeyName resolves via the shared helper (regression)', s&&s.honeyName==='Tupelo', s&&s.honeyName);
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};
+  })();
+
   var s=document.getElementById('summary');
   s.textContent=(fail===0?'✓ ALL PASS':'✗ '+fail+' FAILED')+'  ('+pass+'/'+(pass+fail)+')';
   s.className=fail===0?'pass':'fail';

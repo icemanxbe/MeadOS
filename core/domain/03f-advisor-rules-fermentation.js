@@ -65,6 +65,10 @@ function _advRulesFermentation(){
           reason:s.nearFGReason,plateauDays:(s.timeline&&s.timeline.plateauDays)||null,
           histSampleSize:(s.nearFGReason==='historical'&&s.historical)?s.historical.sampleSize:null,
           histAtten:(s.nearFGReason==='historical'&&s.historical)?Math.round(s.historical.avgAttenuation):null,
+          // How many of histSampleSize actually had a computable attenuation
+          // (needs at least one real gravity reading) — usually equal to
+          // histSampleSize, but not guaranteed for a batch with no logs yet.
+          histAttenN:(s.nearFGReason==='historical'&&s.historical)?s.historical.avgAttenuationN:null,
           // A plateau that matches your OWN history is good evidence — unless
           // this batch's own nutrient schedule was also skipped, in which case
           // a repeatable process gap (not the yeast's real ceiling) is at
@@ -227,7 +231,10 @@ function _advRulesFermentation(){
       if(!s.fermenting||!s.historical||s.historical.avgDaysToFinish==null||s.daysSinceStart==null)return null;
       return {id:'historical-pace',severity:'info',category:'fermentation',
         data:{daysSoFar:s.daysSinceStart,avgDays:s.historical.avgDaysToFinish,avgRating:s.historical.avgRating,
-          sampleSize:s.historical.sampleSize,matchedOn:s.historical.matchedOn,yeast:s.historical.yeast,honey:s.historical.honey},
+          sampleSize:s.historical.sampleSize,matchedOn:s.historical.matchedOn,yeast:s.historical.yeast,honey:s.historical.honey,
+          // How many of sampleSize actually fed avgDays/avgRating — not every
+          // comparable batch is bottled or rated, so this can be smaller.
+          avgDaysN:s.historical.avgDaysToFinishN,avgRatingN:s.historical.avgRatingN},
         reasons:['own-history']};
     }
   ];

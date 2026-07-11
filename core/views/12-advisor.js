@@ -93,13 +93,18 @@ function _advItemText(it){
       var histCaveat=d.nutrientsComplete===false?(nl
         ?' Let op: de voedingsgiften voor dit brouwsel zijn niet allemaal toegevoegd — als dat vaker gebeurt, kan dat verklaren waarom je batches steeds rond hetzelfde punt uitkomen, niet per se de echte grens van deze gist.'
         :' Worth noting: this batch\'s nutrient schedule wasn\'t fully completed either — if that\'s a recurring pattern, it may explain why your batches keep landing around the same point, rather than that being this yeast\'s real ceiling.'):'';
+      // histAttenN is usually equal to histSampleSize (attenuation only needs
+      // ONE gravity reading, which nearly every past batch has) but isn't
+      // guaranteed — say so on the rare occasion it's actually smaller.
+      var histAttenDenomTxt=(d.histAttenN!=null&&d.histSampleSize!=null&&d.histAttenN<d.histSampleSize)
+        ?(nl?(' ('+d.histAttenN+' daarvan met een bruikbare meting)'):(' ('+d.histAttenN+' of those with a usable reading)')):'';
       var reason=nl?({
-        historical:'De dichtheid ('+sgTxt+') is al '+daysTxt+' stabiel bij ~'+d.atten+'% vergisting — dat komt overeen met je eigen vorige '+(d.histSampleSize||'')+' brouwsel(s) op deze gist (gemiddeld ~'+d.histAtten+'% vergisting), niet alleen een algemene honingverklaring.'+histCaveat+' Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.',
+        historical:'De dichtheid ('+sgTxt+') is al '+daysTxt+' stabiel bij ~'+d.atten+'% vergisting — dat komt overeen met je eigen vorige '+(d.histSampleSize||'')+' brouwsel(s) op deze gist (gemiddeld ~'+d.histAtten+'% vergisting'+histAttenDenomTxt+'), niet alleen een algemene honingverklaring.'+histCaveat+' Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.',
         attenuation:'De dichtheid ('+sgTxt+') is al '+daysTxt+' stabiel bij ~'+d.atten+'% vergisting, ook al ligt ze boven het berekende doel ('+targetTxt+'). Dat is normaal — vergistingspercentages op het pakje zijn gemeten onder ideale labomstandigheden, en een honingmost daalt vaak wat verder in pH dan bier of wijn (honing buffert nauwelijks), wat gist vroeger kan afremmen. Honing/fruit\'s kleine aandeel niet-vergistbare suikers speelt ook een (kleinere) rol. Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.',
         numeric:'De dichtheid ('+sgTxt+') zit op of nabij het doel ('+targetTxt+') bij ~'+d.atten+'% vergisting. Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.'
       }[d.reason]||('De dichtheid ('+sgTxt+') zit op of nabij het doel ('+targetTxt+') bij ~'+d.atten+'% vergisting.'))
         :({
-        historical:'Gravity ('+sgTxt+') has held stable for '+daysTxt+' at ~'+d.atten+'% attenuation — that matches your own past '+(d.histSampleSize||'')+' batch(es) on this yeast (averaging ~'+d.histAtten+'% attenuation), not just a general honey explanation.'+histCaveat+' Confirm with two stable readings a few days apart, then rack / bottle.',
+        historical:'Gravity ('+sgTxt+') has held stable for '+daysTxt+' at ~'+d.atten+'% attenuation — that matches your own past '+(d.histSampleSize||'')+' batch(es) on this yeast (averaging ~'+d.histAtten+'% attenuation'+histAttenDenomTxt+'), not just a general honey explanation.'+histCaveat+' Confirm with two stable readings a few days apart, then rack / bottle.',
         attenuation:'Gravity ('+sgTxt+') has held stable for '+daysTxt+' at ~'+d.atten+'% attenuation, even though it sits above the calculated target ('+targetTxt+'). That\'s normal — attenuation ratings are measured under ideal lab conditions, and a honey must typically drops further in pH than beer or wine ever does (honey barely buffers), which can slow yeast down for good before every last bit of sugar is gone. Honey/fruit\'s own small share of non-fermentable sugars plays a part too, just usually a smaller one. Confirm with two stable readings a few days apart, then rack / bottle.',
         numeric:'Gravity ('+sgTxt+') is at or near target ('+targetTxt+') at ~'+d.atten+'% attenuation. Confirm with two stable readings a few days apart, then rack / bottle.'
       }[d.reason]||('Gravity ('+sgTxt+') is at or near target ('+targetTxt+') at ~'+d.atten+'% attenuation.'));
@@ -265,12 +270,21 @@ function _advItemText(it){
       var matchTxt=d.matchedOn==='recipe'?(nl?'dit recept':'this recipe')
         :d.matchedOn==='yeast-honey'?((yn||(nl?'deze gist':'this yeast'))+' + '+(d.honey||(nl?'deze honing':'this honey')))
         :(nl?'deze gist':'this yeast');
-      var ratingTxt=(d.avgRating!=null)?(nl?(' en gemiddeld beoordeeld met '+d.avgRating+'/5'):(' and rated ~'+d.avgRating+'/5 on average')):'';
+      // sampleSize is the whole comparable pool, but the days-average only
+      // draws from whichever of those were actually bottled (a still-active
+      // one has no finish date yet) — say so when the two diverge, so "your
+      // last 8 batches averaged 24 days" doesn't imply all 8 finished when
+      // maybe only 2 had.
+      var daysDenomTxt=(d.avgDaysN!=null&&d.avgDaysN<d.sampleSize)
+        ?(nl?(' (op basis van de '+d.avgDaysN+' die al gebotteld zijn)'):(' (based on the '+d.avgDaysN+' that were bottled)')):'';
+      var ratingDenomTxt=(d.avgRatingN!=null&&d.avgRatingN<d.sampleSize)
+        ?(nl?(', '+d.avgRatingN+' beoordeeld'):(', '+d.avgRatingN+' rated')):'';
+      var ratingTxt=(d.avgRating!=null)?(nl?(' en gemiddeld beoordeeld met '+d.avgRating+'/5'+ratingDenomTxt):(' and rated ~'+d.avgRating+'/5 on average'+ratingDenomTxt)):'';
       var pctTxt=(d.avgDays>0)?(nl?(' ('+Math.round((d.daysSoFar/d.avgDays-1)*100)+'% t.o.v. gemiddeld)'):(' ('+Math.round((d.daysSoFar/d.avgDays-1)*100)+'% vs. average)')):'';
       return {icon:'📊',
         title:nl?'Vergeleken met je eigen partijen':'Compared to your own batches',
-        reason:nl?('Je vorige '+d.sampleSize+' partijen met '+matchTxt+' deden er gemiddeld ~'+d.avgDays+' dagen over'+ratingTxt+'. Deze partij zit nu op dag '+d.daysSoFar+pctTxt+'.')
-                  :('Your last '+d.sampleSize+' batches with '+matchTxt+' took ~'+d.avgDays+' days on average'+ratingTxt+'. This batch is currently at day '+d.daysSoFar+pctTxt+'.')};
+        reason:nl?('Je vorige '+d.sampleSize+' partijen met '+matchTxt+' deden er gemiddeld ~'+d.avgDays+' dagen over'+daysDenomTxt+ratingTxt+'. Deze partij zit nu op dag '+d.daysSoFar+pctTxt+'.')
+                  :('Your last '+d.sampleSize+' batches with '+matchTxt+' took ~'+d.avgDays+' days on average'+daysDenomTxt+ratingTxt+'. This batch is currently at day '+d.daysSoFar+pctTxt+'.')};
     })(),
     'extended-bulk-aging':(function(){
       var bev=_advBevWord(d,nl);
@@ -321,6 +335,20 @@ function _advHealthMeta(band){
 // two gaps with no dedicated recommendation of their own: a batch with no OG
 // or no gravity readings already gets a prominent record-og / log-reading-
 // missing card, so repeating that here would just be the same gap said twice.
+//
+// Can this ever duplicate what a fired rule already says? Audited: the two
+// call sites (renderBatchAdvisorStrip / renderBatchAdvisor's summaryLine)
+// only reach for this in the branch where adv.items is COMPLETELY empty —
+// i.e. every single rule stayed silent. That's a structural guarantee, not
+// just "the current rules happen not to overlap": even 'stalled', whose
+// cause list CAN legitimately include 'nutrition' while nutrientsExpected
+// is 0 (the same condition this function flags), never actually renders
+// alongside this text, because 'stalled' firing at all means adv.items is
+// non-empty and this function's caller never gets invoked for that batch.
+// If a future rule is ever added that's allowed to fire ON an unknown
+// temperature/nutrition signal specifically (none currently are — every
+// existing rule that reads tempInRange/nutrientsComplete requires the
+// underlying value to be KNOWN first), re-check this guarantee.
 function _advMissingInputs(s){
   if(!s||!s.active)return [];
   var nl=_advNL();
