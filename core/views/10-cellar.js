@@ -14,7 +14,7 @@ function getAgingProfile(b){
   // defaults. Custom/wizard-built recipes historically saved minDays/
   // peakDays/maxDays (no "Age") while built-ins use minAgeDays/peakAgeDays/
   // maxAgeDays — check both so a custom recipe's own values are used.
-  var r=APP.recipes.find(function(x){return x.id===b.recipeId;});
+  var r=getRecipe(b.recipeId);
   var peak=r&&(r.peakAgeDays||r.peakDays);
   if(peak)return{minDays:(r.minAgeDays||r.minDays)||30,peakDays:peak,maxDays:(r.maxAgeDays||r.maxDays)||(peak*3)};
   return{minDays:60,peakDays:180,maxDays:730};
@@ -1107,7 +1107,7 @@ function deleteCabinet(cabinetId){
 function openShelfAssignmentModal(batchId){
   closeModal();
   if(!isCellarConfigured()){toast('⚠ Configure your cellar first');openCellarConfigModal();return;}
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b){toast('⚠ Batch not found');return;}
   var bot=APP.bottling[batchId]||{};
   var current=bot.cellarShelfId||b.cellarShelfId||'';
@@ -1143,7 +1143,7 @@ function openShelfAssignmentModal(batchId){
 function saveShelfAssignment(batchId){
   var shelfId=document.getElementById('shelf-pick-id').value;
   if(!shelfId){toast('⚠ Pick a shelf');return;}
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b)return;
   if(APP.bottling[batchId]){
     APP.bottling[batchId].cellarShelfId=shelfId;
@@ -1157,7 +1157,7 @@ function saveShelfAssignment(batchId){
 }
 
 function removeBatchFromShelf(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b)return;
   if(APP.bottling[batchId])delete APP.bottling[batchId].cellarShelfId;
   delete b.cellarShelfId;
@@ -1243,7 +1243,7 @@ function openShelfDetailModal(shelfId){
 }
 
 function quickPlaceOnShelf(batchId,shelfId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b)return;
   if(APP.bottling[batchId]){
     APP.bottling[batchId].cellarShelfId=shelfId;
@@ -1469,7 +1469,7 @@ function renderCellarInventoryByStyle(){
     var bot=APP.bottling[b.id];
     var onHand=(typeof bottlesOnHand==='function')?bottlesOnHand(bot):(bot.bottleCount||0);
     if(!onHand)return;
-    var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+    var recipe=getRecipe(b.recipeId);
     var style=(recipe&&recipe.style)||b.style||'Custom';
     if(!byStyle[style])byStyle[style]={bottles:0,batches:0,color:(recipe&&recipe.brandColor)||getBatchColor(b)};
     byStyle[style].bottles+=onHand;
@@ -1602,7 +1602,7 @@ function markBatchFinished(batchId){
 }
 
 function removeFromCellar(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b)return;
   if(!confirm('Remove "'+b.name+'" from cellar?\n\nThe bottling record will be cleared and this batch will return to active status. Gravity logs and tasting notes are preserved.'))return;
   delete APP.bottling[batchId];
@@ -1612,7 +1612,7 @@ function removeFromCellar(batchId){
 }
 
 function openCellarEditModal(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b)return;
   var bot=APP.bottling[batchId]||{};
   if(!bot.locations)bot.locations={cellar:{},fridge:{},gifted:{},other:{}};

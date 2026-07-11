@@ -77,6 +77,7 @@
 <script src="/core/views/12-troubleshoot-nl.js"></script>
 <script src="/core/views/12-offflavor-nl.js"></script>
 <script src="/core/views/12-insights.js"></script>
+<script src="/core/views/12-advisor.js"></script>
 <script src="/core/features/12-tasting-analysis.js"></script>
 <script src="/core/features/12-records.js"></script>
 <script src="/core/tools/12-blending-yeast.js"></script>
@@ -1035,6 +1036,127 @@
       ok('rules: fermentation-phase file contributes 18 rules', (typeof _advRulesFermentation==='function'?_advRulesFermentation().length:0)===18, '');
       ok('rules: packaging/aging-phase file contributes 9 rules', (typeof _advRulesPackaging==='function'?_advRulesPackaging().length:0)===9, '');
     })();
+    // ChatGPT review round 3 (2026-07-11): the fruit-addition ceiling was
+    // anchored to the LAST READING's date, not real elapsed time — an
+    // infrequent logger who reads once shortly after adding fruit, then goes
+    // quiet for weeks, would keep the fruit flagged indefinitely because the
+    // (stale) last reading was still inside the 10-day ceiling. Must be
+    // anchored to today.
+    (function(){
+      APP.recipes=[{id:'rFrClock',ogTarget:1.098,fgTarget:1.010,fermentDays:60,steps:[]}];
+      var b={id:'frClock1',recipeId:'rFrClock',startDate:isoAgo(40),og:1.098,yeast:'ec1118'};
+      APP.batches=[b];
+      // Fruit added 40 days ago; a reading landed just 4 days after that
+      // (well inside the old, wrong "last reading" ceiling) — then nothing
+      // logged since. Opening the batch today, 40 real days have passed.
+      APP.logs={frClock1:[
+        {date:isoAgo(40),gravity:1.098},{date:isoAgo(36),gravity:1.060},
+        {date:isoAgo(30),gravity:1.020},{date:isoAgo(28),gravity:1.015}
+      ]};
+      APP.additions={frClock1:[{id:'oldfr2',date:isoAgo(40),item:'Peaches',type:'fruit',amount:'1 kg'}]};
+      var s=mwBatchSignals(b);
+      ok('signals: fruit addition is judged against REAL elapsed days, not the last reading\'s date', s&&s.recentFruitAddition===null, s&&JSON.stringify(s.recentFruitAddition));
+      APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.additions={};
+    })();
+    // ChatGPT review round 3: audited _mwAdviceSig(b) against every real
+    // input mwBatchSignals() reads — confirmed 6 gaps where a real change
+    // wouldn't invalidate the cached/frozen advice. Fixed all 6; tested here
+    // directly against the signature function rather than the full memoized
+    // mwBatchAdvice(), since that's the precise thing that changed.
+    (function(){
+      APP.recipes=[{id:'rSig',ogTarget:1.098,fgTarget:1.010,fermentDays:30,steps:[]}];
+      var b={id:'sig1',recipeId:'rSig',startDate:isoAgo(10),og:1.098,yeast:'ec1118'};
+      APP.batches=[b];APP.logs={sig1:[{date:isoAgo(10),gravity:1.098}]};APP.bottling={};APP.additions={};
+      window._liveSensorTemps={};
+      var base=_mwAdviceSig(b);
+      ok('sig: identical inputs produce the identical signature (memo still works)', _mwAdviceSig(b)===base, '');
+
+      b.fermenterId='fSig1';
+      ok('sig: fermenterId change invalidates (reassignment changes temp sensor + headspace)', _mwAdviceSig(b)!==base, '');
+      b.fermenterId=null;
+      ok('sig: reverting fermenterId restores the original signature', _mwAdviceSig(b)===base, '');
+
+      APP.bottling={sig1:{date:isoAgo(1),cellarShelfId:'shelfX'}};
+      var withShelf=_mwAdviceSig(b);
+      ok('sig: bottling record invalidates', withShelf!==base, '');
+      APP.bottling.sig1.cellarShelfId='shelfY';
+      ok('sig: changing JUST the cellar shelf (same bottling date) still invalidates', _mwAdviceSig(b)!==withShelf, '');
+      APP.bottling={};
+
+      var beforeRecipe=_mwAdviceSig(b);
+      APP.recipes[0].ogTarget=1.110;
+      ok('sig: editing the IN-USE recipe\'s own fields invalidates, not just recipeId', _mwAdviceSig(b)!==beforeRecipe, '');
+      APP.recipes[0].ogTarget=1.098;
+
+      var beforeAdds=_mwAdviceSig(b);
+      APP.additions={sig1:[{id:'a1',date:isoAgo(2),item:'Oak',type:'oak',amount:'10g'}]};
+      var oneOak=_mwAdviceSig(b);
+      ok('sig: adding an addition invalidates', oneOak!==beforeAdds, '');
+      APP.additions.sig1[0].type='fruit';
+      ok('sig: editing an EXISTING addition\'s content (same count) still invalidates — this is exactly what the fruit-addition-note feature depends on', _mwAdviceSig(b)!==oneOak, '');
+      APP.additions={};
+
+      var beforeSteps=_mwAdviceSig(b);
+      b.customSteps=[{day:2,title:'Nutrient',desc:'x'}];
+      ok('sig: customSteps invalidates', _mwAdviceSig(b)!==beforeSteps, '');
+      delete b.customSteps;
+
+      var beforeSensor=_mwAdviceSig(b);
+      window._liveSensorTemps={'sensor.somewhere':{value:20,lastChanged:new Date().toISOString()}};
+      ok('sig: a live sensor updating ANYWHERE invalidates (coarse but safe — recompute is cheap)', _mwAdviceSig(b)!==beforeSensor, '');
+      window._liveSensorTemps={};
+
+      APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};APP.additions={};
+    })();
+    // ChatGPT review round 3: a live sensor can keep reporting its last-known
+    // value forever without HA marking it 'unavailable' — trusting it
+    // indefinitely would prefer a stale reading over a fresher logged one.
+    (function(){
+      window._liveSensorTemps={};
+      APP.recipes=[{id:'rFresh',ogTarget:1.100,fgTarget:1.010,fermentDays:30,steps:[]}];
+      APP.fermenters=[{id:'fFresh',tempSensorEntity:'sensor.ffresh_temp',capacity:20}];
+      var b={id:'freshB',recipeId:'rFresh',startDate:isoAgo(5),og:1.100,yeast:'ec1118',fermenterId:'fFresh'};
+      APP.batches=[b];APP.bottling={};
+
+      // Stale: sensor's OWN last-changed timestamp is 18 hours old.
+      APP.logs={freshB:[{date:isoAgo(5),gravity:1.100,temp:20},{date:isoAgo(0),gravity:1.080,temp:19}]};
+      window._liveSensorTemps['sensor.ffresh_temp']={value:9,lastChanged:new Date(Date.now()-18*3600000).toISOString()};
+      var sStale=mwBatchSignals(b);
+      ok('signals: a live reading whose lastChanged is 18h old is treated as stale and falls back to the logged temp', sStale&&sStale.tempSource==='logged'&&sStale.latestTemp===19, sStale&&JSON.stringify({src:sStale.tempSource,temp:sStale.latestTemp}));
+
+      // Fresh: same sensor, lastChanged only 2 hours ago.
+      window._liveSensorTemps['sensor.ffresh_temp']={value:9,lastChanged:new Date(Date.now()-2*3600000).toISOString()};
+      var sFresh=mwBatchSignals(b);
+      ok('signals: a live reading whose lastChanged is 2h old is trusted', sFresh&&sFresh.tempSource==='live'&&sFresh.latestTemp===9, sFresh&&JSON.stringify({src:sFresh.tempSource,temp:sFresh.latestTemp}));
+
+      // Unknown freshness (no lastChanged supplied at all) — trust it rather
+      // than guess it's stale, so older cached data / other sources don't
+      // silently lose live-sensor behaviour.
+      window._liveSensorTemps['sensor.ffresh_temp']={value:9};
+      var sUnknown=mwBatchSignals(b);
+      ok('signals: a live reading with no lastChanged at all is still trusted (can\'t tell it\'s stale, so don\'t assume it is)', sUnknown&&sUnknown.tempSource==='live', sUnknown&&sUnknown.tempSource);
+
+      window._liveSensorTemps={};APP.fermenters=[];APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};
+    })();
+    // ChatGPT review round 3: a failed (contaminated/dumped) batch never
+    // reached a normal finish and shouldn't skew "your own past batches"
+    // averages the way a real completed batch does.
+    (function(){
+      APP.recipes=[{id:'rFail',fgTarget:1.000,fermentDays:30}];
+      var good1={id:'failGood1',recipeId:'rFail',startDate:isoAgo(200),og:1.100,yeast:'ec1118'};
+      var good2={id:'failGood2',recipeId:'rFail',startDate:isoAgo(150),og:1.100,yeast:'ec1118'};
+      // A failed batch with wildly different numbers — if it leaked into the
+      // pool it would visibly skew the average away from the 2 good batches.
+      var failed={id:'failBad1',recipeId:'rFail',startDate:isoAgo(100),og:1.100,yeast:'ec1118',failed:{date:isoAgo(90),category:'contamination'}};
+      var current={id:'failCur',recipeId:'rFail',startDate:isoAgo(20),og:1.100,yeast:'ec1118'};
+      APP.batches=[good1,good2,failed,current];
+      APP.bottling={failGood1:{date:isoAgo(170),fg:1.020},failGood2:{date:isoAgo(120),fg:1.020},failBad1:{date:isoAgo(90),fg:1.070}};
+      APP.logs={};
+      var hist=mwHistoricalComparison(current);
+      ok('historical: failed batches are excluded from the comparison pool', hist&&hist.sampleSize===2, hist&&JSON.stringify(hist));
+      ok('historical: average reflects only the 2 real completions, not the failed one\'s very different numbers', hist&&Math.abs(hist.avgAttenuation-80)<1, hist&&hist.avgAttenuation);
+      APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.bottling={};
+    })();
     APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};APP.additions={};
   })();
 
@@ -1160,7 +1282,11 @@
     APP.tastings={h1:[{rating:5}],h3:[{rating:3}]};APP.logs={};
     var cur=APP.batches[0];
     var hc=mwHistoricalComparison(cur);
-    ok('historicalComparison: matches on the SAME recipe first', hc&&hc.matchedOn==='recipe'&&hc.sampleSize===3, JSON.stringify(hc));
+    // h2 is failed and never bottled — ChatGPT review round 3: a failed batch
+    // never reached a normal finish, so it's excluded from the pool entirely
+    // rather than just silently contributing null to the averages. sampleSize
+    // reflects only h1+h3, the 2 batches that actually finished normally.
+    ok('historicalComparison: matches on the SAME recipe first, excluding the failed batch from the pool', hc&&hc.matchedOn==='recipe'&&hc.sampleSize===2, JSON.stringify(hc));
     ok('historicalComparison: avg days-to-finish uses only BOTTLED past batches (30,36→33)', hc&&Math.abs(hc.avgDaysToFinish-33)<0.6, hc&&hc.avgDaysToFinish);
     ok('historicalComparison: avg rating (5,3→4)', hc&&Math.abs(hc.avgRating-4)<1e-9, hc&&hc.avgRating);
     ok('historicalComparison: null for a batch with no past history at all', mwHistoricalComparison({id:'lonely',recipeId:'nobody-else',og:1.1,startDate:isoAgo(5)})===null, '');
@@ -1250,6 +1376,431 @@
     ok('blend: weighted OG (1.075)', Math.abs(r.og-1.075)<1e-9, r.og);
     ok('blend: total volume', r.vol===4, r.vol);
     ok('blend: empty → zero volume', mwBlend([]).vol===0, '');
+  })();
+
+  // "Known unknowns" (2026-07-11): the advisor's "everything looks good" /
+  // "nothing needs attention" fallbacks fire whenever there's simply nothing
+  // to say — which sparse/early data produces just as easily as a genuinely
+  // healthy batch. _advMissingInputs(s) names the gap so silence doesn't
+  // double as a false all-clear. Deliberately excludes OG/gravity-readings
+  // (already covered by their own dedicated record-og / log-reading-missing
+  // recommendation cards) and excludes bulk-aging batches from the
+  // temperature check (deliberately not judged against fermentation range).
+  (function(){
+    var full={active:true,bulkAging:false,latestTemp:19,nutrientsExpected:3,nutrientsDone:1};
+    ok('missingInputs: [] when temperature and nutrients are both tracked', _advMissingInputs(full).length===0, JSON.stringify(_advMissingInputs(full)));
+    ok('missingInputs: [] for an inactive/bottled batch (not this signal\'s job)', _advMissingInputs(Object.assign({},full,{active:false})).length===0, '');
+    ok('missingInputs: [] for null signals', _advMissingInputs(null).length===0, '');
+
+    var noTemp=Object.assign({},full,{latestTemp:null});
+    ok('missingInputs: flags temperature when never logged', _advMissingInputs(noTemp).indexOf('temperature')>=0, JSON.stringify(_advMissingInputs(noTemp)));
+    ok('missingInputs: does NOT flag temperature for a bulk-aging batch (deliberately not judged against ferment range)', _advMissingInputs(Object.assign({},noTemp,{bulkAging:true})).indexOf('temperature')<0, JSON.stringify(_advMissingInputs(Object.assign({},noTemp,{bulkAging:true}))));
+
+    var noNutr=Object.assign({},full,{nutrientsExpected:0,nutrientsDone:0});
+    ok('missingInputs: flags nutrient dosing when no schedule AND nothing logged', _advMissingInputs(noNutr).indexOf('nutrient dosing')>=0, JSON.stringify(_advMissingInputs(noNutr)));
+    ok('missingInputs: does NOT flag nutrient dosing when doses were logged manually, even with no formal schedule', _advMissingInputs(Object.assign({},full,{nutrientsExpected:0,nutrientsDone:2})).indexOf('nutrient dosing')<0, '');
+
+    var bothMissing={active:true,bulkAging:false,latestTemp:null,nutrientsExpected:0,nutrientsDone:0};
+    ok('missingInputs: flags both together for a truly sparse batch', _advMissingInputs(bothMissing).length===2, JSON.stringify(_advMissingInputs(bothMissing)));
+  })();
+
+  // ChatGPT review round 4 (2026-07-11): rather than a hand-maintained
+  // ADV_IDS constants object (would mean rewriting 50+ object-literal keys
+  // across 3 files into ES6 computed-key syntax, a style departure this
+  // codebase deliberately avoids), extract every id:'...' literal directly
+  // out of each rule function's OWN source via .toString()+regex, then
+  // verify _advItemText actually has a working entry for each. Zero
+  // production-code changes, and a STRONGER guarantee than a constants
+  // object would give — this checks the two systems actually agree, not
+  // just that someone remembered to update a shared list.
+  (function(){
+    var seen=[];
+    _advRules().forEach(function(rule){
+      var src=rule.toString();
+      var re=/id\s*:\s*'([a-z0-9-]+)'/g,m;
+      while((m=re.exec(src))){if(seen.indexOf(m[1])<0)seen.push(m[1]);}
+    });
+    ok('rules: every rule\'s source yields at least a few ids (sanity — extraction actually works)', seen.length>=20, seen.length);
+    // ingredient-notes builds its reason by joining a notes[] array the real
+    // rule only ever emits non-empty — a generic empty data:{} probe reflects
+    // that honestly (empty reason), not a real missing-entry bug, so it gets
+    // a minimally realistic fixture instead of the shared empty one.
+    var fixtures={'ingredient-notes':{notes:[{type:'flavor-mismatch'}]}};
+    var missing=seen.filter(function(id){
+      try{var t=_advItemText({id:id,data:fixtures[id]||{}});return !t||!t.title||!t.reason;}
+      catch(e){return true;}
+    });
+    ok('rules: every id any rule can emit has a working _advItemText entry (catches a rename/typo either side)', missing.length===0, JSON.stringify(missing));
+  })();
+
+  // ChatGPT review round 4: the "stalled" card's nutrition cause is only
+  // ever considered when nutrientsComplete is false — when it's true,
+  // nutrition wasn't even a candidate, which needs saying plainly instead
+  // of letting "all doses logged" read as "nutrition ruled out."
+  (function(){
+    var base={icon:'',atten:75,days:20,temp:19,cause:'temperature',causes:[{cause:'temperature',weight:0.5,evidence:[]}],yeast:'ec1118',plateauDays:5};
+    var withCaveat=_advItemText({id:'stalled',data:Object.assign({},base,{nutrientsComplete:true})});
+    ok('stalled: caveats that nutrition wasn\'t considered when doses were logged complete', /nutrition wasn't considered/.test(withCaveat.reason), withCaveat.reason);
+    var withoutCaveat=_advItemText({id:'stalled',data:Object.assign({},base,{nutrientsComplete:false})});
+    ok('stalled: no caveat when nutrition genuinely IS incomplete (the caveat would be redundant/wrong there)', !/nutrition wasn't considered/.test(withoutCaveat.reason), withoutCaveat.reason);
+  })();
+
+  // ChatGPT review round 4: published yeast temperature ranges are the
+  // manufacturer's typical window, not a hard pass/fail line — some brewers
+  // deliberately ferment outside it. The hedge should appear either
+  // direction (too cold or too warm), without removing the real mechanism
+  // text already there.
+  (function(){
+    var cold=_advItemText({id:'temperature',data:{temp:10,low:16,high:24,cold:true,yeast:'ec1118',source:'logged',fermenting:true}});
+    ok('temperature: cold case still states the real mechanism', /slows or stalls/.test(cold.reason), cold.reason);
+    ok('temperature: cold case includes the deliberate-off-range hedge', /Published ranges are typical/.test(cold.reason), cold.reason);
+    var warm=_advItemText({id:'temperature',data:{temp:30,low:16,high:24,cold:false,yeast:'ec1118',source:'logged',fermenting:true}});
+    ok('temperature: warm case still states the real mechanism', /fusels/.test(warm.reason), warm.reason);
+    ok('temperature: warm case ALSO includes the deliberate-off-range hedge', /Published ranges are typical/.test(warm.reason), warm.reason);
+  })();
+
+  // ChatGPT review round 5 (2026-07-11): sensor-freshness clock-skew guard —
+  // a lastChanged timestamp in the FUTURE (HA or browser clock ahead) used
+  // to satisfy "age <= 12h" as the freshest possible reading. Must be
+  // treated as untrustworthy, same as too-old, not as extra-fresh.
+  (function(){
+    window._liveSensorTemps={};
+    APP.recipes=[{id:'rSkew',ogTarget:1.100,fgTarget:1.010,fermentDays:30,steps:[]}];
+    APP.fermenters=[{id:'fSkew',tempSensorEntity:'sensor.skew_temp',capacity:20}];
+    var b={id:'skewB',recipeId:'rSkew',startDate:isoAgo(5),og:1.100,yeast:'ec1118',fermenterId:'fSkew'};
+    APP.batches=[b];APP.logs={skewB:[{date:isoAgo(5),gravity:1.100,temp:19},{date:isoAgo(0),gravity:1.080,temp:18}]};APP.bottling={};
+    // lastChanged 2 hours in the FUTURE — clock skew, not real freshness.
+    window._liveSensorTemps['sensor.skew_temp']={value:9,lastChanged:new Date(Date.now()+2*3600000).toISOString()};
+    var sSkew=mwBatchSignals(b);
+    ok('signals: a future-dated lastChanged (clock skew) is NOT treated as fresh', sSkew&&sSkew.tempSource==='logged', sSkew&&JSON.stringify({src:sSkew.tempSource,temp:sSkew.latestTemp}));
+    // Sanity: a genuinely fresh (past, recent) timestamp still works as before.
+    window._liveSensorTemps['sensor.skew_temp']={value:9,lastChanged:new Date(Date.now()-1*3600000).toISOString()};
+    var sOk=mwBatchSignals(b);
+    ok('signals: a genuinely recent lastChanged still counts as live (regression check)', sOk&&sOk.tempSource==='live', sOk&&sOk.tempSource);
+    window._liveSensorTemps={};APP.fermenters=[];APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};
+  })();
+
+  // ChatGPT review round 5: historical-comparison sampleSize is the whole
+  // comparable POOL, but avgDaysToFinish only draws from whichever of those
+  // are actually bottled. Verify the real denominator is reported alongside
+  // the pool size instead of silently implying every pool member finished.
+  (function(){
+    APP.recipes=[{id:'rDenom',fgTarget:1.000,fermentDays:30}];
+    var bottled1={id:'denomB1',recipeId:'rDenom',startDate:isoAgo(200),og:1.100,yeast:'ec1118'};
+    var bottled2={id:'denomB2',recipeId:'rDenom',startDate:isoAgo(150),og:1.100,yeast:'ec1118'};
+    // Still active — no bottling record, so it can't contribute a finish time,
+    // but it DOES still count toward the comparable pool (same recipe+yeast).
+    var stillActive={id:'denomA1',recipeId:'rDenom',startDate:isoAgo(10),og:1.100,yeast:'ec1118'};
+    var current={id:'denomCur',recipeId:'rDenom',startDate:isoAgo(5),og:1.100,yeast:'ec1118'};
+    APP.batches=[bottled1,bottled2,stillActive,current];
+    APP.bottling={denomB1:{date:isoAgo(170),fg:1.000},denomB2:{date:isoAgo(120),fg:1.000}};
+    APP.logs={};
+    var hist=mwHistoricalComparison(current);
+    ok('historical: sampleSize counts the whole pool (3, including the still-active one)', hist&&hist.sampleSize===3, hist&&JSON.stringify(hist));
+    ok('historical: avgDaysToFinishN only counts the 2 that were actually bottled', hist&&hist.avgDaysToFinishN===2, hist&&hist.avgDaysToFinishN);
+    ok('historical: avgDaysToFinishN is LESS than sampleSize (the exact case the view needs to hedge)', hist&&hist.avgDaysToFinishN<hist.sampleSize, hist&&JSON.stringify({n:hist.avgDaysToFinishN,pool:hist.sampleSize}));
+
+    var txt=_advItemText({id:'historical-pace',data:{daysSoFar:5,avgDays:hist.avgDaysToFinish,avgDaysN:hist.avgDaysToFinishN,avgRating:null,avgRatingN:null,sampleSize:hist.sampleSize,matchedOn:'recipe',yeast:'ec1118',honey:null}});
+    ok('historical-pace text: mentions the smaller real denominator when it diverges from the pool', /bottled/.test(txt.reason), txt.reason);
+
+    var txtEqual=_advItemText({id:'historical-pace',data:{daysSoFar:5,avgDays:30,avgDaysN:2,avgRating:null,avgRatingN:null,sampleSize:2,matchedOn:'recipe',yeast:'ec1118',honey:null}});
+    ok('historical-pace text: says nothing extra when the denominator equals the pool (no pointless "2 of 2")', !/bottled/.test(txtEqual.reason), txtEqual.reason);
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.bottling={};
+  })();
+
+  // ChatGPT review round 5: mwResolveHoney() replaces the honey-lookup logic
+  // that used to be duplicated inline in mwBatchSignals() and as a private
+  // honeyOf() closure inside mwHistoricalComparison(). Same behavior, one
+  // definition — verify both call sites still resolve honey correctly.
+  (function(){
+    ok('resolveHoney: null for no batch', mwResolveHoney(null)===null, '');
+    ok('resolveHoney: uses the batch\'s own explicit honeyType first', mwResolveHoney({honeyType:'Forest',recipeId:'nope'})==='Forest', '');
+
+    APP.recipes=[{id:'rHoney',ogTarget:1.098,ingredients:[{item:'Honey',amount:'1 kg',notes:'Wildflower blend'}]}];
+    var noExplicit={recipeId:'rHoney'};
+    var resolved=mwResolveHoney(noExplicit);
+    ok('resolveHoney: falls back to the recipe\'s first honey when the batch has none set', resolved!=null, resolved);
+
+    // Regression: mwBatchSignals' fructose-risk signal still resolves honey
+    // the same way now that it goes through the shared helper.
+    var bWithHoney={id:'honeyB',recipeId:'rHoney',startDate:isoAgo(3),og:1.098,yeast:'ec1118',honeyType:'Tupelo'};
+    APP.batches=[bWithHoney];APP.logs={honeyB:[{date:isoAgo(3),gravity:1.098}]};APP.bottling={};
+    var s=mwBatchSignals(bWithHoney);
+    ok('signals: honeyName resolves via the shared helper (regression)', s&&s.honeyName==='Tupelo', s&&s.honeyName);
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};
+  })();
+
+  // Follow-up (2026-07-11): sparkling batches finish dry and get primed at
+  // bottling — no stabilise-and-clear wait — so they typically bottle sooner
+  // than a still mead on the same yeast. The looser fallback tiers
+  // (yeast-only here) shouldn't pool the two together.
+  (function(){
+    APP.recipes=[
+      {id:'rCurStill',ogTarget:1.098,fgTarget:1.010,fermentDays:30,category:'Traditional'},
+      {id:'rOtherStill',ogTarget:1.098,fgTarget:1.010,fermentDays:30,category:'Traditional'},
+      {id:'rSpark',ogTarget:1.070,fgTarget:1.000,fermentDays:21,category:'Sparkling'}
+    ];
+    var current={id:'sparkCur',recipeId:'rCurStill',startDate:isoAgo(10),og:1.098,yeast:'ec1118'};
+    // Only 1 other batch on the exact same recipe — not enough for the
+    // recipe tier (needs 2), forces the yeast-only fallback.
+    var otherStill1={id:'sparkOS1',recipeId:'rOtherStill',startDate:isoAgo(200),og:1.098,yeast:'ec1118'};
+    var otherStill2={id:'sparkOS2',recipeId:'rOtherStill',startDate:isoAgo(150),og:1.098,yeast:'ec1118'};
+    var sparkling1={id:'sparkSP1',recipeId:'rSpark',startDate:isoAgo(100),og:1.070,yeast:'ec1118'};
+    var sparkling2={id:'sparkSP2',recipeId:'rSpark',startDate:isoAgo(80),og:1.070,yeast:'ec1118'};
+    APP.batches=[current,otherStill1,otherStill2,sparkling1,sparkling2];
+    APP.bottling={
+      sparkOS1:{date:isoAgo(170),fg:1.010},sparkOS2:{date:isoAgo(120),fg:1.010},
+      sparkSP1:{date:isoAgo(90),fg:1.000},sparkSP2:{date:isoAgo(70),fg:1.000}
+    };
+    APP.logs={};
+    var hist=mwHistoricalComparison(current);
+    ok('historical: yeast-only fallback pools the 2 STILL batches, not the 2 sparkling ones', hist&&hist.matchedOn==='yeast'&&hist.sampleSize===2, hist&&JSON.stringify(hist));
+
+    // Flip it: a sparkling CURRENT batch shouldn't get pooled with the still ones either.
+    var currentSpark={id:'sparkCur2',recipeId:'rSpark',startDate:isoAgo(5),og:1.070,yeast:'ec1118'};
+    APP.batches=[currentSpark,otherStill1,otherStill2,sparkling1,sparkling2];
+    var histSpark=mwHistoricalComparison(currentSpark);
+    ok('historical: a sparkling current batch pools with sparkling history, not still', histSpark&&histSpark.sampleSize===2&&histSpark.avgAttenuation!=null, histSpark&&JSON.stringify(histSpark));
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.bottling={};
+  })();
+
+  // Follow-up (2026-07-11): daysToFinish now prefers the last logged gravity
+  // reading's date over the bottling date — bottling can happen months
+  // after fermentation actually finished (bulk aging), which would
+  // otherwise silently fold aging time into what's meant to be a pure
+  // fermentation-pace comparison.
+  (function(){
+    APP.recipes=[{id:'rBulk',ogTarget:1.098,fgTarget:1.010,fermentDays:30}];
+    // Fermentation itself wrapped up ~20 days in (last gravity reading), but
+    // bulk-aged for a long time before actually being bottled at day ~200.
+    var bulkAged1={id:'bulkP1',recipeId:'rBulk',startDate:isoAgo(400),og:1.098,yeast:'ec1118'};
+    var bulkAged2={id:'bulkP2',recipeId:'rBulk',startDate:isoAgo(300),og:1.098,yeast:'ec1118'};
+    var current={id:'bulkCur',recipeId:'rBulk',startDate:isoAgo(15),og:1.098,yeast:'ec1118'};
+    APP.batches=[bulkAged1,bulkAged2,current];
+    APP.logs={
+      bulkP1:[{date:isoAgo(400),gravity:1.098},{date:isoAgo(380),gravity:1.010}], // last reading ~20 days in
+      bulkP2:[{date:isoAgo(300),gravity:1.098},{date:isoAgo(279),gravity:1.010}]  // last reading ~21 days in
+    };
+    // Bottled MUCH later — ~200 days in — after months of bulk aging.
+    APP.bottling={bulkP1:{date:isoAgo(200),fg:1.010},bulkP2:{date:isoAgo(100),fg:1.010}};
+    var hist=mwHistoricalComparison(current);
+    ok('historical: daysToFinish reflects real fermentation length (~20d), not bulk-aged-until-bottled (~200d)', hist&&hist.avgDaysToFinish<30, hist&&hist.avgDaysToFinish);
+
+    // No gravity logs at all for either past batch — falls back to the
+    // bottling date rather than returning nothing.
+    APP.logs={};
+    var histFallback=mwHistoricalComparison(current);
+    ok('historical: falls back to the bottling date when there\'s no gravity log to anchor to', histFallback&&histFallback.avgDaysToFinish>100, histFallback&&histFallback.avgDaysToFinish);
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};
+  })();
+
+  // Follow-up (2026-07-11), user-authorized future-proofing pass: juice/
+  // concentrate fruit additions get a much shorter "might still be skewing
+  // the trend" window than whole/frozen fruit, since juice's sugar is
+  // already dissolved (no multi-day extraction lag — a real, researched
+  // mechanism, not a per-fruit-type curve invented without data).
+  (function(){
+    ok('mwIsJuiceForm: detects "juice" in item text', mwIsJuiceForm('apple juice'), '');
+    ok('mwIsJuiceForm: detects "concentrate"', mwIsJuiceForm('cranberry juice concentrate'), '');
+    ok('mwIsJuiceForm: detects Dutch "sap" compounded onto the fruit name (no space)', mwIsJuiceForm('appelsap')&&mwIsJuiceForm('kersensap')&&mwIsJuiceForm('druivensap'), '');
+    ok('mwIsJuiceForm: whole fruit is NOT juice-form', !mwIsJuiceForm('frozen blackberries'), '');
+    ok('mwIsJuiceForm: a fruit name that merely CONTAINS "sap" mid-word is NOT a false positive', !mwIsJuiceForm('sapote'), '');
+    ok('mwIsJuiceForm: null/empty item is NOT juice-form', !mwIsJuiceForm(null)&&!mwIsJuiceForm(''), '');
+
+    APP.recipes=[{id:'rFruit',ogTarget:1.100,fgTarget:1.010,fermentDays:30}];
+    var b={id:'fruitB',recipeId:'rFruit',startDate:isoAgo(20),og:1.100,yeast:'ec1118'};
+    APP.batches=[b];APP.bottling={};
+    APP.logs={fruitB:[{date:isoAgo(20),gravity:1.100},{date:isoAgo(10),gravity:1.060},{date:isoAgo(0),gravity:1.030}]};
+
+    APP.additions={fruitB:[{id:'a1',type:'fruit',item:'cherry juice',date:isoAgo(5)}]};
+    var sJuiceOld=mwBatchSignals(b);
+    ok('signals: juice-form addition 5 days ago is OUTSIDE the 2-day juice ceiling — not flagged', !sJuiceOld.recentFruitAddition, sJuiceOld.recentFruitAddition&&JSON.stringify(sJuiceOld.recentFruitAddition));
+
+    APP.additions={fruitB:[{id:'a1',type:'fruit',item:'cherry juice',date:isoAgo(1)}]};
+    var sJuiceRecent=mwBatchSignals(b);
+    ok('signals: juice-form addition 1 day ago IS inside the 2-day ceiling, flagged juiceForm:true', sJuiceRecent.recentFruitAddition&&sJuiceRecent.recentFruitAddition.juiceForm===true, sJuiceRecent.recentFruitAddition&&JSON.stringify(sJuiceRecent.recentFruitAddition));
+
+    APP.additions={fruitB:[{id:'a1',type:'fruit',item:'frozen cherries',date:isoAgo(5)}]};
+    var sWholeOld=mwBatchSignals(b);
+    ok('signals: whole/frozen fruit 5 days ago is still inside the existing 10-day ceiling, juiceForm:false', sWholeOld.recentFruitAddition&&sWholeOld.recentFruitAddition.juiceForm===false, sWholeOld.recentFruitAddition&&JSON.stringify(sWholeOld.recentFruitAddition));
+
+    APP.additions={};APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};
+  })();
+
+  // Follow-up (2026-07-11): mwHistoricalComparison(b) reads every OTHER
+  // batch's yeast/honey/recipe/bottling/tastings — _mwAdviceSig(b) now
+  // fingerprints the whole sibling pool so editing/deleting a DIFFERENT
+  // batch correctly invalidates b's own cached advice (previously a
+  // documented, accepted gap).
+  (function(){
+    APP.recipes=[{id:'rSib',ogTarget:1.100,fgTarget:1.010,fermentDays:30}];
+    var b={id:'sibCur',recipeId:'rSib',startDate:isoAgo(10),og:1.100,yeast:'ec1118'};
+    var sibling={id:'sibOther',recipeId:'rSib',startDate:isoAgo(50),og:1.100,yeast:'ec1118'};
+    APP.batches=[b,sibling];APP.logs={};APP.bottling={};APP.tastings={};
+
+    var sigBefore=_mwAdviceSig(b);
+    sibling.yeast='k1v1116';
+    var sigAfterYeastEdit=_mwAdviceSig(b);
+    ok('sig: editing a SIBLING batch\'s yeast invalidates b\'s own signature', sigBefore!==sigAfterYeastEdit, '');
+
+    sibling.yeast='ec1118';
+    var sigReverted=_mwAdviceSig(b);
+    ok('sig: reverting the sibling edit restores the original signature (a pure fingerprint of current state, not a one-way counter)', sigReverted===sigBefore, '');
+
+    APP.bottling={sibOther:{date:isoAgo(10),fg:1.010}};
+    var sigAfterBottling=_mwAdviceSig(b);
+    ok('sig: bottling a SIBLING batch invalidates b\'s own signature', sigReverted!==sigAfterBottling, '');
+
+    APP.tastings={sibOther:[{rating:4}]};
+    var sigAfterTasting=_mwAdviceSig(b);
+    ok('sig: a new tasting on a SIBLING batch invalidates b\'s own signature', sigAfterBottling!==sigAfterTasting, '');
+
+    APP.batches=[b];
+    var sigAfterDelete=_mwAdviceSig(b);
+    ok('sig: deleting a SIBLING batch invalidates b\'s own signature', sigAfterTasting!==sigAfterDelete, '');
+
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};APP.tastings={};
+  })();
+
+  // Follow-up (2026-07-11): tempStable prefers the live sensor's own recent
+  // HISTORY (window._liveSensorHistory, refreshAllSensorHistories) over the
+  // last-3-hand-logged-temps spread, when the current reading is actually
+  // coming from a fresh live sensor — falls back to the hand-logged spread
+  // when no history is cached yet.
+  (function(){
+    window._liveSensorTemps={};window._liveSensorHistory={};
+    APP.recipes=[{id:'rHist',ogTarget:1.100,fgTarget:1.010,fermentDays:30}];
+    APP.fermenters=[{id:'fHist',tempSensorEntity:'sensor.hist_temp',capacity:20}];
+    var b={id:'histB',recipeId:'rHist',startDate:isoAgo(5),og:1.100,yeast:'ec1118',fermenterId:'fHist'};
+    APP.batches=[b];APP.bottling={};
+    // Hand-logged spread alone would read UNSTABLE (7° apart).
+    APP.logs={histB:[{date:isoAgo(5),gravity:1.100,temp:18},{date:isoAgo(0),gravity:1.080,temp:25}]};
+
+    window._liveSensorTemps['sensor.hist_temp']={value:18.5,lastChanged:new Date().toISOString()};
+    window._liveSensorHistory['sensor.hist_temp']=[{timestamp:new Date(),value:18.2},{timestamp:new Date(),value:18.6},{timestamp:new Date(),value:18.4}];
+    var sStableHist=mwBatchSignals(b);
+    ok('signals: tempStable prefers live history over the wider hand-logged spread when a fresh live reading exists', sStableHist&&sStableHist.tempSource==='live'&&sStableHist.tempStable===true, sStableHist&&JSON.stringify({src:sStableHist.tempSource,stable:sStableHist.tempStable}));
+
+    window._liveSensorHistory['sensor.hist_temp']=[{timestamp:new Date(),value:15},{timestamp:new Date(),value:22}];
+    var sUnstableHist=mwBatchSignals(b);
+    ok('signals: tempStable reflects a genuinely unstable live history too (not always true just because history exists)', sUnstableHist&&sUnstableHist.tempStable===false, sUnstableHist&&sUnstableHist.tempStable);
+
+    window._liveSensorHistory={};
+    var sNoHist=mwBatchSignals(b);
+    ok('signals: falls back to the hand-logged spread when no live history is cached yet', sNoHist&&sNoHist.tempSource==='live'&&sNoHist.tempStable===false, sNoHist&&JSON.stringify({src:sNoHist.tempSource,stable:sNoHist.tempStable}));
+
+    window._liveSensorTemps={};window._liveSensorHistory={};APP.fermenters=[];APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};
+  })();
+
+  // Follow-up (2026-07-11): causal cross-reference — 'stalled' already
+  // computes a weighted cause list (mwStalledCauses, E2); _advStalledCauseItemIds
+  // reuses it to find which OTHER present items correspond to a named cause,
+  // instead of inventing a separate relationship map.
+  (function(){
+    var items=[
+      {id:'stalled',data:{causes:[{cause:'nutrition',weight:0.75},{cause:'temperature',weight:0.5}]}},
+      {id:'nutrient-final',data:{}},
+      {id:'ph-low',data:{}}
+    ];
+    var ids=_advStalledCauseItemIds(items);
+    ok('stalledCauseItemIds: matches a co-occurring item for a named cause (nutrition→nutrient-final)', ids.indexOf('nutrient-final')>=0, JSON.stringify(ids));
+    ok('stalledCauseItemIds: excludes a named cause with no matching PRESENT item (temperature→temperature, not present here)', ids.indexOf('temperature')<0, JSON.stringify(ids));
+    ok('stalledCauseItemIds: excludes an unrelated present item (ph-low isn\'t one of stalled\'s named causes here)', ids.indexOf('ph-low')<0, JSON.stringify(ids));
+    ok('stalledCauseItemIds: [] when there\'s no stalled item at all', _advStalledCauseItemIds([{id:'ph-low',data:{}}]).length===0, '');
+    ok('stalledCauseItemIds: [] when stalled has no causes data', _advStalledCauseItemIds([{id:'stalled',data:{}}]).length===0, '');
+    ok('stalledCauseItemIds: [] for an empty items array', _advStalledCauseItemIds([]).length===0, '');
+  })();
+
+  // Follow-up (2026-07-11): the "all quiet" summary line is backed by a real,
+  // already-computed fact (historical match / ahead-of-pace / peak window)
+  // when one applies, instead of the same static sentence every time.
+  (function(){
+    ok('quietFact: null for null signals', _advQuietFact(null)===null, '');
+    ok('quietFact: null when nothing distinguishing applies', _advQuietFact({fermenting:true,fermentProgress:{phase:'on-track'}})===null, '');
+
+    var histFact=_advQuietFact({historical:{matchedOn:'yeast',sampleSize:3,yeast:'ec1118',honey:null}});
+    ok('quietFact: names the historical match when sampleSize>=2', histFact&&histFact.indexOf('3')>=0, histFact);
+
+    var aheadFact=_advQuietFact({fermenting:true,fermentProgress:{phase:'ahead'}});
+    ok('quietFact: names "ahead of pace" when fermenting and ahead', /ahead/i.test(aheadFact||''), aheadFact);
+
+    var peakFact=_advQuietFact({bottled:true,agePhase:'peak'});
+    ok('quietFact: names the peak window for a bottled batch at peak', /peak/i.test(peakFact||''), peakFact);
+
+    var bothFact=_advQuietFact({historical:{matchedOn:'recipe',sampleSize:2,yeast:'ec1118',honey:null},fermenting:true,fermentProgress:{phase:'ahead'}});
+    ok('quietFact: prefers the historical match over fermentProgress when both apply', /2/.test(bothFact||'')&&!/ahead/i.test(bothFact||''), bothFact);
+  })();
+
+  // Follow-up (2026-07-11): next-step guidance varies for the one id where
+  // the data genuinely changes what "next" means (juice vs whole fruit);
+  // unknown ids return null rather than fabricated guidance.
+  (function(){
+    var juiceNext=_advNextStep({id:'fruit-addition-note',data:{juiceForm:true}});
+    ok('nextStep: juice-form fruit-addition-note gets the shorter guidance', /one more reading/i.test(juiceNext), juiceNext);
+    var wholeNext=_advNextStep({id:'fruit-addition-note',data:{juiceForm:false}});
+    ok('nextStep: whole-fruit fruit-addition-note keeps the original guidance', /2-3 more readings/i.test(wholeNext), wholeNext);
+    ok('nextStep: a known actionable id returns a non-empty string', !!_advNextStep({id:'stalled',data:{}}), '');
+    ok('nextStep: an unknown id returns null rather than fabricated guidance', _advNextStep({id:'not-a-real-id',data:{}})===null, '');
+  })();
+
+  // Follow-up (2026-07-11): transient (non-persistent) resolved-item
+  // acknowledgment — snapshot real advice items BEFORE a mutating action,
+  // diff against the real recomputed advice AFTER.
+  (function(){
+    APP.recipes=[{id:'rResolve',ogTarget:1.100,fgTarget:1.010,fermentDays:30,steps:[]}];
+    var b={id:'resolveB',recipeId:'rResolve',startDate:isoAgo(5),og:1.100,yeast:'ec1118'};
+    APP.batches=[b];APP.bottling={};APP.logs={};
+
+    var before=_advSnapshotItems(b);
+    ok('resolvedSuffix: snapshot captures log-reading-missing while it\'s firing (no readings yet)', before.some(function(i){return i.id==='log-reading-missing';}), JSON.stringify(before.map(function(i){return i.id;})));
+
+    APP.logs={resolveB:[{date:isoAgo(0),gravity:1.060,temp:18}]};
+    var suffix=_advResolvedSuffix(b,before);
+    ok('resolvedSuffix: names the resolved item once logging a reading clears it', /resolved/i.test(suffix)&&/reading/i.test(suffix), suffix);
+
+    var noChangeSuffix=_advResolvedSuffix(b,_advSnapshotItems(b));
+    ok('resolvedSuffix: empty string when nothing actually resolved (snapshot taken AFTER the change)', noChangeSuffix==='', JSON.stringify(noChangeSuffix));
+    ok('resolvedSuffix: empty string for an empty before-list', _advResolvedSuffix(b,[])==='', '');
+
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};
+  })();
+
+  // Regression (2026-07-11, found via a real screenshot, not the test suite):
+  // watchItems.map(itemCard) and insightItems.map(itemCard) passed itemCard
+  // straight to .map() — itemCard's 2nd param (nested) silently received
+  // .map()'s own index argument instead of undefined (the classic
+  // ['1','2','3'].map(parseInt) gotcha: index 1+ is truthy). Every item past
+  // the first in EITHER section rendered as a bogus "related to the stall
+  // above" nested sub-card, even with no stalled item anywhere in sight.
+  // Caught by actually reading a generated screenshot rather than just
+  // checking the render didn't throw — direct-called _advStalledCauseItemIds
+  // returned [] correctly the whole time, so a logic-only test would have
+  // stayed green throughout; only the .map() wiring itself was wrong.
+  (function(){
+    // Real shape (from Forest Fruits Batch 2): 3 same-severity 'recommended'
+    // items (oxygen-stop, ferment-complete, stabilise-first) with NO stalled
+    // item anywhere — exactly the condition that triggered the bug.
+    APP.recipes=[{id:'rMulti',ogTarget:1.092,fgTarget:1.004,fermentDays:42,category:'Melomel',
+      steps:[{day:42,title:'Stabilise & back-sweeten',desc:'Stabilise first with potassium sorbate AND metabisulfite together, then back-sweeten.'}]}];
+    var b={id:'multiB',recipeId:'rMulti',startDate:isoAgo(18),og:1.092,yeast:'m05',volume:6.5};
+    APP.batches=[b];APP.bottling={};
+    APP.logs={multiB:[{date:isoAgo(18),gravity:1.092,temp:17.5},{date:isoAgo(12),gravity:1.030,temp:17.5},
+      {date:isoAgo(6),gravity:1.011,temp:17},{date:isoAgo(0),gravity:1.010,temp:16.6}]};
+    var adv=mwBatchAdvice(b);
+    var watchIds=adv.items.filter(function(i){return i.severity==='recommended';}).map(function(i){return i.id;});
+    ok('regression fixture: reproduces 3+ same-severity items with no stalled item', watchIds.length>=3&&adv.items.every(function(i){return i.id!=='stalled';}), JSON.stringify(watchIds));
+
+    var html=renderBatchAdvisor(b);
+    ok('nested-card bug: no item is falsely marked "related to the stall" when there is no stalled item at all', html.indexOf('RELATED TO THE STALL')<0&&html.indexOf('GERELATEERD AAN GISTING')<0, 'found bogus nesting in rendered HTML');
+    // Same check the other language, since the fix is in shared render logic
+    // not the string itself. appLang() reads APP.settings.labelLocale.
+    APP.settings=APP.settings||{};var origLocale=APP.settings.labelLocale;
+    APP.settings.labelLocale='nl';
+    var htmlNl=renderBatchAdvisor(b);
+    ok('nested-card bug: same check in Dutch', htmlNl.indexOf('GERELATEERD AAN GISTING')<0, 'found bogus nesting in Dutch rendered HTML');
+    APP.settings.labelLocale=origLocale;
+
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};
   })();
 
   var s=document.getElementById('summary');

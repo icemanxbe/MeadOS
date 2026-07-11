@@ -80,7 +80,7 @@ function renderTemplatesSection(){
   return'<div class="card" style="margin-bottom:14px"><div class="card-header"><div class="card-title">💾 BATCH TEMPLATES</div></div>'
     +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px;font-style:italic">Saved batch configurations. Click "Apply" to start a new batch pre-filled with these values.</div>'
     +tpls.map(function(t){
-      var recipe=APP.recipes.find(function(r){return r.id===t.recipeId;});
+      var recipe=getRecipe(t.recipeId);
       var ccy=APP.settings.currency||'€';
       return'<div style="display:flex;align-items:center;gap:10px;padding:10px;background:var(--bg3);border-radius:var(--radius);margin-bottom:8px;flex-wrap:wrap">'
         +'<div style="flex:1;min-width:240px"><div style="font-family:var(--font-display);font-size:14px;color:var(--gold2)">'+escHtml(t.name)+'</div>'
@@ -98,7 +98,7 @@ function renderTemplatesSection(){
 // ==================== RECIPE SCALING WIZARD ====================
 function openRecipeScalingWizard(recipeId){
   closeModal();
-  var r=APP.recipes.find(function(x){return x.id===recipeId;});
+  var r=getRecipe(recipeId);
   if(!r){toast('⚠ Recipe not found');return;}
   var defaultVol=r.volume||5;
   var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:560px">'
@@ -115,7 +115,7 @@ function openRecipeScalingWizard(recipeId){
 }
 
 function updateRecipeScaling(recipeId){
-  var r=APP.recipes.find(function(x){return x.id===recipeId;});
+  var r=getRecipe(recipeId);
   if(!r)return;
   var targetVol=parseFloat(document.getElementById('rs-target').value)||r.volume;
   var ratio=targetVol/r.volume;

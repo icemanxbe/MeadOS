@@ -107,7 +107,7 @@ function renderFunInsights(){
   var totalHoney=batches.reduce(function(s,b){return s+(parseFloat(b.honey)||0);},0);
   var favHoney=mode(batches.map(function(b){return b.honeyType;}));
   var favYeast=mode(batches.map(function(b){var y=getYeastById(b.yeast);return y?y.name.split('—')[0].trim():b.yeast;}));
-  var styles={};batches.forEach(function(b){var r=APP.recipes.find(function(x){return x.id===b.recipeId;});var c=(r&&(r.category||r.style))||b.style;if(c)styles[c]=1;});
+  var styles={};batches.forEach(function(b){var r=getRecipe(b.recipeId);var c=(r&&(r.category||r.style))||b.style;if(c)styles[c]=1;});
   var distinctStyles=Object.keys(styles).length;
   // ABV extremes + days-to-bottle from bottled batches
   var abvs=[],ttb=[];
@@ -189,7 +189,7 @@ function renderFailedBatchInsights(){
   }
   var commonHoney=tallyMode(failed,function(b){return b.honeyType;});
   var commonYeast=tallyMode(failed,function(b){return b.yeast;});
-  var commonStyle=tallyMode(failed,function(b){var r=APP.recipes.find(function(x){return x.id===b.recipeId;});return r&&r.style;});
+  var commonStyle=tallyMode(failed,function(b){var r=getRecipe(b.recipeId);return r&&r.style;});
 
   // Postmortem cards — most recent 5, newer cards higher
   var postmortems=failed.slice(0,5).map(function(b){
@@ -241,7 +241,7 @@ function renderBestTastingInsights(){
     var tastings=(APP.tastings[b.id]||[]).filter(function(t){return t.rating;});
     var bestRating=tastings.length?Math.max.apply(null,tastings.map(function(t){return t.rating;})):0;
     var bot=APP.bottling[b.id];
-    var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+    var recipe=getRecipe(b.recipeId);
     return{
       batch:b,
       rating:bestRating,

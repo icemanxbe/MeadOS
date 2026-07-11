@@ -80,7 +80,7 @@ function renderHoneyUsageForecast(){
   if(!planned.length)return'';
   var demand={};
   planned.forEach(function(pb){
-    var r=APP.recipes.find(function(x){return x.id===pb.recipeId;});
+    var r=getRecipe(pb.recipeId);
     if(!r)return;
     // Planned batches carry no honey weight — derive it from target OG and
     // volume (~292 SG points per kg per litre).
@@ -370,7 +370,7 @@ function renderHoneyDetail(){
   if(recipes.length){
     recipesBlock+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">'
       +recipes.map(function(r){
-        var recipe=APP.recipes.find(function(x){return x.id===r.id;});
+        var recipe=getRecipe(r.id);
         var style=recipe?recipe.style:'';
         var diff=recipe?recipe.difficulty:'';
         return'<div onclick="currentRecipeId=\''+r.id+'\';showView(\'recipe-detail\')" style="background:var(--bg);padding:10px 12px;border-radius:var(--radius);cursor:pointer;border-left:3px solid '+r.color+';transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
@@ -819,7 +819,7 @@ function renderAppleDetail(){
   if(recipes.length){
     recipesBlock+='<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px">'
       +recipes.map(function(r){
-        var recipe=APP.recipes.find(function(x){return x.id===r.id;});
+        var recipe=getRecipe(r.id);
         var style=recipe?recipe.style:'';
         var diff=recipe?recipe.difficulty:'';
         return'<div onclick="currentRecipeId=\''+r.id+'\';showView(\'recipe-detail\')" style="background:var(--bg);padding:10px 12px;border-radius:var(--radius);cursor:pointer;border-left:3px solid '+r.color+';transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
@@ -951,7 +951,7 @@ function renderYeastDetail(){
   var recipesUsing=[];
   Object.keys(RECIPE_YEAST_PAIRINGS).forEach(function(rid){
     var p=RECIPE_YEAST_PAIRINGS[rid];
-    var r=APP.recipes.find(function(x){return x.id===rid;});
+    var r=getRecipe(rid);
     if(!r)return;
     if(p.recommended.indexOf(y.id)>=0)recipesUsing.push({recipe:r,tier:'recommended'});
     else if(p.acceptable.indexOf(y.id)>=0)recipesUsing.push({recipe:r,tier:'acceptable'});
@@ -1064,7 +1064,7 @@ function renderNutrientDetail(){
   if(typeof RECIPE_NUTRIENT_PAIRINGS!=='undefined'){
     Object.keys(RECIPE_NUTRIENT_PAIRINGS).forEach(function(rid){
       var p=RECIPE_NUTRIENT_PAIRINGS[rid];
-      var r=APP.recipes&&APP.recipes.find(function(x){return x.id===rid;});
+      var r=APP.recipes&&getRecipe(rid);
       if(!r)return;
       if((p.recommended||[]).indexOf(n.id)>=0)recipesUsingN.push({recipe:r,tier:'best',eff:(p.effects&&p.effects[n.id])||''});
       else if((p.acceptable||[]).indexOf(n.id)>=0)recipesUsingN.push({recipe:r,tier:'also',eff:(p.effects&&p.effects[n.id])||''});

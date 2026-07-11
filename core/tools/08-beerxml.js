@@ -261,7 +261,7 @@ function importBeerXMLClick(){
 }
 
 function exportRecipeBeerXML(recipeId){
-  var r=APP.recipes.find(function(x){return x.id===recipeId;});
+  var r=getRecipe(recipeId);
   if(!r){toast('⚠ Recipe not found');return;}
   var xml=recipeToBeerXML(r);
   if(!xml){toast('⚠ Could not generate XML');return;}

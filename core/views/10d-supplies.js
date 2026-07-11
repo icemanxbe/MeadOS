@@ -349,7 +349,7 @@ function deleteSupply(id){
 
 // ==================== BREW AGAIN ====================
 function brewAgain(originalBatchId){
-  var ob=APP.batches.find(function(x){return x.id===originalBatchId;});
+  var ob=getBatch(originalBatchId);
   if(!ob){toast('⚠ Source batch not found');return;}
   // Pre-populate the new batch modal with values from the original
   openNewBatchModal(ob.recipeId);

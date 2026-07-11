@@ -51,10 +51,18 @@ function _advItemText(it){
       var secondTxt=second?(nl?(' Ook mogelijk een rol: '+(causeLabel[second.cause]||second.cause)+'.'):(' Also possibly contributing: '+(causeLabel[second.cause]||second.cause)+'.')):'';
       // Timeline fact (E10): how long it's actually been flat, not just "stalled".
       var plateauTxt=(d.plateauDays!=null)?(nl?(' De dichtheid staat al '+d.plateauDays+' dagen vrijwel stil.'):(' Gravity has been essentially flat for '+d.plateauDays+' days.')):'';
+      // nutrientsComplete===true means nutrition wasn't even considered as a
+      // candidate cause (see the rule) — worth saying plainly, since "all
+      // doses logged" can otherwise read as "nutrition's been ruled out"
+      // when it really only means the planned events were recorded, not
+      // that the right product/amount/timing reached the must.
+      var nutrCaveat=d.nutrientsComplete===true?(nl
+        ?' (Alle geplande voedingsgiften zijn gelogd, dus voeding is hier niet als oorzaak meegenomen — een verkeerd product, te weinig, of verkeerd getimed zou dat niet laten zien.)'
+        :' (All planned nutrient doses are logged, so nutrition wasn\'t considered a likely cause here — a wrong product, under-dose, or bad timing wouldn\'t show up in that alone.)'):'';
       return {icon:'🧊',
         title:nl?'Gisting lijkt stil te vallen':'Fermentation appears stalled',
-        reason:nl?('De dichtheid is nauwelijks bewogen en zit nog op ~'+d.atten+'% vergisting, ver van het doel.'+plateauTxt+' '+(causeTxt||'Controleer temperatuur en voeding.')+secondTxt+' Overweeg anders een herstart-gist (zie Problemen oplossen).')
-                :('Gravity has barely moved and is still ~'+d.atten+'% attenuated, well short of target.'+plateauTxt+' '+(causeTxt||'Check temperature and nutrients.')+secondTxt+' Otherwise consider a restart yeast (see Troubleshoot).')};
+        reason:nl?('De dichtheid is nauwelijks bewogen en zit nog op ~'+d.atten+'% vergisting, ver van het doel.'+plateauTxt+' '+(causeTxt||'Controleer temperatuur en voeding.')+secondTxt+nutrCaveat+' Overweeg anders een herstart-gist (zie Problemen oplossen).')
+                :('Gravity has barely moved and is still ~'+d.atten+'% attenuated, well short of target.'+plateauTxt+' '+(causeTxt||'Check temperature and nutrients.')+secondTxt+nutrCaveat+' Otherwise consider a restart yeast (see Troubleshoot).')};
     })(),
     'nutrient-final':{icon:'⚗',
       title:nl?'Laatste voedingsgift is nodig':'Final nutrient addition due',
@@ -85,13 +93,18 @@ function _advItemText(it){
       var histCaveat=d.nutrientsComplete===false?(nl
         ?' Let op: de voedingsgiften voor dit brouwsel zijn niet allemaal toegevoegd — als dat vaker gebeurt, kan dat verklaren waarom je batches steeds rond hetzelfde punt uitkomen, niet per se de echte grens van deze gist.'
         :' Worth noting: this batch\'s nutrient schedule wasn\'t fully completed either — if that\'s a recurring pattern, it may explain why your batches keep landing around the same point, rather than that being this yeast\'s real ceiling.'):'';
+      // histAttenN is usually equal to histSampleSize (attenuation only needs
+      // ONE gravity reading, which nearly every past batch has) but isn't
+      // guaranteed — say so on the rare occasion it's actually smaller.
+      var histAttenDenomTxt=(d.histAttenN!=null&&d.histSampleSize!=null&&d.histAttenN<d.histSampleSize)
+        ?(nl?(' ('+d.histAttenN+' daarvan met een bruikbare meting)'):(' ('+d.histAttenN+' of those with a usable reading)')):'';
       var reason=nl?({
-        historical:'De dichtheid ('+sgTxt+') is al '+daysTxt+' stabiel bij ~'+d.atten+'% vergisting — dat komt overeen met je eigen vorige '+(d.histSampleSize||'')+' brouwsel(s) op deze gist (gemiddeld ~'+d.histAtten+'% vergisting), niet alleen een algemene honingverklaring.'+histCaveat+' Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.',
+        historical:'De dichtheid ('+sgTxt+') is al '+daysTxt+' stabiel bij ~'+d.atten+'% vergisting — dat komt overeen met je eigen vorige '+(d.histSampleSize||'')+' brouwsel(s) op deze gist (gemiddeld ~'+d.histAtten+'% vergisting'+histAttenDenomTxt+'), niet alleen een algemene honingverklaring.'+histCaveat+' Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.',
         attenuation:'De dichtheid ('+sgTxt+') is al '+daysTxt+' stabiel bij ~'+d.atten+'% vergisting, ook al ligt ze boven het berekende doel ('+targetTxt+'). Dat is normaal — vergistingspercentages op het pakje zijn gemeten onder ideale labomstandigheden, en een honingmost daalt vaak wat verder in pH dan bier of wijn (honing buffert nauwelijks), wat gist vroeger kan afremmen. Honing/fruit\'s kleine aandeel niet-vergistbare suikers speelt ook een (kleinere) rol. Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.',
         numeric:'De dichtheid ('+sgTxt+') zit op of nabij het doel ('+targetTxt+') bij ~'+d.atten+'% vergisting. Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over / bottel.'
       }[d.reason]||('De dichtheid ('+sgTxt+') zit op of nabij het doel ('+targetTxt+') bij ~'+d.atten+'% vergisting.'))
         :({
-        historical:'Gravity ('+sgTxt+') has held stable for '+daysTxt+' at ~'+d.atten+'% attenuation — that matches your own past '+(d.histSampleSize||'')+' batch(es) on this yeast (averaging ~'+d.histAtten+'% attenuation), not just a general honey explanation.'+histCaveat+' Confirm with two stable readings a few days apart, then rack / bottle.',
+        historical:'Gravity ('+sgTxt+') has held stable for '+daysTxt+' at ~'+d.atten+'% attenuation — that matches your own past '+(d.histSampleSize||'')+' batch(es) on this yeast (averaging ~'+d.histAtten+'% attenuation'+histAttenDenomTxt+'), not just a general honey explanation.'+histCaveat+' Confirm with two stable readings a few days apart, then rack / bottle.',
         attenuation:'Gravity ('+sgTxt+') has held stable for '+daysTxt+' at ~'+d.atten+'% attenuation, even though it sits above the calculated target ('+targetTxt+'). That\'s normal — attenuation ratings are measured under ideal lab conditions, and a honey must typically drops further in pH than beer or wine ever does (honey barely buffers), which can slow yeast down for good before every last bit of sugar is gone. Honey/fruit\'s own small share of non-fermentable sugars plays a part too, just usually a smaller one. Confirm with two stable readings a few days apart, then rack / bottle.',
         numeric:'Gravity ('+sgTxt+') is at or near target ('+targetTxt+') at ~'+d.atten+'% attenuation. Confirm with two stable readings a few days apart, then rack / bottle.'
       }[d.reason]||('Gravity ('+sgTxt+') is at or near target ('+targetTxt+') at ~'+d.atten+'% attenuation.'));
@@ -107,10 +120,18 @@ function _advItemText(it){
       // likely more), and a hand-logged temp is normally taken IN the must
       // itself at gravity-check time — so neither of those needs the hedge.
       var coldHedge=(d.cold&&d.fermenting&&d.source==='live');
+      // Published strain ranges are the manufacturer's typical window, not a
+      // hard pass/fail line — deliberately fermenting outside it (cooler for
+      // cleaner esters, warmer for a faster finish) is a real, sometimes-
+      // successful technique, not just a beginner mistake. Say so without
+      // softening the underlying mechanism (still genuinely true either way).
+      var deliberateHedge=nl
+        ?' Gepubliceerde bereiken zijn typisch, geen harde grens — sommige brouwers gisten bewust erbuiten (kouder voor zuiverdere esters, warmer voor een snellere afronding) met goed resultaat. Was dit bewust? Dan is dit vooral een controle, geen gegarandeerd probleem.'
+        :' Published ranges are typical, not absolute — some brewers deliberately ferment outside them (cooler for cleaner esters, warmer for a faster finish) with good results. If this was on purpose, treat this as a check-in, not a guaranteed problem.';
       return {icon:'🌡',
       title:nl?(d.cold?'Temperatuur te laag':'Temperatuur te hoog'):(d.cold?'Temperature too low':'Temperature too high'),
-      reason:nl?('Laatste meting '+(d.temp!=null?d.temp+'°C':'?')+' ligt buiten het ideale bereik voor '+(_advYeastName(d.yeast)||'deze gist')+' ('+d.low+'–'+d.high+'°C). '+(d.cold?('Te koud vertraagt of stalt de gisting.'+(coldHedge?' Komt deze meting van een vat-/omgevingssensor en niet van een sonde in de most zelf? Actieve gisting loopt vaak een paar graden warmer dan de omgeving — bevestig indien mogelijk met een thermometer in de vloeistof.':'')):'Te warm geeft fusels en scherpe smaken.'))
-              :('Last reading '+(d.temp!=null?d.temp+'°C':'?')+' is outside '+(_advYeastName(d.yeast)||'this yeast')+'\'s ideal range ('+d.low+'–'+d.high+'°C). '+(d.cold?('Too cold slows or stalls fermentation.'+(coldHedge?' If this reading is from a fermenter/room sensor rather than a probe in the must itself, note that active fermentation commonly runs a couple degrees warmer than its surroundings — worth confirming with a thermometer in the liquid.':'')):'Too warm drives fusels and harsh flavours.'))};
+      reason:nl?('Laatste meting '+(d.temp!=null?d.temp+'°C':'?')+' ligt buiten het ideale bereik voor '+(_advYeastName(d.yeast)||'deze gist')+' ('+d.low+'–'+d.high+'°C). '+(d.cold?('Te koud vertraagt of stalt de gisting.'+(coldHedge?' Komt deze meting van een vat-/omgevingssensor en niet van een sonde in de most zelf? Actieve gisting loopt vaak een paar graden warmer dan de omgeving — bevestig indien mogelijk met een thermometer in de vloeistof.':'')):'Te warm geeft fusels en scherpe smaken.')+deliberateHedge)
+              :('Last reading '+(d.temp!=null?d.temp+'°C':'?')+' is outside '+(_advYeastName(d.yeast)||'this yeast')+'\'s ideal range ('+d.low+'–'+d.high+'°C). '+(d.cold?('Too cold slows or stalls fermentation.'+(coldHedge?' If this reading is from a fermenter/room sensor rather than a probe in the must itself, note that active fermentation commonly runs a couple degrees warmer than its surroundings — worth confirming with a thermometer in the liquid.':'')):'Too warm drives fusels and harsh flavours.')+deliberateHedge)};
     })(),
     'abv-ceiling':{icon:'⚠',
       title:nl?'Nadert alcoholtolerantie':'Approaching alcohol tolerance',
@@ -144,10 +165,21 @@ function _advItemText(it){
       title:nl?'Tijd voor een nieuwe meting':'Time for a fresh reading',
       reason:nl?('Laatste meting was '+d.days+' dagen geleden. Een verse dichtheidsmeting houdt de prognose en stalldetectie scherp.')
               :('Last reading was '+d.days+' days ago. A fresh gravity reading keeps the projection and stall detection accurate.')},
-    'fruit-addition-note':{icon:'🍒',
+    'fruit-addition-note':(function(){
+      // Juice/concentrate's sugar is already dissolved — it lands fully in
+      // the very next reading (a one-time step, like backsweetening) rather
+      // than trickling in over several readings the way whole/frozen fruit's
+      // cell-wall breakdown does. Different mechanism, different guidance —
+      // not just a shorter version of the same sentence.
+      if(d.juiceForm)return {icon:'🍒',
+        title:nl?'Recente sap-/concentraattoevoeging kan de eerstvolgende meting vertekenen':'Recent juice/concentrate addition may skew the next reading',
+        reason:nl?('Je logde '+(d.item?escHtml(d.item)+' ':'')+'op '+fmtDate(d.date)+' — sap/concentraat brengt al opgeloste suiker mee, dus die suiker zit meteen in de eerstvolgende meting (net als terugzoeten), niet uitgesmeerd over meerdere metingen zoals bij heel fruit. Eén meting extra is genoeg om de trend weer te vertrouwen.')
+                :('You logged '+(d.item?escHtml(d.item)+' ':'')+'on '+fmtDate(d.date)+' — juice/concentrate brings already-dissolved sugar, so it lands fully in the very next reading (like backsweetening) rather than trickling in over several readings the way whole fruit does. One more reading is enough to trust the trend again.')};
+      return {icon:'🍒',
       title:nl?'Recente fruittoevoeging kan metingen vertekenen':'Recent fruit addition may skew readings',
       reason:nl?('Je logde '+(d.item?escHtml(d.item)+' ':'')+'op '+fmtDate(d.date)+' — fruit brengt eigen suiker mee, dus dichtheidsmetingen van de komende paar controles zeggen evenveel over dat fruit als over de gisting zelf. Geef het nog 2-3 metingen voor je de trend vertrouwt.')
-              :('You logged '+(d.item?escHtml(d.item)+' ':'')+'on '+fmtDate(d.date)+' — fruit carries its own sugar, so gravity readings for the next couple of checks reflect the fruit as much as fermentation progress. Give it 2-3 more readings before trusting the trend.')},
+              :('You logged '+(d.item?escHtml(d.item)+' ':'')+'on '+fmtDate(d.date)+' — fruit carries its own sugar, so gravity readings for the next couple of checks reflect the fruit as much as fermentation progress. Give it 2-3 more readings before trusting the trend.')};
+    })(),
     'aging-window':(function(){
       var bev=_advBevWord(d,nl);
       return {icon:'⌛',
@@ -249,12 +281,21 @@ function _advItemText(it){
       var matchTxt=d.matchedOn==='recipe'?(nl?'dit recept':'this recipe')
         :d.matchedOn==='yeast-honey'?((yn||(nl?'deze gist':'this yeast'))+' + '+(d.honey||(nl?'deze honing':'this honey')))
         :(nl?'deze gist':'this yeast');
-      var ratingTxt=(d.avgRating!=null)?(nl?(' en gemiddeld beoordeeld met '+d.avgRating+'/5'):(' and rated ~'+d.avgRating+'/5 on average')):'';
+      // sampleSize is the whole comparable pool, but the days-average only
+      // draws from whichever of those were actually bottled (a still-active
+      // one has no finish date yet) — say so when the two diverge, so "your
+      // last 8 batches averaged 24 days" doesn't imply all 8 finished when
+      // maybe only 2 had.
+      var daysDenomTxt=(d.avgDaysN!=null&&d.avgDaysN<d.sampleSize)
+        ?(nl?(' (op basis van de '+d.avgDaysN+' die al gebotteld zijn)'):(' (based on the '+d.avgDaysN+' that were bottled)')):'';
+      var ratingDenomTxt=(d.avgRatingN!=null&&d.avgRatingN<d.sampleSize)
+        ?(nl?(', '+d.avgRatingN+' beoordeeld'):(', '+d.avgRatingN+' rated')):'';
+      var ratingTxt=(d.avgRating!=null)?(nl?(' en gemiddeld beoordeeld met '+d.avgRating+'/5'+ratingDenomTxt):(' and rated ~'+d.avgRating+'/5 on average'+ratingDenomTxt)):'';
       var pctTxt=(d.avgDays>0)?(nl?(' ('+Math.round((d.daysSoFar/d.avgDays-1)*100)+'% t.o.v. gemiddeld)'):(' ('+Math.round((d.daysSoFar/d.avgDays-1)*100)+'% vs. average)')):'';
       return {icon:'📊',
         title:nl?'Vergeleken met je eigen partijen':'Compared to your own batches',
-        reason:nl?('Je vorige '+d.sampleSize+' partijen met '+matchTxt+' deden er gemiddeld ~'+d.avgDays+' dagen over'+ratingTxt+'. Deze partij zit nu op dag '+d.daysSoFar+pctTxt+'.')
-                  :('Your last '+d.sampleSize+' batches with '+matchTxt+' took ~'+d.avgDays+' days on average'+ratingTxt+'. This batch is currently at day '+d.daysSoFar+pctTxt+'.')};
+        reason:nl?('Je vorige '+d.sampleSize+' partijen met '+matchTxt+' deden er gemiddeld ~'+d.avgDays+' dagen over'+daysDenomTxt+ratingTxt+'. Deze partij zit nu op dag '+d.daysSoFar+pctTxt+'.')
+                  :('Your last '+d.sampleSize+' batches with '+matchTxt+' took ~'+d.avgDays+' days on average'+daysDenomTxt+ratingTxt+'. This batch is currently at day '+d.daysSoFar+pctTxt+'.')};
     })(),
     'extended-bulk-aging':(function(){
       var bev=_advBevWord(d,nl);
@@ -289,12 +330,314 @@ function _advCategoryMeta(cat){
   return M[cat]||{icon:'•',label:cat||''};
 }
 
+// Transient (non-persistent) acknowledgment when an action resolves an
+// advisor recommendation — e.g. logging a reading clears 'stalled', racking
+// clears a blowoff-headspace warning, bottling clears the whole packaging-
+// phase cluster. No new state: call _advSnapshotItems(b) BEFORE the
+// mutating action, then _advResolvedSuffix(b, that snapshot) AFTER — the
+// memo has already recomputed by then since the action just changed real
+// data. toast() has a single slot (a second call replaces the first, it
+// doesn't stack), so this returns a suffix to APPEND onto the action's own
+// toast message rather than firing a separate one.
+function _advSnapshotItems(b){
+  var adv=(typeof mwBatchAdvice==='function')?mwBatchAdvice(b):null;
+  return adv?adv.items:[];
+}
+function _advResolvedSuffix(b,beforeItems){
+  if(!beforeItems||!beforeItems.length)return '';
+  var adv=(typeof mwBatchAdvice==='function')?mwBatchAdvice(b):null;
+  if(!adv)return '';
+  var afterIds={};adv.items.forEach(function(i){afterIds[i.id]=true;});
+  var resolved=beforeItems.filter(function(i){return !afterIds[i.id];});
+  if(!resolved.length)return '';
+  var nl=_advNL();
+  var titles=resolved.map(function(i){return _advItemText(i).title;});
+  return (nl?' — ✓ opgelost: ':' — ✓ resolved: ')+titles.join(', ');
+}
+
+// Short, imperative next-step for a recommendation — kept separate from
+// _advItemText's `reason` (the explanation) so a card can show "what
+// happened and why" and "what to do" as two visually distinct lines instead
+// of one paragraph blending both. Same shape/precedent as _advWhyMatters:
+// a plain id lookup, populated only for ids where the reason text doesn't
+// already end in an obvious, separate action — most 'info' notes (on-track,
+// temp-swing, ingredient-notes…) don't get one because there genuinely
+// isn't a separate next step beyond "keep doing what you're doing" or "just
+// FYI". Deliberately NOT a full rewrite of every reason string into
+// Observed/Why/Next-step paragraphs — that's real content work across ~27
+// bilingual entries with no correctness issue behind it, high regression
+// risk for a readability-only change; this gets most of the scannability
+// benefit at a fraction of the risk.
+//
+// Takes the full item (not just the id) for the one entry that genuinely
+// needs its data — fruit-addition-note's juiceForm changes how many more
+// readings are actually needed (see _advItemText's own juiceForm branch).
+function _advNextStep(it){
+  var id=it.id, d=it.data||{};
+  var nl=_advNL();
+  if(id==='fruit-addition-note'){
+    if(d.juiceForm)return nl?'Nog één meting is genoeg om de trend weer te vertrouwen.':'One more reading is enough to trust the trend again.';
+    return nl?'Geef het nog 2-3 metingen voor je de trend vertrouwt.':'Give it 2-3 more readings before trusting the trend.';
+  }
+  var M=nl?{
+    stalled:'Controleer temperatuur en voedingsschema; overweeg een herstart-gist als dat niet helpt.',
+    'nutrient-final':'Voeg de laatste voedingsgift toe en vink de stap af.',
+    'oxygen-stop':'Stop met beluchten/roeren vanaf nu.',
+    'aerate-now':'Beluchten/roeren blijven doen tot de suikerbreuk.',
+    'ferment-complete':'Bevestig met twee stabiele metingen een paar dagen uit elkaar, hevel dan over of bottel.',
+    temperature:'Stel de omgevingstemperatuur bij richting het opgegeven bereik.',
+    'temp-swing':'Zoek een stabielere plek of houd de omgeving constanter.',
+    'abv-ceiling':'Geen actie vereist — verwacht een tragere afronding vanaf hier.',
+    'stabilise-first':'Voeg kaliumsorbaat én metabisulfiet samen toe vóór het terugzoeten.',
+    'ph-low':'Bevestig de meting; overweeg kaliumcarbonaat als ze standhoudt.',
+    'ph-high':'Sulfiteer op tijd bij het rekken.',
+    'blowoff-headspace-critical':'Vervang het waterslot tijdelijk door een blow-off-buis.',
+    'blowoff-headspace-tight':'Vervang het waterslot tijdelijk door een blow-off-buis.',
+    'record-og':'Vul de OG in bij je volgende meting.',
+    'log-reading-missing':'Log een dichtheidsmeting.',
+    'log-reading-overdue':'Log een verse dichtheidsmeting.',
+    'headspace':'Hevel over op een vol vat of top bij.',
+    'cold-crash':'Zet koud (net boven vriespunt) en reken op 2-4 dagen.',
+    'extended-bulk-aging':'Overweeg binnenkort te bottelen.',
+    'over-racked':'Laat met rust of gebruik fijningsmiddelen in plaats van nog een keer over te hevelen.',
+    'mlf-advisory':'Beslis nu over wel/niet sulfiteren zodat het resultaat niet aan het toeval overgelaten wordt.'
+  }:{
+    stalled:'Check temperature and nutrient schedule; consider a restart yeast if that doesn\'t help.',
+    'nutrient-final':'Add the final nutrient dose and tick off the step.',
+    'oxygen-stop':'Stop aerating/stirring from here.',
+    'aerate-now':'Keep aerating/stirring until the sugar break.',
+    'ferment-complete':'Confirm with two stable readings a few days apart, then rack or bottle.',
+    temperature:'Adjust the ambient temperature toward the target range.',
+    'temp-swing':'Find a steadier spot or keep the environment more constant.',
+    'abv-ceiling':'No action required — expect a slower finish from here.',
+    'stabilise-first':'Add potassium sorbate AND metabisulfite together before backsweetening.',
+    'ph-low':'Confirm the reading; consider potassium carbonate if it holds up.',
+    'ph-high':'Sulfite promptly at racking.',
+    'blowoff-headspace-critical':'Swap the airlock for a blow-off tube.',
+    'blowoff-headspace-tight':'Swap the airlock for a blow-off tube.',
+    'record-og':'Add the OG with your next reading.',
+    'log-reading-missing':'Log a gravity reading.',
+    'log-reading-overdue':'Log a fresh gravity reading.',
+    'headspace':'Rack into a full vessel, or top up.',
+    'cold-crash':'Chill it (just above freezing) and allow 2-4 days.',
+    'extended-bulk-aging':'Consider bottling soon.',
+    'over-racked':'Leave it be, or use fining agents instead of racking again.',
+    'mlf-advisory':'Decide on sulfite timing now so the outcome isn\'t left to chance.'
+  };
+  return M[id]||null;
+}
+
+// Short, factual "what does the data actually show" line — completes the
+// Observed/Why/Next-step structure without hand-rewriting the 27 existing
+// bilingual `reason` paragraphs (real content work with no correctness
+// issue behind it, real risk to hard-won wording — see _advNextStep's own
+// comment for the same reasoning). Instead: a terse, purely numeric/factual
+// summary pulled directly from the item's OWN data fields, nothing
+// interpreted or explained (that's still `reason`'s job). Only populated
+// where a clean, real fact exists in the data — an id with nothing crisp to
+// summarize (mlf-advisory, ingredient-notes, on-track's own single
+// reassuring line) correctly gets nothing here rather than a forced,
+// low-value restatement of the title.
+function _advObserved(it){
+  var id=it.id, d=it.data||{}, nl=_advNL();
+  function pct(x){return x==null?'?':(Math.round(x*10)/10)+'%';}
+  function sg(x){return x==null?'?':x.toFixed(3);}
+  function days(n){return nl?(n+'d'):(n+'d');}
+  var M={
+    stalled:(d.atten!=null)?(nl?('~'+d.atten+'% vergist'+(d.plateauDays!=null?(', '+days(d.plateauDays)+' vlak'):'')):('~'+d.atten+'% attenuated'+(d.plateauDays!=null?(', flat '+days(d.plateauDays)):''))):null,
+    'nutrient-final':(d.done!=null&&d.expected!=null)?(nl?(d.done+' van '+d.expected+' giften'):(d.done+' of '+d.expected+' doses')):null,
+    'oxygen-stop':(d.sg!=null)?(nl?('SG '+sg(d.sg)+' — voorbij de suikerbreuk'):('SG '+sg(d.sg)+' — past the sugar break')):null,
+    'ferment-complete':(d.sg!=null)?(nl?('SG '+sg(d.sg)+(d.plateauDays!=null?(', stabiel sinds '+days(d.plateauDays)):'')):('SG '+sg(d.sg)+(d.plateauDays!=null?(', stable for '+days(d.plateauDays)):''))):null,
+    temperature:(d.temp!=null&&d.low!=null&&d.high!=null)?(d.temp+'°C ('+d.low+'–'+d.high+'°C)'):null,
+    'temp-swing':(d.low!=null&&d.high!=null)?(nl?('bereik '+d.low+'–'+d.high+'°C, wisselend'):('range '+d.low+'–'+d.high+'°C, swinging')):null,
+    'abv-ceiling':(d.abv!=null&&d.max!=null)?('~'+d.abv.toFixed(1)+'% ABV ('+d.max+'% '+(nl?'tolerantie':'tolerance')+')'):null,
+    'ph-low':(d.ph!=null)?('pH '+d.ph.toFixed(2)+(d.low!=null&&d.high!=null?(' ('+(nl?'doel':'target')+' '+d.low.toFixed(1)+'–'+d.high.toFixed(1)+')'):'')):null,
+    'ph-high':(d.ph!=null)?('pH '+d.ph.toFixed(2)+(d.low!=null&&d.high!=null?(' ('+(nl?'doel':'target')+' '+d.low.toFixed(1)+'–'+d.high.toFixed(1)+')'):'')):null,
+    'blowoff-headspace-critical':(d.headspacePct!=null)?(nl?('~'+d.headspacePct+'% kopruimte'):('~'+d.headspacePct+'% headspace')):null,
+    'blowoff-headspace-tight':(d.headspacePct!=null)?(nl?('~'+d.headspacePct+'% kopruimte'):('~'+d.headspacePct+'% headspace')):null,
+    'record-og':null,
+    'log-reading-missing':(d.days!=null)?(nl?(days(d.days)+', nog geen meting'):(days(d.days)+', no reading yet')):null,
+    'log-reading-overdue':(d.days!=null)?(nl?('laatste meting '+days(d.days)+' geleden'):('last reading '+days(d.days)+' ago')):null,
+    'fruit-addition-note':(d.date)?(nl?((d.item?d.item+' — ':'')+'gelogd op '+fmtDate(d.date)):((d.item?d.item+' — ':'')+'logged '+fmtDate(d.date))):null,
+    headspace:null,
+    'cold-crash':null,
+    'extended-bulk-aging':(d.days!=null)?(nl?(days(d.days)+' onbebotteld'):(days(d.days)+' unbottled')):null,
+    'over-racked':(d.count!=null)?(nl?(d.count+'× overgeheveld'):(d.count+'× racked')):null,
+    'historical-pace':(d.daysSoFar!=null&&d.avgDays!=null)?(nl?('dag '+d.daysSoFar+' vs. gem. '+d.avgDays+'d'):('day '+d.daysSoFar+' vs. avg '+d.avgDays+'d')):null,
+    'fructose-stall-risk':(d.honey)?(nl?(d.honey+' — fructoserijk'):(d.honey+' — high-fructose')):null,
+    'aging-window':(d.aged!=null)?(nl?('~'+d.aged+'d oud'):('~'+d.aged+'d old')):null,
+    'carbonation-developing':(d.aged!=null)?(nl?('gebotteld ~'+d.aged+'d geleden'):('bottled ~'+d.aged+'d ago')):null,
+    'mlf-advisory':null,
+    'stabilise-first':null,
+    'aerate-now':(d.sugarBreak!=null)?(nl?('vóór de suikerbreuk ('+sg(d.sugarBreak)+')'):('before the sugar break ('+sg(d.sugarBreak)+')')):null,
+    'ingredient-notes':null,
+    'on-track':null
+  };
+  return M[id]||null;
+}
+
+// Beginner-persona jargon glossary — scoped version of "3-tier language
+// register": rewriting the 27 existing reason strings into 3 separate
+// vocabulary levels each would be ~80 more hand-authored bilingual strings
+// with real regression risk to the two tiers that already work. Instead:
+// a term a beginner is genuinely likely not to know yet, defined once,
+// surfaced only for the ids that actually use it — reusing the exact same
+// id-keyed lookup shape as _advWhyMatters/_advNextStep/_advObserved.
+var ADV_GLOSSARY_TERMS={
+  'sugar-break':{en:{term:'sugar break',def:'The point roughly 1/3 of the way through fermentation where the yeast\'s explosive growth phase ends — several timing decisions (when to stop aerating, when nutrients stop helping) hinge on it.'},
+    nl:{term:'suikerbreuk',def:'Het punt ongeveer 1/3 in de gisting waar de explosieve groeifase van de gist eindigt — meerdere timingbeslissingen (wanneer stoppen met beluchten, wanneer voeding niet meer helpt) hangen hiervan af.'}},
+  attenuation:{en:{term:'attenuation',def:'How much of the sugar the yeast actually converted to alcohol, as a percentage — 100% would be bone dry. Every yeast strain has its own typical ceiling.'},
+    nl:{term:'vergisting',def:'Hoeveel van de suiker de gist daadwerkelijk in alcohol omzette, als percentage — 100% zou kurkdroog zijn. Elke giststam heeft zijn eigen typische plafond.'}},
+  tolerance:{en:{term:'alcohol tolerance',def:'The ABV a yeast strain typically stops working at — a rated average, not a hard wall some batches finish a bit under or push a bit past.'},
+    nl:{term:'alcoholtolerantie',def:'Het alcoholpercentage waarbij een giststam doorgaans stopt met werken — een gemiddelde, geen harde grens; sommige brouwsels eindigen er iets onder, andere gaan er iets overheen.'}},
+  'ph-meaning':{en:{term:'pH',def:'A measure of acidity. Honey barely resists a pH swing on its own, so a mead\'s pH can drop much further over fermentation than beer or wine ever does — low pH stresses yeast, high pH invites unwanted microbes.'},
+    nl:{term:'pH',def:'Een maat voor zuurgraad. Honing biedt zelf nauwelijks weerstand tegen een pH-daling, dus de pH van een mede kan tijdens de gisting veel verder zakken dan bij bier of wijn — een lage pH stresst de gist, een hoge pH nodigt ongewenste micro-organismen uit.'}},
+  mlf:{en:{term:'MLF (malolactic fermentation)',def:'A secondary bacterial fermentation that softens sharp acid into a rounder, sometimes buttery character — wanted for some styles, not others.'},
+    nl:{term:'MLF (malolactische gisting)',def:'Een secundaire, bacteriële gisting die scherp zuur omzet in een ronder, soms boterachtig karakter — gewenst bij sommige stijlen, niet bij andere.'}},
+  racking:{en:{term:'racking',def:'Siphoning the liquid off the sediment into a clean vessel, leaving the dead yeast and debris (the "lees") behind.'},
+    nl:{term:'overhevelen',def:'De vloeistof van het bezinksel afhevelen naar een schoon vat, waarbij de dode gist en het bezinksel (de "droesem") achterblijven.'}},
+  krausen:{en:{term:'krausen',def:'The thick foam that forms on top during vigorous fermentation — normal, but it can clog an airlock if there isn\'t enough headspace above it.'},
+    nl:{term:'krausen',def:'Het dikke schuim dat zich tijdens krachtige gisting bovenop vormt — normaal, maar het kan een waterslot verstoppen als er te weinig ruimte boven zit.'}},
+  headspace:{en:{term:'headspace',def:'The empty air space left between the liquid surface and the top of the vessel.'},
+    nl:{term:'kopruimte',def:'De lege luchtruimte tussen het vloeistofoppervlak en de bovenkant van het vat.'}},
+  stabilise:{en:{term:'stabilising',def:'Adding potassium sorbate AND metabisulfite together before backsweetening, so the yeast can\'t restart fermenting the extra sugar in the bottle.'},
+    nl:{term:'stabiliseren',def:'Kaliumsorbaat ÉN metabisulfiet samen toevoegen vóór het terugzoeten, zodat de gist de extra suiker niet opnieuw in de fles kan vergisten.'}}
+};
+// Maps a recommendation id to the glossary term keys it actually uses —
+// only ids where the reason text leans on real jargon get an entry.
+var ADV_GLOSSARY_BY_ID={
+  stalled:['sugar-break','attenuation'],'nutrient-final':['sugar-break'],'oxygen-stop':['sugar-break'],
+  'aerate-now':['sugar-break'],'ferment-complete':['attenuation'],'abv-ceiling':['tolerance','attenuation'],
+  'stabilise-first':['stabilise'],'mlf-advisory':['mlf'],'over-racked':['racking'],
+  'blowoff-headspace-critical':['krausen','headspace'],'blowoff-headspace-tight':['krausen','headspace'],
+  headspace:['headspace'],'ph-low':['ph-meaning'],'ph-high':['ph-meaning'],'fructose-stall-risk':['attenuation']
+};
+// Collects the unique glossary entries relevant to whichever items are
+// CURRENTLY firing — not a static full glossary dump, just the terms this
+// batch's own advice actually uses right now.
+function _advRelevantGlossary(items){
+  var nl=_advNL(), seen={}, out=[];
+  (items||[]).forEach(function(it){
+    (ADV_GLOSSARY_BY_ID[it.id]||[]).forEach(function(key){
+      if(seen[key])return;seen[key]=true;
+      var entry=ADV_GLOSSARY_TERMS[key];
+      if(entry)out.push(nl?entry.nl:entry.en);
+    });
+  });
+  return out;
+}
+
+// Contextual guide link — scoped version of "dynamic contextual FAQ": reuses
+// this app's EXISTING, already-thorough Troubleshoot content (openTroubleshootTopic,
+// core/views/12-troubleshoot.js) instead of inventing a new FAQ database that
+// would need its own content authored from scratch. Only mapped where a
+// specific troubleshoot topic is a genuinely close match for the
+// recommendation — not every id gets one; a weak/approximate match would be
+// worse than no link at all.
+function _advGuideLink(it){
+  var d=it.data||{};
+  var M={
+    stalled:'stuck-fermentation','fructose-stall-risk':'stuck-fermentation',
+    temperature:d.cold?'temp-too-low':'temp-too-high',
+    'blowoff-headspace-critical':'foam-overflow','blowoff-headspace-tight':'foam-overflow',
+    'cold-crash':'cloudy','stabilise-first':'backsweetening','over-racked':'racking',
+    'aging-window':'aging-window'
+  };
+  var topicId=M[it.id];
+  if(!topicId)return null;
+  var all=((typeof TROUBLESHOOT_TOPICS!=='undefined'&&TROUBLESHOOT_TOPICS)||[])
+    .concat((typeof APP_TROUBLESHOOT_TOPICS!=='undefined'&&APP_TROUBLESHOOT_TOPICS)||[]);
+  var t=all.filter(function(x){return x.id===topicId;})[0];
+  return t?{topicId:topicId,icon:t.icon,title:t.title}:null;
+}
+
 function _advHealthMeta(band){
   var nl=_advNL();
   var M={excellent:{c:'var(--green2)',l:nl?'Uitstekend':'Excellent'},good:{c:'var(--green2)',l:nl?'Goed':'Good'},
     fair:{c:'var(--gold2)',l:nl?'Redelijk':'Fair'},attention:{c:'var(--red2)',l:nl?'Aandacht nodig':'Needs attention'},
     unknown:{c:'var(--text3)',l:nl?'Onbekend':'Unknown'}};
   return M[band]||M.unknown;
+}
+
+// "Known unknowns": which key inputs this batch is missing right now — surfaced
+// specifically where the advisor would otherwise say "everything looks good" /
+// "nothing needs attention", so silence caused by missing data doesn't get
+// mistaken for a genuine all-clear (a brewer reading "✓ looks good" has no way
+// to tell that apart from "nothing has been logged yet" otherwise). Only the
+// two gaps with no dedicated recommendation of their own: a batch with no OG
+// or no gravity readings already gets a prominent record-og / log-reading-
+// missing card, so repeating that here would just be the same gap said twice.
+//
+// Can this ever duplicate what a fired rule already says? Audited: the two
+// call sites (renderBatchAdvisorStrip / renderBatchAdvisor's summaryLine)
+// only reach for this in the branch where adv.items is COMPLETELY empty —
+// i.e. every single rule stayed silent. That's a structural guarantee, not
+// just "the current rules happen not to overlap": even 'stalled', whose
+// cause list CAN legitimately include 'nutrition' while nutrientsExpected
+// is 0 (the same condition this function flags), never actually renders
+// alongside this text, because 'stalled' firing at all means adv.items is
+// non-empty and this function's caller never gets invoked for that batch.
+// If a future rule is ever added that's allowed to fire ON an unknown
+// temperature/nutrition signal specifically (none currently are — every
+// existing rule that reads tempInRange/nutrientsComplete requires the
+// underlying value to be KNOWN first), re-check this guarantee.
+// Which real, already-computed fact (if any) makes THIS batch's "all quiet"
+// state worth naming specifically, instead of the same generic sentence
+// every batch gets. Doesn't add volume — still exactly one line either way
+// (E8's "don't surface more when nothing's wrong" principle stays intact),
+// just backed by whichever fact is most informative when one applies.
+// Priority: a real historical comparison (the strongest, most concrete
+// evidence this app has) beats a progress-band position, which beats an
+// aging-window note — falls through to null (the plain generic line) when
+// none apply, e.g. a brand-new batch with no history and mid-range pace.
+function _advQuietFact(s){
+  if(!s)return null;
+  var nl=_advNL();
+  if(s.historical&&s.historical.matchedOn&&s.historical.sampleSize>=2){
+    var yn=_advYeastName(s.historical.yeast);
+    var matchTxt=s.historical.matchedOn==='recipe'?(nl?'dit recept':'this recipe')
+      :s.historical.matchedOn==='yeast-honey'?((yn||(nl?'deze gist':'this yeast'))+' + '+(s.historical.honey||(nl?'deze honing':'this honey')))
+      :(nl?'deze gist':'this yeast');
+    return nl?('komt overeen met je eigen '+s.historical.sampleSize+' vorige partij(en) met '+matchTxt)
+             :('matching your own '+s.historical.sampleSize+' past batch(es) with '+matchTxt);
+  }
+  if(s.fermenting&&s.fermentProgress&&s.fermentProgress.phase==='ahead'){
+    return nl?'loopt zelfs voor op je gebruikelijke tempo':'actually running ahead of your usual pace';
+  }
+  if(s.bottled&&s.agePhase==='peak'){
+    return nl?'zit nu in het piekvenster — een mooi moment om ervan te genieten':'sitting in its peak window right now — a great time to enjoy it';
+  }
+  return null;
+}
+
+// Causal cross-reference: 'stalled' already computes a weighted, ranked list
+// of WHICH other signals it thinks are responsible (mwStalledCauses, E2) —
+// reused here instead of inventing a separate relationship map. Returns the
+// ids of OTHER items in this same render that correspond to one of stalled's
+// named causes AND are actually present — used to add a small cross-
+// reference line on both cards so the brewer reads them as one underlying
+// issue, not unrelated things. Deliberately NOT a nested primary/supporting
+// restructure of the Actions/Watch/Insights layout (a stalled cause can land
+// in any of the three severity buckets) — callers add a text annotation,
+// both cards keep their normal severity-bucket position, a much smaller,
+// lower-risk change for the same "these are connected" benefit. Returns []
+// when there's no 'stalled' item, or it has no matching co-occurring items.
+var ADV_CAUSE_TO_ITEM_ID={nutrition:'nutrient-final',ph:'ph-low',fructose:'fructose-stall-risk',tolerance:'abv-ceiling',temperature:'temperature'};
+function _advStalledCauseItemIds(items){
+  items=items||[];
+  var stalledItem=items.filter(function(i){return i.id==='stalled';})[0];
+  if(!stalledItem||!stalledItem.data||!stalledItem.data.causes)return [];
+  var presentIds={};items.forEach(function(i){presentIds[i.id]=true;});
+  return (stalledItem.data.causes||[]).map(function(c){return ADV_CAUSE_TO_ITEM_ID[c.cause];}).filter(function(rid){return rid&&presentIds[rid];});
+}
+
+function _advMissingInputs(s){
+  if(!s||!s.active)return [];
+  var nl=_advNL();
+  var missing=[];
+  if(!s.bulkAging&&s.latestTemp==null)missing.push(nl?'temperatuur':'temperature');
+  if(s.nutrientsExpected===0&&s.nutrientsDone===0)missing.push(nl?'voedingsdosering':'nutrient dosing');
+  return missing;
 }
 
 // Plain-language explanation for one health axis: why it scored what it did.
@@ -345,12 +688,23 @@ function renderBatchAdvisorStrip(b){
   var h=adv.health, r=adv.readiness, hm=_advHealthMeta(h&&h.band);
   var top=adv.items.filter(function(i){return i.severity!=='info';})[0]||adv.items[0];
   var topTxt=top?_advItemText(top):null, topMeta=top?_advSeverityMeta(top.severity):null;
+  // "Everything looks good" only fires when there's NOTHING to say at all —
+  // which sparse/early data produces just as easily as a genuinely healthy
+  // batch. Name what's actually missing right under it so silence doesn't
+  // read as confirmation.
+  var missingTxt='';
+  if(!top){
+    var missing=_advMissingInputs(adv.signals);
+    if(missing.length)missingTxt='<div style="font-size:11px;color:var(--text3);margin-top:2px">'+(nl?'Kan nog niet alles beoordelen — geen '+missing.join(', ')+' gelogd.':'Can\'t fully evaluate yet — no '+missing.join(', ')+' logged.')+'</div>';
+  }
+  var quietFact=top?null:_advQuietFact(adv.signals);
+  var quietTxt=nl?('✓ Alles ziet er goed uit'+(quietFact?' — '+quietFact:'')):('✓ Everything looks good'+(quietFact?' — '+quietFact:''));
   return '<div class="card" style="margin-bottom:16px;border-left:3px solid '+hm.c+'">'
     +'<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">'
     +'<div style="text-align:center;min-width:62px"><div style="font-family:var(--font-display);font-size:30px;line-height:1;color:'+hm.c+'">'+(h&&h.score!=null?h.score:'—')+_advTrendChip(h&&h.trend)+'</div><div class="micro-label">'+(nl?'GEZONDHEID':'HEALTH')+'</div></div>'
     +'<div style="flex:1;min-width:180px">'
     +(top?'<div style="font-size:13px;color:'+topMeta.color+';font-family:var(--font-display)">'+topTxt.icon+' '+escHtml(topTxt.title)+'</div><div style="font-size:11.5px;color:var(--text3);margin-top:2px">'+escHtml(topTxt.reason.length>120?topTxt.reason.slice(0,118)+'…':topTxt.reason)+'</div>'
-        :'<div style="font-size:13px;color:var(--green2)">'+(nl?'✓ Alles ziet er goed uit':'✓ Everything looks good')+'</div>')
+        :'<div style="font-size:13px;color:var(--green2)">'+escHtml(quietTxt)+'</div>'+missingTxt)
     +(r?'<div style="font-size:11px;color:var(--text3);margin-top:5px;font-family:var(--font-mono)">'+(nl?'DRINKBAARHEID':'READINESS')+' '+r.pct+'%</div>':'')
     +'</div>'
     +'<button class="btn btn-secondary btn-sm" onclick="setBatchTab(\''+b.id+'\',\'coach\')">'+(nl?'Adviseur →':'Advisor →')+'</button>'
@@ -608,10 +962,19 @@ function renderBatchAdvisor(b){
   if(sevCounts.info)sumParts.push(sevCounts.info+' '+(nl?(sevCounts.info>1?'inzichten':'inzicht'):(sevCounts.info>1?'insights':'insight')));
   // The reassuring case gets a warmer sentence, not just a label — brewing
   // carries enough anxiety on its own; "nothing needs your attention today"
-  // reads calmer than a bare "✓ Everything looks good".
+  // reads calmer than a bare "✓ Everything looks good". But sparse/early
+  // data produces this exact same silence just as easily as a genuinely
+  // healthy batch does — name what's actually missing right underneath it
+  // so the calm reading doesn't double as a false all-clear.
+  // Backed by a real, already-computed fact (own-history match, ahead-of-
+  // pace, peak window) when one applies, instead of the same sentence every
+  // time — still exactly one line, not additional volume (see _advQuietFact).
+  var quietFact=sumParts.length?null:_advQuietFact(s);
   var summaryLine=sumParts.length
     ?('<div style="font-size:13.5px;color:var(--text2);margin-top:10px">'+sumParts.join(' · ')+'</div>')
-    :('<div style="font-size:13.5px;color:var(--green2);margin-top:10px">✓ '+(nl?'Verloopt normaal — niets vraagt vandaag je aandacht.':'Progressing normally — nothing needs your attention today.')+'</div>');
+    :('<div style="font-size:13.5px;color:var(--green2);margin-top:10px">✓ '+(nl?('Verloopt normaal'+(quietFact?(' — '+quietFact+'.'):(' — niets vraagt vandaag je aandacht.')))
+                                                                                :('Progressing normally'+(quietFact?(' — '+quietFact+'.'):(' — nothing needs your attention today.'))))+'</div>'
+      +(function(){var missing=_advMissingInputs(s);return missing.length?('<div style="font-size:11.5px;color:var(--text3);margin-top:4px">'+(nl?'Kan nog niet alles beoordelen — geen '+missing.join(', ')+' gelogd.':'Can\'t fully evaluate yet — no '+missing.join(', ')+' logged.')+'</div>'):'';})());
   var healthCard='<div class="card" style="margin-bottom:16px;border-left:3px solid '+hm.c+'">'
     +'<div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">'
     +'<div style="text-align:center;min-width:96px"><div style="font-family:var(--font-display);font-size:42px;line-height:1;color:'+hm.c+'">'+(h&&h.score!=null?h.score:'—')+_advTrendChip(h&&h.trend)+'</div>'
@@ -689,7 +1052,36 @@ function renderBatchAdvisor(b){
     // chips only), 'beginner' always gets the why-it-matters line (not just
     // for critical/recommended), 'experienced' (default) is today's behaviour.
     var verbosity=(APP.settings&&APP.settings.advisorVerbosity)||'experienced';
-    function itemCard(it){
+    // Evidence-first ordering (pro persona only): the other two personas want
+    // rule-definition order (which reads as "most urgent within severity"
+    // already, via the rules' own authoring order); an experienced brewer
+    // reading title-only cards wants the strongest-evidence item leading
+    // instead, since there's no prose left to signal which one to trust
+    // most. Stable sort — items with equal confidence keep their original
+    // relative order rather than shuffling for no reason.
+    if(verbosity==='pro'){
+      var byEvidence=function(a,c){return (c.confidence||0)-(a.confidence||0);};
+      actionItems=actionItems.slice().sort(byEvidence);
+      watchItems=watchItems.slice().sort(byEvidence);
+      insightItems=insightItems.slice().sort(byEvidence);
+    }
+    // Causal grouping (nested): 'stalled' already computes a weighted,
+    // ranked cause list (mwStalledCauses, E2) — _advStalledCauseItemIds
+    // reuses it to find which OTHER currently-firing items correspond to
+    // one of those named causes. Those items are pulled OUT of their own
+    // normal severity bucket (a cause can originally be critical,
+    // recommended, or info — nutrient-final vs ph-low vs fructose-stall-
+    // risk) and rendered as indented sub-cards directly under 'stalled'
+    // instead — a real primary/supporting structure, not just a text
+    // cross-reference, so the grouping is visible regardless of which
+    // buckets the pieces would otherwise have landed in.
+    var stalledCauseItemIds=_advStalledCauseItemIds(adv.items);
+    function excludeNested(items){return items.filter(function(i){return stalledCauseItemIds.indexOf(i.id)<0;});}
+    actionItems=excludeNested(actionItems);
+    watchItems=excludeNested(watchItems);
+    insightItems=excludeNested(insightItems);
+    var nestedCauseItems=stalledCauseItemIds.map(function(rid){return adv.items.filter(function(x){return x.id===rid;})[0];}).filter(Boolean);
+    function itemCard(it,nested){
       var t=_advItemText(it), sm=_advSeverityMeta(it.severity), cm=_advCategoryMeta(it.category);
       var evidence=_advEvidenceBand(it.confidence);
       var showProse=verbosity!=='pro';
@@ -706,17 +1098,86 @@ function renderBatchAdvisor(b){
       var whyHtml=why?('<div style="font-size:11.5px;color:var(--text3);margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,0.06)">'
         +'<span style="color:var(--green2)">✓ '+(nl?'Waarom het uitmaakt':'Why it matters')+':</span> '+escHtml(why.benefit)+' '
         +'<span style="color:var(--red2)">'+(nl?'Bij negeren':'If ignored')+':</span> '+escHtml(why.downside)+'</div>'+waitHtml):'';
-      return '<div style="background:'+sm.bg+';border-left:3px solid '+sm.color+';border-radius:var(--radius);padding:11px 13px;margin-bottom:8px">'
+      // A short imperative line, visually separate from the explanation above
+      // it — "what happened and why" vs "what to do", instead of one blended
+      // paragraph. Only rendered with the full prose (pro persona already
+      // hides reason/why the same way; a next-step with no explanation above
+      // it would be a floating instruction with no context).
+      var next=showProse?_advNextStep(it):null;
+      var nextHtml=next?('<div style="font-size:11.5px;color:var(--text);margin-top:5px">'
+        +'<span style="color:'+sm.color+'">→ '+(nl?'Volgende stap':'Next')+':</span> '+escHtml(next)+'</div>'):'';
+      // Observed/Why/Next-step: a short, purely factual data line ahead of
+      // the existing explanation — see _advObserved's own comment for why
+      // this reuses raw data fields instead of rewriting the 27 existing
+      // reason paragraphs.
+      var observed=showProse?_advObserved(it):null;
+      var observedHtml=observed?('<div style="font-size:11px;color:var(--text3);font-family:var(--font-mono);margin-bottom:4px">'
+        +(nl?'WAARGENOMEN':'OBSERVED')+': '+escHtml(observed)+'</div>'):'';
+      // Contextual guide link (see _advGuideLink) — only for the ids with a
+      // genuinely close troubleshoot-topic match, opens the app's existing
+      // detail modal directly by id.
+      var guide=showProse?_advGuideLink(it):null;
+      var guideHtml=guide?('<div style="margin-top:6px"><a href="#" onclick="event.preventDefault();openTroubleshootTopic(\''+guide.topicId+'\')" style="font-size:11.5px;color:var(--blue2);text-decoration:none">'
+        +'📖 '+(nl?'Meer lezen':'Read more')+': '+guide.icon+' '+escHtml(guide.title)+'</a></div>'):'';
+      // Beginner persona, critical severity: scoped version of "color-
+      // intensity changes" — a first-time brewer most needs to not miss
+      // something that actually needs action right now, so critical items
+      // get a visually heavier treatment (thicker border, stronger tint)
+      // specifically in this persona. Recommended/info items are untouched
+      // — the goal is making the one urgent thing stand out more, not
+      // raising intensity everywhere (which would just be louder, not
+      // clearer). Nested sub-cards never get this — they're already
+      // de-emphasized by design (supporting evidence, not the headline).
+      var beginnerCritical=(verbosity==='beginner'&&it.severity==='critical'&&!nested);
+      // Nested sub-cards get a smaller/indented treatment + a "↳ related"
+      // label — kept visible even for 'pro' (structural grouping, not prose).
+      var wrapStyle=nested
+        ?'background:'+sm.bg+';border-left:3px solid '+sm.color+';border-radius:var(--radius);padding:8px 11px;margin:6px 0 0 22px;opacity:0.92'
+        :beginnerCritical
+        ?'background:rgba(176,58,46,0.20);border-left:5px solid '+sm.color+';border-radius:var(--radius);padding:12px 14px;margin-bottom:8px'
+        :'background:'+sm.bg+';border-left:3px solid '+sm.color+';border-radius:var(--radius);padding:11px 13px;margin-bottom:8px';
+      return '<div style="'+wrapStyle+'">'
+        +(nested?'<div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-bottom:2px">↳ '+(nl?'GERELATEERD AAN GISTING HIERBOVEN':'RELATED TO THE STALL ABOVE')+'</div>':'')
         +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:3px">'
-        +'<div style="font-family:var(--font-display);font-size:14px;color:'+sm.color+'">'+t.icon+' '+escHtml(t.title)+'</div>'
+        +'<div style="font-family:var(--font-display);font-size:'+(nested?'13px':'14px')+';color:'+sm.color+'">'+t.icon+' '+escHtml(t.title)+'</div>'
         +'<div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:0.5px">'+cm.icon+' '+escHtml(cm.label)+' · '+sm.label+' · '+(nl?'bewijs':'evidence')+' '+evidence+'</div></div>'
-        +(showProse?'<div style="font-size:12.5px;color:var(--text2);line-height:1.55">'+escHtml(t.reason)+'</div>'+whyHtml:'')+'</div>';
+        +(showProse?observedHtml+'<div style="font-size:12.5px;color:var(--text2);line-height:1.55">'+escHtml(t.reason)+'</div>'+nextHtml+whyHtml+guideHtml:'')+'</div>';
     }
-    var actionsSection=actionItems.length?('<div class="micro-label" style="color:var(--red2);margin-bottom:6px">'+(nl?'ACTIES':'ACTIONS')+'</div>'+actionItems.map(itemCard).join('')):'';
-    var watchSection=watchItems.length?('<div class="micro-label" style="color:var(--gold2);margin:'+(actionItems.length?'14px':'0')+' 0 6px">'+(nl?'OM TE VOLGEN':'WATCH')+'</div>'+watchItems.map(itemCard).join('')):'';
-    var insightsSection=insightItems.length?('<details style="margin-top:'+(actionItems.length||watchItems.length?'14px':'0')+'"><summary style="cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text3);padding:4px 0;user-select:none">'
-      +'💡 '+insightItems.length+' '+(nl?(insightItems.length>1?'inzichten':'inzicht'):(insightItems.length>1?'insights':'insight'))+'</summary>'+insightItems.map(itemCard).join('')+'</details>'):'';
-    recHtml=catStrip+actionsSection+watchSection+insightsSection;
+    // 'stalled' is always severity 'critical' (always in actionItems when it
+    // fires), so its nested cause cards always render inside the Actions
+    // section regardless of which bucket each cause item came from.
+    function cardWithNested(it){
+      return itemCard(it)+(it.id==='stalled'?nestedCauseItems.map(function(ci){return itemCard(ci,true);}).join(''):'');
+    }
+    // itemCard takes (it, nested) — passing it straight to .map() would leak
+    // map's own index argument into `nested` (index 1+ is truthy), the exact
+    // ['1','2','3'].map(parseInt) gotcha. Every .map() call below wraps it in
+    // a single-arg lambda so `nested` only ever gets what cardWithNested (or
+    // nothing) explicitly passes.
+    var actionsSection=actionItems.length?('<div class="micro-label" style="color:var(--red2);margin-bottom:6px">'+(nl?'ACTIES':'ACTIONS')+'</div>'+actionItems.map(cardWithNested).join('')):'';
+    var watchSection=watchItems.length?('<div class="micro-label" style="color:var(--gold2);margin:'+(actionItems.length?'14px':'0')+' 0 6px">'+(nl?'OM TE VOLGEN':'WATCH')+'</div>'+watchItems.map(function(it){return itemCard(it);}).join('')):'';
+    // Persona hierarchy: a beginner benefits from more visible context by
+    // default (the "why is this here at all" reassurance an experienced
+    // brewer already has from repetition) — insights start expanded for
+    // 'beginner' instead of collapsed. 'experienced'/'pro' keep the
+    // collapsed default (pro especially wants minimal surface).
+    var insightsSection=insightItems.length?('<details'+(verbosity==='beginner'?' open':'')+' style="margin-top:'+(actionItems.length||watchItems.length?'14px':'0')+'"><summary style="cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text3);padding:4px 0;user-select:none">'
+      +'💡 '+insightItems.length+' '+(nl?(insightItems.length>1?'inzichten':'inzicht'):(insightItems.length>1?'insights':'insight'))+'</summary>'+insightItems.map(function(it){return itemCard(it);}).join('')+'</details>'):'';
+    // Beginner jargon glossary (see _advRelevantGlossary) — only the terms
+    // this batch's own currently-firing advice actually uses, not a static
+    // dump. Own collapsed section rather than inline tooltips (no framework
+    // in this codebase for hover/click popovers on arbitrary inline text).
+    var glossaryHtml='';
+    if(verbosity==='beginner'){
+      var glossaryTerms=_advRelevantGlossary(adv.items);
+      if(glossaryTerms.length){
+        glossaryHtml='<details style="margin-top:14px"><summary style="cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text3);padding:4px 0;user-select:none">'
+          +'📖 '+(nl?'Termen hierboven uitgelegd':'Terms used above, explained')+'</summary>'
+          +glossaryTerms.map(function(g){return '<div style="margin:6px 0;padding-left:2px"><strong style="color:var(--gold2);font-size:12.5px">'+escHtml(g.term)+'</strong><div style="font-size:12px;color:var(--text3);line-height:1.5;margin-top:1px">'+escHtml(g.def)+'</div></div>';}).join('')
+          +'</details>';
+      }
+    }
+    recHtml=catStrip+actionsSection+watchSection+insightsSection+glossaryHtml;
   }
   // No separate "everything looks good" box — the health hero's summary line
   // already said that. Repeating it one card down is the exact "same thing

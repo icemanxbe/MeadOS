@@ -7,7 +7,7 @@
 // Uses browser's print dialog (saves as PDF). One-page formatted recipe card
 // with brand crest, ingredients table, step timeline, and target stats.
 function exportRecipePDF(recipeId){
-  var r=APP.recipes.find(function(x){return x.id===recipeId;});
+  var r=getRecipe(recipeId);
   if(!r){toast('⚠ Recipe not found');return;}
   var brand=APP.settings.brewerName||'MeadOS';
   // Steps timeline. Recipes use r.steps with {day, title, desc} — NOT r.schedule.
@@ -75,10 +75,10 @@ function exportRecipePDF(recipeId){
 // A 6×9 cm printable card. Front: label artwork + brewer's compliments.
 // Back: tasting notes, ABV, sweetness, food pairings, brew story.
 function openGiftCardModal(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b){toast('⚠ Batch not found');return;}
   var bot=APP.bottling[b.id]||{};
-  var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+  var recipe=getRecipe(b.recipeId);
   var ageDays=bot.date?Math.floor((new Date()-new Date(bot.date))/86400000):0;
   var pairings=suggestFoodPairings({sw:bot.sweetness,cat:recipe?recipe.category:'',abv:bot.abv});
   var snap={ag:ageDays};  // used below for the "30d aged" display
@@ -206,9 +206,9 @@ function _inlineQrSVG(url,sizePx,fg,bg){
 // fermentation", "ready to bottle window"), and a 2cm-wide handwriting strip
 // for jotting hydrometer readings.
 function printFermenterCard(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b){toast('⚠ Batch not found');return;}
-  var recipe=APP.recipes.find(function(r){return r.id===b.recipeId;});
+  var recipe=getRecipe(b.recipeId);
   if(!recipe){toast('⚠ Recipe not found');return;}
   var startDate=b.startDate?new Date(b.startDate):new Date();
   function dateOffset(days){

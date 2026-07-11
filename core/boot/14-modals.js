@@ -219,7 +219,7 @@ function updateYeastCompatibility(){
   if(!yeastEl||!recipeEl)return;
   var yeastId=yeastEl.value;
   var recipeId=recipeEl.value;
-  var recipe=APP.recipes.find(function(r){return r.id===recipeId;});
+  var recipe=getRecipe(recipeId);
   if(!recipe){box.innerHTML='';return;}
   // Override recipe's OG/ABV target with the user's chosen OG (so a high-OG
   // pick triggers ABV warnings even if the recipe normally targets less).
@@ -339,7 +339,7 @@ function onBatchUnitChange(sys){
 
 function updateRecipeFields(){
   var id=document.getElementById('nb-recipe').value;
-  var r=APP.recipes.find(function(x){return x.id===id;});
+  var r=getRecipe(id);
   if(!r)return;
   var isCider=(r.beverageType||'mead')==='cider';
   var us=currentUnitSystem();
@@ -412,7 +412,7 @@ function createBatch(){
     cost:(costHoney||costExtras)?{honey:costHoney,extras:costExtras}:null,
     notes:document.getElementById('nb-notes').value.trim()
   };
-  var r=APP.recipes.find(function(x){return x.id===b.recipeId;});
+  var r=getRecipe(b.recipeId);
   if(r)b.style=r.style;
   // Every batch is tagged so mode-filtered views (visibleBatches()) know
   // which side it belongs to — inherit from the recipe, falling back to
@@ -465,7 +465,7 @@ function createBatch(){
 // then renders the batch as separate segments across the relevant vessels.
 function openRackModal(batchId){
   closeModal();
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b){toast('⚠ Batch not found');return;}
   var currentVessel=getFermenter(b.fermenterId);
   if(!APP.fermenters||APP.fermenters.length<2){
@@ -492,16 +492,23 @@ function saveRack(batchId){
   var target=document.getElementById('rack-target').value;
   var date=document.getElementById('rack-date').value||today();
   var notes=document.getElementById('rack-notes').value.trim();
+  // Racking is the original motivating case for the resolved-item toast (a
+  // move to a bigger/properly-sized vessel can clear blowoff-headspace, or
+  // resolve headspace/oxygen concerns) — snapshot before the mutation.
+  var _advBatch=(typeof APP!=='undefined'&&APP.batches)?getBatch(batchId):null;
+  var _advBefore=(_advBatch&&typeof _advSnapshotItems==='function')?_advSnapshotItems(_advBatch):[];
   if(rackBatch(batchId,target,date,notes)){
     closeModal();
-    toast('✦ Racked to new vessel');
+    var _advMsg='✦ Racked to new vessel';
+    if(_advBatch&&typeof _advResolvedSuffix==='function')_advMsg+=_advResolvedSuffix(_advBatch,_advBefore);
+    toast(_advMsg);
     renderMain();
   }
 }
 
 function openEditBatchModal(id){
   closeModal();
-  var b=APP.batches.find(function(x){return x.id===id;});
+  var b=getBatch(id);
   if(!b)return;
   var isCider=(b.beverageType||'mead')==='cider';
   var cost=b.cost||{};
@@ -538,7 +545,13 @@ function openEditBatchModal(id){
       yeastOpts='<option value="'+escHtml(currentYeast)+'" selected>'+escHtml(currentYeast)+' (custom)</option>'+yeastOpts;
     }
   }
-  var yeastRow=yeastOpts?'<div class="form-group"><label class="form-label">Yeast</label><select class="form-select" id="eb-yeast">'+yeastOpts+'</select></div>':'';
+  // Only worth the warning once there's actual gravity history that a yeast
+  // change could retroactively reinterpret — a fresh batch with no readings
+  // yet has nothing to misattribute.
+  var hasGravityHistory=((APP.logs&&APP.logs[b.id])||[]).some(function(l){return l.gravity!=null&&l.gravity!=='';});
+  var yeastRow=yeastOpts?'<div class="form-group"><label class="form-label">Yeast</label><select class="form-select" id="eb-yeast">'+yeastOpts+'</select>'
+    +(hasGravityHistory?'<div style="font-size:11px;color:var(--text3);margin-top:4px;font-style:italic">Changing this updates how the advisor judges temperature range, attenuation and tolerance for the WHOLE batch going forward — it doesn\'t reinterpret past readings differently. If this is correcting a mistake, that\'s exactly right. If it\'s recording a real mid-ferment repitch, know that early-fermentation advice will now be judged against the new strain, not the one that was actually there.</div>':'')
+    +'</div>':'';
   var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-title">EDIT BATCH</div>'
     +'<div class="form-group"><label class="form-label">Name</label><input class="form-input" id="eb-name" value="'+escHtml(b.name)+'"></div>'
     +fermenterRow
@@ -561,7 +574,7 @@ function openEditBatchModal(id){
 }
 
 function saveBatchEdit(id){
-  var b=APP.batches.find(function(x){return x.id===id;});
+  var b=getBatch(id);
   if(!b)return;
   b.name=document.getElementById('eb-name').value.trim()||b.name;
   b.startDate=document.getElementById('eb-date').value||b.startDate;
@@ -587,6 +600,12 @@ function saveBatchEdit(id){
 }
 
 function addLog(batchId){
+  // Snapshot BEFORE the mutation — logging a reading is the single most
+  // common action that resolves a stalled/missing-reading/complete-ferment
+  // recommendation, so it's the highest-value hook for the transient
+  // resolved-item acknowledgment (see _advResolvedSuffix, 12-advisor.js).
+  var _advBatch=(typeof APP!=='undefined'&&APP.batches)?getBatch(batchId):null;
+  var _advBefore=(_advBatch&&typeof _advSnapshotItems==='function')?_advSnapshotItems(_advBatch):[];
   var rawG=parseFloat(document.getElementById('log-gravity').value);
   if(!rawG){toast('⚠ Gravity required');return;}
   var temp=parseFloat(document.getElementById('log-temp').value);
@@ -623,13 +642,15 @@ function addLog(batchId){
   APP.logs[batchId].push(entry);
   APP.logs[batchId].sort(function(a,b){return a.date.localeCompare(b.date);});
   scheduleSave();
-  toast(corrApplied?'✦ Logged (corrected '+rawG.toFixed(3)+' → '+correctedG.toFixed(3)+' @ '+temp+'°C)':'✦ Reading logged');
+  var _advMsg=corrApplied?'✦ Logged (corrected '+rawG.toFixed(3)+' → '+correctedG.toFixed(3)+' @ '+temp+'°C)':'✦ Reading logged';
+  if(_advBatch&&typeof _advResolvedSuffix==='function')_advMsg+=_advResolvedSuffix(_advBatch,_advBefore);
+  toast(_advMsg);
   renderMain();
 }
 
 function deleteLog(batchId,logId){
   if(!confirm('Delete this reading?'))return;
-  APP.logs[batchId]=(APP.logs[batchId]||[]).filter(function(l){return l.id!==logId;});
+  APP.logs[batchId]=(getBatchLogs(batchId)).filter(function(l){return l.id!==logId;});
   scheduleSave();toast('Reading deleted');renderMain();
 }
 
@@ -832,6 +853,12 @@ function updateBottlingTotalDisplay(){
 }
 
 function saveBottling(batchId){
+  // Bottling resolves the whole packaging-phase recommendation cluster
+  // (ferment-complete, cold-crash, stabilise-first, extended-bulk-aging) in
+  // one action — snapshot before the mutation for the transient
+  // acknowledgment on the final toast below (see _advResolvedSuffix).
+  var _advBatch=(typeof APP!=='undefined'&&APP.batches)?getBatch(batchId):null;
+  var _advBefore=(_advBatch&&typeof _advSnapshotItems==='function')?_advSnapshotItems(_advBatch):[];
   var count500=parseInt(document.getElementById('bt-count-500').value)||0;
   var count750=parseInt(document.getElementById('bt-count-750').value)||0;
   var customSize=parseInt((document.getElementById('bt-count-custom-size')||{}).value)||0;
@@ -919,7 +946,9 @@ function saveBottling(batchId){
   }
   scheduleSave();
   try{console.log('[MeadOS] saveBottling — total',total,'counts',countsAtBottling,'locations',JSON.parse(JSON.stringify(locations)));}catch(e){}
-  toast('✦ '+total+' bottle'+(total!==1?'s':'')+' bottled · cellar populated');
+  var _advMsg='✦ '+total+' bottle'+(total!==1?'s':'')+' bottled · cellar populated';
+  if(_advBatch&&typeof _advResolvedSuffix==='function')_advMsg+=_advResolvedSuffix(_advBatch,_advBefore);
+  toast(_advMsg);
   showView('cellar');
 }
 
@@ -930,7 +959,7 @@ function clearBottling(batchId){
 }
 
 function deleteBatch(id){
-  var b=APP.batches.find(function(x){return x.id===id;});
+  var b=getBatch(id);
   if(!b)return;
   if(!confirm('Permanently delete "'+b.name+'" and all associated logs, tastings, and bottling data?'))return;
   APP.batches=APP.batches.filter(function(x){return x.id!==id;});
@@ -963,7 +992,7 @@ var FAILURE_CATEGORIES=[
 
 function openFailureModal(batchId){
   closeModal();
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b){toast('⚠ Batch not found');return;}
   var f=b.failed||{};
   var isEdit=!!b.failed;
@@ -994,7 +1023,7 @@ function openFailureModal(batchId){
 }
 
 function saveFailurePostmortem(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b)return;
   var cat=document.getElementById('fail-cat').value;
   var what=document.getElementById('fail-what').value.trim();
@@ -1015,7 +1044,7 @@ function saveFailurePostmortem(batchId){
 }
 
 function unmarkBatchFailed(batchId){
-  var b=APP.batches.find(function(x){return x.id===batchId;});
+  var b=getBatch(batchId);
   if(!b||!b.failed)return;
   if(!confirm('Restore "'+b.name+'" to its previous active state? The postmortem notes will be deleted.'))return;
   delete b.failed;
