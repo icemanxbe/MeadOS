@@ -1765,6 +1765,44 @@
     APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};
   })();
 
+  // Regression (2026-07-11, found via a real screenshot, not the test suite):
+  // watchItems.map(itemCard) and insightItems.map(itemCard) passed itemCard
+  // straight to .map() — itemCard's 2nd param (nested) silently received
+  // .map()'s own index argument instead of undefined (the classic
+  // ['1','2','3'].map(parseInt) gotcha: index 1+ is truthy). Every item past
+  // the first in EITHER section rendered as a bogus "related to the stall
+  // above" nested sub-card, even with no stalled item anywhere in sight.
+  // Caught by actually reading a generated screenshot rather than just
+  // checking the render didn't throw — direct-called _advStalledCauseItemIds
+  // returned [] correctly the whole time, so a logic-only test would have
+  // stayed green throughout; only the .map() wiring itself was wrong.
+  (function(){
+    // Real shape (from Forest Fruits Batch 2): 3 same-severity 'recommended'
+    // items (oxygen-stop, ferment-complete, stabilise-first) with NO stalled
+    // item anywhere — exactly the condition that triggered the bug.
+    APP.recipes=[{id:'rMulti',ogTarget:1.092,fgTarget:1.004,fermentDays:42,category:'Melomel',
+      steps:[{day:42,title:'Stabilise & back-sweeten',desc:'Stabilise first with potassium sorbate AND metabisulfite together, then back-sweeten.'}]}];
+    var b={id:'multiB',recipeId:'rMulti',startDate:isoAgo(18),og:1.092,yeast:'m05',volume:6.5};
+    APP.batches=[b];APP.bottling={};
+    APP.logs={multiB:[{date:isoAgo(18),gravity:1.092,temp:17.5},{date:isoAgo(12),gravity:1.030,temp:17.5},
+      {date:isoAgo(6),gravity:1.011,temp:17},{date:isoAgo(0),gravity:1.010,temp:16.6}]};
+    var adv=mwBatchAdvice(b);
+    var watchIds=adv.items.filter(function(i){return i.severity==='recommended';}).map(function(i){return i.id;});
+    ok('regression fixture: reproduces 3+ same-severity items with no stalled item', watchIds.length>=3&&adv.items.every(function(i){return i.id!=='stalled';}), JSON.stringify(watchIds));
+
+    var html=renderBatchAdvisor(b);
+    ok('nested-card bug: no item is falsely marked "related to the stall" when there is no stalled item at all', html.indexOf('RELATED TO THE STALL')<0&&html.indexOf('GERELATEERD AAN GISTING')<0, 'found bogus nesting in rendered HTML');
+    // Same check the other language, since the fix is in shared render logic
+    // not the string itself. appLang() reads APP.settings.labelLocale.
+    APP.settings=APP.settings||{};var origLocale=APP.settings.labelLocale;
+    APP.settings.labelLocale='nl';
+    var htmlNl=renderBatchAdvisor(b);
+    ok('nested-card bug: same check in Dutch', htmlNl.indexOf('GERELATEERD AAN GISTING')<0, 'found bogus nesting in Dutch rendered HTML');
+    APP.settings.labelLocale=origLocale;
+
+    APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};
+  })();
+
   var s=document.getElementById('summary');
   s.textContent=(fail===0?'✓ ALL PASS':'✗ '+fail+' FAILED')+'  ('+pass+'/'+(pass+fail)+')';
   s.className=fail===0?'pass':'fail';

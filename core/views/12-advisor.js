@@ -1149,15 +1149,20 @@ function renderBatchAdvisor(b){
     function cardWithNested(it){
       return itemCard(it)+(it.id==='stalled'?nestedCauseItems.map(function(ci){return itemCard(ci,true);}).join(''):'');
     }
+    // itemCard takes (it, nested) — passing it straight to .map() would leak
+    // map's own index argument into `nested` (index 1+ is truthy), the exact
+    // ['1','2','3'].map(parseInt) gotcha. Every .map() call below wraps it in
+    // a single-arg lambda so `nested` only ever gets what cardWithNested (or
+    // nothing) explicitly passes.
     var actionsSection=actionItems.length?('<div class="micro-label" style="color:var(--red2);margin-bottom:6px">'+(nl?'ACTIES':'ACTIONS')+'</div>'+actionItems.map(cardWithNested).join('')):'';
-    var watchSection=watchItems.length?('<div class="micro-label" style="color:var(--gold2);margin:'+(actionItems.length?'14px':'0')+' 0 6px">'+(nl?'OM TE VOLGEN':'WATCH')+'</div>'+watchItems.map(itemCard).join('')):'';
+    var watchSection=watchItems.length?('<div class="micro-label" style="color:var(--gold2);margin:'+(actionItems.length?'14px':'0')+' 0 6px">'+(nl?'OM TE VOLGEN':'WATCH')+'</div>'+watchItems.map(function(it){return itemCard(it);}).join('')):'';
     // Persona hierarchy: a beginner benefits from more visible context by
     // default (the "why is this here at all" reassurance an experienced
     // brewer already has from repetition) — insights start expanded for
     // 'beginner' instead of collapsed. 'experienced'/'pro' keep the
     // collapsed default (pro especially wants minimal surface).
     var insightsSection=insightItems.length?('<details'+(verbosity==='beginner'?' open':'')+' style="margin-top:'+(actionItems.length||watchItems.length?'14px':'0')+'"><summary style="cursor:pointer;font-family:var(--font-mono);font-size:11px;color:var(--text3);padding:4px 0;user-select:none">'
-      +'💡 '+insightItems.length+' '+(nl?(insightItems.length>1?'inzichten':'inzicht'):(insightItems.length>1?'insights':'insight'))+'</summary>'+insightItems.map(itemCard).join('')+'</details>'):'';
+      +'💡 '+insightItems.length+' '+(nl?(insightItems.length>1?'inzichten':'inzicht'):(insightItems.length>1?'insights':'insight'))+'</summary>'+insightItems.map(function(it){return itemCard(it);}).join('')+'</details>'):'';
     // Beginner jargon glossary (see _advRelevantGlossary) — only the terms
     // this batch's own currently-firing advice actually uses, not a static
     // dump. Own collapsed section rather than inline tooltips (no framework
