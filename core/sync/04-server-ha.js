@@ -657,7 +657,13 @@ async function haReadEntityTemperature(entityId){
   if(!s||s.state==null||s.state==='unavailable'||s.state==='unknown')return null;
   var val=parseFloat(s.state);
   if(isNaN(val))return null;
-  return{value:val,unit:(s.attributes&&s.attributes.unit_of_measurement)||'°C',ts:new Date(),entity:entityId};
+  // lastChanged is HA's own timestamp for when the ENTITY's state last
+  // actually changed — distinct from `ts` (when WE polled it, which is
+  // fresh every poll cycle regardless of whether the sensor is still really
+  // reporting). A dying/disconnected sensor can keep returning the same
+  // last-known value indefinitely without HA ever marking it 'unavailable';
+  // lastChanged is what lets a consumer notice that and stop trusting it.
+  return{value:val,unit:(s.attributes&&s.attributes.unit_of_measurement)||'°C',ts:new Date(),lastChanged:s.last_changed||null,entity:entityId};
 }
 
 // In-memory cache of latest readings keyed by entity ID. Refreshed by the
@@ -1043,6 +1049,46 @@ function startTempPolling(){
     updateTempPill();
     refreshAllSensorTemps();
   },60000); // every minute
+}
+
+// In-memory cache of recent HISTORY (not just the latest value) per sensor
+// entity — entity ID → ascending array of {timestamp, value} from HA's own
+// history endpoint (haFetchHistory, already built for the temp charts). This
+// is what lets mwBatchSignals()'s tempStable reflect the sensor's ACTUAL
+// recent spread instead of only whatever happened to be hand-logged at
+// gravity-check time, while mwBatchSignals() itself stays synchronous — same
+// "poll async on our own schedule, read the cache sync" split already used
+// for window._liveSensorTemps below. Not persisted; a live reading has no
+// value once stale.
+if(typeof window!=='undefined'&&!window._liveSensorHistory)window._liveSensorHistory={};
+var HISTORY_LOOKBACK_HOURS=72;
+var historyPollTimer=null;
+
+// Refresh cached history for every bound fermenter/cabinet temp sensor.
+// History queries are heavier than a state read (HA scans its recorder DB),
+// so this runs on its own slower interval, not the 60s latest-value poll.
+async function refreshAllSensorHistories(){
+  if(!haConfigured())return;
+  if(!window._liveSensorHistory)window._liveSensorHistory={};
+  var tempEntities=[];
+  (APP.fermenters||[]).forEach(function(f){if(f.tempSensorEntity)tempEntities.push(f.tempSensorEntity);});
+  if(APP.settings.cellarTempSensorEntity)tempEntities.push(APP.settings.cellarTempSensorEntity);
+  (APP.cabinets||[]).forEach(function(cab){if(cab.tempSensorEntity)tempEntities.push(cab.tempSensorEntity);});
+  tempEntities=Array.from(new Set(tempEntities));
+  if(!tempEntities.length)return;
+  var results=await Promise.all(tempEntities.map(function(e){
+    return haFetchHistory(e,HISTORY_LOOKBACK_HOURS).then(function(points){return{ent:e,points:points};});
+  }));
+  results.forEach(function(r){
+    if(r.points&&r.points.length)window._liveSensorHistory[r.ent]=r.points;
+    else delete window._liveSensorHistory[r.ent];
+  });
+}
+
+function startHistoryPolling(){
+  clearInterval(historyPollTimer);
+  refreshAllSensorHistories();
+  historyPollTimer=setInterval(refreshAllSensorHistories,600000); // every 10 min
 }
 
 // ===== HA service calls (for push notifications) =====

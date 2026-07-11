@@ -538,7 +538,13 @@ function openEditBatchModal(id){
       yeastOpts='<option value="'+escHtml(currentYeast)+'" selected>'+escHtml(currentYeast)+' (custom)</option>'+yeastOpts;
     }
   }
-  var yeastRow=yeastOpts?'<div class="form-group"><label class="form-label">Yeast</label><select class="form-select" id="eb-yeast">'+yeastOpts+'</select></div>':'';
+  // Only worth the warning once there's actual gravity history that a yeast
+  // change could retroactively reinterpret — a fresh batch with no readings
+  // yet has nothing to misattribute.
+  var hasGravityHistory=((APP.logs&&APP.logs[b.id])||[]).some(function(l){return l.gravity!=null&&l.gravity!=='';});
+  var yeastRow=yeastOpts?'<div class="form-group"><label class="form-label">Yeast</label><select class="form-select" id="eb-yeast">'+yeastOpts+'</select>'
+    +(hasGravityHistory?'<div style="font-size:11px;color:var(--text3);margin-top:4px;font-style:italic">Changing this updates how the advisor judges temperature range, attenuation and tolerance for the WHOLE batch going forward — it doesn\'t reinterpret past readings differently. If this is correcting a mistake, that\'s exactly right. If it\'s recording a real mid-ferment repitch, know that early-fermentation advice will now be judged against the new strain, not the one that was actually there.</div>':'')
+    +'</div>':'';
   var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-title">EDIT BATCH</div>'
     +'<div class="form-group"><label class="form-label">Name</label><input class="form-input" id="eb-name" value="'+escHtml(b.name)+'"></div>'
     +fermenterRow
@@ -587,6 +593,12 @@ function saveBatchEdit(id){
 }
 
 function addLog(batchId){
+  // Snapshot BEFORE the mutation — logging a reading is the single most
+  // common action that resolves a stalled/missing-reading/complete-ferment
+  // recommendation, so it's the highest-value hook for the transient
+  // resolved-item acknowledgment (see _advResolvedSuffix, 12-advisor.js).
+  var _advBatch=(typeof APP!=='undefined'&&APP.batches)?APP.batches.find(function(x){return x.id===batchId;}):null;
+  var _advBefore=(_advBatch&&typeof _advSnapshotItems==='function')?_advSnapshotItems(_advBatch):[];
   var rawG=parseFloat(document.getElementById('log-gravity').value);
   if(!rawG){toast('⚠ Gravity required');return;}
   var temp=parseFloat(document.getElementById('log-temp').value);
@@ -623,7 +635,9 @@ function addLog(batchId){
   APP.logs[batchId].push(entry);
   APP.logs[batchId].sort(function(a,b){return a.date.localeCompare(b.date);});
   scheduleSave();
-  toast(corrApplied?'✦ Logged (corrected '+rawG.toFixed(3)+' → '+correctedG.toFixed(3)+' @ '+temp+'°C)':'✦ Reading logged');
+  var _advMsg=corrApplied?'✦ Logged (corrected '+rawG.toFixed(3)+' → '+correctedG.toFixed(3)+' @ '+temp+'°C)':'✦ Reading logged';
+  if(_advBatch&&typeof _advResolvedSuffix==='function')_advMsg+=_advResolvedSuffix(_advBatch,_advBefore);
+  toast(_advMsg);
   renderMain();
 }
 
@@ -832,6 +846,12 @@ function updateBottlingTotalDisplay(){
 }
 
 function saveBottling(batchId){
+  // Bottling resolves the whole packaging-phase recommendation cluster
+  // (ferment-complete, cold-crash, stabilise-first, extended-bulk-aging) in
+  // one action — snapshot before the mutation for the transient
+  // acknowledgment on the final toast below (see _advResolvedSuffix).
+  var _advBatch=(typeof APP!=='undefined'&&APP.batches)?APP.batches.find(function(x){return x.id===batchId;}):null;
+  var _advBefore=(_advBatch&&typeof _advSnapshotItems==='function')?_advSnapshotItems(_advBatch):[];
   var count500=parseInt(document.getElementById('bt-count-500').value)||0;
   var count750=parseInt(document.getElementById('bt-count-750').value)||0;
   var customSize=parseInt((document.getElementById('bt-count-custom-size')||{}).value)||0;
@@ -919,7 +939,9 @@ function saveBottling(batchId){
   }
   scheduleSave();
   try{console.log('[MeadOS] saveBottling — total',total,'counts',countsAtBottling,'locations',JSON.parse(JSON.stringify(locations)));}catch(e){}
-  toast('✦ '+total+' bottle'+(total!==1?'s':'')+' bottled · cellar populated');
+  var _advMsg='✦ '+total+' bottle'+(total!==1?'s':'')+' bottled · cellar populated';
+  if(_advBatch&&typeof _advResolvedSuffix==='function')_advMsg+=_advResolvedSuffix(_advBatch,_advBefore);
+  toast(_advMsg);
   showView('cellar');
 }
 
