@@ -655,14 +655,23 @@ function _mwAdviceSig(b){
       obot?obot.date+','+obot.fg:'',olast?olast.date:'',
       ots.map(function(t){return t.rating;}).join(',')].join(':');
   }).join('|');
+  // ChatGPT round 9: this signature is effectively the Advisor's dependency
+  // manifest now, not just a cache key — naming each fragment (rather than
+  // building the final array with JSON.stringify(...) calls inline) is what
+  // makes "what does mwBatchSignals() actually depend on" reviewable at a
+  // glance, and gives whoever adds the NEXT dependency an obvious pattern to
+  // follow (one named local, added to the array below) instead of having to
+  // parse a wall of inline expressions to see where theirs should go.
+  var botSig=bot?JSON.stringify(bot):0;
+  var recipeSig=JSON.stringify(recipe||{});
+  var additionsSig=JSON.stringify(((typeof APP!=='undefined'&&APP.additions&&APP.additions[b.id])||[]));
+  var customStepsSig=JSON.stringify(b.customSteps||[]);
+  var liveTempsSig=JSON.stringify(liveTemps);
   return [b.id,b.recipeId,b.og,b.yeast,b.startDate,b.failed?1:0,b.fermenterId||0,
     logs.length,last.date,last.gravity,last.temp,last.ph,doneKeys.join(','),
-    bot?JSON.stringify(bot):0,ageF,ageB,b.bulkAging?1:0,
-    JSON.stringify(recipe||{}),
-    JSON.stringify(((typeof APP!=='undefined'&&APP.additions&&APP.additions[b.id])||[])),
-    JSON.stringify(b.customSteps||[]),
-    JSON.stringify(liveTemps),
-    liveHistorySig, siblingFingerprint
+    botSig,ageF,ageB,b.bulkAging?1:0,
+    recipeSig,additionsSig,customStepsSig,liveTempsSig,
+    liveHistorySig,siblingFingerprint
   ].join('|');
 }
 
@@ -797,6 +806,18 @@ function mwIngredientStats(){
 // batch's stats at comparison time) would need real persisted state for a
 // property nobody's asked for; this app doesn't persist advisor state
 // anywhere else either (see mwBatchAdvice's own comment).
+//
+// A sharper version of the same consequence (ChatGPT round 9): this applies
+// to RECIPES too, and a recipe edit can be more than a data correction — if
+// you substantially revise a recipe's schedule or targets, every past batch
+// that used it is still pooled as "your history with this recipe," even
+// though the batches that actually fermented may have followed a
+// meaningfully different process than the recipe now describes. Still the
+// same intentional model (current best-known truth, not a frozen record),
+// not a bug — just worth naming explicitly here rather than leaving it as
+// an inference from the OG-typo example above, since a recipe rewrite
+// changes what "the same recipe" even means in a way a single-field
+// correction doesn't.
 function mwHistoricalComparison(b){
   if(!b)return null;
   // Scoped to b's OWN beverage type (not the ambient active-mode toggle) —

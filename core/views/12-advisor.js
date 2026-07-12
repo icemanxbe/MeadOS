@@ -438,6 +438,20 @@ function _advNextStep(it){
 // summarize (mlf-advisory, ingredient-notes, on-track's own single
 // reassuring line) correctly gets nothing here rather than a forced,
 // low-value restatement of the title.
+//
+// GUARDRAIL for future entries (ChatGPT round 9 — worth stating explicitly,
+// since this is the kind of line that drifts quietly as more rules get
+// added): every entry here must be something directly measurable from the
+// signal layer, never a conclusion the RULE drew from it.
+//   good: "~89% attenuated, flat for 6d"        (raw numbers, no verdict)
+//   bad:  "Fermentation has stalled"             (that's the rule's OWN
+//                                                  conclusion — it belongs
+//                                                  in the title/reason, not
+//                                                  here, or Observed stops
+//                                                  meaning "observed")
+// A quick test: if the line could only be true because a RULE fired, it's
+// not observation — the title already says the rule's name/conclusion, so
+// there's no need for a second copy of it disguised as a "fact".
 function _advObserved(it){
   var id=it.id, d=it.data||{}, nl=_advNL();
   function pct(x){return x==null?'?':(Math.round(x*10)/10)+'%';}
@@ -1116,8 +1130,16 @@ function renderBatchAdvisor(b){
       // Contextual guide link (see _advGuideLink) — only for the ids with a
       // genuinely close troubleshoot-topic match, opens the app's existing
       // detail modal directly by id.
+      // ChatGPT round 9: a distinctly-colored clickable link can pull the
+      // eye out of proportion to its actual importance regardless of DOM
+      // position (this already rendered LAST in the card, after the
+      // explanation — but a bright link color competes with the
+      // recommendation itself for attention). Muted to read as optional
+      // supporting material — same tone as the "↳ related" label — not a
+      // second call-to-action next to the real one.
       var guide=showProse?_advGuideLink(it):null;
-      var guideHtml=guide?('<div style="margin-top:6px"><a href="#" onclick="event.preventDefault();openTroubleshootTopic(\''+guide.topicId+'\')" style="font-size:11.5px;color:var(--blue2);text-decoration:none">'
+      var guideHtml=guide?('<div style="margin-top:6px;font-family:var(--font-mono);font-size:10.5px;color:var(--text3)">'
+        +'<a href="#" onclick="event.preventDefault();openTroubleshootTopic(\''+guide.topicId+'\')" style="color:inherit;text-decoration:underline;text-decoration-color:rgba(255,255,255,0.25)">'
         +'📖 '+(nl?'Meer lezen':'Read more')+': '+guide.icon+' '+escHtml(guide.title)+'</a></div>'):'';
       // Beginner persona, critical severity: scoped version of "color-
       // intensity changes" — a first-time brewer most needs to not miss
@@ -1129,15 +1151,28 @@ function renderBatchAdvisor(b){
       // clearer). Nested sub-cards never get this — they're already
       // de-emphasized by design (supporting evidence, not the headline).
       var beginnerCritical=(verbosity==='beginner'&&it.severity==='critical'&&!nested);
+      // ChatGPT round 9: a nested cause item isn't always PURE supporting
+      // evidence — some (nutrient-final, ph-low…) carry their own distinct
+      // "→ Next" action, not just context for the primary card above. The
+      // uniform dim/shrink treatment risked that action reading as merely
+      // supporting detail and getting skipped. A nested item WITH its own
+      // next-step keeps full opacity (still smaller/indented — still
+      // visually grouped under the primary — but not faded), and the
+      // "related" label says so explicitly; one with no next-step (genuinely
+      // just evidence) keeps the fully quiet treatment.
+      var nestedHasAction=nested&&!!next;
+      var nestedLabel=nested?(nl
+        ?(nestedHasAction?'↳ GERELATEERD — VEREIST OOK ACTIE':'↳ GERELATEERD AAN GISTING HIERBOVEN')
+        :(nestedHasAction?'↳ RELATED — ALSO NEEDS ACTION':'↳ RELATED TO THE STALL ABOVE')):'';
       // Nested sub-cards get a smaller/indented treatment + a "↳ related"
       // label — kept visible even for 'pro' (structural grouping, not prose).
       var wrapStyle=nested
-        ?'background:'+sm.bg+';border-left:3px solid '+sm.color+';border-radius:var(--radius);padding:8px 11px;margin:6px 0 0 22px;opacity:0.92'
+        ?'background:'+sm.bg+';border-left:3px solid '+sm.color+';border-radius:var(--radius);padding:8px 11px;margin:6px 0 0 22px'+(nestedHasAction?'':';opacity:0.92')
         :beginnerCritical
         ?'background:rgba(176,58,46,0.20);border-left:5px solid '+sm.color+';border-radius:var(--radius);padding:12px 14px;margin-bottom:8px'
         :'background:'+sm.bg+';border-left:3px solid '+sm.color+';border-radius:var(--radius);padding:11px 13px;margin-bottom:8px';
       return '<div style="'+wrapStyle+'">'
-        +(nested?'<div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-bottom:2px">↳ '+(nl?'GERELATEERD AAN GISTING HIERBOVEN':'RELATED TO THE STALL ABOVE')+'</div>':'')
+        +(nested?'<div style="font-family:var(--font-mono);font-size:9px;color:'+(nestedHasAction?sm.color:'var(--text3)')+';margin-bottom:2px">'+escHtml(nestedLabel)+'</div>':'')
         +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-bottom:3px">'
         +'<div style="font-family:var(--font-display);font-size:'+(nested?'13px':'14px')+';color:'+sm.color+'">'+t.icon+' '+escHtml(t.title)+'</div>'
         +'<div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:0.5px">'+cm.icon+' '+escHtml(cm.label)+' · '+sm.label+' · '+(nl?'bewijs':'evidence')+' '+evidence+'</div></div>'
