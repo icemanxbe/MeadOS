@@ -366,7 +366,7 @@ var ING_NOTES_NL={
   'Adds the acid backbone Golden Delicious lacks alone':'Voegt de zuurbasis toe die Golden Delicious alleen mist',
   'Neutral — lets the apple lead':'Neutraal — laat de appel de leiding nemen',
   'Prevents a lasting pectin haze':'Voorkomt een blijvende pectinetroebeling',
-  'Staggered addition — apple must is nitrogen-poor like honey must':'Gespreide toevoeging — appelmost is stikstofarm, net als honingmost',
+  'Staggered addition — juice YAN varies by source, safer to assume it needs help':'Gespreide toevoeging — YAN-gehalte van sap verschilt per bron, ga voor de zekerheid uit van een tekort',
   'Stabilise before back-sweetening; skip if leaving dry':'Stabiliseer voor het nazoeten; sla over als je droog laat',
   'Use WITH metabisulfite, never alone':'Gebruik SAMEN met metabisulfiet, nooit alleen',
   'The reliable bittersweet backbone':'De betrouwbare bittersweet-basis',
