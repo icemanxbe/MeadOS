@@ -16,7 +16,7 @@ ingredients:[
 {item:'Baldwin Apple Juice',amount:'1.0 L',notes:'Adds the acid backbone Golden Delicious lacks alone'},
 {item:'Lallemand Nottingham Yeast',amount:'11 g (1 packet)',notes:'Neutral — lets the apple lead'},
 {item:'Pectic Enzyme',amount:'2 g',notes:'Prevents a lasting pectin haze'},
-{item:'Fermaid-O',amount:'2 g',notes:'Staggered addition — apple must is nitrogen-poor like honey must'},
+{item:'Fermaid-O',amount:'2 g',notes:'Staggered addition — juice YAN varies by source, safer to assume it needs help'},
 {item:'Potassium Metabisulfite',amount:'0.5 g',notes:'Stabilise before back-sweetening; skip if leaving dry'},
 {item:'Potassium Sorbate',amount:'2 g',notes:'Use WITH metabisulfite, never alone'}
 ],
@@ -94,19 +94,20 @@ description:'Medium-to-sweet, full-bodied and rich, with a background phenolic o
 ingredients:[
 {item:'Dabinett or Michelin Apple Juice',amount:'4.0 L',notes:'A bittersweet base carries this style'},
 {item:'Sweet Coppin Apple Juice',amount:'1.0 L',notes:'Rounds and softens'},
-{item:'Wild/Native Yeast',amount:'—',notes:'Traditional approach: no yeast added, relying on the juice\'s own wild population. See notes for the low-nitrogen method.'},
-{item:'Pectic Enzyme',amount:'2 g',notes:'Optional — traditional French cider often skips this and accepts a natural haze'},
+{item:'Pectin Methylesterase (PME) / Keeving Enzyme',amount:'per product instructions',notes:'NOT the same as regular pectic enzyme — regular pectic enzyme actively breaks down the pectin a keeve needs and will prevent it from forming'},
+{item:'Calcium Chloride',amount:'per product instructions',notes:'Reacts with the de-esterified pectin to form the floating gel cap ("chapeau brun") — dose alongside your PME product\'s own guidance; apple mineral content varies too much for one fixed number to be honest'},
+{item:'Wild/Native Yeast',amount:'—',notes:'Traditional approach: no yeast added, relying on the juice\'s own wild population — or pitch a light dose for a more reliable result (see notes)'},
 {item:'Potassium Metabisulfite',amount:'0.3 g',notes:'A light initial dose (lower than usual) to select against the worst wild organisms while leaving fermentation-capable yeast'}
 ],
 steps:[
-{day:0,title:'Press & Settle',desc:'Sanitize equipment lightly (avoid over-sanitizing if relying on wild yeast). Add a light initial sulfite dose. Take an OG reading. Do NOT add nutrient — the whole point of this style is a deliberately slow, low-nitrogen fermentation that preserves aromatics and residual sweetness.'},
-{day:3,title:'Check for Activity',desc:'Wild fermentation is slower to start than an inoculated one — don\'t be alarmed if visible activity takes several days.'},
-{day:14,title:'First Racking',desc:'Rack off the heaviest sediment once initial vigorous activity has passed.'},
-{day:30,title:'Progress Check',desc:'Take a gravity reading. This style ferments slowly and may take months to reach a stable point, well short of fully dry — that\'s intentional.'},
-{day:60,title:'Assess & Stabilise',desc:'Once gravity has been stable for at least a week at a sweet-to-medium level, stabilise with metabisulfite to lock in the residual sweetness before it drifts further.'},
-{day:60,title:'Bottle',desc:'Bottle once stabilised and clear.'}
+{day:0,title:'Press, Keeve, Don\'t Pitch Yet',desc:'Combine the juice. Add a light initial sulfite dose, then the calcium chloride and PME/keeving enzyme per the product\'s own instructions — NOT regular pectic enzyme, which actively works against the keeve forming. Take an OG reading. Do not pitch yeast yet.'},
+{day:1,title:'Cold Settle — Watch for the Cap',desc:'Keep it cold (ideally 4-10°C) and completely undisturbed for 24-72+ hours. A gelatinous brown layer (the "chapeau brun") should rise and separate the clear juice below it from the sediment at the very bottom. This is the genuinely fussy part of keeving — apple blend, temperature and timing all affect whether it forms cleanly.'},
+{day:3,title:'Rack the Keeve (or Don\'t — Both Are Fine)',desc:'If a cap formed: rack ONLY the clear middle layer into the fermenter, leaving the cap and bottom sediment behind — that middle layer is now nutrient-depleted, which is the whole mechanism. If no clean cap formed (common, especially on a first attempt): nothing is ruined, just rack normally and proceed as a standard low-nutrient cider from here — see notes.'},
+{day:4,title:'Pitch & Ferment Cool',desc:'Pitch the wild population (or a light measured dose if you want more reliability). Do NOT add nutrient — nutrient scarcity is what arrests fermentation naturally at a sweet-to-medium point instead of running to dry.'},
+{day:30,title:'Progress Check',desc:'Take a gravity reading. This ferments very slowly and may take months — a real keeve gradually loses steam as nutrients run out rather than stopping abruptly.'},
+{day:60,title:'Bottle While Still Gently Active',desc:'Once gravity is creeping down slowly (not fully flat) at a sweet-to-medium level you like, bottle now, while that trace activity is still present — that\'s what builds natural light carbonation. Don\'t stabilise, and don\'t use the Carbonation Calculator here: there\'s no separate measured priming dose in this method, you\'re relying on the keeve\'s own dying-down fermentation. Keep a clear PET tester bottle and check it every few days; if pressure builds past a gentle pétillance, refrigerate promptly to slow things down. For precise, predictable control instead, stop at any point: stabilise normally (sorbate + metabisulfite) and bottle still, or ferment fully out and prime a separate measured dose with the Carbonation Calculator.'}
 ],
-notes:'This is the most traditional and least controllable style here — a genuinely slow, low-nitrogen fermentation on the juice\'s own wild yeast population, deliberately left with real residual sugar rather than fermented dry and back-sweetened. If reliability matters more than tradition, pitch a wine yeast at a light rate and stop it early with sulfite instead of relying on wild yeast.'
+notes:'This is the most traditional and least controllable style here. A real keeve traps nitrogen in a floating pectin-calcium gel (the "chapeau brun"), starving the racked juice of nutrients so fermentation runs out of steam naturally at a sweet-to-medium gravity instead of finishing dry — and bottling while that trace fermentation is still gently active is what carbonates it lightly, on its own, with no priming sugar needed. It\'s genuinely fussy: the cap often fails to form cleanly, especially on a first attempt, with the wrong apple blend, or if it\'s too warm during the settling stage. None of that ruins the batch — it just becomes a normal cider from that point, which you can ferment out, stabilise, and bottle still (or backsweeten and prime separately) instead. If reliability matters more than authenticity, skip the keeving steps entirely: pitch a light dose of wine yeast, ferment it fully out, then stop and stabilise like Method 1 in the Sparkling & Carbonated Cider guide.'
 },
 {
 id:'c5',name:'Spanish Cider (Sidra)',brandName:'Sidra',style:'Spanish Cider',styleId:'spanish-cider',difficulty:'Advanced',brandColor:'#c8a850',
@@ -123,9 +124,9 @@ steps:[
 {day:0,title:'Brew Day',desc:'Minimal sanitation, in keeping with the rustic tradition — though basic cleanliness still matters. Take an OG reading. Pitch lightly or leave to wild fermentation. Cover loosely rather than a tight airlock seal, matching the traditional open-vessel approach.'},
 {day:14,title:'Check Progress',desc:'Fermentation should be visibly active. A degree of surface film or light funk is traditional and expected, not a fault.'},
 {day:30,title:'Rack',desc:'Rack off sediment. Gravity should be near or at 1.000 — this style ferments fully dry.'},
-{day:45,title:'Bottle',desc:'Bottle once stable and reasonably clear — Sidra is traditionally served with a degree of natural haze, so don\'t over-clarify.'}
+{day:45,title:'Bottle',desc:'Bottle once stable and reasonably clear — Sidra is traditionally served with a degree of natural haze, so don\'t over-clarify. Bottle it still: real Asturian sidra natural has essentially no dissolved carbonation, unlike French Cider\'s keeved style.'}
 ],
-notes:'This is the most rustic style in the set. If you want reliability over authenticity, treat it like a Common Cider instead — a light 71B pitch and a normal airlock will still get you something recognisably in the style, just cleaner than tradition dictates.'
+notes:'This is the most rustic style in the set. If you want reliability over authenticity, treat it like a Common Cider instead — a light 71B pitch and a normal airlock will still get you something recognisably in the style, just cleaner than tradition dictates. Real sidra natural is served via "escanciado" — poured from a bottle held high overhead into a wide glass held low, which briefly aerates and awakens the aroma of what is otherwise a genuinely still cider. Don\'t mistake the flatness for something gone wrong; it\'s the point.'
 },
 {
 id:'c6',name:'New England Cider',brandName:'New England',style:'New England Cider',styleId:'new-england-cider',difficulty:'Intermediate',brandColor:'#7a4818',

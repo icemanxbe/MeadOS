@@ -852,6 +852,14 @@ function updateBottlingTotalDisplay(){
   el.innerHTML='<span style="color:var(--gold2)">TOTAL: '+totalBottles+' bottle'+(totalBottles!==1?'s':'')+' · '+(totalMl/1000).toFixed(2)+' L</span> &nbsp; <span style="color:var(--text3);font-size:11px">('+parts.join(' + ')+')</span>';
 }
 
+function updateBottlingSweetHint(batchId){
+  var el=document.getElementById('bt-sweet-hint');
+  if(!el)return;
+  var b=getBatch(batchId);
+  var fg=(document.getElementById('bt-fg')||{}).value;
+  el.innerHTML=_bottlingSweetHintHtml(fg,b&&b.beverageType);
+}
+
 function saveBottling(batchId){
   // Bottling resolves the whole packaging-phase recommendation cluster
   // (ferment-complete, cold-crash, stabilise-first, extended-bulk-aging) in

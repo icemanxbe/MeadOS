@@ -139,9 +139,10 @@ function renderTools(){
     +'<div style="margin-top:8px;font-size:11px;color:var(--text3);font-style:italic">Sorbate alone doesn\'t kill yeast — it blocks reproduction. Must be combined with K-meta (free SO₂) or refrigeration. Wait 48h after stabilizing before adding sweetener.</div>'
     +'</div>'
     +'<div class="card"><div class="card-header"><div class="card-title">🍾 CARBONATION / PRIMING SUGAR</div></div>'
-    +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.55">Priming sugar to bottle-condition a sparkling mead. The mead must be <strong>fully fermented</strong> and <strong>not stabilized</strong> — sorbate/sulfite stop the refermentation that makes the bubbles. Enter the highest temperature the mead has reached since fermentation; that sets how much CO₂ is already dissolved.</div>'
-    +'<div class="form-row-3"><div class="form-group"><label class="form-label">Volume (L)</label><input class="form-input" id="cb-vol" type="number" value="5" step="0.1" oninput="calcCarbonation()"></div>'
-    +'<div class="form-group"><label class="form-label">Mead temp (°C)</label><input class="form-input" id="cb-temp" type="number" value="20" step="0.5" oninput="calcCarbonation()"></div>'
+    +_carbBatchLinkHtml()
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.55">Priming sugar to bottle-condition a sparkling '+_carbLiquidName()+'. The '+_carbLiquidName()+' must be <strong>fully fermented</strong> and <strong>not stabilized</strong> — sorbate/sulfite stop the refermentation that makes the bubbles. Enter the highest temperature the '+_carbLiquidName()+' has reached since fermentation; that sets how much CO₂ is already dissolved.</div>'
+    +'<div class="form-row-3"><div class="form-group"><label class="form-label">Volume (L)</label><input class="form-input" id="cb-vol" type="number" value="'+_carbDefaultVol()+'" step="0.1" oninput="calcCarbonation()"></div>'
+    +'<div class="form-group"><label class="form-label">'+(_carbLiquidName()==='cider'?'Cider':'Mead')+' temp (°C)</label><input class="form-input" id="cb-temp" type="number" value="'+_carbDefaultTemp()+'" step="0.5" oninput="calcCarbonation()"></div>'
     +'<div class="form-group"><label class="form-label">Priming sugar</label><select class="form-select" id="cb-sugar" onchange="calcCarbonation()"><option value="4.0">Corn sugar (dextrose)</option><option value="3.8">Table sugar (sucrose)</option><option value="5.0">Honey</option><option value="5.7">DME</option></select></div></div>'
     +'<div class="form-group"><label class="form-label">Style / target carbonation</label><select class="form-select" id="cb-style" onchange="calcCarbonation()">'
     +'<option value="2.0">Lightly sparkling / pétillant (~2.0 vol)</option>'
@@ -156,7 +157,7 @@ function renderTools(){
     +'</div>'
     +'<div style="margin-top:10px;padding:10px;background:var(--bg4);border-radius:var(--radius);font-family:var(--font-mono);font-size:12px;color:var(--text2);line-height:1.7" id="cb-detail">—</div>'
     +'<div id="cb-warn"></div>'
-    +'<div style="margin-top:8px;font-size:11px;color:var(--text3);font-style:italic">Bottle-condition only a fully-fermented, un-stabilized mead in pressure-rated bottles (champagne/Belgian + crown caps or wired corks). Keep one PET tester bottle to feel the pressure. Condition 2–3 weeks at 18–22°C, then chill. See Mead Guide → Sparkling &amp; Carbonated Mead.</div>'
+    +'<div style="margin-top:8px;font-size:11px;color:var(--text3);font-style:italic">Bottle-condition only a fully-fermented, un-stabilized '+_carbLiquidName()+' in pressure-rated bottles (champagne/Belgian + crown caps or wired corks). Keep one PET tester bottle to feel the pressure. Condition 2–3 weeks at 18–22°C, then chill. See '+(_carbLiquidName()==='cider'?'Cider Guide → Sparkling &amp; Carbonated Cider':'Mead Guide → Sparkling &amp; Carbonated Mead')+'.</div>'
     +'</div>'
     +'<div class="card"><div class="card-header"><div class="card-title">🧪 SO₂ / SULFITE CALCULATOR</div></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.55">Only the <em>molecular</em> fraction of free SO₂ is antimicrobial, and that fraction collapses as pH rises. Enter your pH to see the free SO₂ you must hold to reach the protective molecular target, and the K-meta dose to get there. <strong>Confirm with a free-SO₂ measurement</strong> — this estimates, it doesn\'t replace titration.</div>'
@@ -192,6 +193,52 @@ function renderTools(){
     +'</div>'
     +renderBlendingTool()
     +'</div>';
+}
+
+// Carbonation calculator is otherwise a fully standalone tool — no field for
+// which batch it's for, so it can never know about that batch's actual
+// gravity-stability history. openCarbonationCalcForBatch() links the two via
+// a simple global (matching this codebase's existing window._wiz/
+// bottlingWorkflowState pattern) so the tool that prevents bottle bombs is
+// reachable, pre-filled, and stability-aware right from the batch itself.
+function _carbBatchLinkHtml(){
+  var b=window._carbBatchId?getBatch(window._carbBatchId):null;
+  if(!b)return '';
+  var sig=(typeof mwBatchSignals==='function')?mwBatchSignals(b):null;
+  var stableHtml='';
+  if(sig&&!sig.gravityConfirmedStable){
+    stableHtml='<div style="margin-top:8px;padding:8px 10px;border-radius:var(--radius);border-left:3px solid var(--red2);background:rgba(176,58,46,0.1);font-size:12px;color:var(--text2)"><strong style="color:var(--red2)">⚠ Not confirmed stable yet</strong> — no two logged readings 5+ days apart agree. Don\'t prime until they do.</div>';
+  }else if(sig&&sig.gravityConfirmedStable){
+    stableHtml='<div style="margin-top:8px;padding:6px 10px;border-radius:var(--radius);border-left:3px solid var(--green);background:rgba(45,106,79,0.08);font-size:11.5px;color:var(--green2)">✓ Confirmed stable — safe to prime.</div>';
+  }
+  return '<div style="margin-bottom:10px;padding:8px 10px;background:var(--bg4);border-radius:var(--radius);font-size:12px;color:var(--text2)">🔗 Linked to <strong>'+escHtml(b.name)+'</strong> <button class="btn btn-secondary btn-sm" style="margin-left:6px" onclick="window._carbBatchId=null;renderMain()">Unlink</button></div>'+stableHtml;
+}
+function _carbDefaultVol(){
+  var b=window._carbBatchId?getBatch(window._carbBatchId):null;
+  return (b&&b.volume)?b.volume:5;
+}
+function _carbDefaultTemp(){
+  var b=window._carbBatchId?getBatch(window._carbBatchId):null;
+  var sig=(b&&typeof mwBatchSignals==='function')?mwBatchSignals(b):null;
+  return (sig&&sig.latestTemp!=null)?sig.latestTemp:20;
+}
+// The calculator's own copy hardcoded "mead" throughout regardless of what
+// it's linked to — a cider brewer opening it via a linked cider batch saw
+// "bottle-condition a sparkling mead" and a footer pointing at the Mead
+// Guide instead of the separate Sparkling & Carbonated Cider guide topic.
+function _carbLiquidName(){
+  var b=window._carbBatchId?getBatch(window._carbBatchId):null;
+  var bev=b?(b.beverageType||'mead'):((typeof activeBevMode==='function')?activeBevMode():'mead');
+  return bev==='cider'?'cider':'mead';
+}
+function openCarbonationCalcForBatch(batchId){
+  window._carbBatchId=batchId;
+  showView('tools');
+  setTimeout(function(){
+    var el=document.getElementById('cb-vol');
+    if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'center'});
+    if(typeof calcCarbonation==='function')calcCarbonation();
+  },80);
 }
 
 function initTools(){
@@ -422,7 +469,7 @@ function calcCarbonation(){
   else{customWrap.style.display='none';target=parseFloat(styleSel);}
   var outEl=document.getElementById('cb-sugar-out'),perEl=document.getElementById('cb-perL'),detEl=document.getElementById('cb-detail'),warnEl=document.getElementById('cb-warn');
   if(!vol||vol<=0||isNaN(temp)||!target||target<=0){
-    outEl.textContent='—';perEl.textContent='—';detEl.textContent='Enter volume, mead temperature and a target carbonation level.';warnEl.innerHTML='';return;
+    outEl.textContent='—';perEl.textContent='—';detEl.textContent='Enter volume, '+_carbLiquidName()+' temperature and a target carbonation level.';warnEl.innerHTML='';return;
   }
   var tF=temp*9/5+32;
   var residual=3.0378-0.050062*tF+0.0002655*tF*tF;
@@ -430,7 +477,7 @@ function calcCarbonation(){
   var add=target-residual;
   if(add<=0){
     outEl.textContent='0 g';perEl.textContent='0 g/L';
-    detEl.textContent='At '+temp+'°C the mead already holds ~'+residual.toFixed(2)+' volumes of CO₂, at or above your '+target.toFixed(1)+'-volume target — no priming sugar needed. (A warmer reading retains less CO₂ and would raise the dose.)';
+    detEl.textContent='At '+temp+'°C the '+_carbLiquidName()+' already holds ~'+residual.toFixed(2)+' volumes of CO₂, at or above your '+target.toFixed(1)+'-volume target — no priming sugar needed. (A warmer reading retains less CO₂ and would raise the dose.)';
     warnEl.innerHTML='';return;
   }
   var grams=add*vol*factor;
@@ -480,13 +527,16 @@ function calcBacksweet(){
   sweetEl.textContent=sweetenerG.toFixed(0)+' g '+typeName;
   sorbEl.textContent=sorbG.toFixed(2)+' g';
   metaEl.textContent=metaG.toFixed(2)+' g';
+  var bevType=(typeof activeBevMode==='function')?activeBevMode():'mead';
+  var band=sweetnessForFG(target,bevType);
+  var liquidName=bevType==='cider'?'cider':'mead';
   protoEl.innerHTML='<div style="color:var(--gold2);font-weight:600;margin-bottom:4px">PROTOCOL · STABILIZE BEFORE SWEETENING</div>'
     +'<div>1. Rack off any sediment into a clean vessel.</div>'
-    +'<div>2. Dissolve <strong>'+sorbG.toFixed(2)+' g potassium sorbate</strong> + <strong>'+metaG.toFixed(2)+' g potassium metabisulfite</strong> in a little mead, stir into batch.</div>'
+    +'<div>2. Dissolve <strong>'+sorbG.toFixed(2)+' g potassium sorbate</strong> + <strong>'+metaG.toFixed(2)+' g potassium metabisulfite</strong> in a little '+liquidName+', stir into batch.</div>'
     +'<div>3. Wait <strong>24-48 hours</strong>. Yeast activity must be fully stopped.</div>'
     +'<div>4. Warm <strong>'+sweetenerG.toFixed(0)+' g '+typeName+'</strong> gently (don\'t exceed 50°C) and stir in until fully dissolved.</div>'
-    +'<div>5. Taste before bottling — adjust if too dry/sweet.</div>'
-    +'<div style="margin-top:6px;color:var(--text3)">Final ABV unchanged · estimated final sweetness ≈ '+(target<=1.005?'Bone Dry':target<=1.010?'Off-Dry':target<=1.015?'Semi-Sweet':target<=1.020?'Sweet':'Dessert')+'</div>';
+    +'<div>5. Taste before bottling — adjust if too dry/sweet. Acid/tannin level and (for mead) honey type both shift how sweet this actually reads, not just the gravity number.</div>'
+    +'<div style="margin-top:6px;color:var(--text3)">Final ABV unchanged · estimated final sweetness ≈ '+(band?band.label:'—')+'</div>';
 }
 
 function calcNutrient(){
