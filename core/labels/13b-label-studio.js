@@ -354,8 +354,9 @@ function meadTastingSummary(ctx){
 }
 function labelStudioSweetGuess(r){
   var fg=parseFloat(r.fgTarget)||0;
-  if(/sack|port|dessert|bochet/i.test((r.style||'')+(r.name||'')))return 'sweet';
-  if(fg>=1.020)return 'sweet';if(fg>=1.010)return 'semi-sweet';if(fg>=1.004)return 'off-dry';return 'dry';
+  if(/sack|port|dessert|bochet/i.test((r.style||'')+(r.name||'')))return 'Dessert';
+  var band=sweetnessForFG(fg,r.beverageType);
+  return band?band.label:'Dry';
 }
 function labelStudioAbv(ctx){
   var bot=ctx.bot,r=ctx.recipe||{},b=ctx.batch;

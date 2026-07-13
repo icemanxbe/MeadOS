@@ -1617,7 +1617,7 @@ function openCellarEditModal(batchId){
   var bot=APP.bottling[batchId]||{};
   if(!bot.locations)bot.locations={cellar:{},fridge:{},gifted:{},other:{}};
   closeModal();
-  var sweetOpts=['','Bone Dry','Dry','Off-Dry','Semi-Sweet','Sweet','Dessert']
+  var sweetOpts=sweetnessOptionLabels(b.beverageType)
     .map(function(o){return'<option'+(bot.sweetness===o?' selected':'')+'>'+escHtml(o)+'</option>';}).join('');
   var sizes=activeBottleSizes(bot);
   // Inventory grid: rows = sizes, columns = 4 locations
@@ -1641,8 +1641,8 @@ function openCellarEditModal(batchId){
     +'<div class="modal-title">EDIT BOTTLING · '+escHtml(b.name)+'</div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">Bottle Date</label><input class="form-input" type="date" id="ce-date" value="'+(bot.date||today())+'"></div>'
     +'<div class="form-group"><label class="form-label">Final ABV %</label><input class="form-input" type="number" step="0.1" id="ce-abv" value="'+(bot.abv||'')+'"></div></div>'
-    +'<div class="form-row"><div class="form-group"><label class="form-label">Final Gravity</label><input class="form-input" type="number" step="0.001" id="ce-fg" value="'+(bot.fg||'')+'"></div>'
-    +'<div class="form-group"><label class="form-label">Sweetness</label><select class="form-select" id="ce-sweet">'+sweetOpts+'</select></div></div>'
+    +'<div class="form-row"><div class="form-group"><label class="form-label">Final Gravity</label><input class="form-input" type="number" step="0.001" id="ce-fg" value="'+(bot.fg||'')+'" oninput="updateCellarSweetHint(\''+b.id+'\')"></div>'
+    +'<div class="form-group"><label class="form-label">Sweetness</label><select class="form-select" id="ce-sweet">'+sweetOpts+'</select><div id="ce-sweet-hint" style="font-size:11px;color:var(--text3);margin-top:4px">'+_bottlingSweetHintHtml(bot.fg,b.beverageType)+'</div></div></div>'
     +'<div style="margin:10px 0 4px;font-family:var(--font-mono);font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase">INVENTORY · CURRENT</div>'
     +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px">'+invHeader+invRows+'</div>'
     +'<details style="margin-top:14px"><summary style="cursor:pointer;font-size:12px;color:var(--text3);padding:4px 0">Advanced: Edit originally-bottled counts</summary>'
@@ -1656,6 +1656,14 @@ function openCellarEditModal(batchId){
     +'<button class="btn btn-primary" onclick="saveCellarEdit(\''+batchId+'\')">Save</button>'
     +'</div></div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
+}
+
+function updateCellarSweetHint(batchId){
+  var el=document.getElementById('ce-sweet-hint');
+  if(!el)return;
+  var b=getBatch(batchId);
+  var fg=(document.getElementById('ce-fg')||{}).value;
+  el.innerHTML=_bottlingSweetHintHtml(fg,b&&b.beverageType);
 }
 
 function saveCellarEdit(batchId){

@@ -268,6 +268,45 @@
   eq('sweet: Semi-Sweet -> 2', studioSweetIndex('Semi-Sweet'), 2);
   eq('sweet: Sweet -> 3', studioSweetIndex('Sweet'), 3);
   eq('sweet: Dessert -> 3', studioSweetIndex('Dessert'), 3);
+  // Cider's own label set maps through the same regex-based dial with no code change
+  eq('sweet: cider Dry -> 0', studioSweetIndex('Dry'), 0);
+  eq('sweet: cider Medium -> 2', studioSweetIndex('Medium'), 2);
+  eq('sweet: cider Sweet -> 3', studioSweetIndex('Sweet'), 3);
+  eq('sweet: cider Dessert -> 3', studioSweetIndex('Dessert'), 3);
+
+  // sweetnessForFG / sweetnessScaleFor — the canonical mead/cider FG->label scale
+  eq('sweetnessForFG: mead 0.998 -> Bone Dry', (sweetnessForFG(0.998,'mead')||{}).label, 'Bone Dry');
+  eq('sweetnessForFG: mead 1.003 -> Dry', (sweetnessForFG(1.003,'mead')||{}).label, 'Dry');
+  eq('sweetnessForFG: mead 1.008 -> Off-Dry', (sweetnessForFG(1.008,'mead')||{}).label, 'Off-Dry');
+  eq('sweetnessForFG: mead 1.015 -> Semi-Sweet', (sweetnessForFG(1.015,'mead')||{}).label, 'Semi-Sweet');
+  eq('sweetnessForFG: mead 1.025 -> Sweet', (sweetnessForFG(1.025,'mead')||{}).label, 'Sweet');
+  eq('sweetnessForFG: mead 1.040 -> Dessert', (sweetnessForFG(1.040,'mead')||{}).label, 'Dessert');
+  eq('sweetnessForFG: cider 1.001 -> Dry', (sweetnessForFG(1.001,'cider')||{}).label, 'Dry');
+  eq('sweetnessForFG: cider 1.007 -> Medium', (sweetnessForFG(1.007,'cider')||{}).label, 'Medium');
+  eq('sweetnessForFG: cider 1.020 -> Sweet', (sweetnessForFG(1.020,'cider')||{}).label, 'Sweet');
+  eq('sweetnessForFG: cider 1.045 -> Dessert', (sweetnessForFG(1.045,'cider')||{}).label, 'Dessert');
+  eq('sweetnessForFG: SAME fg reads differently per beverage type (the actual real-world gap)',
+    (sweetnessForFG(1.015,'mead')||{}).label+' vs '+(sweetnessForFG(1.015,'cider')||{}).label, 'Semi-Sweet vs Sweet');
+  ok('sweetnessForFG: null fg -> null', sweetnessForFG(null,'mead')===null);
+  ok('sweetnessForFG: NaN fg -> null', sweetnessForFG(NaN,'mead')===null);
+  eq('sweetnessScaleFor: mead has 6 tiers', sweetnessScaleFor('mead').length, 6);
+  eq('sweetnessScaleFor: cider has 4 tiers', sweetnessScaleFor('cider').length, 4);
+  eq('sweetnessOptionLabels: mead has blank + 6 labels', sweetnessOptionLabels('mead').length, 7);
+  eq('sweetnessOptionLabels: cider has blank + 4 labels', sweetnessOptionLabels('cider').length, 5);
+  ok('sweetnessOptionLabels: cider list has Medium, not Off-Dry/Semi-Sweet', sweetnessOptionLabels('cider').indexOf('Medium')>=0 && sweetnessOptionLabels('cider').indexOf('Off-Dry')<0);
+
+  // _bottlingSweetHintHtml — the batch-info hint surfaced on the bottling record (current reading + post-backsweetening FG)
+  ok('_bottlingSweetHintHtml: mead FG names the right tier', /Semi-Sweet/.test(_bottlingSweetHintHtml(1.015,'mead')));
+  ok('_bottlingSweetHintHtml: cider FG names the right tier', /Sweet/.test(_bottlingSweetHintHtml(1.015,'cider')));
+  ok('_bottlingSweetHintHtml: SAME fg differs by beverage type', _bottlingSweetHintHtml(1.015,'mead')!==_bottlingSweetHintHtml(1.015,'cider'));
+  eq('_bottlingSweetHintHtml: null fg -> empty string', _bottlingSweetHintHtml(null,'mead'), '');
+  eq('_bottlingSweetHintHtml: blank fg -> empty string', _bottlingSweetHintHtml('','mead'), '');
+
+  // Wizard sweetness pickers derive from the same canonical scale, not their own numbers
+  eq('WIZ_SWEETNESS length matches MEAD_SWEETNESS_SCALE', WIZ_SWEETNESS.length, MEAD_SWEETNESS_SCALE.length);
+  eq('WIZ_CIDER_SWEETNESS length matches CIDER_SWEETNESS_SCALE', WIZ_CIDER_SWEETNESS.length, CIDER_SWEETNESS_SCALE.length);
+  ok('WIZ_SWEETNESS: every entry has a finite fg (Dessert not Infinity)', WIZ_SWEETNESS.every(function(s){return isFinite(s.fg);}));
+  ok('WIZ_CIDER_SWEETNESS: every entry has a finite fg (Dessert not Infinity)', WIZ_CIDER_SWEETNESS.every(function(s){return isFinite(s.fg);}));
 
   // labelStudioNetVol — per-bottle net contents + unit
   eq('netvol 750 ml', labelStudioNetVol({bottleVol:750}), '750 ml ℮');
@@ -394,7 +433,7 @@
 
   // ---- recipe designer wizard: honey math must account for fruit/juice ----
   (function(){
-    window._wiz={step:0,name:'',style:'Traditional Mead',volume:5,abv:12,sweetness:'semi',yeast:'m05',nutrient:'tosca2',adjunctName:'',adjunctAmount:''};
+    window._wiz={step:0,name:'',style:'Traditional Mead',volume:5,abv:12,sweetness:'semi-sweet',yeast:'m05',nutrient:'tosca2',adjunctName:'',adjunctAmount:''};
     var trad=wizComputeMath(window._wiz);
     ok('wizComputeMath: Traditional (no adjunct) contributes no honey credit', trad.adjunctHoneyEquivKg===0, JSON.stringify(trad));
 
@@ -416,6 +455,46 @@
     var built=wizBuildRecipe();
     var honeyLine=built.ingredients.filter(function(i){return i.item==='Honey';})[0];
     ok('wizBuildRecipe: the built recipe\'s honey line matches the netted honeyKg (no drift between math box and ingredient list)', honeyLine&&honeyLine.amount===cyser.honeyKg+' kg', JSON.stringify(honeyLine));
+
+    // Regression: an unrecognised sweetness key used to crash wizBuildRecipe —
+    // (WIZ_SWEETNESS.find(...)||{}).label.toLowerCase() threw on the {} fallback
+    // the moment .find() actually failed (previously unreachable since the old
+    // default key always matched something; the mead/cider scale split exposed it).
+    window._wiz.sweetness='not-a-real-key';
+    var noThrow=true,builtBogus=null;
+    try{builtBogus=wizBuildRecipe();}catch(e){noThrow=false;}
+    ok('wizBuildRecipe: an unrecognised sweetness key falls back instead of throwing', noThrow&&builtBogus&&typeof builtBogus.description==='string', JSON.stringify(builtBogus&&builtBogus.description));
+    window._wiz=null;
+  })();
+
+  // ---- recipe designer wizard: cider path, same fallback-crash regression ----
+  (function(){
+    window._wiz={step:0,name:'',style:'Common Cider',volume:5,abv:6.5,sweetness:'not-a-real-key',yeast:'nottingham',adjunctName:'',adjunctAmount:''};
+    var noThrow=true,builtBogus=null;
+    try{builtBogus=wizBuildCiderRecipe(window._wiz);}catch(e){noThrow=false;}
+    ok('wizBuildCiderRecipe: an unrecognised sweetness key falls back instead of throwing', noThrow&&builtBogus&&typeof builtBogus.description==='string', JSON.stringify(builtBogus&&builtBogus.description));
+    window._wiz=null;
+  })();
+
+  // ---- recipe designer wizard: Sparkling style attaches priming guidance and is detected ----
+  (function(){
+    window._wiz={step:0,name:'',style:'Sparkling Mead',volume:5,abv:12,sweetness:'dry',yeast:'m05',nutrient:'tosca2',adjunctName:'',adjunctAmount:''};
+    var builtMead=wizBuildRecipe();
+    ok('wizBuildRecipe: Sparkling style is detected as sparkling by mwIsSparkling', mwIsSparkling(builtMead), JSON.stringify({style:builtMead.style,tags:builtMead.tags}));
+    ok('wizBuildRecipe: Sparkling style attaches a priming-sugar ingredient', builtMead.ingredients.some(function(i){return /dextrose|corn sugar/i.test(i.item);}), JSON.stringify(builtMead.ingredients));
+    ok('wizBuildRecipe: Sparkling style\'s final step says prime, not stabilise-if-backsweetening', /prim(e|ing)/i.test(builtMead.steps[builtMead.steps.length-1].desc)&&!/stabilise if backsweetening/i.test(builtMead.steps[builtMead.steps.length-1].desc), builtMead.steps[builtMead.steps.length-1].desc);
+    window._wiz=null;
+
+    window._wiz={step:0,name:'',style:'Sparkling Cider',volume:5,abv:6.5,sweetness:'dry',yeast:'nottingham',adjunctName:'',adjunctAmount:''};
+    var builtCider=wizBuildCiderRecipe(window._wiz);
+    ok('wizBuildCiderRecipe: Sparkling style is detected as sparkling by mwIsSparkling', mwIsSparkling(builtCider), JSON.stringify({style:builtCider.style,tags:builtCider.tags}));
+    ok('wizBuildCiderRecipe: Sparkling style attaches a priming-sugar ingredient', builtCider.ingredients.some(function(i){return /dextrose|corn sugar/i.test(i.item);}), JSON.stringify(builtCider.ingredients));
+    window._wiz=null;
+
+    window._wiz={step:0,name:'',style:'Common Cider',volume:5,abv:6.5,sweetness:'dry',yeast:'nottingham',adjunctName:'',adjunctAmount:''};
+    var builtStillCider=wizBuildCiderRecipe(window._wiz);
+    ok('wizBuildCiderRecipe: a non-sparkling style is NOT detected as sparkling', !mwIsSparkling(builtStillCider), JSON.stringify({style:builtStillCider.style,tags:builtStillCider.tags}));
+    ok('wizBuildCiderRecipe: a non-sparkling style does NOT get a priming ingredient', !builtStillCider.ingredients.some(function(i){return /dextrose|corn sugar/i.test(i.item);}), JSON.stringify(builtStillCider.ingredients));
     window._wiz=null;
   })();
 
@@ -747,6 +826,14 @@
       ok('rules: carbonation-developing fires within 21 days of bottling', carbRule({sparkling:true,bottled:true,agedDays:10}).id==='carbonation-developing', '');
       ok('rules: carbonation-developing stops after 21 days', carbRule({sparkling:true,bottled:true,agedDays:30})===null, '');
       ok('rules: carbonation-developing skips still meads', carbRule({sparkling:false,bottled:true,agedDays:5})===null, '');
+
+      var carbonationRule=ruleByName('carbonation');
+      ok('rules: carbonation fires for a sparkling batch nearing FG, not yet bottled', carbonationRule({sparkling:true,nearFG:true,status:'fermenting',gravityConfirmedStable:true}).id==='carbonation', '');
+      eq('rules: carbonation severity is recommended (not info)', carbonationRule({sparkling:true,nearFG:true,status:'fermenting',gravityConfirmedStable:true}).severity, 'recommended');
+      ok('rules: carbonation carries the confirmed-stable flag through to data', carbonationRule({sparkling:true,nearFG:true,status:'fermenting',gravityConfirmedStable:true}).data.confirmed===true, '');
+      ok('rules: carbonation data.confirmed is false when not yet confirmed stable', carbonationRule({sparkling:true,nearFG:true,status:'fermenting',gravityConfirmedStable:false}).data.confirmed===false, '');
+      ok('rules: carbonation silent for a still batch', carbonationRule({sparkling:false,nearFG:true,status:'fermenting',gravityConfirmedStable:true})===null, '');
+      ok('rules: carbonation silent once already bottled', carbonationRule({sparkling:true,nearFG:true,status:'bottled',gravityConfirmedStable:true})===null, '');
 
       var blowoffRule=ruleByName('blowoffRisk');
       ok('rules: blowoff-risk critical under 8% headspace', blowoffRule({fermenting:true,passedSugarBreak:false,stalled:false,nearFG:false,headspaceFrac:0.05,fermenterCapacity:5,volume:4.75}).severity==='critical', '');
@@ -1606,6 +1693,37 @@
     ok('mwIsJuiceForm: whole fruit is NOT juice-form', !mwIsJuiceForm('frozen blackberries'), '');
     ok('mwIsJuiceForm: a fruit name that merely CONTAINS "sap" mid-word is NOT a false positive', !mwIsJuiceForm('sapote'), '');
     ok('mwIsJuiceForm: null/empty item is NOT juice-form', !mwIsJuiceForm(null)&&!mwIsJuiceForm(''), '');
+
+    // mwIsSparkling — exact-match fields (existing behaviour) + the broadened
+    // regex fallback (this round) so a custom/renamed recipe that reads
+    // "sparkling" on its own printed label also gets the safety-relevant rules.
+    ok('mwIsSparkling: exact category match', mwIsSparkling({category:'Sparkling'}), '');
+    ok('mwIsSparkling: exact style match', mwIsSparkling({style:'Sparkling'}), '');
+    ok('mwIsSparkling: exact tag match', mwIsSparkling({tags:['Sparkling']}), '');
+    ok('mwIsSparkling: "Carbonated" tag also counts', mwIsSparkling({tags:['Carbonated']}), '');
+    ok('mwIsSparkling: broadened regex catches a custom style name', mwIsSparkling({style:'Pétillant Cyser'}), '');
+    ok('mwIsSparkling: broadened regex catches a lowercase tag (e.g. wizard-generated)', mwIsSparkling({style:'Sparkling Mead',tags:['custom','designed','sparkling']}), '');
+    ok('mwIsSparkling: broadened regex catches "bottle-condition" in the name', mwIsSparkling({name:'My Bottle-Conditioned Mead'}), '');
+    ok('mwIsSparkling: an unrelated recipe is NOT sparkling', !mwIsSparkling({category:'Traditional',style:'Traditional Mead',tags:['sweet']}), '');
+    ok('mwIsSparkling: null recipe is NOT sparkling', !mwIsSparkling(null), '');
+
+    // gravityConfirmedStable — the literal "two readings 5+ days apart agree"
+    // check, distinct from nearFG's projection/attenuation ESTIMATE.
+    APP.recipes=[{id:'rStable',ogTarget:1.100,fgTarget:1.000,fermentDays:30}];
+    APP.additions={};
+    var bStable={id:'stableB',recipeId:'rStable',startDate:isoAgo(20),og:1.100,yeast:'ec1118'};
+    APP.batches=[bStable];APP.bottling={};
+    APP.logs={stableB:[{date:isoAgo(20),gravity:1.100},{date:isoAgo(10),gravity:1.001},{date:isoAgo(4),gravity:1.000}]};
+    ok('signals: gravityConfirmedStable true when two readings 5+ days apart agree within 0.002', mwBatchSignals(bStable).gravityConfirmedStable===true, '');
+
+    APP.logs={stableB:[{date:isoAgo(20),gravity:1.100},{date:isoAgo(2),gravity:1.010},{date:isoAgo(0),gravity:1.000}]};
+    ok('signals: gravityConfirmedStable false when the only close readings are under 5 days apart', mwBatchSignals(bStable).gravityConfirmedStable===false, '');
+
+    APP.logs={stableB:[{date:isoAgo(20),gravity:1.100},{date:isoAgo(10),gravity:1.030},{date:isoAgo(0),gravity:1.000}]};
+    ok('signals: gravityConfirmedStable false when 5+ days apart but gravity still moved a lot', mwBatchSignals(bStable).gravityConfirmedStable===false, '');
+
+    APP.logs={stableB:[{date:isoAgo(20),gravity:1.100}]};
+    ok('signals: gravityConfirmedStable false with only one reading', mwBatchSignals(bStable).gravityConfirmedStable===false, '');
 
     APP.recipes=[{id:'rFruit',ogTarget:1.100,fgTarget:1.010,fermentDays:30}];
     var b={id:'fruitB',recipeId:'rFruit',startDate:isoAgo(20),og:1.100,yeast:'ec1118'};

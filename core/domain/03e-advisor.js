@@ -34,7 +34,15 @@ function mwResolveHoney(b,recipe){
 // mwBatchSignals() for the current batch AND mwHistoricalComparison() for
 // every candidate it scans, one definition instead of two that could drift.
 function mwIsSparkling(recipe){
-  return !!(recipe&&(recipe.category==='Sparkling'||recipe.style==='Sparkling'||(recipe.tags&&(recipe.tags.indexOf('Sparkling')>=0||recipe.tags.indexOf('Carbonated')>=0))));
+  if(!recipe)return false;
+  if(recipe.category==='Sparkling'||recipe.style==='Sparkling')return true;
+  if(recipe.tags&&(recipe.tags.indexOf('Sparkling')>=0||recipe.tags.indexOf('Carbonated')>=0))return true;
+  // Broader net for custom/renamed recipes, same regex as the printed label's
+  // own sparkling/still detection (labelStudioCarbonation) — a recipe that
+  // reads "sparkling" on its label should also get the safety-relevant
+  // bottle-bomb/priming rules below, not just the cosmetic label word.
+  var hay=((recipe.style||'')+' '+(recipe.name||'')+' '+((recipe.tags||[]).join(' '))).toLowerCase();
+  return /sparkling|p[ée]tillant|carbonat|bottle-condition/.test(hay);
 }
 
 // Whether a fruit addition's item text describes a JUICE/concentrate form
@@ -115,6 +123,25 @@ function mwBatchSignals(b){
   }
   var og=parseFloat(b.og)||(recipe&&recipe.ogTarget)||null;
   var lastG=logs.length?parseFloat(logs[logs.length-1].gravity):null;
+  // "Confirmed stable" is the literal check this app's own guide text has
+  // always promised before bottling ("two stable readings 5+ days apart")
+  // — a real logged pair at least 5 days apart landing within 0.002 SG of
+  // each other. Deliberately distinct from nearFG below (a projection/
+  // attenuation ESTIMATE) — an estimate that "looks" done is not the same
+  // as two actual measurements agreeing days apart, and that distinction
+  // is exactly what matters before priming a sparkling batch: bottling on
+  // an estimate that's wrong is the single most common real cause of
+  // bottle bombs (leftover fermentable sugar + priming sugar + sealed
+  // bottle = uncontrolled pressure).
+  var gravityConfirmedStable=false;
+  if(logs.length>=2){
+    var _lastReading=logs[logs.length-1];
+    for(var _gsi=logs.length-2;_gsi>=0;_gsi--){
+      var _gapDays=Math.floor((new Date(_lastReading.date)-new Date(logs[_gsi].date))/86400000);
+      if(_gapDays<5)continue;
+      if(Math.abs(parseFloat(logs[_gsi].gravity)-parseFloat(_lastReading.gravity))<=0.002){gravityConfirmedStable=true;break;}
+    }
+  }
   var readings=logs.length;
   var daysSinceStart=(typeof daysSince==='function'&&b.startDate)?daysSince(b.startDate):null;
   // Needed early: temperature resolution below depends on knowing WHERE the
@@ -325,7 +352,7 @@ function mwBatchSignals(b){
 
   return {
     recipeId:b.recipeId, status:status, active:active, fermenting:fermenting,
-    og:og, lastG:lastG, readings:readings, daysSinceStart:daysSinceStart, recentFruitAddition:recentFruitAddition,
+    og:og, lastG:lastG, gravityConfirmedStable:gravityConfirmedStable, readings:readings, daysSinceStart:daysSinceStart, recentFruitAddition:recentFruitAddition,
     targetFG:targetFG, targetABV:targetABV, currentABV:currentABV,
     attenuation:attenuation, expectedAttenuation:expectedAttenuation,
     ratePerDay:proj?proj.ratePerDay:null, daysToFG:proj?proj.daysToFG:null,

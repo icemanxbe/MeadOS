@@ -3231,7 +3231,7 @@ var RECIPE_NUTRIENT_PAIRINGS={
   // nitrogen fermentation), so showing a "nutrient strategy" card for them
   // would contradict the recipe's own instructions.
   c1:{ protocol:'tosna', load:'standard', recommended:['fermaid-o','mj-mead'], acceptable:['fermaid-k','vinoferm-nutrivit'],
-    notes:'Apple must is just as nitrogen-poor as honey must — this style needs full, standard dosing despite being "simple."',
+    notes:'Juice YAN varies by source — treat it as needing help unless proven otherwise; this style needs full, standard dosing despite being "simple."',
     effects:{
       'fermaid-o':'Clean organic feed, staggered — protects the mild Golden Delicious/Baldwin aroma this style leans on.',
       'mj-mead':'Simple pre-portioned option, beginner-friendly, still clean.',

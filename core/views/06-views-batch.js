@@ -696,7 +696,7 @@ function renderBatchDetail(){
           +'</table>'
           +((bottling&&bottling.packaging&&bottling.packaging.items&&bottling.packaging.items.length)?(function(){
             var p=bottling.packaging;
-            return'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;margin:12px 0 4px">PACKAGING · '+((bottling.closure==='cork')?'CORKS':'CROWN CAPS')+'</div>'
+            return'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;margin:12px 0 4px">PACKAGING · '+(bottling.closure==='cork'?'CORKS':bottling.closure==='swing-top'?'SWING-TOP':'CROWN CAPS')+'</div>'
               +'<table class="data-table" style="font-size:12.5px">'
               +p.items.map(function(it){return'<tr><td style="color:var(--text3)">'+escHtml(it.label)+' × '+it.qty+(it.tracked?'':' <span style="font-size:10px;font-style:italic">(untracked)</span>')+'</td><td style="font-family:var(--font-mono)">'+(it.cost>0?ccy+it.cost.toFixed(2):'—')+'</td></tr>';}).join('')
               +(p.cost>0?'<tr style="border-top:1px solid var(--border)"><td style="font-weight:600;color:var(--text)">Packaging total</td><td style="font-family:var(--font-mono);font-weight:600;color:var(--gold2)">'+ccy+p.cost.toFixed(2)+'</td></tr>':'')
@@ -892,9 +892,17 @@ function renderBatchDetail(){
     // Detect custom size (anything beyond 500/750)
     var customSize=0,customQty=0;
     Object.keys(existCounts).forEach(function(s){if(s!=='500'&&s!=='750'){customSize=parseInt(s);customQty=existCounts[s];}});
+    var btSig=(typeof mwBatchSignals==='function')?mwBatchSignals(b):null;
+    var btStableWarning='';
+    if(btSig&&!btSig.gravityConfirmedStable){
+      btStableWarning=btSig.sparkling
+        ?'<div style="margin-bottom:12px;padding:10px 12px;border-radius:var(--radius);border-left:3px solid var(--red2);background:rgba(176,58,46,0.1);font-size:12.5px;color:var(--text2);line-height:1.55"><strong style="color:var(--red2)">⚠ Not confirmed stable yet.</strong> No two logged readings 5+ days apart agree — this is a sparkling recipe, and priming on top of leftover fermentable sugar is the most common real cause of bottle bombs. Log one more reading a few days out before bottling if you can.</div>'
+        :'<div style="margin-bottom:12px;padding:10px 12px;border-radius:var(--radius);border-left:3px solid #e0843c;background:rgba(224,132,60,0.08);font-size:12.5px;color:var(--text2);line-height:1.55"><strong style="color:#e0843c">⚠ Not confirmed stable yet.</strong> No two logged readings 5+ days apart agree yet. Bottling before fermentation genuinely finishes is the #1 real cause of bottle bombs, especially if you plan to backsweeten. Consider logging one more reading first.</div>';
+    }
     tabContent='<div class="grid-2"><div><div class="card"><div class="card-header"><div class="card-title">BOTTLING RECORD</div><button class="btn btn-primary btn-sm" onclick="startBottlingWorkflow(\''+b.id+'\')" title="Guided step-by-step bottling">🍾 Guided Workflow</button></div>'
+      +btStableWarning
       +'<div class="form-row"><div class="form-group"><label class="form-label">Bottle Date</label><input class="form-input" type="date" id="bt-date" value="'+(bottling.date||today())+'"></div>'
-      +'<div class="form-group"><label class="form-label">Final Gravity</label><input class="form-input" type="number" id="bt-fg" step="0.001" placeholder="1.010" value="'+(bottling.fg||lastG||'')+'"></div></div>'
+      +'<div class="form-group"><label class="form-label">Final Gravity</label><input class="form-input" type="number" id="bt-fg" step="0.001" placeholder="1.010" value="'+(bottling.fg||lastG||'')+'" oninput="updateBottlingSweetHint(\''+b.id+'\')"></div></div>'
       +'<div style="margin:6px 0 4px;font-family:var(--font-mono);font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase">BOTTLE COUNTS BY SIZE</div>'
       +'<div class="form-row"><div class="form-group"><label class="form-label">🍶 500 ml bottles</label><input class="form-input" type="number" id="bt-count-500" min="0" placeholder="0" value="'+(c500||'')+'" oninput="updateBottlingTotalDisplay()"></div>'
       +'<div class="form-group"><label class="form-label">🍷 750 ml bottles</label><input class="form-input" type="number" id="bt-count-750" min="0" placeholder="0" value="'+(c750||'')+'" oninput="updateBottlingTotalDisplay()"></div></div>'
@@ -905,13 +913,16 @@ function renderBatchDetail(){
       +'<div id="bt-total-display" style="padding:8px 12px;background:var(--bg4);border-left:3px solid var(--gold);border-radius:var(--radius);margin-bottom:14px;font-size:13px;color:var(--text2);font-family:var(--font-mono)"></div>'
       +'<div class="form-row"><div class="form-group"><label class="form-label">Final ABV</label><input class="form-input" type="number" id="bt-abv" step="0.1" placeholder="11.5" value="'+(bottling.abv||currentABV)+'"></div>'
       +'<div class="form-group"><label class="form-label">Sweetness</label><select class="form-select" id="bt-sweet">'
-      +['','Bone Dry','Dry','Off-Dry','Semi-Sweet','Sweet','Dessert'].map(function(o){return'<option'+(bottling.sweetness===o?' selected':'')+'>'+o+'</option>';}).join('')
-      +'</select></div>'
+      +sweetnessOptionLabels(b.beverageType).map(function(o){return'<option'+(bottling.sweetness===o?' selected':'')+'>'+o+'</option>';}).join('')
+      +'</select><div id="bt-sweet-hint" style="font-size:11px;color:var(--text3);margin-top:4px">'+_bottlingSweetHintHtml(bottling.fg||lastG,b.beverageType)+'</div>'
+      +(btSig&&btSig.sparkling?'<button type="button" class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="openCarbonationCalcForBatch(\''+b.id+'\')">🍾 Priming Calculator</button>':'')
+      +'</div>'
       +'<div class="form-group"><label class="form-label">Closure</label><select class="form-select" id="bt-closure">'
-      +'<option value="crown"'+((bottling.closure||'crown')!=='cork'?' selected':'')+'>⭕ Crown caps</option>'
+      +'<option value="crown"'+((bottling.closure||'crown')==='crown'?' selected':'')+'>⭕ Crown caps</option>'
       +'<option value="cork"'+(bottling.closure==='cork'?' selected':'')+'>🪵 Corks</option>'
+      +'<option value="swing-top"'+(bottling.closure==='swing-top'?' selected':'')+'>🔒 Swing-top</option>'
       +'</select></div></div>'
-      +(!bottling.date?'<div style="font-size:11.5px;color:var(--text3);font-style:italic;margin:-4px 0 12px">'+(appLang()==='nl'?'Flessen en '+((bottling.closure==='cork')?'kurken':'doppen')+' worden afgetrokken van je bijgehouden voorraad.':'Bottles and '+((bottling.closure==='cork')?'corks':'caps')+' will be deducted from your tracked supplies.')+'</div>':'')
+      +(!bottling.date?'<div style="font-size:11.5px;color:var(--text3);font-style:italic;margin:-4px 0 12px">'+(appLang()==='nl'?'Flessen en '+(bottling.closure==='cork'?'kurken':bottling.closure==='swing-top'?'beugeldoppen':'doppen')+' worden afgetrokken van je bijgehouden voorraad.':'Bottles and '+(bottling.closure==='cork'?'corks':bottling.closure==='swing-top'?'swing-top seals':'caps')+' will be deducted from your tracked supplies.')+'</div>':'')
       +'<div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="bt-notes" placeholder="Bottle type, cap/cork, storage location…">'+escHtml(bottling.notes||'')+'</textarea></div>'
       +'<button class="btn btn-primary" onclick="saveBottling(\''+b.id+'\')">'+(bottling.date?'Update':'Record')+' Bottling</button>'
       +(bottling.date?' <button class="btn btn-danger" onclick="clearBottling(\''+b.id+'\')">Clear</button>':'')

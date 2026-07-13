@@ -16,10 +16,14 @@ function _advRulesPackaging(){
     },
     function carbonation(s){
       // Sparkling/bottle-conditioned: finish dry, do NOT stabilise, prime at bottling.
+      // 'recommended' (not 'info') to match its mutually-exclusive sibling
+      // stabilise-first above — this is the same pre-bottling decision point,
+      // just the opposite instruction, and getting either one wrong is a real
+      // bottle-bomb / carbonation-failure risk, not just a passive FYI.
       if(!s.sparkling||!s.nearFG)return null;
       if(s.status==='bottled'||s.status==='complete')return null;
-      return {id:'carbonation',severity:'info',category:'stabilisation',
-        data:{},reasons:['sparkling-recipe']};
+      return {id:'carbonation',severity:'recommended',category:'stabilisation',
+        data:{confirmed:!!s.gravityConfirmedStable},reasons:['sparkling-recipe']};
     },
     function mlfAdvisory(s){
       // Cider-only. MLF (malic→lactic acid conversion) has no mead equivalent.
