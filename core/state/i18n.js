@@ -137,6 +137,7 @@ var UI_PHRASES={
   'Gifted Away':'Weggegeven','Enjoyed':'Genoten','Ferment Temp':'Gisttemp',
   'fermenting now':'nu aan het gisten',
   '◈ ACTIVE BATCHES':'◈ ACTIEVE BROUWSELS',"✦ TODAY'S TASKS":'✦ TAKEN VAN VANDAAG',
+  '🧳 Going away?':'🧳 Op reis?','See what needs handling before a planned absence':'Bekijk wat er geregeld moet worden vóór een geplande afwezigheid',
   '⚗ FERMENTER STATUS':'⚗ VATSTATUS','GRAVITY TREND':'DICHTHEIDSVERLOOP',
   'OG':'OG','CURRENT':'HUIDIG','EST ABV':'GESCH. ALC',
   'fermenting':'in gisting','conditioning':'op smaak komen','aging':'rijpen',
@@ -603,6 +604,9 @@ var UI_PHRASES={
   'Honey Type':'Honingsoort','Honey varieties':'Honingvariëteiten','Hours / Availability':'Uren / beschikbaarheid',
   'Item':'Artikel','Location':'Locatie','Low-Stock Threshold (optional)':'Drempel lage voorraad (optioneel)',
   'Name':'Naam','Next →':'Volgende →','Notes':'Notities','Notes (optional)':'Notities (optioneel)',
+  '🔄 Lessons Learned':'🔄 Geleerde lessen','🔄 Next time':'🔄 Volgende keer',
+  'what you\'d change next time — resurfaces automatically on "Brew Again"':'wat je de volgende keer anders zou doen — verschijnt automatisch weer bij "🔄 Brew Again"',
+  'e.g. Less raisins next time, went too tannic. Or: switch to a lower-tolerance yeast, finished sweeter than planned.':'bv. Volgende keer minder rozijnen, werd te tanninerijk. Of: overschakelen naar een gist met lagere tolerantie, eindigde zoeter dan gepland.',
   'Notification Service':'Notificatiedienst','Nutrient Product':'Voedingsproduct','Nutrient Protocol':'Voedingsprotocol',
   'Nutrient schedule':'Voedingsschema','Open in Editor →':'Openen in editor →','Opened Date':'Openingsdatum',
   'Original Volume (L)':'Oorspronkelijk volume (L)','Other products (not stocked)':'Andere producten (niet op voorraad)',
@@ -812,6 +816,13 @@ var UI_PATTERNS=[
   // ---- settings ----
   [/^\+ (\d+) Label Studio images \(\/assets\) — references only, no storage cost$/, '+ $1 Label Studio-afbeeldingen (/assets) — alleen verwijzingen, geen opslagkost'],
   [/^→ (.+) \(day (\d+)\)$/, '→ $1 (dag $2)'],
+  [/^⚠ No backup taken yet — this data only lives on this device\/server\.$/, '⚠ Nog geen back-up gemaakt — deze data bestaat alleen op dit apparaat/deze server.'],
+  [/^Last backup: (.+) · ([\d/]+)$/, function(m,when,date){
+    var nl=when;
+    if(when==='today')nl='vandaag';
+    else{var dm=when.match(/^(\d+) days? ago$/);if(dm)nl=dm[1]+' dag'+(dm[1]==='1'?'':'en')+' geleden';}
+    return 'Laatste back-up: '+nl+' · '+date;
+  }],
   // ---- recipe detail ----
   [/^Day (\d+)$/, 'Dag $1'],
   [/^Brew This Recipe \(([\d.]+) L\) →$/, 'Brouw dit recept ($1 L) →'],

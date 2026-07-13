@@ -87,6 +87,20 @@ function openPermanentRecord(batchId){
       +'</div>';
   }).join(''):'<div style="padding:14px;text-align:center;font-style:italic;color:#999">No tastings recorded yet</div>';
 
+  // Recipe formula — the actual ingredients & process this batch followed, so
+  // the record alone is enough to replicate (or hand to someone else), not
+  // just a history of what this specific batch happened to do.
+  var ingredientRows=(recipe&&recipe.ingredients&&recipe.ingredients.length)?recipe.ingredients.map(function(ing){
+    return'<tr><td style="padding:5px 10px 5px 0;font-family:Cinzel,serif;font-size:12px;color:#1a0f08">'+xmlEscape(ing.item||'')+'</td>'
+      +'<td style="padding:5px 10px;font-family:monospace;font-size:11px;color:#1a0f08">'+xmlEscape(ing.amount||'')+'</td>'
+      +'<td style="padding:5px 10px;font-style:italic;font-size:11px;color:#666">'+xmlEscape(ing.notes||'')+'</td></tr>';
+  }).join(''):'';
+  var stepRows=(recipe&&recipe.steps&&recipe.steps.length)?recipe.steps.map(function(st){
+    return'<tr><td style="padding:5px 10px 5px 0;font-family:monospace;font-size:11px;color:#666;white-space:nowrap">Day '+(st.day!=null?st.day:'—')+'</td>'
+      +'<td style="padding:5px 10px;font-family:Cinzel,serif;font-size:12px;color:#1a0f08">'+xmlEscape(st.title||'')+'</td>'
+      +'<td style="padding:5px 10px;font-size:11.5px;color:#1a0f08">'+xmlEscape(st.desc||'')+'</td></tr>';
+  }).join(''):'';
+
   // Label preview for the record (small, decorative)
   var labelMini='';
   try{
@@ -137,9 +151,16 @@ function openPermanentRecord(batchId){
         +row('FG',fg||'—')
         +row('ABV',abv?abv+'%':'—')
         +row('Days to bottle',daysToBottle?daysToBottle+' days':'—')
+        +(b.lessonsLearned?row('🔄 Next time',xmlEscape(b.lessonsLearned)):'')
       +'</table></div>'
       +(labelMini?'<div style="flex:0 0 200px">'+labelMini+'</div>':'')
     +'</div>'
+
+    +(ingredientRows?'<h2>Ingredients</h2>'
+      +'<table class="data-table"><thead><tr><th>Item</th><th style="width:120px">Amount</th><th>Notes</th></tr></thead><tbody>'+ingredientRows+'</tbody></table>':'')
+
+    +(stepRows?'<h2>Process</h2>'
+      +'<table class="data-table"><thead><tr><th style="width:70px">Day</th><th style="width:160px">Step</th><th>Details</th></tr></thead><tbody>'+stepRows+'</tbody></table>':'')
 
     +(totalCost>0?'<h2>Cost</h2>'
       +'<table class="kv-table">'

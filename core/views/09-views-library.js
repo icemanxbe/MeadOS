@@ -1249,6 +1249,14 @@ function renderProtocolGuide(){
 }
 
 // ==================== SETTINGS ====================
+function _backupStatusHtml(){
+  var last=APP.settings.lastBackupAt;
+  if(!last)return'<div style="font-size:12.5px;color:var(--red2);margin-bottom:10px">⚠ No backup taken yet — this data only lives on this device/server.</div>';
+  var days=Math.floor((Date.now()-new Date(last).getTime())/86400000);
+  var color=days<=7?'var(--green2)':(days<=30?'var(--gold2)':'var(--red2)');
+  var when=days<=0?'today':days+' day'+(days===1?'':'s')+' ago';
+  return'<div style="font-size:12.5px;color:'+color+';margin-bottom:10px">Last backup: '+when+' · '+fmtDate(last)+'</div>';
+}
 function renderSettings(){
   return'<div class="page-title">Settings</div><div class="page-subtitle">Configuration &amp; Data Management</div>'
     +'<div class="grid-2">'
@@ -1389,7 +1397,8 @@ function renderSettings(){
     +'3. Paste, save. Done.'
     +'</div></div>'
     +'<div class="card"><div class="card-header"><div class="card-title">DATA BACKUP</div></div>'
-    +'<div style="font-size:13px;color:var(--text2);margin-bottom:16px">Export all data as JSON for backup, or as CSV for spreadsheet analysis.</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:10px">Export all data as JSON for backup, or as CSV for spreadsheet analysis.</div>'
+    +_backupStatusHtml()
     +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
     +'<button class="btn btn-secondary" onclick="exportData()">Export Backup</button>'
     +'<button class="btn btn-secondary" onclick="document.getElementById(\'import-file\').click()">Import Backup</button>'

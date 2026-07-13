@@ -63,6 +63,31 @@ var TROUBLESHOOT_TOPICS=[
     ]
   },
   {
+    id:'hydrometer-failure',
+    title:'Hydrometer broke, cracked, or got lost — now what?',
+    icon:'📏',
+    category:'Equipment',
+    steps:[
+      '<strong>If it just shattered in the trial jar, stop and think safety first.</strong> Discard that sample (don\'t fish glass out by hand) and don\'t pour it back into the batch. If a hydrometer broke inside the actual fermenter — rare, but it happens with a clumsy drop — the batch has glass in it and should be discarded rather than bottled, no matter how far along it was.',
+      '<strong>You can keep brewing without a reading for a while — mead and cider don\'t mind waiting.</strong> Nothing goes wrong by leaving the airlock on for an extra week while a replacement hydrometer is on the way. The only real risk is what you decide to do WITHOUT one, not the delay itself.',
+      '<strong>Rough proxies while you wait, none of them a substitute:</strong> taste is the most useful — a must that still tastes sweet clearly isn\'t at a dry finish yet, while one that tastes thin, warming, and no longer sweet is plausibly close. Airlock activity slowing to occasional bubbles suggests vigorous primary has passed, but proves nothing about secondary or bulk aging, where visible activity is normally near zero anyway even mid-ferment.',
+      '<strong>Do NOT bottle, stabilize, backsweeten, or prime purely on taste/visual guessing.</strong> This is exactly how bottle bombs and infections happen — a "probably done" guess with leftover fermentable sugar, plus priming sugar on top, in a sealed bottle. Wait for an actual gravity reading (or a refractometer, see below) before any of those steps.',
+      '<strong>A refractometer is a genuine substitute if you already have one.</strong> It needs only a drop of sample, survives a hydrometer breaking entirely, but reads Brix, not SG — and once alcohol is present, raw Brix reads misleadingly high. Use the SG ↔ Brix converter in Brewing Tools, which applies the alcohol correction, to get a usable specific gravity out of a refractometer reading.',
+      '<strong>Replace it — it\'s a cheap, standard part.</strong> A basic glass hydrometer is a few euros; a triple-scale one (SG / Brix / potential ABV) costs barely more and is one less conversion to do by hand. Worth keeping a spare on the shelf given how easily one rolls off a counter.',
+      '<strong>Log the gap.</strong> Once the replacement arrives, log the fresh reading like normal — a missing week of data doesn\'t break anything here, the advisor and stability checks just work from whichever real readings exist.'
+    ],
+    ciderTitle:'Hydrometer broke, cracked, or got lost — now what?',
+    ciderSteps:[
+      '<strong>If it just shattered in the trial jar, stop and think safety first.</strong> Discard that sample (don\'t fish glass out by hand) and don\'t pour it back into the batch. If a hydrometer broke inside the actual fermenter — rare, but it happens with a clumsy drop — the batch has glass in it and should be discarded rather than bottled, no matter how far along it was.',
+      '<strong>You can keep brewing without a reading for a while — cider doesn\'t mind waiting.</strong> Nothing goes wrong by leaving the airlock on for an extra week while a replacement hydrometer is on the way. The only real risk is what you decide to do WITHOUT one, not the delay itself.',
+      '<strong>Rough proxies while you wait, none of them a substitute:</strong> taste is the most useful — a cider that still tastes sweet clearly isn\'t at a dry finish yet, while one that tastes thin, warming, and no longer sweet is plausibly close. Airlock activity slowing to occasional bubbles suggests vigorous primary has passed, but proves nothing about secondary or bulk aging, where visible activity is normally near zero anyway even mid-ferment — this matters especially for keeved French Cider, where a slow trickle of activity is the whole point and taste is the more honest signal anyway.',
+      '<strong>Do NOT bottle, stabilize, backsweeten, or prime purely on taste/visual guessing.</strong> This is exactly how bottle bombs and infections happen — a "probably done" guess with leftover fermentable sugar, plus priming sugar on top, in a sealed bottle. Wait for an actual gravity reading (or a refractometer, see below) before any of those steps.',
+      '<strong>A refractometer is a genuine substitute if you already have one.</strong> It needs only a drop of sample, survives a hydrometer breaking entirely, but reads Brix, not SG — and once alcohol is present, raw Brix reads misleadingly high. Use the SG ↔ Brix converter in Brewing Tools, which applies the alcohol correction, to get a usable specific gravity out of a refractometer reading.',
+      '<strong>Replace it — it\'s a cheap, standard part.</strong> A basic glass hydrometer is a few euros; a triple-scale one (SG / Brix / potential ABV) costs barely more and is one less conversion to do by hand. Worth keeping a spare on the shelf given how easily one rolls off a counter.',
+      '<strong>Log the gap.</strong> Once the replacement arrives, log the fresh reading like normal — a missing week of data doesn\'t break anything here, the advisor and stability checks just work from whichever real readings exist.'
+    ]
+  },
+  {
     id:'too-sweet',
     title:'Final mead is too sweet (sweetness not what I wanted)',
     icon:'🍯',

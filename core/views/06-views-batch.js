@@ -216,7 +216,7 @@ function renderDashboard(){
     +windowCards
     +'</div>'
     +'<div>'
-    +'<div style="font-family:var(--font-display);font-size:11px;color:var(--gold);letter-spacing:2px;margin-bottom:12px">✦ TODAY\'S TASKS</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><div style="font-family:var(--font-display);font-size:11px;color:var(--gold);letter-spacing:2px">✦ TODAY\'S TASKS</div><button class="btn btn-secondary btn-sm" onclick="openGoingAwayCheck()" title="See what needs handling before a planned absence">🧳 Going away?</button></div>'
     +'<div class="coach-box"><div class="coach-title">⚗ DAILY BREW LOG · '+new Date().toLocaleDateString(_dloc(),{weekday:'long',day:'numeric',month:'long'})+'</div>'
     +'<div class="coach-tasks">'+taskHtml+'</div>'
     +(todayTasks.length?'<div style="margin-top:12px"><button class="btn btn-secondary btn-sm" onclick="showView(\'coach\')">See full briefing →</button></div>':'')
@@ -421,7 +421,7 @@ function _batchFilterSort(){
     }
     if(!q)return true;
     var r=rmap[b.recipeId];
-    var hay=((b.name||'')+' '+(b.serial||'')+' '+(r?r.name:'')+' '+(r?r.category:'')+' '+(r?r.style:'')+' '+(b.notes||'')).toLowerCase();
+    var hay=((b.name||'')+' '+(b.serial||'')+' '+(r?r.name:'')+' '+(r?r.category:'')+' '+(r?r.style:'')+' '+(b.notes||'')+' '+(b.lessonsLearned||'')).toLowerCase();
     return hay.indexOf(q)>=0;
   });
   arr.sort(function(a,b){
@@ -654,6 +654,7 @@ function renderBatchDetail(){
         return'<tr><td style="color:var(--text3)">Cost</td><td>'+ccy+totalCost.toFixed(2)+(perL>0?' &nbsp;·&nbsp; '+ccy+perL.toFixed(2)+'/L'+(perBottleParts?' &nbsp;('+perBottleParts+')':''):'')+'</td></tr>';
       }()):'')
       +(b.notes?'<tr><td style="color:var(--text3)">Notes</td><td style="font-style:italic">'+escHtml(b.notes)+'</td></tr>':'')
+      +(b.lessonsLearned?'<tr><td style="color:var(--text3)">🔄 Next time</td><td style="font-style:italic;color:var(--gold2)">'+escHtml(b.lessonsLearned)+'</td></tr>':'')
       +'</table></div>'
       +renderFermentationProjection(b)
       +(b.rackings&&b.rackings.length?(function(){
