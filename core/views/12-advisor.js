@@ -151,8 +151,10 @@ function _advItemText(it){
               :('Fermentation is nearly done. If you plan to backsweeten, stabilise first with potassium sorbate AND metabisulfite together — either one alone won\'t reliably stop a restart.')},
     'carbonation':{icon:'🍾',
       title:nl?'Bubbels: bottelrijping':'Sparkling: bottle-condition',
-      reason:nl?('Dit is een mousserend recept — láát het droog uitgisten en stabiliseer NIET. Voeg bij het bottelen priming-suiker toe in drukbestendige flessen; bereken de dosis met de carbonatietool en let op de flesdruk.')
-              :('This is a sparkling recipe — let it finish dry and do NOT stabilise. Add priming sugar at bottling in pressure-rated bottles; size the dose with the carbonation tool and mind bottle pressure.')},
+      reason:nl?('Dit is een mousserend recept — láát het droog uitgisten en stabiliseer NIET. Voeg bij het bottelen priming-suiker toe in drukbestendige flessen; bereken de dosis met de carbonatietool en let op de flesdruk.'
+                +(d.confirmed?' Twee metingen 5+ dagen na elkaar bevestigen dat dit klopt.':' Nog geen twee metingen 5+ dagen na elkaar die dit bevestigen — een geschatte eindstand is niet hetzelfde als een echte bevestiging, en dat verschil is precies waar flessenbommen vandaan komen.'))
+              :('This is a sparkling recipe — let it finish dry and do NOT stabilise. Add priming sugar at bottling in pressure-rated bottles; size the dose with the carbonation tool and mind bottle pressure.'
+                +(d.confirmed?' Two readings 5+ days apart confirm this is real.':' No two readings 5+ days apart confirm this yet — an estimated finish isn\'t the same as a confirmed one, and that gap is exactly where bottle bombs come from.'))},
     'temp-swing':{icon:'🌡',
       title:nl?'Temperatuur schommelt':'Temperature is swinging',
       reason:nl?('De temperatuur ligt in het ideale bereik ('+d.low+'–'+d.high+'°C) maar wisselt sterk tussen metingen. Grote schommelingen stressen de gist en geven bijsmaken — houd hem zo stabiel mogelijk.')
@@ -555,7 +557,7 @@ function _advGuideLink(it){
     temperature:d.cold?'temp-too-low':'temp-too-high',
     'blowoff-headspace-critical':'foam-overflow','blowoff-headspace-tight':'foam-overflow',
     'cold-crash':'cloudy','stabilise-first':'backsweetening','over-racked':'racking',
-    'aging-window':'aging-window'
+    'aging-window':'aging-window','carbonation':'bottle-bombs'
   };
   var topicId=M[it.id];
   if(!topicId)return null;
@@ -884,7 +886,9 @@ function _advWhyMatters(id){
       considerWaitingIf:'je bewust een langere bulk- of vatrijping aanhoudt die bij deze stijl hoort.'},
     'over-racked':{benefit:'Nu stoppen met overhevelen beperkt verdere cumulatieve zuurstofblootstelling.',downside:'Nog een overheveling erbij herhaalt dat kleine beetje zuurstof — het stapelt op.',
       considerWaitingIf:'er een concrete reden is (bv. echt nog troebel, of bewust van fruit/kruiden af).'},
-    'mlf-advisory':{benefit:'Nu beslissen over sulfiteren voorkomt een onbedoeld resultaat.',downside:'Niets doen laat de malolactische uitkomst aan het toeval over — bij perry riskeert dat een azijnachtige cider.'}
+    'mlf-advisory':{benefit:'Nu beslissen over sulfiteren voorkomt een onbedoeld resultaat.',downside:'Niets doen laat de malolactische uitkomst aan het toeval over — bij perry riskeert dat een azijnachtige cider.'},
+    carbonation:{benefit:'Prime in plaats van stabiliseren laat de koolzuur echt ontwikkelen.',downside:'Een sprankelend recept stabiliseren doodt de koolzuur; primen zonder te bevestigen dat de gisting echt klaar is riskeert juist flessenbommen.'},
+    'carbonation-developing':{benefit:'Warm en rechtop bewaren laat de primesuiker nu gelijkmatig doorgisten.',downside:'Te vroeg koelen of verplaatsen kan de koolzuur plat of ongelijk laten.'}
   }:{
     stalled:{benefit:'Acting now can rescue the fermentation.',downside:'Waiting risks a permanently stuck fermentation or spoilage.'},
     'nutrient-final':{benefit:'Feeding on time keeps the yeast population healthy.',downside:'Feeding too late causes yeast stress (fusel alcohols); feeding after the sugar break instead feeds spoilage organisms rather than the yeast.'},
@@ -904,7 +908,9 @@ function _advWhyMatters(id){
       considerWaitingIf:'you\'re deliberately doing an extended bulk- or barrel-aging style that calls for more time before bottling.'},
     'over-racked':{benefit:'Stopping here limits further cumulative oxygen exposure.',downside:'One more racking repeats that small dose of oxygen — it adds up.',
       considerWaitingIf:'there\'s a concrete reason (genuinely still cloudy, or deliberately racking off fruit/spices).'},
-    'mlf-advisory':{benefit:'Deciding on sulfite timing now avoids an unintended result later.',downside:'Leaving it to chance lets the malolactic outcome go unmanaged — for perry that risks a vinegary cider.'}
+    'mlf-advisory':{benefit:'Deciding on sulfite timing now avoids an unintended result later.',downside:'Leaving it to chance lets the malolactic outcome go unmanaged — for perry that risks a vinegary cider.'},
+    carbonation:{benefit:'Priming instead of stabilizing lets the bubbles actually develop.',downside:'Stabilizing a sparkling recipe kills the carbonation; priming without confirming it\'s truly finished risks bottle bombs instead.'},
+    'carbonation-developing':{benefit:'Warm, upright storage now lets the priming sugar finish carbonating evenly.',downside:'Chilling or disturbing bottles too early can leave carbonation flat or uneven.'}
   };
   return M[id]||null;
 }

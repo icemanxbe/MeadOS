@@ -476,6 +476,28 @@
     window._wiz=null;
   })();
 
+  // ---- recipe designer wizard: Sparkling style attaches priming guidance and is detected ----
+  (function(){
+    window._wiz={step:0,name:'',style:'Sparkling Mead',volume:5,abv:12,sweetness:'dry',yeast:'m05',nutrient:'tosca2',adjunctName:'',adjunctAmount:''};
+    var builtMead=wizBuildRecipe();
+    ok('wizBuildRecipe: Sparkling style is detected as sparkling by mwIsSparkling', mwIsSparkling(builtMead), JSON.stringify({style:builtMead.style,tags:builtMead.tags}));
+    ok('wizBuildRecipe: Sparkling style attaches a priming-sugar ingredient', builtMead.ingredients.some(function(i){return /dextrose|corn sugar/i.test(i.item);}), JSON.stringify(builtMead.ingredients));
+    ok('wizBuildRecipe: Sparkling style\'s final step says prime, not stabilise-if-backsweetening', /prim(e|ing)/i.test(builtMead.steps[builtMead.steps.length-1].desc)&&!/stabilise if backsweetening/i.test(builtMead.steps[builtMead.steps.length-1].desc), builtMead.steps[builtMead.steps.length-1].desc);
+    window._wiz=null;
+
+    window._wiz={step:0,name:'',style:'Sparkling Cider',volume:5,abv:6.5,sweetness:'dry',yeast:'nottingham',adjunctName:'',adjunctAmount:''};
+    var builtCider=wizBuildCiderRecipe(window._wiz);
+    ok('wizBuildCiderRecipe: Sparkling style is detected as sparkling by mwIsSparkling', mwIsSparkling(builtCider), JSON.stringify({style:builtCider.style,tags:builtCider.tags}));
+    ok('wizBuildCiderRecipe: Sparkling style attaches a priming-sugar ingredient', builtCider.ingredients.some(function(i){return /dextrose|corn sugar/i.test(i.item);}), JSON.stringify(builtCider.ingredients));
+    window._wiz=null;
+
+    window._wiz={step:0,name:'',style:'Common Cider',volume:5,abv:6.5,sweetness:'dry',yeast:'nottingham',adjunctName:'',adjunctAmount:''};
+    var builtStillCider=wizBuildCiderRecipe(window._wiz);
+    ok('wizBuildCiderRecipe: a non-sparkling style is NOT detected as sparkling', !mwIsSparkling(builtStillCider), JSON.stringify({style:builtStillCider.style,tags:builtStillCider.tags}));
+    ok('wizBuildCiderRecipe: a non-sparkling style does NOT get a priming ingredient', !builtStillCider.ingredients.some(function(i){return /dextrose|corn sugar/i.test(i.item);}), JSON.stringify(builtStillCider.ingredients));
+    window._wiz=null;
+  })();
+
   // ---- advisor: signals + rules + health + readiness ----
   (function(){
     APP.recipes=[{id:'rA',ogTarget:1.098,fgTarget:1.010,abvTarget:11.5,fermentDays:42,minAgeDays:60,peakAgeDays:240,steps:[]}];
@@ -804,6 +826,14 @@
       ok('rules: carbonation-developing fires within 21 days of bottling', carbRule({sparkling:true,bottled:true,agedDays:10}).id==='carbonation-developing', '');
       ok('rules: carbonation-developing stops after 21 days', carbRule({sparkling:true,bottled:true,agedDays:30})===null, '');
       ok('rules: carbonation-developing skips still meads', carbRule({sparkling:false,bottled:true,agedDays:5})===null, '');
+
+      var carbonationRule=ruleByName('carbonation');
+      ok('rules: carbonation fires for a sparkling batch nearing FG, not yet bottled', carbonationRule({sparkling:true,nearFG:true,status:'fermenting',gravityConfirmedStable:true}).id==='carbonation', '');
+      eq('rules: carbonation severity is recommended (not info)', carbonationRule({sparkling:true,nearFG:true,status:'fermenting',gravityConfirmedStable:true}).severity, 'recommended');
+      ok('rules: carbonation carries the confirmed-stable flag through to data', carbonationRule({sparkling:true,nearFG:true,status:'fermenting',gravityConfirmedStable:true}).data.confirmed===true, '');
+      ok('rules: carbonation data.confirmed is false when not yet confirmed stable', carbonationRule({sparkling:true,nearFG:true,status:'fermenting',gravityConfirmedStable:false}).data.confirmed===false, '');
+      ok('rules: carbonation silent for a still batch', carbonationRule({sparkling:false,nearFG:true,status:'fermenting',gravityConfirmedStable:true})===null, '');
+      ok('rules: carbonation silent once already bottled', carbonationRule({sparkling:true,nearFG:true,status:'bottled',gravityConfirmedStable:true})===null, '');
 
       var blowoffRule=ruleByName('blowoffRisk');
       ok('rules: blowoff-risk critical under 8% headspace', blowoffRule({fermenting:true,passedSugarBreak:false,stalled:false,nearFG:false,headspaceFrac:0.05,fermenterCapacity:5,volume:4.75}).severity==='critical', '');
@@ -1663,6 +1693,37 @@
     ok('mwIsJuiceForm: whole fruit is NOT juice-form', !mwIsJuiceForm('frozen blackberries'), '');
     ok('mwIsJuiceForm: a fruit name that merely CONTAINS "sap" mid-word is NOT a false positive', !mwIsJuiceForm('sapote'), '');
     ok('mwIsJuiceForm: null/empty item is NOT juice-form', !mwIsJuiceForm(null)&&!mwIsJuiceForm(''), '');
+
+    // mwIsSparkling — exact-match fields (existing behaviour) + the broadened
+    // regex fallback (this round) so a custom/renamed recipe that reads
+    // "sparkling" on its own printed label also gets the safety-relevant rules.
+    ok('mwIsSparkling: exact category match', mwIsSparkling({category:'Sparkling'}), '');
+    ok('mwIsSparkling: exact style match', mwIsSparkling({style:'Sparkling'}), '');
+    ok('mwIsSparkling: exact tag match', mwIsSparkling({tags:['Sparkling']}), '');
+    ok('mwIsSparkling: "Carbonated" tag also counts', mwIsSparkling({tags:['Carbonated']}), '');
+    ok('mwIsSparkling: broadened regex catches a custom style name', mwIsSparkling({style:'Pétillant Cyser'}), '');
+    ok('mwIsSparkling: broadened regex catches a lowercase tag (e.g. wizard-generated)', mwIsSparkling({style:'Sparkling Mead',tags:['custom','designed','sparkling']}), '');
+    ok('mwIsSparkling: broadened regex catches "bottle-condition" in the name', mwIsSparkling({name:'My Bottle-Conditioned Mead'}), '');
+    ok('mwIsSparkling: an unrelated recipe is NOT sparkling', !mwIsSparkling({category:'Traditional',style:'Traditional Mead',tags:['sweet']}), '');
+    ok('mwIsSparkling: null recipe is NOT sparkling', !mwIsSparkling(null), '');
+
+    // gravityConfirmedStable — the literal "two readings 5+ days apart agree"
+    // check, distinct from nearFG's projection/attenuation ESTIMATE.
+    APP.recipes=[{id:'rStable',ogTarget:1.100,fgTarget:1.000,fermentDays:30}];
+    APP.additions={};
+    var bStable={id:'stableB',recipeId:'rStable',startDate:isoAgo(20),og:1.100,yeast:'ec1118'};
+    APP.batches=[bStable];APP.bottling={};
+    APP.logs={stableB:[{date:isoAgo(20),gravity:1.100},{date:isoAgo(10),gravity:1.001},{date:isoAgo(4),gravity:1.000}]};
+    ok('signals: gravityConfirmedStable true when two readings 5+ days apart agree within 0.002', mwBatchSignals(bStable).gravityConfirmedStable===true, '');
+
+    APP.logs={stableB:[{date:isoAgo(20),gravity:1.100},{date:isoAgo(2),gravity:1.010},{date:isoAgo(0),gravity:1.000}]};
+    ok('signals: gravityConfirmedStable false when the only close readings are under 5 days apart', mwBatchSignals(bStable).gravityConfirmedStable===false, '');
+
+    APP.logs={stableB:[{date:isoAgo(20),gravity:1.100},{date:isoAgo(10),gravity:1.030},{date:isoAgo(0),gravity:1.000}]};
+    ok('signals: gravityConfirmedStable false when 5+ days apart but gravity still moved a lot', mwBatchSignals(bStable).gravityConfirmedStable===false, '');
+
+    APP.logs={stableB:[{date:isoAgo(20),gravity:1.100}]};
+    ok('signals: gravityConfirmedStable false with only one reading', mwBatchSignals(bStable).gravityConfirmedStable===false, '');
 
     APP.recipes=[{id:'rFruit',ogTarget:1.100,fgTarget:1.010,fermentDays:30}];
     var b={id:'fruitB',recipeId:'rFruit',startDate:isoAgo(20),og:1.100,yeast:'ec1118'};

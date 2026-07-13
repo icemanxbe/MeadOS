@@ -311,6 +311,15 @@ function renderBottlingStepContent(stepId,s,b){
     var ogText=b.og?b.og.toFixed(3):'—';
     var lastLog=(APP.logs[b.id]&&APP.logs[b.id].length)?APP.logs[b.id][APP.logs[b.id].length-1]:null;
     var calcedAbv=(b.og&&s.fg)?calcABV(b.og,s.fg):'—';
+    var sig=(typeof mwBatchSignals==='function')?mwBatchSignals(b):null;
+    var stableWarning='';
+    if(sig&&!sig.gravityConfirmedStable){
+      stableWarning=sig.sparkling
+        ?'<div style="margin-bottom:12px;padding:10px 12px;border-radius:var(--radius);border-left:3px solid var(--red2);background:rgba(176,58,46,0.1);font-size:12.5px;color:var(--text2);line-height:1.55"><strong style="color:var(--red2)">⚠ Not confirmed stable yet.</strong> No two logged readings 5+ days apart agree — this is a sparkling recipe, and priming on top of leftover fermentable sugar is the most common real cause of bottle bombs. Log one more reading a few days out before bottling if you can.</div>'
+        :'<div style="margin-bottom:12px;padding:10px 12px;border-radius:var(--radius);border-left:3px solid #e0843c;background:rgba(224,132,60,0.08);font-size:12.5px;color:var(--text2);line-height:1.55"><strong style="color:#e0843c">⚠ Not confirmed stable yet.</strong> No two logged readings 5+ days apart agree yet. Bottling before fermentation genuinely finishes is the #1 real cause of bottle bombs, especially if you plan to backsweeten. Consider logging one more reading first.</div>';
+    }else if(sig&&sig.gravityConfirmedStable){
+      stableWarning='<div style="margin-bottom:12px;padding:8px 12px;border-radius:var(--radius);border-left:3px solid var(--green);background:rgba(45,106,79,0.08);font-size:12px;color:var(--green2)">✓ Confirmed stable — two logged readings 5+ days apart agree.</div>';
+    }
     return'<div style="font-size:13px;color:var(--text2);margin-bottom:14px">Take your final hydrometer reading. The batch should be at terminal gravity — no drop in 48-72 hours.</div>'
       +'<div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px;margin-bottom:14px">'
       +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;text-align:center">'
@@ -318,6 +327,7 @@ function renderBottlingStepContent(stepId,s,b){
       +'<div><div id="bw-fg-val" style="font-family:var(--font-display);font-size:20px;color:var(--gold2)">'+(s.fg?s.fg.toFixed(3):'—')+'</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;margin-top:2px">FINAL</div></div>'
       +'<div><div id="bw-abv-val" style="font-family:var(--font-display);font-size:20px;color:var(--green2)">'+calcedAbv+'%</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;margin-top:2px">ABV</div></div>'
       +'</div></div>'
+      +stableWarning
       +(lastLog?'<div style="font-size:12px;color:var(--text3);margin-bottom:10px;font-style:italic">Last logged gravity: '+lastLog.gravity+' on '+fmtDate(lastLog.date)+(daysSince(lastLog.date)<3?' — fresh, good to use':' — consider taking a new reading')+'</div>':'')
       +'<div class="form-row"><div class="form-group"><label class="form-label">Final Gravity</label><input class="form-input" type="number" step="0.001" id="bw-fg-input" value="'+(s.fg||'')+'" oninput="updateBwFG(this.value)"></div>'
       +'<div class="form-group"><label class="form-label">Manual ABV Override (optional)</label><input class="form-input" type="number" step="0.1" id="bw-abv-input" value="'+(s.abv||'')+'" oninput="updateBwAbvOverride(this.value)"></div></div>';
@@ -362,10 +372,13 @@ function renderBottlingStepContent(stepId,s,b){
       +'<div id="bw-total-info" style="padding:10px 12px;background:var(--bg4);border-left:3px solid var(--gold);border-radius:var(--radius);margin-bottom:10px;font-family:var(--font-mono);font-size:13px;color:var(--gold2);'+(totalBot>0?'':'display:none')+'">TOTAL: '+totalBot+' bottle'+(totalBot!==1?'s':'')+' · '+(totalMl/1000).toFixed(2)+' L</div>'
       +'<div class="form-group"><label class="form-label">Final Sweetness Profile</label><select class="form-select" id="bw-sweetness" onchange="bottlingWorkflowState.sweetness=this.value">'
       +sweetnessOptionLabels(b.beverageType).map(function(o){return'<option value="'+o+'"'+(s.sweetness===o?' selected':'')+'>'+(o||'(set after tasting)')+'</option>';}).join('')
-      +'</select><div style="font-size:11px;color:var(--text3);margin-top:4px">'+_bottlingSweetHintHtml(s.fg,b.beverageType)+'</div></div>'
+      +'</select><div style="font-size:11px;color:var(--text3);margin-top:4px">'+_bottlingSweetHintHtml(s.fg,b.beverageType)+'</div>'
+      +((typeof mwBatchSignals==='function'&&mwBatchSignals(b).sparkling)?'<button type="button" class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="openCarbonationCalcForBatch(\''+b.id+'\')">🍾 Priming Calculator</button>':'')
+      +'</div>'
       +'<div class="form-group"><label class="form-label">Closure</label><select class="form-select" id="bw-closure" onchange="bottlingWorkflowState.closure=this.value">'
-      +'<option value="crown"'+((s.closure||'crown')!=='cork'?' selected':'')+'>⭕ Crown caps</option>'
+      +'<option value="crown"'+((s.closure||'crown')==='crown'?' selected':'')+'>⭕ Crown caps</option>'
       +'<option value="cork"'+(s.closure==='cork'?' selected':'')+'>🪵 Corks</option>'
+      +'<option value="swing-top"'+(s.closure==='swing-top'?' selected':'')+'>🔒 Swing-top</option>'
       +'</select><div style="font-size:11px;color:var(--text3);margin-top:4px">Bottles and closures are deducted from Supplies (when tracked) and priced into the batch cost breakdown.</div></div>'
       +'<div class="form-group"><label class="form-label">Bottling Notes (optional)</label><textarea class="form-textarea" id="bw-notes" oninput="bottlingWorkflowState.notes=this.value" placeholder="Bottle type used, cap/cork, anything unusual…">'+escHtml(s.notes)+'</textarea></div>'
       +'<div id="bw-cellar-info" style="padding:10px;background:var(--bg4);border-left:3px solid var(--gold);border-radius:var(--radius);font-size:12px;color:var(--text2);margin-top:8px;'+(totalBot>0?'':'display:none')+'">All '+totalBot+' bottle'+(totalBot!==1?'s':'')+' will land in the cellar by default. You can split into fridge/gifted/other from the Cellar view later.</div>';

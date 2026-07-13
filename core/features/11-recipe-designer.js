@@ -52,7 +52,8 @@ var WIZ_STYLES=[
   {key:'Metheglin',label:'Metheglin (spiced)',color:'#7a5230',adjunct:'spice',desc:'Mead with herbs/spices.'},
   {key:'Bochet',label:'Bochet (caramelised)',color:'#5a3a20',adjunct:null,desc:'Honey caramelised before fermenting — toffee, marshmallow.'},
   {key:'Pyment',label:'Pyment (grape)',color:'#6a2a4a',adjunct:'juice',desc:'Mead with grape juice/wine must.'},
-  {key:'Braggot',label:'Braggot (malt)',color:'#9a6a2a',adjunct:null,desc:'Mead/beer hybrid with malt.'}
+  {key:'Braggot',label:'Braggot (malt)',color:'#9a6a2a',adjunct:null,desc:'Mead/beer hybrid with malt.'},
+  {key:'Sparkling Mead',label:'Sparkling',color:'#4a8ab0',adjunct:null,desc:'Bottle-conditioned and naturally carbonated — ferment fully dry, don\'t stabilize, prime at bottling.'}
 ];
 // Derived from the canonical MEAD_SWEETNESS_SCALE (03-brew-domain.js) so the
 // wizard's picker always agrees with the bottling-record dropdown and the
@@ -108,7 +109,8 @@ var WIZ_CIDER_STYLES=[
   {key:'New England Cider',label:'New England',color:'#9a6a2a',adjunct:null,desc:'Higher-ABV, raisin/brown-sugar boosted tradition.'},
   {key:'Fruit Cider',label:'Fruit',color:'#c04858',adjunct:'fruit',desc:'Apple cider fermented or blended with fruit.'},
   {key:'Spiced Cider',label:'Spiced',color:'#7a5230',adjunct:'spice',desc:'Warming spices — mulled-cider character.'},
-  {key:'Ice Cider',label:'Ice Cider',color:'#5a8aa0',adjunct:null,desc:'Freeze-concentrated juice — rich, dessert-sweet.'}
+  {key:'Ice Cider',label:'Ice Cider',color:'#5a8aa0',adjunct:null,desc:'Freeze-concentrated juice — rich, dessert-sweet.'},
+  {key:'Sparkling Cider',label:'Sparkling',color:'#d4b860',adjunct:null,desc:'Bottle-conditioned and naturally carbonated — ferment fully dry, don\'t stabilize, prime at bottling.'}
 ];
 // Cider's own scale (03-brew-domain.js CIDER_SWEETNESS_SCALE) — BJCP's real
 // Dry/Medium/Sweet bands sit MUCH lower than mead's (cider's "Sweet" starts
@@ -156,12 +158,18 @@ function wizBuildCiderRecipe(w){
   ingredients.push({item:yeast.name,amount:(yeast.sachetSize||11)+' '+(yeast.unit||'g')+' (1 packet)',notes:'Sprinkle on must or rehydrate per packet instructions'});
   ingredients.push({item:'Pectic Enzyme',amount:Math.round(m.vol*0.4*10)/10+' g',notes:'Prevents a lasting pectin haze — apple/pear juice always carries natural pectin'});
   ingredients.push({item:'Fermaid-O',amount:Math.round(m.vol*0.4*10)/10+' g total',notes:'Staggered addition — juice YAN varies by source, safer to assume it needs help'});
+  var isSparklingCiderStyle=(st.key==='Sparkling Cider');
+  if(isSparklingCiderStyle){
+    ingredients.push({item:'Corn Sugar (dextrose)',amount:Math.round(m.vol*6.6)+' g',notes:'Priming sugar for ~2.5 volumes CO₂ — added at bottling, NOT now. Recalculate with Brewing Tools → Carbonation / Priming Sugar for your actual temperature and target.'});
+  }
   var steps=[
     {day:0,title:'Brew Day',desc:'Clean & sanitize. Combine the juice'+(st.adjunct==='fruit'?' and fruit':'')+' in the fermenter. Stir in the pectic enzyme. Take an OG reading (target '+m.og+'). Sprinkle/rehydrate '+yeast.name.split('—')[0].trim()+' and pitch. Seal with airlock.'},
     {day:1,title:'First Nutrient',desc:'Add half the Fermaid-O. Stir gently to mix without losing CO2.'},
     {day:7,title:'1/3 Sugar Break Nutrient',desc:'Once at or past the 1/3 sugar break, add the remaining Fermaid-O — the last nutrient addition.'},
     {day:14,title:'Rack & Check',desc:'Rack off the initial sediment to a clean vessel. Take a gravity reading — should be dropping steadily toward '+m.fg.toFixed(3)+'.'},
-    {day:fermDays,title:'Final Gravity & Bottle',desc:'Two stable readings near '+m.fg.toFixed(3)+' confirm completion. To back-sweeten, stabilise first with metabisulfite AND sorbate together. Then bottle.'}
+    isSparklingCiderStyle
+      ?{day:fermDays,title:'Confirm Dry, Then Prime & Bottle',desc:'Two stable readings near '+m.fg.toFixed(3)+' at least 5 days apart confirm this is really finished — do NOT stabilise, sorbate/sulfite would kill the yeast that makes the bubbles. Size the priming dose with Brewing Tools → Carbonation / Priming Sugar for your actual volume and temperature, then bottle in pressure-rated bottles (champagne/Belgian + crown caps or wired corks).'}
+      :{day:fermDays,title:'Final Gravity & Bottle',desc:'Two stable readings near '+m.fg.toFixed(3)+' confirm completion. To back-sweeten, stabilise first with metabisulfite AND sorbate together. Then bottle.'}
   ];
   var minDays=m.abv>=9?60:14;
   return{
@@ -231,6 +239,10 @@ function wizBuildRecipe(){
   if(st.adjunct==='fruit'||st.adjunct==='spice'){
     ingredients.push({item:w.adjunctName||(st.adjunct==='fruit'?'Fruit':'Spices'),amount:st.adjunct==='fruit'?m.adjunctAmount:(w.adjunctAmount||'to taste'),notes:'Add in secondary'});
   }
+  var isSparklingStyle=(st.key==='Sparkling Mead');
+  if(isSparklingStyle){
+    ingredients.push({item:'Corn Sugar (dextrose)',amount:Math.round(m.vol*6.6)+' g',notes:'Priming sugar for ~2.5 volumes CO₂ — added at bottling, NOT now. Recalculate with Brewing Tools → Carbonation / Priming Sugar for your actual temperature and target.'});
+  }
   var organic=(w.nutrient!=='sna'&&w.nutrient!=='sna-high');
   var steps=[
     {day:0,title:'Brew Day',desc:'Clean & sanitize. '+(st.key==='Bochet'?'Caramelise the honey to your target colour, cool, then ':'')+'dissolve honey in '+(st.adjunct==='juice'?'juice + water':'water')+', top up to '+m.vol+' L. Take OG (target '+m.og+'). '+(yeast.id==='m05'?'Sprinkle yeast on the surface.':'Rehydrate yeast (GoFerm) and pitch.')+' Seal with airlock.'},
@@ -243,7 +255,9 @@ function wizBuildRecipe(){
   }else{
     steps.push({day:14,title:'Rack to secondary',desc:'If gravity is stable, rack off the lees. Optionally add K-meta.'});
   }
-  steps.push({day:fermDays,title:'Final gravity & bottle',desc:'Two stable readings near '+m.fg+' confirm completion. Stabilise if backsweetening, then bottle.'});
+  steps.push(isSparklingStyle
+    ?{day:fermDays,title:'Confirm Dry, Then Prime & Bottle',desc:'Two stable readings near '+m.fg+' at least 5 days apart confirm this is really finished — do NOT stabilise, sorbate/sulfite would kill the yeast that makes the bubbles. Size the priming dose with Brewing Tools → Carbonation / Priming Sugar for your actual volume and temperature, then bottle in pressure-rated bottles (champagne/Belgian + crown caps or wired corks).'}
+    :{day:fermDays,title:'Final gravity & bottle',desc:'Two stable readings near '+m.fg+' confirm completion. Stabilise if backsweetening, then bottle.'});
   var minDays=m.abv>=15?120:75;
   return{
     name:w.name||((WIZ_STYLES.find(function(s){return s.key===w.style;})||{}).label||'Mead')+' (Designed)',
