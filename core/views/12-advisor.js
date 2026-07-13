@@ -742,6 +742,18 @@ function renderBatchTargets(b){
       +'<td style="font-family:var(--font-mono);color:var(--text3)">'+(target!=null?fmt(target):'—')+' '+ind(state)+'</td></tr>';
   }
   var g=function(x){return (+x).toFixed(3);}, p1=function(x){return (+x).toFixed(1)+'%';}, dd=function(x){return '~'+Math.round(x)+(nl?'d':'d');};
+  // Where the current/projected FG and the recipe's target FG each land on
+  // the real mead/cider sweetness scale (03-brew-domain.js) — reuses the
+  // same over/under arrows as OG/FG/ABV above, just on the tier INDEX
+  // rather than a raw gravity number, since sweetness is a discrete label.
+  var sweetScale=(typeof sweetnessScaleFor==='function')?sweetnessScaleFor(s.beverageType):null;
+  var sweetIdxOf=function(fg){
+    if(!sweetScale||fg==null)return null;
+    var band=sweetnessForFG(fg,s.beverageType);
+    return band?sweetScale.indexOf(band):null;
+  };
+  var sweetA=sweetIdxOf(fgA), sweetT=sweetIdxOf(fgT);
+  var sweetFmt=function(i){return(sweetScale&&sweetScale[i])?sweetScale[i].label:'—';};
   // Predicted finish day vs the expected RANGE (Expectations Engine) — falls
   // back to a flat ±5-day tolerance around recipe.fermentDays if the range
   // isn't available (e.g. no yeast selected yet). A range target can't reuse
@@ -763,6 +775,7 @@ function renderBatchTargets(b){
     +'<table class="data-table"><tr><td></td><td style="color:var(--text3);font-family:var(--font-mono);font-size:10px;letter-spacing:1px">'+(nl?'ACTUEEL':'ACTUAL')+'</td><td style="color:var(--text3);font-family:var(--font-mono);font-size:10px;letter-spacing:1px">'+(nl?'DOEL':'TARGET')+'</td></tr>'
     +row('OG',ogA,ogT,cmp(ogA,ogT,0.003),g)
     +row(nl?'FG (prognose)':'FG (proj.)',fgA,fgT,cmp(fgA,fgT,0.004),g)
+    +row(nl?'Zoetheid':'Sweetness',sweetA,sweetT,cmp(sweetA,sweetT,0),sweetFmt)
     +row(nl?'Alcohol':'ABV',abvA,abvT,cmp(abvA,abvT,0.6),p1)
     +fermRow
     +'</table></div>';

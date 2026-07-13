@@ -484,6 +484,13 @@ function sweetnessScaleFor(beverageType){
 function sweetnessOptionLabels(beverageType){
   return[''].concat(sweetnessScaleFor(beverageType).map(function(s){return s.label;}));
 }
+// Shared between the bottling-record's initial render and its live bt-fg
+// oninput update, so the hint text can't drift between the two call sites.
+function _bottlingSweetHintHtml(fg,beverageType){
+  var band=sweetnessForFG(parseFloat(fg),beverageType);
+  if(!band)return '';
+  return 'Gravity reads as <strong style="color:var(--gold2)">'+band.label+'</strong> on the scale — taste is still the final call.';
+}
 // Returns the matching band {key,label,fgMax,desc} for a gravity reading, or
 // null if fg isn't a usable number. Each band's fgMax is its upper (driest→
 // sweetest) boundary, so the first band the fg fits under is the match.

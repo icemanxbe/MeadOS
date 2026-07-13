@@ -894,7 +894,7 @@ function renderBatchDetail(){
     Object.keys(existCounts).forEach(function(s){if(s!=='500'&&s!=='750'){customSize=parseInt(s);customQty=existCounts[s];}});
     tabContent='<div class="grid-2"><div><div class="card"><div class="card-header"><div class="card-title">BOTTLING RECORD</div><button class="btn btn-primary btn-sm" onclick="startBottlingWorkflow(\''+b.id+'\')" title="Guided step-by-step bottling">🍾 Guided Workflow</button></div>'
       +'<div class="form-row"><div class="form-group"><label class="form-label">Bottle Date</label><input class="form-input" type="date" id="bt-date" value="'+(bottling.date||today())+'"></div>'
-      +'<div class="form-group"><label class="form-label">Final Gravity</label><input class="form-input" type="number" id="bt-fg" step="0.001" placeholder="1.010" value="'+(bottling.fg||lastG||'')+'"></div></div>'
+      +'<div class="form-group"><label class="form-label">Final Gravity</label><input class="form-input" type="number" id="bt-fg" step="0.001" placeholder="1.010" value="'+(bottling.fg||lastG||'')+'" oninput="updateBottlingSweetHint(\''+b.id+'\')"></div></div>'
       +'<div style="margin:6px 0 4px;font-family:var(--font-mono);font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase">BOTTLE COUNTS BY SIZE</div>'
       +'<div class="form-row"><div class="form-group"><label class="form-label">🍶 500 ml bottles</label><input class="form-input" type="number" id="bt-count-500" min="0" placeholder="0" value="'+(c500||'')+'" oninput="updateBottlingTotalDisplay()"></div>'
       +'<div class="form-group"><label class="form-label">🍷 750 ml bottles</label><input class="form-input" type="number" id="bt-count-750" min="0" placeholder="0" value="'+(c750||'')+'" oninput="updateBottlingTotalDisplay()"></div></div>'
@@ -906,7 +906,7 @@ function renderBatchDetail(){
       +'<div class="form-row"><div class="form-group"><label class="form-label">Final ABV</label><input class="form-input" type="number" id="bt-abv" step="0.1" placeholder="11.5" value="'+(bottling.abv||currentABV)+'"></div>'
       +'<div class="form-group"><label class="form-label">Sweetness</label><select class="form-select" id="bt-sweet">'
       +sweetnessOptionLabels(b.beverageType).map(function(o){return'<option'+(bottling.sweetness===o?' selected':'')+'>'+o+'</option>';}).join('')
-      +'</select></div>'
+      +'</select><div id="bt-sweet-hint" style="font-size:11px;color:var(--text3);margin-top:4px">'+_bottlingSweetHintHtml(bottling.fg||lastG,b.beverageType)+'</div></div>'
       +'<div class="form-group"><label class="form-label">Closure</label><select class="form-select" id="bt-closure">'
       +'<option value="crown"'+((bottling.closure||'crown')!=='cork'?' selected':'')+'>⭕ Crown caps</option>'
       +'<option value="cork"'+(bottling.closure==='cork'?' selected':'')+'>🪵 Corks</option>'
