@@ -361,7 +361,7 @@ function renderBottlingStepContent(stepId,s,b){
       +'</details>'
       +'<div id="bw-total-info" style="padding:10px 12px;background:var(--bg4);border-left:3px solid var(--gold);border-radius:var(--radius);margin-bottom:10px;font-family:var(--font-mono);font-size:13px;color:var(--gold2);'+(totalBot>0?'':'display:none')+'">TOTAL: '+totalBot+' bottle'+(totalBot!==1?'s':'')+' · '+(totalMl/1000).toFixed(2)+' L</div>'
       +'<div class="form-group"><label class="form-label">Final Sweetness Profile</label><select class="form-select" id="bw-sweetness" onchange="bottlingWorkflowState.sweetness=this.value">'
-      +['','Bone Dry','Dry','Off-Dry','Semi-Sweet','Sweet','Dessert'].map(function(o){return'<option value="'+o+'"'+(s.sweetness===o?' selected':'')+'>'+(o||'(set after tasting)')+'</option>';}).join('')
+      +sweetnessOptionLabels(b.beverageType).map(function(o){return'<option value="'+o+'"'+(s.sweetness===o?' selected':'')+'>'+(o||'(set after tasting)')+'</option>';}).join('')
       +'</select></div>'
       +'<div class="form-group"><label class="form-label">Closure</label><select class="form-select" id="bw-closure" onchange="bottlingWorkflowState.closure=this.value">'
       +'<option value="crown"'+((s.closure||'crown')!=='cork'?' selected':'')+'>⭕ Crown caps</option>'

@@ -905,7 +905,7 @@ function renderBatchDetail(){
       +'<div id="bt-total-display" style="padding:8px 12px;background:var(--bg4);border-left:3px solid var(--gold);border-radius:var(--radius);margin-bottom:14px;font-size:13px;color:var(--text2);font-family:var(--font-mono)"></div>'
       +'<div class="form-row"><div class="form-group"><label class="form-label">Final ABV</label><input class="form-input" type="number" id="bt-abv" step="0.1" placeholder="11.5" value="'+(bottling.abv||currentABV)+'"></div>'
       +'<div class="form-group"><label class="form-label">Sweetness</label><select class="form-select" id="bt-sweet">'
-      +['','Bone Dry','Dry','Off-Dry','Semi-Sweet','Sweet','Dessert'].map(function(o){return'<option'+(bottling.sweetness===o?' selected':'')+'>'+o+'</option>';}).join('')
+      +sweetnessOptionLabels(b.beverageType).map(function(o){return'<option'+(bottling.sweetness===o?' selected':'')+'>'+o+'</option>';}).join('')
       +'</select></div>'
       +'<div class="form-group"><label class="form-label">Closure</label><select class="form-select" id="bt-closure">'
       +'<option value="crown"'+((bottling.closure||'crown')!=='cork'?' selected':'')+'>⭕ Crown caps</option>'

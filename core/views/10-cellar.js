@@ -1617,7 +1617,7 @@ function openCellarEditModal(batchId){
   var bot=APP.bottling[batchId]||{};
   if(!bot.locations)bot.locations={cellar:{},fridge:{},gifted:{},other:{}};
   closeModal();
-  var sweetOpts=['','Bone Dry','Dry','Off-Dry','Semi-Sweet','Sweet','Dessert']
+  var sweetOpts=sweetnessOptionLabels(b.beverageType)
     .map(function(o){return'<option'+(bot.sweetness===o?' selected':'')+'>'+escHtml(o)+'</option>';}).join('');
   var sizes=activeBottleSizes(bot);
   // Inventory grid: rows = sizes, columns = 4 locations

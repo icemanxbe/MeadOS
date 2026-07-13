@@ -92,7 +92,7 @@ var TROUBLESHOOT_TOPICS=[
     category:'Result',
     steps:[
       '<strong>Stabilize first.</strong> Add potassium sorbate (0.5g/L) + potassium metabisulfite (0.15g/L) to prevent renewed fermentation. Wait 24-48 hours.',
-      '<strong>Backsweeten.</strong> Add honey dissolved in a little warm mead (1:1) back into the batch, 50-100g/L to start. Taste, adjust. Use the Additions tab on the batch to log it.',
+      '<strong>Backsweeten.</strong> Add honey dissolved in a little warm mead (1:1) back into the batch — start with 30-50g/L and taste before adding more. Use the Additions tab on the batch to log it.',
       '<strong>Alternative sweeteners.</strong> Erythritol or stevia for a calorie-conscious sweetness without renewed fermentation risk. Lactose (non-fermentable). Or unfermented juice concentrate.',
       '<strong>Soften the harshness.</strong> Age it. Most "dry and harsh" meads mellow significantly after 6-12 months. Time is the cheapest fix.',
       '<strong>Add body.</strong> A teaspoon of glycerin per litre adds mouthfeel without sweetness. Some brewers use unfermented honey or oak chips to round out a thin profile.'
@@ -100,7 +100,7 @@ var TROUBLESHOOT_TOPICS=[
     ciderTitle:'Final cider is too dry / harsh',
     ciderSteps:[
       '<strong>Stabilize first.</strong> Add potassium sorbate (0.5g/L) + potassium metabisulfite (0.15g/L) to prevent renewed fermentation. Wait 24-48 hours.',
-      '<strong>Backsweeten with juice, not honey.</strong> Fresh or frozen-concentrate apple juice, 30-80ml/L to start — the standard cider back-sweetening approach. Taste, adjust. Use the Additions tab on the batch to log it.',
+      '<strong>Backsweeten with juice, not honey.</strong> Fresh or frozen-concentrate apple juice, starting around 10-20g/L of actual sugar — cider reads "sweet" at a noticeably lower residual sugar than mead does, so it takes less than you\'d expect. Taste, adjust. Use the Additions tab on the batch to log it.',
       '<strong>Alternative sweeteners.</strong> Erythritol or stevia for a calorie-conscious sweetness without renewed fermentation risk. Lactose (non-fermentable) also works if you want body without cider-flavor dilution.',
       '<strong>Soften the harshness.</strong> Age it. Most "dry and harsh" ciders mellow significantly after 6-12 months — English Cider and Applewine especially reward patience.',
       '<strong>Add body.</strong> A teaspoon of glycerin per litre adds mouthfeel without sweetness. Some brewers add a splash of unfermented apple juice at bottling to round out a thin profile.'
@@ -326,7 +326,7 @@ var TROUBLESHOOT_TOPICS=[
       '<strong>Confirm fermentation is COMPLETE.</strong> Two stable gravity readings 5+ days apart. Adding sugar to active yeast = renewed fermentation = bottle bombs.',
       '<strong>Stabilize first.</strong> Potassium sorbate (0.5g/L) + potassium metabisulfite (0.15g/L). Wait 24-48 hours before adding sugar.',
       '<strong>Honey is the traditional choice.</strong> It adds aroma as well as sweetness — table sugar sweetens with less flavor impact, which some brewers prefer when they don\'t want to shift the balance. Dissolve in a little warm mead first (1:1), then mix into the batch.',
-      '<strong>Start small.</strong> 30-50g/L of honey is light backsweetening. 80-120g/L is medium. 150g+ is dessert-level. Taste after each addition before adding more.',
+      '<strong>Start small.</strong> As a rough guide: 30-50g/L lands around Off-Dry/Semi-Sweet, 80-120g/L around Sweet, 150g+ into Dessert territory. Acid and honey type both shift this — a tart, high-acid mead (cyser, pyment with citrus) reads less sweet at the same dose, and a high-fructose honey like acacia or tupelo reads sweeter than a glucose-forward one like most wildflower/clover. Taste after each addition before adding more.',
       '<strong>Wait, then taste.</strong> Sweetness perception changes after 1-2 weeks. A batch that tastes "perfect" today may taste cloying in a month, or vice versa.',
       '<strong>Bottle promptly after backsweetening.</strong> Don\'t leave a stabilized + sweetened batch sitting for months — risk of sorbate failure and bottle bombs.',
       '<strong>Log it.</strong> Use the Additions tab on the batch to record what you added, when, and how much.'
@@ -336,7 +336,7 @@ var TROUBLESHOOT_TOPICS=[
       '<strong>Confirm fermentation is COMPLETE.</strong> Two stable gravity readings 5+ days apart. Adding sugar to active yeast = renewed fermentation = bottle bombs.',
       '<strong>Stabilize first.</strong> Potassium sorbate (0.5g/L) + potassium metabisulfite (0.15g/L). Wait 24-48 hours before adding juice or sugar.',
       '<strong>Add juice, not honey.</strong> Fresh or frozen-concentrate apple juice is the standard cider approach — it adds sweetness without a foreign flavor. Dissolve concentrate in a little of the cider first if using it, then mix into the batch.',
-      '<strong>Start small.</strong> 30-80ml/L of juice is light backsweetening; adjust to taste. Taste after each addition before adding more.',
+      '<strong>Start small.</strong> Cider\'s own sweetness scale sits well below mead\'s: roughly under 9g/L residual sugar reads Dry, 9-40g/L is Medium, and past 40g/L is Sweet. A tannic, high-acid blend (bittersharp or sharp apples) reads less sweet at the same dose than a soft, low-acid one — taste after each addition before adding more.',
       '<strong>Wait, then taste.</strong> Sweetness perception changes after 1-2 weeks. A batch that tastes "perfect" today may taste cloying in a month, or vice versa.',
       '<strong>Bottle promptly after backsweetening.</strong> Don\'t leave a stabilized + sweetened batch sitting for months — risk of sorbate failure and bottle bombs.',
       '<strong>Log it.</strong> Use the Additions tab on the batch to record what you added, when, and how much.'

@@ -54,15 +54,17 @@ var WIZ_STYLES=[
   {key:'Pyment',label:'Pyment (grape)',color:'#6a2a4a',adjunct:'juice',desc:'Mead with grape juice/wine must.'},
   {key:'Braggot',label:'Braggot (malt)',color:'#9a6a2a',adjunct:null,desc:'Mead/beer hybrid with malt.'}
 ];
-var WIZ_SWEETNESS=[
-  {key:'dry',label:'Dry',fg:1.000,desc:'Crisp, no residual sweetness'},
-  {key:'offdry',label:'Off-dry',fg:1.006,desc:'A hint of honey on the finish'},
-  {key:'semi',label:'Semi-sweet',fg:1.014,desc:'Balanced, rounded'},
-  {key:'sweet',label:'Sweet',fg:1.022,desc:'Honey-forward, dessert-leaning'},
-  {key:'dessert',label:'Dessert',fg:1.030,desc:'Rich, syrupy — sack mead'}
-];
+// Derived from the canonical MEAD_SWEETNESS_SCALE (03-brew-domain.js) so the
+// wizard's picker always agrees with the bottling-record dropdown and the
+// backsweetening calculator. Each button's fg is that tier's ceiling (its
+// sweetest edge) — Dessert has no real ceiling, so it falls back to a
+// representative dessert-mead point (per GotMead's "Dessert Sweet: 1.035-
+// 1.060" convention) since the wizard's math needs one finite number.
+var WIZ_SWEETNESS=MEAD_SWEETNESS_SCALE.map(function(s){
+  return{key:s.key,label:s.label,fg:s.fgMax===Infinity?1.045:s.fgMax,desc:s.desc};
+});
 function wizComputeMath(w){
-  var sw=WIZ_SWEETNESS.find(function(s){return s.key===w.sweetness;})||WIZ_SWEETNESS[2];
+  var sw=WIZ_SWEETNESS.find(function(s){return s.key===w.sweetness;})||WIZ_SWEETNESS[3];
   var fg=sw.fg;
   var abv=parseFloat(w.abv)||12;
   var vol=parseFloat(w.volume)||5;
@@ -108,8 +110,15 @@ var WIZ_CIDER_STYLES=[
   {key:'Spiced Cider',label:'Spiced',color:'#7a5230',adjunct:'spice',desc:'Warming spices — mulled-cider character.'},
   {key:'Ice Cider',label:'Ice Cider',color:'#5a8aa0',adjunct:null,desc:'Freeze-concentrated juice — rich, dessert-sweet.'}
 ];
+// Cider's own scale (03-brew-domain.js CIDER_SWEETNESS_SCALE) — BJCP's real
+// Dry/Medium/Sweet bands sit MUCH lower than mead's (cider's "Sweet" starts
+// around FG 1.012-1.030, not mead's 1.020-1.035+), so cider needs its own
+// button list rather than sharing WIZ_SWEETNESS.
+var WIZ_CIDER_SWEETNESS=CIDER_SWEETNESS_SCALE.map(function(s){
+  return{key:s.key,label:s.label,fg:s.fgMax===Infinity?1.045:s.fgMax,desc:s.desc};
+});
 function wizComputeCiderMath(w){
-  var sw=WIZ_SWEETNESS.find(function(s){return s.key===w.sweetness;})||WIZ_SWEETNESS[2];
+  var sw=WIZ_CIDER_SWEETNESS.find(function(s){return s.key===w.sweetness;})||WIZ_CIDER_SWEETNESS[1];
   var fg=sw.fg;
   var abv=parseFloat(w.abv)||6.5;
   var vol=parseFloat(w.volume)||5;
@@ -158,7 +167,7 @@ function wizBuildCiderRecipe(w){
   return{
     name:w.name||((WIZ_CIDER_STYLES.find(function(s){return s.key===w.style;})||{}).label||'Cider')+' (Designed)',
     style:w.style,difficulty:m.abv>=9?'Intermediate':'Beginner',
-    description:'Designed for '+m.abv+'% ABV, '+(WIZ_SWEETNESS.find(function(s){return s.key===w.sweetness;})||{}).label.toLowerCase()+'. '+st.desc,
+    description:'Designed for '+m.abv+'% ABV, '+(WIZ_CIDER_SWEETNESS.find(function(s){return s.key===w.sweetness;})||WIZ_CIDER_SWEETNESS[1]).label.toLowerCase()+'. '+st.desc,
     brandColor:st.color,beverageType:'cider',
     volume:m.vol,ogTarget:m.og,fgTarget:m.fg,abvTarget:m.abv,fermentDays:fermDays,
     minAgeDays:minDays,peakAgeDays:minDays+60,maxAgeDays:minDays+240,
@@ -170,7 +179,7 @@ function wizBuildCiderRecipe(w){
 function openRecipeWizard(){
   closeModal();
   var isCider=(typeof activeBevMode==='function')&&activeBevMode()==='cider';
-  window._wiz={step:0,name:'',style:isCider?'Common Cider':'Traditional Mead',volume:5,abv:isCider?6.5:12,sweetness:'semi',
+  window._wiz={step:0,name:'',style:isCider?'Common Cider':'Traditional Mead',volume:5,abv:isCider?6.5:12,sweetness:isCider?'medium':'semi-sweet',
     yeast:isCider?'nottingham':'m05',nutrient:'tosca2',adjunctName:'',adjunctAmount:''};
   renderRecipeWizard();
 }
@@ -239,7 +248,7 @@ function wizBuildRecipe(){
   return{
     name:w.name||((WIZ_STYLES.find(function(s){return s.key===w.style;})||{}).label||'Mead')+' (Designed)',
     style:w.style,difficulty:m.abv>=15?'Advanced':'Intermediate',
-    description:'Designed for '+m.abv+'% ABV, '+(WIZ_SWEETNESS.find(function(s){return s.key===w.sweetness;})||{}).label.toLowerCase()+'. '+st.desc,
+    description:'Designed for '+m.abv+'% ABV, '+(WIZ_SWEETNESS.find(function(s){return s.key===w.sweetness;})||WIZ_SWEETNESS[3]).label.toLowerCase()+'. '+st.desc,
     brandColor:st.color,
     volume:m.vol,ogTarget:m.og,fgTarget:m.fg,abvTarget:m.abv,fermentDays:fermDays,
     minAgeDays:minDays,peakAgeDays:minDays+120,maxAgeDays:minDays+700,
@@ -261,6 +270,7 @@ function renderRecipeWizard(){
   var isCider=(typeof activeBevMode==='function')&&activeBevMode()==='cider';
   var m=isCider?wizComputeCiderMath(w):wizComputeMath(w);
   var styleList=isCider?WIZ_CIDER_STYLES:WIZ_STYLES;
+  var sweetList=isCider?WIZ_CIDER_SWEETNESS:WIZ_SWEETNESS;
   var steps=['Style & Targets','Yeast','Adjuncts & Nutrient','Review'];
   var dots=steps.map(function(s,i){
     return'<div style="display:flex;align-items:center;gap:6px"><div style="width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:11px;'+(i===w.step?'background:var(--gold);color:#1a1a0f':i<w.step?'background:var(--green2);color:#0f0f0a':'background:var(--bg3);color:var(--text3)')+'">'+(i<w.step?'✓':(i+1))+'</div><span style="font-family:var(--font-mono);font-size:10px;letter-spacing:0.5px;color:'+(i===w.step?'var(--gold2)':'var(--text3)')+'">'+s+'</span></div>';
@@ -271,7 +281,7 @@ function renderRecipeWizard(){
       var on=w.style===s.key;
       return'<button type="button" onclick="wizSet(\'style\',\''+s.key+'\')" style="text-align:left;padding:10px 12px;border-radius:var(--radius);cursor:pointer;border:1px solid '+(on?s.color:'var(--border)')+';background:'+(on?s.color+'22':'var(--bg3)')+'"><div style="font-size:13px;color:'+(on?s.color:'var(--text)')+';font-weight:500">'+s.label+'</div><div style="font-size:11px;color:var(--text3);line-height:1.3;margin-top:2px">'+s.desc+'</div></button>';
     }).join('');
-    var sweetBtns=WIZ_SWEETNESS.map(function(s){
+    var sweetBtns=sweetList.map(function(s){
       var on=w.sweetness===s.key;
       return'<button type="button" onclick="wizSet(\'sweetness\',\''+s.key+'\')" style="flex:1;min-width:84px;padding:8px 6px;border-radius:var(--radius);cursor:pointer;border:1px solid '+(on?'var(--gold)':'var(--border)')+';background:'+(on?'rgba(201,168,76,0.14)':'var(--bg3)')+'"><div style="font-size:12px;color:'+(on?'var(--gold2)':'var(--text)')+'">'+s.label+'</div><div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3);margin-top:2px">FG '+s.fg.toFixed(3)+'</div></button>';
     }).join('');

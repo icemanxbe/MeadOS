@@ -268,6 +268,38 @@
   eq('sweet: Semi-Sweet -> 2', studioSweetIndex('Semi-Sweet'), 2);
   eq('sweet: Sweet -> 3', studioSweetIndex('Sweet'), 3);
   eq('sweet: Dessert -> 3', studioSweetIndex('Dessert'), 3);
+  // Cider's own label set maps through the same regex-based dial with no code change
+  eq('sweet: cider Dry -> 0', studioSweetIndex('Dry'), 0);
+  eq('sweet: cider Medium -> 2', studioSweetIndex('Medium'), 2);
+  eq('sweet: cider Sweet -> 3', studioSweetIndex('Sweet'), 3);
+  eq('sweet: cider Dessert -> 3', studioSweetIndex('Dessert'), 3);
+
+  // sweetnessForFG / sweetnessScaleFor — the canonical mead/cider FG->label scale
+  eq('sweetnessForFG: mead 0.998 -> Bone Dry', (sweetnessForFG(0.998,'mead')||{}).label, 'Bone Dry');
+  eq('sweetnessForFG: mead 1.003 -> Dry', (sweetnessForFG(1.003,'mead')||{}).label, 'Dry');
+  eq('sweetnessForFG: mead 1.008 -> Off-Dry', (sweetnessForFG(1.008,'mead')||{}).label, 'Off-Dry');
+  eq('sweetnessForFG: mead 1.015 -> Semi-Sweet', (sweetnessForFG(1.015,'mead')||{}).label, 'Semi-Sweet');
+  eq('sweetnessForFG: mead 1.025 -> Sweet', (sweetnessForFG(1.025,'mead')||{}).label, 'Sweet');
+  eq('sweetnessForFG: mead 1.040 -> Dessert', (sweetnessForFG(1.040,'mead')||{}).label, 'Dessert');
+  eq('sweetnessForFG: cider 1.001 -> Dry', (sweetnessForFG(1.001,'cider')||{}).label, 'Dry');
+  eq('sweetnessForFG: cider 1.007 -> Medium', (sweetnessForFG(1.007,'cider')||{}).label, 'Medium');
+  eq('sweetnessForFG: cider 1.020 -> Sweet', (sweetnessForFG(1.020,'cider')||{}).label, 'Sweet');
+  eq('sweetnessForFG: cider 1.045 -> Dessert', (sweetnessForFG(1.045,'cider')||{}).label, 'Dessert');
+  eq('sweetnessForFG: SAME fg reads differently per beverage type (the actual real-world gap)',
+    (sweetnessForFG(1.015,'mead')||{}).label+' vs '+(sweetnessForFG(1.015,'cider')||{}).label, 'Semi-Sweet vs Sweet');
+  ok('sweetnessForFG: null fg -> null', sweetnessForFG(null,'mead')===null);
+  ok('sweetnessForFG: NaN fg -> null', sweetnessForFG(NaN,'mead')===null);
+  eq('sweetnessScaleFor: mead has 6 tiers', sweetnessScaleFor('mead').length, 6);
+  eq('sweetnessScaleFor: cider has 4 tiers', sweetnessScaleFor('cider').length, 4);
+  eq('sweetnessOptionLabels: mead has blank + 6 labels', sweetnessOptionLabels('mead').length, 7);
+  eq('sweetnessOptionLabels: cider has blank + 4 labels', sweetnessOptionLabels('cider').length, 5);
+  ok('sweetnessOptionLabels: cider list has Medium, not Off-Dry/Semi-Sweet', sweetnessOptionLabels('cider').indexOf('Medium')>=0 && sweetnessOptionLabels('cider').indexOf('Off-Dry')<0);
+
+  // Wizard sweetness pickers derive from the same canonical scale, not their own numbers
+  eq('WIZ_SWEETNESS length matches MEAD_SWEETNESS_SCALE', WIZ_SWEETNESS.length, MEAD_SWEETNESS_SCALE.length);
+  eq('WIZ_CIDER_SWEETNESS length matches CIDER_SWEETNESS_SCALE', WIZ_CIDER_SWEETNESS.length, CIDER_SWEETNESS_SCALE.length);
+  ok('WIZ_SWEETNESS: every entry has a finite fg (Dessert not Infinity)', WIZ_SWEETNESS.every(function(s){return isFinite(s.fg);}));
+  ok('WIZ_CIDER_SWEETNESS: every entry has a finite fg (Dessert not Infinity)', WIZ_CIDER_SWEETNESS.every(function(s){return isFinite(s.fg);}));
 
   // labelStudioNetVol — per-bottle net contents + unit
   eq('netvol 750 ml', labelStudioNetVol({bottleVol:750}), '750 ml ℮');
@@ -394,7 +426,7 @@
 
   // ---- recipe designer wizard: honey math must account for fruit/juice ----
   (function(){
-    window._wiz={step:0,name:'',style:'Traditional Mead',volume:5,abv:12,sweetness:'semi',yeast:'m05',nutrient:'tosca2',adjunctName:'',adjunctAmount:''};
+    window._wiz={step:0,name:'',style:'Traditional Mead',volume:5,abv:12,sweetness:'semi-sweet',yeast:'m05',nutrient:'tosca2',adjunctName:'',adjunctAmount:''};
     var trad=wizComputeMath(window._wiz);
     ok('wizComputeMath: Traditional (no adjunct) contributes no honey credit', trad.adjunctHoneyEquivKg===0, JSON.stringify(trad));
 
@@ -416,6 +448,24 @@
     var built=wizBuildRecipe();
     var honeyLine=built.ingredients.filter(function(i){return i.item==='Honey';})[0];
     ok('wizBuildRecipe: the built recipe\'s honey line matches the netted honeyKg (no drift between math box and ingredient list)', honeyLine&&honeyLine.amount===cyser.honeyKg+' kg', JSON.stringify(honeyLine));
+
+    // Regression: an unrecognised sweetness key used to crash wizBuildRecipe —
+    // (WIZ_SWEETNESS.find(...)||{}).label.toLowerCase() threw on the {} fallback
+    // the moment .find() actually failed (previously unreachable since the old
+    // default key always matched something; the mead/cider scale split exposed it).
+    window._wiz.sweetness='not-a-real-key';
+    var noThrow=true,builtBogus=null;
+    try{builtBogus=wizBuildRecipe();}catch(e){noThrow=false;}
+    ok('wizBuildRecipe: an unrecognised sweetness key falls back instead of throwing', noThrow&&builtBogus&&typeof builtBogus.description==='string', JSON.stringify(builtBogus&&builtBogus.description));
+    window._wiz=null;
+  })();
+
+  // ---- recipe designer wizard: cider path, same fallback-crash regression ----
+  (function(){
+    window._wiz={step:0,name:'',style:'Common Cider',volume:5,abv:6.5,sweetness:'not-a-real-key',yeast:'nottingham',adjunctName:'',adjunctAmount:''};
+    var noThrow=true,builtBogus=null;
+    try{builtBogus=wizBuildCiderRecipe(window._wiz);}catch(e){noThrow=false;}
+    ok('wizBuildCiderRecipe: an unrecognised sweetness key falls back instead of throwing', noThrow&&builtBogus&&typeof builtBogus.description==='string', JSON.stringify(builtBogus&&builtBogus.description));
     window._wiz=null;
   })();
 

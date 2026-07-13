@@ -778,7 +778,7 @@ var UI_PATTERNS=[
   [/^Target ([\d.,]+) vol − ~([\d.,]+) vol already dissolved at (\d+)°C = \+([\d.,]+) vol to add\.$/, 'Doel $1 vol − ~$2 vol al opgelost bij $3°C = +$4 vol toe te voegen.'],
   [/^REHYDRATION → GoFerm Protect ≈ ([\d.,]+) g in ~([\d.,]+) ml of 43°C water before pitch \(primes sterols; not part of the YAN total\)$/, 'REHYDRATIE → GoFerm Protect ≈ $1 g in ~$2 ml water van 43°C vóór het enten (primet sterolen; geen deel van het YAN-totaal)'],
   [/^corn sugar \(dextrose\) total — dissolve in a little warm water and gently mix into the batch at bottling\. Per 750 ml bottle: ~([\d.,]+) g\.$/, 'maïssuiker (dextrose) totaal — los op in wat warm water en meng zacht door het brouwsel bij het bottelen. Per fles van 750 ml: ~$1 g.'],
-  [/^Final ABV unchanged · estimated final sweetness ≈ (.+)$/, function(m,sw){var S={'Bone Dry':'Kurkdroog','Dry':'Droog','Off-Dry':'Halfdroog','Semi-Sweet':'Halfzoet','Sweet':'Zoet','Dessert':'Dessert'};return 'Alcohol ongewijzigd · geschatte eindzoetheid ≈ '+(S[sw.trim()]||sw);}],
+  [/^Final ABV unchanged · estimated final sweetness ≈ (.+)$/, function(m,sw){var S={'Bone Dry':'Kurkdroog','Dry':'Droog','Off-Dry':'Halfdroog','Semi-Sweet':'Halfzoet','Sweet':'Zoet','Dessert':'Dessert','Medium':'Medium'};return 'Alcohol ongewijzigd · geschatte eindzoetheid ≈ '+(S[sw.trim()]||sw);}],
   // ---- honey library ----
   [/^🌸 IN SEASON — (.+)$/, '🌸 IN SEIZOEN — $1'],
   [/^(\d+) VARIET(?:Y|IES)$/, function(m,n){return n+(n==='1'?' VARIËTEIT':' VARIËTEITEN');}],

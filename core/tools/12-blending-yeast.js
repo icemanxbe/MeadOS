@@ -92,14 +92,18 @@ function computeBlendOutputHTML(idA,idB,ratioA){
   var fgA=botA.fg||1.010;
   var fgB=isWater?1.000:(botB.fg||1.010);
   var blendedFG=fgA*fa+fgB*fb;
-  var sweetIdx={'Bone Dry':0,'Dry':1,'Off-Dry':2,'Semi-Sweet':3,'Sweet':4,'Dessert':5,'':2};
+  // Blending assumes both batches share a beverage type (blending mead with
+  // cider isn't a real workflow this app supports elsewhere), so batch A's
+  // own scale — mead's 6 labels or cider's 4 — drives the index for both.
+  var sLabels=sweetnessScaleFor(bA.beverageType).map(function(s){return s.label;});
+  var neutralIdx=Math.floor((sLabels.length-1)/2);
+  var sweetIdxOf=function(label){var i=sLabels.indexOf(label);return i>=0?i:neutralIdx;};
   // Water has no sugar — pull sweetness DOWN toward bone-dry, scaled by how
   // much water is in the blend, rather than parking it at the neutral midpoint.
-  var sA=(sweetIdx[botA.sweetness||'']!=null?sweetIdx[botA.sweetness||'']:2);
-  var sB=isWater?0:(sweetIdx[botB.sweetness||'']!=null?sweetIdx[botB.sweetness||'']:2);
+  var sA=sweetIdxOf(botA.sweetness||'');
+  var sB=isWater?0:sweetIdxOf(botB.sweetness||'');
   var sIdx=sA*fa+sB*fb;
-  var sLabels=['Bone Dry','Dry','Off-Dry','Semi-Sweet','Sweet','Dessert'];
-  var blendedSweet=sLabels[Math.round(Math.max(0,Math.min(5,sIdx)))];
+  var blendedSweet=sLabels[Math.round(Math.max(0,Math.min(sLabels.length-1,sIdx)))];
   var ccy=APP.settings.currency||'€';
   var costA=(bA.cost&&bottlesOriginal(botA)>0)?((bA.cost.honey||0)+(bA.cost.extras||0))/bottlesOriginal(botA):0;
   var costB=isWater?0:((bB.cost&&bottlesOriginal(botB)>0)?((bB.cost.honey||0)+(bB.cost.extras||0))/bottlesOriginal(botB):0);
@@ -128,7 +132,7 @@ function computeBlendOutputHTML(idA,idB,ratioA){
     +'<div style="flex:1;text-align:center;padding:7px;background:var(--bg4);border-radius:var(--radius)"><span style="color:'+colorA+'">●</span> '+escHtml(bA.name.slice(0,16))+': <strong>'+volStr(litA)+'</strong></div>'
     +'<div style="flex:1;text-align:center;padding:7px;background:var(--bg4);border-radius:var(--radius)"><span style="color:'+colorB+'">●</span> '+escHtml(nameB.slice(0,16))+': <strong>'+volStr(litB)+'</strong></div>'
     +'</div>'
-    +'<div style="font-size:11px;color:var(--text3);font-style:italic;text-align:center">Approximate values. Sweetness blends linearly on a 6-point scale; real blending may shift slightly with carbonation, oxidation, or rest time. '+(isWater?'Diluting with water also thins body and aroma — taste as you go.':'Bench-trial a small measured blend before committing the whole batch.')+'</div>';
+    +'<div style="font-size:11px;color:var(--text3);font-style:italic;text-align:center">Approximate values. Sweetness blends linearly on a '+sLabels.length+'-point scale; real blending may shift slightly with carbonation, oxidation, or rest time. '+(isWater?'Diluting with water also thins body and aroma — taste as you go.':'Bench-trial a small measured blend before committing the whole batch.')+'</div>';
 }
 
 function updateBlendOutput(){
