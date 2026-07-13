@@ -742,6 +742,30 @@ function fermentTempEval(t,yeast){
   return{zone:zone,borderline:borderline,label:label,expect:expect,oL:oL,oH:oH,tL:tL,tH:tH,name:name};
 }
 
+// Derived snapshot (same pattern as calendarEvents in packageState()) so the
+// Python server can independently watch for a fermentation-dangerous
+// temperature with no browser tab open, without duplicating any yeast-
+// tolerance science server-side — it only compares a live reading against
+// the tempLow/tempHigh this already worked out, using the exact same
+// per-batch sensor resolution the live temp display uses (fermenter binding,
+// falling back to the general fermentation sensor).
+function buildTempWatchList(){
+  if(!APP.batches)return[];
+  var out=[];
+  APP.batches.forEach(function(b){
+    var s=getBatchStatus(b);
+    if(s==='complete'||s==='bottled'||s==='failed')return;
+    var ferm=b.fermenterId?getFermenter(b.fermenterId):null;
+    var entity=(ferm&&ferm.tempSensorEntity)||APP.settings.tempSensorEntity;
+    if(!entity)return;
+    var y=getYeastById(b.yeast||'m05');
+    var tL=(y.tempToleranceLow!=null?y.tempToleranceLow:y.optimalTempLow-3);
+    var tH=(y.tempToleranceHigh!=null?y.tempToleranceHigh:y.optimalTempHigh+6);
+    out.push({batchId:b.id,batchName:b.name,entity:entity,tempLow:tL,tempHigh:tH});
+  });
+  return out;
+}
+
 function tempZoneColor(zone){
   return{optimal:'#7aa850',cold:'#7aa8c0',warm:'#c89040',hot:'#c87850',danger:'#c83030'}[zone]||'var(--text3)';
 }

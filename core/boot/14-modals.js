@@ -23,6 +23,7 @@ function openNewBatchModal(recipeId,scaledVol,opts){
   // A plain new batch clears it so a stale id can't consume an unrelated plan.
   window._deployingPlanId=opts.plannedId||null;
   window._batchDangerOverride=false;
+  window._batchFermenterOverride=false;
   window._lastBatchYeastCheck=null;
   // View filter (cider mode): only offer recipes matching the active
   // beverage mode — APP.recipes itself always keeps every recipe.
@@ -377,6 +378,20 @@ function createBatch(){
   var costHoney=parseFloat(document.getElementById('nb-cost-honey').value)||0;
   var costExtras=parseFloat(document.getElementById('nb-cost-extras').value)||0;
   var fermenterSel=document.getElementById('nb-fermenter');
+  // Assigning an already-occupied vessel is allowed on purpose (bottle and
+  // re-pitch the same day is a real workflow) — but doing it BY ACCIDENT is
+  // how two active batches end up silently sharing one fermenter with no
+  // warning anywhere. Make it a deliberate choice instead of a silent one.
+  var chosenFermId=(fermenterSel&&fermenterSel.value)||'';
+  if(chosenFermId&&!window._batchFermenterOverride){
+    var already=fermenterActiveOccupants(chosenFermId);
+    if(already.length){
+      var f=getFermenter(chosenFermId);
+      var ok=confirm('⚠ '+(f?f.name:'This fermenter')+' already has '+already.map(function(x){return x.name;}).join(', ')+' assigned and active.\n\nAssign this new batch to the same vessel anyway?');
+      if(!ok)return;
+      window._batchFermenterOverride=true;
+    }
+  }
   var startDate=document.getElementById('nb-date').value||today();
   var isCider=activeBevMode()==='cider';
   // Volume/honey are entered in the user's chosen unit — convert back to the
@@ -446,13 +461,17 @@ function createBatch(){
   scheduleSave();
   if(deductions.length){
     var anyInsufficient=deductions.some(function(d){return d.insufficient;});
-    var summary=deductions.map(function(d){
+    var unmatched=deductions.filter(function(d){return d.unmatched;});
+    var matched=deductions.filter(function(d){return!d.unmatched;});
+    var parts=[];
+    if(matched.length)parts.push('deducted: '+matched.map(function(d){
       // Round display amount for readability
       var amt=d.amount;
       var amtStr=(Math.abs(amt-Math.round(amt))<0.01)?String(Math.round(amt)):String(parseFloat(amt.toFixed(2)));
       return amtStr+' '+(d.unit||'')+' '+(d.supply.name||'').replace(/\s*honey\s*$/i,'');
-    }).join(' · ');
-    toast('✦ Batch created '+(anyInsufficient?'⚠ ':'· ')+'deducted: '+summary,5000);
+    }).join(' · '));
+    if(unmatched.length)parts.push('⚠ no supply matched "'+unmatched.map(function(d){return d.attemptedName;}).join(', ')+'" — stock not adjusted, check Supplies');
+    toast('✦ Batch created '+(anyInsufficient?'⚠ ':'· ')+parts.join(' · '),unmatched.length?7000:5000);
   }else{
     toast('✦ Batch created');
   }
@@ -564,6 +583,7 @@ function openEditBatchModal(id){
     +'<div class="form-row"><div class="form-group"><label class="form-label">'+(isCider?'Juice Cost':'Honey Cost')+' ('+(APP.settings.currency||'€')+')</label><input class="form-input" id="eb-cost-honey" type="number" step="0.01" value="'+(cost.honey||'')+'"></div>'
     +'<div class="form-group"><label class="form-label">Extras Cost ('+(APP.settings.currency||'€')+')</label><input class="form-input" id="eb-cost-extras" type="number" step="0.01" value="'+(cost.extras||'')+'"></div></div>'
     +'<div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="eb-notes">'+escHtml(b.notes||'')+'</textarea></div>'
+    +'<div class="form-group"><label class="form-label">🔄 Lessons Learned <span style="font-weight:400;color:var(--text3);font-size:11px;margin-left:6px">what you\'d change next time — resurfaces automatically on "Brew Again"</span></label><textarea class="form-textarea" id="eb-lessons" placeholder="e.g. Less raisins next time, went too tannic. Or: switch to a lower-tolerance yeast, finished sweeter than planned.">'+escHtml(b.lessonsLearned||'')+'</textarea></div>'
     +'<div class="form-group" style="background:var(--bg);border-left:3px solid var(--gold2);border-radius:var(--radius);padding:12px 14px">'
       +'<label class="form-label">📡 Gravity sensor entity <span style="font-weight:400;color:var(--text3);font-size:11px;margin-left:6px">optional · iSpindel / Tilt / RAPT / generic HA sensor</span></label>'
       +'<input class="form-input" id="eb-gravsensor" type="text" placeholder="sensor.ispindel_floor_gravity (leave blank if you measure manually)" value="'+escHtml(b.gravitySensorEntity||'')+'" style="font-family:var(--font-mono);font-size:12px">'
@@ -593,6 +613,8 @@ function saveBatchEdit(id){
   var ce=parseFloat(document.getElementById('eb-cost-extras').value)||0;
   b.cost=(ch||ce)?{honey:ch,extras:ce}:null;
   b.notes=document.getElementById('eb-notes').value.trim();
+  var lEl=document.getElementById('eb-lessons');
+  if(lEl)b.lessonsLearned=lEl.value.trim()||null;
   // Gravity-sensor binding — empty string clears the binding cleanly
   var gsEl=document.getElementById('eb-gravsensor');
   if(gsEl)b.gravitySensorEntity=gsEl.value.trim();
@@ -1245,8 +1267,10 @@ function exportData(){
   // Full snapshot — every persisted bucket. Versioned with CURRENT_SCHEMA_VERSION
   // so older exports can be migrated on import. Anything in packageState should
   // also be exportable here.
+  APP.settings.lastBackupAt=new Date().toISOString();
+  if(typeof saveSettings==='function')saveSettings();
   var data={
-    exportedAt:new Date().toISOString(),
+    exportedAt:APP.settings.lastBackupAt,
     dataVersion:(typeof CURRENT_SCHEMA_VERSION!=='undefined'?CURRENT_SCHEMA_VERSION:8),
     settings:APP.settings,
     batches:APP.batches,
@@ -1261,9 +1285,14 @@ function exportData(){
     suppliers:APP.suppliers||[],
     cabinets:APP.cabinets||[],
     templates:APP.templates||[],
+    stepTemplates:APP.stepTemplates||[],
     celebrated:APP.celebrated||{},
     tempAnomalies:APP.tempAnomalies||[],
-    notifiedTasks:APP.notifiedTasks||{}
+    notifiedTasks:APP.notifiedTasks||{},
+    competitions:APP.competitions||{},
+    plannedBatches:APP.plannedBatches||[],
+    photos:APP.photos||{},
+    shareTokens:APP.shareTokens||{}
   };
   var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
   var url=URL.createObjectURL(blob);
@@ -1271,6 +1300,7 @@ function exportData(){
   a.href=url;a.download='meadows-backup-'+today()+'.json';a.click();
   URL.revokeObjectURL(url);
   toast('✦ Backup exported');
+  if(typeof renderMain==='function')renderMain();
 }
 
 function importData(event){

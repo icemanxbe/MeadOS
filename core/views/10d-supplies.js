@@ -67,6 +67,7 @@ function renderSupplies(){
         +'</div></div>'
         +'<div style="display:flex;gap:4px"><button class="cellar-mini-btn" onclick="adjustSupply(\''+it.id+'\',-1)" title="Use one">−</button>'
         +'<button class="cellar-mini-btn" onclick="adjustSupply(\''+it.id+'\',1)" title="Add one">+</button>'
+        +'<button class="cellar-mini-btn" onclick="useSupplyAmount(\''+it.id+'\')" title="Use a specific amount">±</button>'
         +'<button class="btn-icon" style="width:26px;height:26px" onclick="openSupplyEditModal(\''+it.id+'\')" title="Edit">✏</button>'
         +'<button class="btn-icon" style="width:26px;height:26px;border-color:var(--red);color:var(--red2)" onclick="deleteSupply(\''+it.id+'\')" title="Delete">🗑</button></div>'
         +'</div>';
@@ -220,6 +221,18 @@ function deleteSupplier(id){
   scheduleSave();toast('Supplier removed');renderMain();
 }
 
+// Partial-consumption entry — the ±1 mini-buttons only cover whole units,
+// this covers "used 1.7 kg from a 3 kg bucket" without opening the full edit
+// modal and doing the subtraction by hand.
+function useSupplyAmount(id){
+  var it=APP.supplies.find(function(x){return x.id===id;});
+  if(!it)return;
+  var raw=prompt('Use how much '+(it.unit||'')+' of '+it.name+'?','1');
+  if(raw==null)return;
+  var amt=parseFloat(raw);
+  if(!amt||amt<=0)return;
+  adjustSupply(id,-amt);
+}
 function adjustSupply(id,delta){
   var it=APP.supplies.find(function(x){return x.id===id;});
   if(!it)return;
@@ -377,6 +390,9 @@ function brewAgain(originalBatchId){
     var nutrientField=document.getElementById('nb-nutrient');
     if(nutrientField&&ob.nutrient)nutrientField.value=ob.nutrient;
     var notesField=document.getElementById('nb-notes');
-    if(notesField&&ob.notes)notesField.value='Previous batch notes:\n'+ob.notes;
+    var carryLines=[];
+    if(ob.lessonsLearned)carryLines.push('🔄 Lessons from last time: '+ob.lessonsLearned);
+    if(ob.notes)carryLines.push('Previous batch notes:\n'+ob.notes);
+    if(notesField&&carryLines.length)notesField.value=carryLines.join('\n\n');
   },50);
 }

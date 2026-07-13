@@ -75,7 +75,13 @@ function detectStuckFermentations(){
     var lastDate=new Date(lastLog.date);
     if(isNaN(lastDate.getTime()))return;
     var daysSinceLastLog=Math.floor((now-lastDate.getTime())/86400000);
-    if(daysSinceLastLog>14)return; // stale data, not a live stall
+    // Past 14 days we can no longer be sure it's STILL stalled (vs quietly
+    // finished, or the brewer already dealt with it and forgot to log) — but
+    // dropping the alert entirely is exactly the wrong failure mode for a
+    // batch nobody's checked in weeks. Keep it, tagged `stale`, so the wording
+    // downgrades from "this is stuck" to "this was stuck, unconfirmed since"
+    // instead of the alert silently vanishing the longer it's neglected.
+    var stale=daysSinceLastLog>14;
     var ageOfBatch=Math.floor((now-new Date(b.startDate).getTime())/86400000);
     if(ageOfBatch<3)return; // don't flag the lag phase
     // Find the log that's 5+ days before the last log, purely for the message.
@@ -92,7 +98,8 @@ function detectStuckFermentations(){
       targetFG:proj.estFG,
       stallDays:stallDays,
       dropOverStall:Math.round(drop*1000)/1000,
-      daysSinceLastLog:daysSinceLastLog
+      daysSinceLastLog:daysSinceLastLog,
+      stale:stale
     });
   });
   return stuck;
@@ -179,15 +186,21 @@ function renderProactiveAlerts(){
 
   var items=[];
 
-  // Stuck fermentations — red, urgent
+  // Stuck fermentations — red, urgent. Once daysSinceLastLog is past the
+  // window we can confirm a live stall in, downgrade the wording — we only
+  // know it WAS stalled as of the last reading, not that it still is now.
   stuck.forEach(function(s){
+    var msg=s.stale
+      ?'<strong>Gone quiet:</strong> '+escHtml(s.batch.name)+' looked stalled at its last reading, '+s.daysSinceLastLog+' days ago (SG '+(s.currentGravity||'?')+', target ≈'+s.targetFG+') — no reading since to confirm either way. '
+        +'<span style="text-decoration:underline">Log a fresh reading →</span>'
+      :'<strong>Possible stuck ferment:</strong> '+escHtml(s.batch.name)
+        +' has dropped only '+s.dropOverStall+' SG in '+s.stallDays+' days '
+        +'(at '+(s.currentGravity||'?')+', target ≈'+s.targetFG+'). '
+        +'<span style="text-decoration:underline">Check temperature, add nutrient, or repitch →</span>';
     items.push(
       '<div class="stock-alert" style="cursor:pointer;border-left-color:var(--red);background:rgba(200,48,32,0.10)" onclick="showView(\'batch\',\''+s.batch.id+'\');setTimeout(function(){setBatchTab(\''+s.batch.id+'\',\'log\')},10)">'
         +'<span class="icon">🛑</span>'
-        +'<span><strong>Possible stuck ferment:</strong> '+escHtml(s.batch.name)
-        +' has dropped only '+s.dropOverStall+' SG in '+s.stallDays+' days '
-        +'(at '+(s.currentGravity||'?')+', target ≈'+s.targetFG+'). '
-        +'<span style="text-decoration:underline">Check temperature, add nutrient, or repitch →</span></span>'
+        +'<span>'+msg+'</span>'
       +'</div>'
     );
   });
@@ -226,4 +239,83 @@ function renderProactiveAlerts(){
   }
 
   return items.join('');
+}
+
+// ==================== GOING AWAY CHECK ====================
+// Answers one question — "what needs handling before I leave for N days?" —
+// by reusing existing per-batch task data, addition removal dates, and supply
+// alerts with a forward-looking window, rather than a parallel planning engine.
+function openGoingAwayCheck(){
+  var raw=prompt('Going away for how many days?','7');
+  if(raw==null)return;
+  var days=parseInt(raw);
+  if(!days||days<=0)return;
+  var now=Date.now();
+  var horizon=now+days*86400000;
+
+  var taskItems=[];
+  (typeof visibleBatches==='function'?visibleBatches():(APP.batches||[])).forEach(function(b){
+    var s=getBatchStatus(b);
+    if(s==='bottled'||s==='complete'||s==='failed')return;
+    (typeof getTasksForBatch==='function'?getTasksForBatch(b):[]).forEach(function(t){
+      if(t.done||t.daysFromDue<-days)return; // done, or further out than the trip
+      taskItems.push({batch:b,task:t});
+    });
+  });
+  taskItems.sort(function(a,b){return a.task.day-b.task.day;});
+
+  // Same removeBy field getOverdueAdditions() uses, just widened to the trip
+  // horizon instead of "already passed" — deliberately not touching that
+  // function so its own tested overdue-only behavior stays untouched.
+  var additionItems=[];
+  if(APP.additions){
+    Object.keys(APP.additions).forEach(function(bid){
+      var b=getBatch(bid);
+      if(!b||(typeof inActiveMode==='function'&&!inActiveMode(b)))return;
+      (APP.additions[bid]||[]).forEach(function(a){
+        if(a.removedDate||!a.removeBy)return;
+        var info=(typeof ADDITION_TYPES!=='undefined')?ADDITION_TYPES.find(function(x){return x.key===a.type;}):null;
+        if(info&&info.permanent)return;
+        var t=new Date(a.removeBy).getTime();
+        if(!isNaN(t)&&t<=horizon)additionItems.push({batch:b,addition:a,overdue:t<now});
+      });
+    });
+  }
+
+  var lowSupplies=(typeof getLowSupplies==='function')?getLowSupplies():[];
+  var expSupplies=(typeof getExpiringSupplies==='function')?getExpiringSupplies(days):[];
+
+  var body;
+  if(!taskItems.length&&!additionItems.length&&!lowSupplies.length&&!expSupplies.length){
+    body='<div class="info-box green"><div style="font-size:13px;color:var(--green2)">✓ Nothing needs attention in the next '+days+' days — safe to leave your batches resting.</div></div>';
+  }else{
+    body='';
+    if(taskItems.length){
+      body+='<div style="font-family:var(--font-mono);font-size:10px;color:var(--gold2);letter-spacing:1.5px;margin:14px 0 6px">⚗ BREWING STEPS</div>'
+        +taskItems.map(function(x){
+          var t=x.task;
+          var tag=t.isOverdue?' <span style="color:var(--red2)">(overdue)</span>':(t.isDue?' <span style="color:var(--gold2)">(today)</span>':' <span style="color:var(--text3)">(in '+(-t.daysFromDue)+'d)</span>');
+          return'<div class="stock-alert" style="cursor:pointer" onclick="closeModal();showView(\'batch\',\''+x.batch.id+'\')"><span class="icon">⚗</span><span>'+escHtml(x.batch.name)+' — <strong>'+escHtml(t.title)+'</strong>'+tag+'</span></div>';
+        }).join('');
+    }
+    if(additionItems.length){
+      body+='<div style="font-family:var(--font-mono);font-size:10px;color:var(--gold2);letter-spacing:1.5px;margin:14px 0 6px">🍒 ADDITIONS TO REMOVE</div>'
+        +additionItems.map(function(x){
+          var tag=x.overdue?' <span style="color:var(--red2)">(overdue)</span>':' <span style="color:var(--text3)">(by '+fmtDate(x.addition.removeBy)+')</span>';
+          return'<div class="stock-alert" style="cursor:pointer" onclick="closeModal();showView(\'batch\',\''+x.batch.id+'\')"><span class="icon">🍒</span><span>'+escHtml(x.addition.item)+' in '+escHtml(x.batch.name)+tag+'</span></div>';
+        }).join('');
+    }
+    if(lowSupplies.length||expSupplies.length){
+      body+='<div style="font-family:var(--font-mono);font-size:10px;color:var(--gold2);letter-spacing:1.5px;margin:14px 0 6px">📦 SUPPLIES</div>';
+      if(lowSupplies.length)body+='<div class="stock-alert" style="cursor:pointer" onclick="closeModal();showView(\'supplies\')"><span class="icon">⚠</span><span><strong>Already low:</strong> '+lowSupplies.map(function(s){return escHtml(s.name);}).join(', ')+'</span></div>';
+      if(expSupplies.length)body+='<div class="stock-alert warn" style="cursor:pointer" onclick="closeModal();showView(\'supplies\')"><span class="icon">⏳</span><span><strong>Expiring within '+days+'d:</strong> '+expSupplies.map(function(s){return escHtml(s.name)+' ('+fmtDate(s.expiryDate)+')';}).join(', ')+'</span></div>';
+    }
+  }
+  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:560px">'
+    +'<div class="modal-title">🧳 Going away for '+days+' day'+(days===1?'':'s')+'?</div>'
+    +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:10px">Everything with a due date inside your trip window, across all active batches.</div>'
+    +body
+    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'
+    +'</div></div>';
+  document.body.insertAdjacentHTML('beforeend',html);
 }

@@ -288,7 +288,7 @@ function renderBottlingWorkflow(){
 function renderBottlingStepContent(stepId,s,b){
   if(stepId==='preflight'){
     var items=[
-      {key:'bottles',label:'Bottles cleaned and dry',hint:'Match the count to ' +s.bottleCount+' or more'},
+      {key:'bottles',label:'Bottles cleaned and dry',hint:'~'+Math.max(1,Math.ceil((b.volume||5)*1000/750))+' × 750ml or more — exact mix of sizes is decided at the Fill step'},
       {key:'caps',label:'Caps / corks ready',hint:'Crown caps, corks, or swing-tops — your choice'},
       {key:'sanitizer',label:'Sanitizer mixed ('+getSanitizer().name+')',hint:'~'+getSanitizer().mlPerL+' ml per litre water'},
       {key:'siphon',label:'Auto-siphon / racking cane',hint:'Clean and ready to deploy'},

@@ -1921,6 +1921,97 @@ class Handler(BaseHTTPRequestHandler):
         self._send(200, {"ok": True, "bytes": len(raw), "updatedAt": updated})
 
 
+# ---- Background fermentation temp watch (works with no browser tab open) ----
+# The client only ever checks for a dangerous temperature while a tab happens
+# to be open (see maybeNotifyForToday / checkSmartNotifications in
+# core/sync/04-server-ha.js) — exactly the scenario a real overnight equipment
+# failure needs a notification for is the one time nobody's looking at a tab.
+# Rather than re-implementing yeast-tolerance brewing science here, the client
+# computes each active batch's safe temperature band on every save and rides
+# it in the synced state as `tempWatch` (see buildTempWatchList() /
+# packageState() in core/domain/04b-bottle-helpers.js) — the exact same
+# pattern already used for `calendarEvents`. This loop only has to compare a
+# live sensor reading against a number it was already handed.
+TEMP_WATCH_INTERVAL = 300  # seconds
+TEMP_WATCH_TIMEOUT = 10
+
+
+def _ha_call(method, path, body=None):
+    """Minimal standalone HA call for the background thread — narrower than
+    the /api/ha browser proxy (no attacker-controlled path/method to
+    allowlist here, every caller passes a fixed literal path)."""
+    token = get_config("ha_token")
+    urls = ha_proxy_urls()
+    if not token or not urls:
+        return None
+    data = json.dumps(body).encode("utf-8") if body is not None else None
+    headers = {"Authorization": "Bearer " + token}
+    if data:
+        headers["Content-Type"] = "application/json"
+    for base in urls:
+        req = urllib.request.Request(base.rstrip("/") + path, data=data, method=method, headers=headers)
+        try:
+            with urllib.request.urlopen(req, timeout=TEMP_WATCH_TIMEOUT) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except (urllib.error.URLError, OSError, ValueError):
+            continue
+    return None
+
+
+def _ha_sensor_value(entity_id):
+    state = _ha_call("GET", "/api/states/" + urllib.parse.quote(entity_id))
+    if not state:
+        return None
+    try:
+        return float(state.get("state"))
+    except (TypeError, ValueError):
+        return None
+
+
+def temp_watch_tick():
+    row = db_get_state()
+    if not row:
+        return
+    try:
+        state = json.loads(row[0])
+    except ValueError:
+        return
+    shared = (state.get("sharedSettings") or {})
+    if not shared.get("notificationsEnabled") or not shared.get("notificationService"):
+        return
+    watch = state.get("tempWatch") or []
+    if not watch or not get_config("ha_token"):
+        return
+    today_str = datetime.now().strftime("%Y-%m-%d")
+    for entry in watch:
+        entity = entry.get("entity")
+        batch_id = entry.get("batchId")
+        low, high = entry.get("tempLow"), entry.get("tempHigh")
+        if not entity or batch_id is None or low is None or high is None:
+            continue
+        value = _ha_sensor_value(entity)
+        if value is None or low <= value <= high:
+            continue
+        debounce_key = "temp_alert_%s_%s" % (batch_id, today_str)
+        if get_config(debounce_key):
+            continue  # already alerted for this batch today
+        ok = _ha_call("POST", "/api/services/notify/" + urllib.parse.quote(shared["notificationService"]), {
+            "title": "🌡 %s — temperature out of safe range" % entry.get("batchName", "MeadOS batch"),
+            "message": "Currently %.1f°C, outside the %.1f–%.1f°C safe band. Check on it." % (value, low, high),
+        })
+        if ok is not None:
+            set_config(debounce_key, "1")
+
+
+def temp_watch_loop():
+    while True:
+        try:
+            temp_watch_tick()
+        except Exception as e:  # never let one bad tick kill the background thread
+            print("temp watch error:", e)
+        threading.Event().wait(TEMP_WATCH_INTERVAL)
+
+
 def main():
     global DB_PATH
     ap = argparse.ArgumentParser(description="MeadOS server (SQLite-backed)")
@@ -1939,6 +2030,7 @@ def main():
     srv = ThreadingHTTPServer((args.host, args.port), Handler)
     print("MeadOS server running on http://%s:%d" % (args.host, args.port))
     print("Data: %s (SQLite, WAL mode, last %d saves kept in history)" % (DB_PATH, HISTORY_KEEP))
+    threading.Thread(target=temp_watch_loop, daemon=True).start()
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

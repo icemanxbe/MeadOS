@@ -333,6 +333,9 @@ function packageState(){
     // for the server to format as .ics. Recomputed on every save.
     calendarToken:(APP.settings&&APP.settings.calendarToken)||'',
     calendarEvents:(typeof buildCalendarEvents==='function')?buildCalendarEvents():[],
+    // Lets the server notify on a dangerous fermentation temp with no tab
+    // open — see buildTempWatchList() in core/sync/04-server-ha.js.
+    tempWatch:(typeof buildTempWatchList==='function')?buildTempWatchList():[],
     tasksDone:APP.tasksDone,
     tastings:APP.tastings,
     competitions:APP.competitions||{},
@@ -415,9 +418,13 @@ function applyState(d){
   APP.logs=d.logs||{};
   APP.tasksDone=d.tasksDone||{};
   APP.tastings=d.tastings||{};
-  APP.competitions=(d.competitions&&typeof d.competitions==='object')?d.competitions:{};
+  // Preserve-if-absent (not reset-to-empty) — matches stepTemplates/plannedBatches/
+  // photos below. A backup taken before these buckets existed in exportData()
+  // still has no way to include them; importing one shouldn't wipe what's
+  // already here just because the file predates the field.
+  APP.competitions=(d.competitions&&typeof d.competitions==='object')?d.competitions:(APP.competitions||{});
   APP.bottling=d.bottling||{};
-  APP.shareTokens=(d.shareTokens&&typeof d.shareTokens==='object')?d.shareTokens:{};
+  APP.shareTokens=(d.shareTokens&&typeof d.shareTokens==='object')?d.shareTokens:(APP.shareTokens||{});
   // Calendar feed token rides the data blob so the feed URL is stable
   // cross-device; restore it into settings (where getCalendarToken reads it).
   if(typeof d.calendarToken==='string')APP.settings.calendarToken=d.calendarToken;

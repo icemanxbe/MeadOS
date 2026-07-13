@@ -1249,6 +1249,14 @@ function renderProtocolGuide(){
 }
 
 // ==================== SETTINGS ====================
+function _backupStatusHtml(){
+  var last=APP.settings.lastBackupAt;
+  if(!last)return'<div style="font-size:12.5px;color:var(--red2);margin-bottom:10px">⚠ No backup taken yet — this data only lives on this device/server.</div>';
+  var days=Math.floor((Date.now()-new Date(last).getTime())/86400000);
+  var color=days<=7?'var(--green2)':(days<=30?'var(--gold2)':'var(--red2)');
+  var when=days<=0?'today':days+' day'+(days===1?'':'s')+' ago';
+  return'<div style="font-size:12.5px;color:'+color+';margin-bottom:10px">Last backup: '+when+' · '+fmtDate(last)+'</div>';
+}
 function renderSettings(){
   return'<div class="page-title">Settings</div><div class="page-subtitle">Configuration &amp; Data Management</div>'
     +'<div class="grid-2">'
@@ -1323,7 +1331,7 @@ function renderSettings(){
     +'<div style="padding:10px 12px;background:var(--bg);border-radius:var(--radius);font-size:11.5px;color:var(--text3);line-height:1.5;border-left:2px solid var(--gold2)"><strong style="color:var(--gold2)">Per-fermenter bindings:</strong> Each fermenter can have its own sensor — edit a fermenter (in the FERMENTERS card below) to set its <code style="font-family:var(--font-mono);font-size:10px">tempSensorEntity</code>. Per-fermenter bindings take priority over the fallback above.</div>'
     +'</div>'
     +'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">🔔 PUSH NOTIFICATIONS</div></div>'
-    +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px">Optional. Get phone notifications when brewing steps are due, via the HA Companion App. Requires the Home Assistant connection above.</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px">Optional. Get phone notifications when brewing steps are due, via the HA Companion App. Requires the Home Assistant connection above. A dangerous fermentation temperature is checked server-side every few minutes and will notify even with no browser tab open — every other check here only runs while the app is open.</div>'
     +'<div class="form-group"><label class="form-label">Notification Service</label><input class="form-input" id="set-notify" type="text" placeholder="mobile_app_kim_phone" value="'+escHtml(APP.settings.notificationService||'')+'">'
     +'<div style="font-size:12px;color:var(--text3);margin-top:4px">HA service name (without <code>notify.</code> prefix). Find in HA → Developer Tools → Services → Search for <code>notify.</code></div></div>'
     +'<div class="form-group"><label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text2);cursor:pointer"><input type="checkbox" id="set-notif-enabled" '+(APP.settings.notificationsEnabled?'checked':'')+' style="cursor:pointer"> Enable daily brewing notifications</label></div>'
@@ -1389,7 +1397,8 @@ function renderSettings(){
     +'3. Paste, save. Done.'
     +'</div></div>'
     +'<div class="card"><div class="card-header"><div class="card-title">DATA BACKUP</div></div>'
-    +'<div style="font-size:13px;color:var(--text2);margin-bottom:16px">Export all data as JSON for backup, or as CSV for spreadsheet analysis.</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:10px">Export all data as JSON for backup, or as CSV for spreadsheet analysis.</div>'
+    +_backupStatusHtml()
     +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
     +'<button class="btn btn-secondary" onclick="exportData()">Export Backup</button>'
     +'<button class="btn btn-secondary" onclick="document.getElementById(\'import-file\').click()">Import Backup</button>'

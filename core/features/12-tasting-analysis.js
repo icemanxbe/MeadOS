@@ -291,7 +291,7 @@ function renderTroubleshoot(){
     if(!categories[cat])categories[cat]=[];
     categories[cat].push(t);
   });
-  var CAT_ICONS={Fermentation:'🫧',Temperature:'🌡',"Off-Flavors":'👃',Clarity:'💧',Process:'🔧',Bottling:'🍾',Aging:'⏳',Sanitation:'🧼',Result:'🏁',Other:'🔧'};
+  var CAT_ICONS={Fermentation:'🫧',Temperature:'🌡',"Off-Flavors":'👃',Clarity:'💧',Process:'🔧',Bottling:'🍾',Aging:'⏳',Sanitation:'🧼',Result:'🏁',Equipment:'📏',Other:'🔧'};
   // Teaser from the first step, HTML stripped — mirrors the Mead Guide cards.
   function tsTeaser(t){
     var first=String((t.steps&&t.steps[0])||'').replace(/<[^>]+>/g,'').replace(/\s+/g,' ').trim();
@@ -310,7 +310,7 @@ function renderTroubleshoot(){
     return'<div style="font-family:var(--font-display);font-size:14px;color:var(--gold2);letter-spacing:2px;margin:22px 0 12px">'+(icon||CAT_ICONS[cat]||'🔧')+' '+escHtml(cat.toUpperCase())+' <span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">· '+items.length+' topic'+(items.length===1?'':'s')+'</span></div>'
       +'<div class="grid-3">'+items.map(topicCard).join('')+'</div>';
   }
-  var categoryOrder=['Fermentation','Temperature','Off-Flavors','Clarity','Process','Bottling','Aging','Sanitation','Result'];
+  var categoryOrder=['Fermentation','Temperature','Off-Flavors','Clarity','Process','Bottling','Aging','Sanitation','Result','Equipment'];
   var seen={};
   var brewingHtml=categoryOrder.map(function(cat){if(!categories[cat])return'';seen[cat]=1;return catSection(cat,categories[cat]);}).join('');
   // any categories not in the explicit order land at the end
