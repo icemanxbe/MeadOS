@@ -436,6 +436,71 @@ function getFermenter(id){
   return APP.fermenters.find(function(f){return f.id===id;})||null;
 }
 
+// ==================== SWEETNESS SCALE ====================
+// Real-world-grounded FG bands per beverage type — the single source of
+// truth for converting a gravity reading into a sweetness label. Replaces
+// four places that each hardcoded their own numbers and disagreed with each
+// other (a FG of 1.017 read "Sweet" in the backsweetening calculator but
+// "Semi-Sweet" in the label printer).
+//
+// Mead bands are community convention (GotMead-style), NOT an official BJCP
+// number — BJCP's own mead guidelines deliberately give qualitative
+// descriptions instead of hard gravity thresholds, because tannin and acid
+// measurably shift how sweet a given residual sugar level actually tastes
+// (their own wording: "tannin levels may make a sweeter mead seem dry").
+// Treat these as a reasonable starting point, not gospel — taste is still
+// the final call, and other community sources place the boundaries a point
+// or two differently.
+var MEAD_SWEETNESS_SCALE=[
+  {key:'bone-dry',   label:'Bone Dry',   fgMax:1.000,    desc:'No perceptible residual sweetness at all'},
+  {key:'dry',        label:'Dry',        fgMax:1.006,    desc:'Crisp, at most a trace of sweetness'},
+  {key:'off-dry',    label:'Off-Dry',    fgMax:1.010,    desc:'A hint of sweetness on the finish'},
+  {key:'semi-sweet', label:'Semi-Sweet', fgMax:1.020,    desc:'Balanced, clearly present sweetness'},
+  {key:'sweet',      label:'Sweet',      fgMax:1.035,    desc:'Honey-forward, prominently sweet'},
+  {key:'dessert',    label:'Dessert',    fgMax:Infinity, desc:'Rich and syrupy, dessert-strength — sack mead territory'}
+];
+// Cider bands ARE an official published standard — BJCP's cider guidelines
+// define Dry/Medium/Sweet by residual sugar (<0.9% / 0.9-4% / >4%), which is
+// where these FG cutoffs come from. Andrew Lea's practical cidermaking
+// numbers (medium-dry ~1.010, medium-sweet ~1.015) land inside the same
+// "Medium" band, which cross-checks it as real production practice, not
+// just a judging-flight artifact. Note cider's bands sit MUCH lower than
+// mead's — the same FG 1.015 is comfortably "Medium" cider but only
+// "Semi-Sweet" mead, nowhere near mead's "Sweet" tier. 'Dessert' is this
+// app's own addition (not a BJCP tier), anchored to Quebec's legal ice-cider
+// minimum of 130 g/L residual sugar — real Ice/Fire Cider territory.
+var CIDER_SWEETNESS_SCALE=[
+  {key:'dry',     label:'Dry',     fgMax:1.002,    desc:'Crisp and fully fermented, no perceptible sweetness'},
+  {key:'medium',  label:'Medium',  fgMax:1.012,    desc:'A noticeable but not dominant sweetness'},
+  {key:'sweet',   label:'Sweet',   fgMax:1.030,    desc:'Sweetness clearly leads the balance'},
+  {key:'dessert', label:'Dessert', fgMax:Infinity, desc:'Ice/Fire Cider territory — well past standard "sweet"'}
+];
+function sweetnessScaleFor(beverageType){
+  return beverageType==='cider'?CIDER_SWEETNESS_SCALE:MEAD_SWEETNESS_SCALE;
+}
+// Option labels for a bottling-record sweetness <select>, leading with a
+// blank "not set" option. Cider batches get cider's own real labels
+// (Dry/Medium/Sweet/Dessert) instead of mead's 6-label list.
+function sweetnessOptionLabels(beverageType){
+  return[''].concat(sweetnessScaleFor(beverageType).map(function(s){return s.label;}));
+}
+// Shared between the bottling-record's initial render and its live bt-fg
+// oninput update, so the hint text can't drift between the two call sites.
+function _bottlingSweetHintHtml(fg,beverageType){
+  var band=sweetnessForFG(parseFloat(fg),beverageType);
+  if(!band)return '';
+  return 'Gravity reads as <strong style="color:var(--gold2)">'+band.label+'</strong> on the scale — taste is still the final call.';
+}
+// Returns the matching band {key,label,fgMax,desc} for a gravity reading, or
+// null if fg isn't a usable number. Each band's fgMax is its upper (driest→
+// sweetest) boundary, so the first band the fg fits under is the match.
+function sweetnessForFG(fg,beverageType){
+  if(fg==null||isNaN(fg))return null;
+  var scale=sweetnessScaleFor(beverageType);
+  for(var i=0;i<scale.length;i++)if(fg<=scale[i].fgMax)return scale[i];
+  return scale[scale.length-1];
+}
+
 // ==================== LOOKUP HELPERS ====================
 // APP.recipes.find(...) / APP.logs[id] / APP.batches.find(...) / APP.bottling[id]
 // are each repeated inline dozens of times across the codebase (recipes.find

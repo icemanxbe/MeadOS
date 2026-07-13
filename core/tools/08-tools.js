@@ -480,13 +480,16 @@ function calcBacksweet(){
   sweetEl.textContent=sweetenerG.toFixed(0)+' g '+typeName;
   sorbEl.textContent=sorbG.toFixed(2)+' g';
   metaEl.textContent=metaG.toFixed(2)+' g';
+  var bevType=(typeof activeBevMode==='function')?activeBevMode():'mead';
+  var band=sweetnessForFG(target,bevType);
+  var liquidName=bevType==='cider'?'cider':'mead';
   protoEl.innerHTML='<div style="color:var(--gold2);font-weight:600;margin-bottom:4px">PROTOCOL · STABILIZE BEFORE SWEETENING</div>'
     +'<div>1. Rack off any sediment into a clean vessel.</div>'
-    +'<div>2. Dissolve <strong>'+sorbG.toFixed(2)+' g potassium sorbate</strong> + <strong>'+metaG.toFixed(2)+' g potassium metabisulfite</strong> in a little mead, stir into batch.</div>'
+    +'<div>2. Dissolve <strong>'+sorbG.toFixed(2)+' g potassium sorbate</strong> + <strong>'+metaG.toFixed(2)+' g potassium metabisulfite</strong> in a little '+liquidName+', stir into batch.</div>'
     +'<div>3. Wait <strong>24-48 hours</strong>. Yeast activity must be fully stopped.</div>'
     +'<div>4. Warm <strong>'+sweetenerG.toFixed(0)+' g '+typeName+'</strong> gently (don\'t exceed 50°C) and stir in until fully dissolved.</div>'
-    +'<div>5. Taste before bottling — adjust if too dry/sweet.</div>'
-    +'<div style="margin-top:6px;color:var(--text3)">Final ABV unchanged · estimated final sweetness ≈ '+(target<=1.005?'Bone Dry':target<=1.010?'Off-Dry':target<=1.015?'Semi-Sweet':target<=1.020?'Sweet':'Dessert')+'</div>';
+    +'<div>5. Taste before bottling — adjust if too dry/sweet. Acid/tannin level and (for mead) honey type both shift how sweet this actually reads, not just the gravity number.</div>'
+    +'<div style="margin-top:6px;color:var(--text3)">Final ABV unchanged · estimated final sweetness ≈ '+(band?band.label:'—')+'</div>';
 }
 
 function calcNutrient(){

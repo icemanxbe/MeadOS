@@ -16,7 +16,7 @@ ingredients:[
 {item:'Baldwin Apple Juice',amount:'1.0 L',notes:'Adds the acid backbone Golden Delicious lacks alone'},
 {item:'Lallemand Nottingham Yeast',amount:'11 g (1 packet)',notes:'Neutral — lets the apple lead'},
 {item:'Pectic Enzyme',amount:'2 g',notes:'Prevents a lasting pectin haze'},
-{item:'Fermaid-O',amount:'2 g',notes:'Staggered addition — apple must is nitrogen-poor like honey must'},
+{item:'Fermaid-O',amount:'2 g',notes:'Staggered addition — juice YAN varies by source, safer to assume it needs help'},
 {item:'Potassium Metabisulfite',amount:'0.5 g',notes:'Stabilise before back-sweetening; skip if leaving dry'},
 {item:'Potassium Sorbate',amount:'2 g',notes:'Use WITH metabisulfite, never alone'}
 ],
