@@ -75,7 +75,13 @@ function detectStuckFermentations(){
     var lastDate=new Date(lastLog.date);
     if(isNaN(lastDate.getTime()))return;
     var daysSinceLastLog=Math.floor((now-lastDate.getTime())/86400000);
-    if(daysSinceLastLog>14)return; // stale data, not a live stall
+    // Past 14 days we can no longer be sure it's STILL stalled (vs quietly
+    // finished, or the brewer already dealt with it and forgot to log) — but
+    // dropping the alert entirely is exactly the wrong failure mode for a
+    // batch nobody's checked in weeks. Keep it, tagged `stale`, so the wording
+    // downgrades from "this is stuck" to "this was stuck, unconfirmed since"
+    // instead of the alert silently vanishing the longer it's neglected.
+    var stale=daysSinceLastLog>14;
     var ageOfBatch=Math.floor((now-new Date(b.startDate).getTime())/86400000);
     if(ageOfBatch<3)return; // don't flag the lag phase
     // Find the log that's 5+ days before the last log, purely for the message.
@@ -92,7 +98,8 @@ function detectStuckFermentations(){
       targetFG:proj.estFG,
       stallDays:stallDays,
       dropOverStall:Math.round(drop*1000)/1000,
-      daysSinceLastLog:daysSinceLastLog
+      daysSinceLastLog:daysSinceLastLog,
+      stale:stale
     });
   });
   return stuck;
@@ -179,15 +186,21 @@ function renderProactiveAlerts(){
 
   var items=[];
 
-  // Stuck fermentations — red, urgent
+  // Stuck fermentations — red, urgent. Once daysSinceLastLog is past the
+  // window we can confirm a live stall in, downgrade the wording — we only
+  // know it WAS stalled as of the last reading, not that it still is now.
   stuck.forEach(function(s){
+    var msg=s.stale
+      ?'<strong>Gone quiet:</strong> '+escHtml(s.batch.name)+' looked stalled at its last reading, '+s.daysSinceLastLog+' days ago (SG '+(s.currentGravity||'?')+', target ≈'+s.targetFG+') — no reading since to confirm either way. '
+        +'<span style="text-decoration:underline">Log a fresh reading →</span>'
+      :'<strong>Possible stuck ferment:</strong> '+escHtml(s.batch.name)
+        +' has dropped only '+s.dropOverStall+' SG in '+s.stallDays+' days '
+        +'(at '+(s.currentGravity||'?')+', target ≈'+s.targetFG+'). '
+        +'<span style="text-decoration:underline">Check temperature, add nutrient, or repitch →</span>';
     items.push(
       '<div class="stock-alert" style="cursor:pointer;border-left-color:var(--red);background:rgba(200,48,32,0.10)" onclick="showView(\'batch\',\''+s.batch.id+'\');setTimeout(function(){setBatchTab(\''+s.batch.id+'\',\'log\')},10)">'
         +'<span class="icon">🛑</span>'
-        +'<span><strong>Possible stuck ferment:</strong> '+escHtml(s.batch.name)
-        +' has dropped only '+s.dropOverStall+' SG in '+s.stallDays+' days '
-        +'(at '+(s.currentGravity||'?')+', target ≈'+s.targetFG+'). '
-        +'<span style="text-decoration:underline">Check temperature, add nutrient, or repitch →</span></span>'
+        +'<span>'+msg+'</span>'
       +'</div>'
     );
   });

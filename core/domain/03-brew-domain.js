@@ -523,18 +523,26 @@ function getBottleInfo(id){
   return (id&&APP.bottling&&APP.bottling[id])||null;
 }
 
-// Returns the batch currently occupying a given fermenter, or null.
-// "Active" = batch exists, not yet bottled (status is 'active' or 'aging' but
-// not 'bottled' or 'complete'). Bottled batches free up the fermenter.
-function fermenterOccupiedBy(fermenterId){
-  if(!fermenterId||!APP.batches)return null;
-  return APP.batches.find(function(b){
+// Every active batch currently assigned to a fermenter (normally 0 or 1 — the
+// New Batch modal deliberately allows assigning an already-occupied vessel,
+// e.g. bottling and re-pitching the same day, so a genuine overlap of 2+ is
+// possible and real, not just a data bug). "Active" = not yet bottled/
+// complete/failed. Failed batches free the vessel — it was emptied on dump.
+function fermenterActiveOccupants(fermenterId){
+  if(!fermenterId||!APP.batches)return[];
+  return APP.batches.filter(function(b){
     if(b.fermenterId!==fermenterId)return false;
     var s=getBatchStatus(b);
-    // Failed batches no longer occupy their vessel — the vessel was emptied
-    // when the batch was dumped, so the slot is free for a new brew.
     return s!=='bottled'&&s!=='complete'&&s!=='failed';
-  })||null;
+  });
+}
+
+// Returns the PRIMARY batch occupying a given fermenter, or null — for the
+// many call sites that only need a single quick-glance label. When a vessel
+// has been deliberately double-booked, this only surfaces the first one;
+// see fermenterActiveOccupants() for the full list.
+function fermenterOccupiedBy(fermenterId){
+  return fermenterActiveOccupants(fermenterId)[0]||null;
 }
 
 // Computes when a fermenter becomes free given its occupying batch's recipe.
@@ -727,7 +735,12 @@ function getDrinkingWindowStatus(batch){
 //
 // Behaviour:
 //   - If APP.settings.autoDeductSupplies is explicitly false, returns [].
-//   - Missing supplies are silently skipped (no error, no deduction).
+//   - No yeast/nutrient supply of that TYPE tracked at all: silently skipped
+//     (nothing to deduct, not a matching failure).
+//   - Honey/juice specifically: b.honeyType set but no supply NAME matches it
+//     returns an {supply:null, unmatched:true, attemptedName, amount, unit}
+//     entry instead of silently doing nothing, so the caller can tell the
+//     user their tracked stock didn't move and why.
 //   - Insufficient stock still deducts down to 0 (doesn't go negative);
 //     caller can warn the user from the returned list.
 function deductSuppliesForBatch(b,recipe){
@@ -760,6 +773,19 @@ function deductSuppliesForBatch(b,recipe){
         before:before,
         after:honeySupply.qty,
         insufficient:before<deductAmount
+      });
+    }else{
+      // No supply name matched b.honeyType — this used to silently no-op,
+      // which is exactly how tracked inventory quietly drifts from reality
+      // (the honey you used is never subtracted, stock keeps reading high).
+      // Surface it as an unmatched attempt instead so the caller's toast can
+      // tell the user to check/correct it, rather than staying silent.
+      deductions.push({
+        supply:null,
+        unmatched:true,
+        attemptedName:b.honeyType,
+        amount:parseFloat(b.honey)||0,
+        unit:isCiderBatch?'L':'kg'
       });
     }
   }

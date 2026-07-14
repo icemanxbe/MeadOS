@@ -77,13 +77,18 @@ function renderDashboard(){
   var fermenterCards='';
   if(APP.fermenters&&APP.fermenters.length){
     var fermRows=APP.fermenters.map(function(f){
-      var occ=fermenterOccupiedBy(f.id);
+      var occupants=fermenterActiveOccupants(f.id);
+      var occ=occupants[0]||null;
       if(occ){
         var recipe=getRecipe(occ.recipeId);
         var day=daysSince(occ.startDate);
         var fermDays=recipe?(recipe.fermentDays||42):42;
         var daysLeft=Math.max(0,fermDays-day);
         var pct=Math.min(100,Math.round((day/fermDays)*100));
+        // Double-booking is allowed (e.g. bottle + re-pitch same day) but was
+        // previously invisible — this card only ever showed the first batch,
+        // silently hiding that a second one shares the vessel.
+        var extraNote=occupants.length>1?'<div style="font-size:11px;color:var(--red2);margin-top:2px" title="'+escHtml(occupants.slice(1).map(function(x){return x.name;}).join(', '))+'">⚠ +'+(occupants.length-1)+' more batch'+(occupants.length>2?'es':'')+' also assigned here</div>':'';
         return'<div onclick="showView(\'batch\',\''+occ.id+'\')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer">'
           +'<div style="width:8px;height:38px;border-radius:2px;background:'+(f.color||'#c9a84c')+';flex-shrink:0"></div>'
           +'<div style="flex:1;min-width:0">'
@@ -93,6 +98,7 @@ function renderDashboard(){
           +'</div>'
           +'<div style="font-size:12.5px;color:'+getBatchColor(occ)+';margin:2px 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(occ.name)+' · '+fmtDuration(day)+'</div>'
           +'<div style="height:3px;background:var(--bg);border-radius:2px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+getBatchColor(occ)+';transition:width .5s"></div></div>'
+          +extraNote
           +'</div></div>';
       }else{
         return'<div onclick="openNewBatchModal()" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;opacity:0.72">'
@@ -972,6 +978,7 @@ function renderBatchDetail(){
     +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" onclick="saveAsTemplate(\''+b.id+'\')" title="Save this batch\'s config as a reusable template">💾 Save Template</button>':'')
     +(status!=='bottled'&&status!=='complete'?'<button class="btn btn-secondary btn-sm" onclick="openRackModal(\''+b.id+'\')" title="Rack this batch to a different vessel">🔁 Rack to Vessel</button>':'')
     +(status!=='bottled'&&status!=='complete'?'<button class="btn btn-secondary btn-sm" onclick="showStuckFermDiagnosis(\''+b.id+'\')" title="Diagnose stalled fermentation">🔬 Diagnose</button>':'')
+    +'<button class="btn btn-secondary btn-sm" onclick="openOffFlavorWizard()" title="Mold, off-flavors, smells wrong — work backward from what you\'re seeing/tasting to a likely cause">🧭 Something Wrong?</button>'
     +(status!=='bottled'&&status!=='complete'?'<button class="btn btn-secondary btn-sm" onclick="printFermenterCard(\''+b.id+'\')" title="Print a card to label/stick on the fermenter">🏷 Fermenter Card</button>':'')
     +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" onclick="brewAgain(\''+b.id+'\')" title="Create a new batch from this recipe">🔄 Brew Again</button>':'')
     +(b.failed
