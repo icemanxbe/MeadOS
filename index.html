@@ -27,45 +27,45 @@
 <span class="logo-text">MEADOS<span class="sub">Mead Brewing Companion</span></span>
 </div>
 <div class="mode-toggle" id="mode-toggle" style="display:none" title="Switch between Mead and Cider — both are always saved, this just changes what's shown">
-<button type="button" class="mode-toggle-btn active" id="mode-toggle-mead" onclick="setActiveMode('mead')">🍯 Mead</button>
-<button type="button" class="mode-toggle-btn" id="mode-toggle-cider" onclick="setActiveMode('cider')">🍎 Cider</button>
+<button type="button" class="mode-toggle-btn active" id="mode-toggle-mead" data-action="setActiveMode" data-args='["mead"]'>🍯 Mead</button>
+<button type="button" class="mode-toggle-btn" id="mode-toggle-cider" data-action="setActiveMode" data-args='["cider"]'>🍎 Cider</button>
 </div>
 <div class="topbar-right">
-<button class="btn-icon" onclick="openBottleScanner()" title="Scan a bottle/storage label QR code" id="scan-btn">📷</button>
-<button class="btn-icon" onclick="openGlobalSearch()" title="Search everything (Ctrl/Cmd-K)" id="search-btn">🔍</button>
+<button class="btn-icon" data-action="openBottleScanner" title="Scan a bottle/storage label QR code" id="scan-btn">📷</button>
+<button class="btn-icon" data-action="openGlobalSearch" title="Search everything (Ctrl/Cmd-K)" id="search-btn">🔍</button>
 <span class="temp-pill" id="topbar-temp" style="display:none"></span>
 <span class="topbar-date" id="topbar-date"></span>
 <span class="sync-badge local" id="sync-badge">⬡ LOCAL</span>
-<button class="btn-icon" onclick="forceSyncNow()" title="Sync to server" id="sync-btn">↻</button>
-<button class="btn-icon" onclick="showView('settings')" title="Settings" id="settings-btn">⚙</button>
+<button class="btn-icon" data-action="forceSyncNow" title="Sync to server" id="sync-btn">↻</button>
+<button class="btn-icon" data-action="showView" data-args='["settings"]' title="Settings" id="settings-btn">⚙</button>
 </div>
 </div>
 <div id="sidebar">
 <div class="sidebar-section" id="side-sec-nav">Navigation</div>
-<div class="nav-item active" onclick="showView('dashboard')" id="nav-dashboard"><span class="ni">⬡</span><span>Dashboard</span></div>
-<div class="nav-item" onclick="showView('batches')" id="nav-batches"><span class="ni">⚗</span><span>My Batches</span></div>
-<div class="nav-item" onclick="showView('cellar')" id="nav-cellar"><span class="ni">🍾</span><span>The Cellar</span></div>
-<div class="nav-item" onclick="showView('timeline')" id="nav-timeline"><span class="ni">⌛</span><span>Aging Timeline</span></div>
-<div class="nav-item" onclick="showView('ferm-timeline')" id="nav-ferm-timeline"><span class="ni">⚗</span><span>Fermenter Schedule</span></div>
-<div class="nav-item" onclick="showView('compare')" id="nav-compare"><span class="ni">⚖</span><span>Compare</span></div>
-<div class="nav-item" onclick="showView('insights')" id="nav-insights"><span class="ni">💡</span><span>Insights</span></div>
-<div class="nav-item" onclick="showView('suppliers')" id="nav-suppliers"><span class="ni">🏪</span><span>Suppliers</span></div>
-<div class="nav-item" onclick="showView('coach')" id="nav-coach"><span class="ni">✦</span><span>Daily Coach</span></div>
-<div class="nav-item" onclick="showView('recipes')" id="nav-recipes"><span class="ni">📜</span><span>Recipes</span></div>
-<div class="nav-item" onclick="showView('honey')" id="nav-honey"><span class="ni">🍯</span><span>Honey Library</span></div>
-<div class="nav-item" onclick="showView('apple-library')" id="nav-apple-library" style="display:none"><span class="ni">🍎</span><span>Apple &amp; Pear Library</span></div>
-<div class="nav-item" onclick="showView('yeast-library')" id="nav-yeast-library"><span class="ni">🧫</span><span>Yeast Library</span></div>
-<div class="nav-item" onclick="showView('nutrient-library')" id="nav-nutrient-library"><span class="ni">⚗</span><span>Nutrient &amp; Protocols</span></div>
-<div class="nav-item" onclick="showView('calendar')" id="nav-calendar"><span class="ni">◈</span><span>Calendar</span></div>
-<div class="nav-item" onclick="showView('tools')" id="nav-tools"><span class="ni">⚒</span><span>Brewing Tools</span></div>
-<div class="nav-item" onclick="showView('supplies')" id="nav-supplies"><span class="ni">📦</span><span>Supplies</span></div>
-<div class="nav-item" onclick="showView('guide')" id="nav-guide"><span class="ni">❧</span><span>Mead Guide</span></div>
-<div class="nav-item" onclick="showView('cider-guide')" id="nav-cider-guide" style="display:none"><span class="ni">❧</span><span>Cider Guide</span></div>
-<div class="nav-item" onclick="showView('troubleshoot')" id="nav-troubleshoot"><span class="ni">🛠</span><span>Troubleshoot</span></div>
+<div class="nav-item active" data-action="showView" data-args='["dashboard"]' id="nav-dashboard"><span class="ni">⬡</span><span>Dashboard</span></div>
+<div class="nav-item" data-action="showView" data-args='["batches"]' id="nav-batches"><span class="ni">⚗</span><span>My Batches</span></div>
+<div class="nav-item" data-action="showView" data-args='["cellar"]' id="nav-cellar"><span class="ni">🍾</span><span>The Cellar</span></div>
+<div class="nav-item" data-action="showView" data-args='["timeline"]' id="nav-timeline"><span class="ni">⌛</span><span>Aging Timeline</span></div>
+<div class="nav-item" data-action="showView" data-args='["ferm-timeline"]' id="nav-ferm-timeline"><span class="ni">⚗</span><span>Fermenter Schedule</span></div>
+<div class="nav-item" data-action="showView" data-args='["compare"]' id="nav-compare"><span class="ni">⚖</span><span>Compare</span></div>
+<div class="nav-item" data-action="showView" data-args='["insights"]' id="nav-insights"><span class="ni">💡</span><span>Insights</span></div>
+<div class="nav-item" data-action="showView" data-args='["suppliers"]' id="nav-suppliers"><span class="ni">🏪</span><span>Suppliers</span></div>
+<div class="nav-item" data-action="showView" data-args='["coach"]' id="nav-coach"><span class="ni">✦</span><span>Daily Coach</span></div>
+<div class="nav-item" data-action="showView" data-args='["recipes"]' id="nav-recipes"><span class="ni">📜</span><span>Recipes</span></div>
+<div class="nav-item" data-action="showView" data-args='["honey"]' id="nav-honey"><span class="ni">🍯</span><span>Honey Library</span></div>
+<div class="nav-item" data-action="showView" data-args='["apple-library"]' id="nav-apple-library" style="display:none"><span class="ni">🍎</span><span>Apple &amp; Pear Library</span></div>
+<div class="nav-item" data-action="showView" data-args='["yeast-library"]' id="nav-yeast-library"><span class="ni">🧫</span><span>Yeast Library</span></div>
+<div class="nav-item" data-action="showView" data-args='["nutrient-library"]' id="nav-nutrient-library"><span class="ni">⚗</span><span>Nutrient &amp; Protocols</span></div>
+<div class="nav-item" data-action="showView" data-args='["calendar"]' id="nav-calendar"><span class="ni">◈</span><span>Calendar</span></div>
+<div class="nav-item" data-action="showView" data-args='["tools"]' id="nav-tools"><span class="ni">⚒</span><span>Brewing Tools</span></div>
+<div class="nav-item" data-action="showView" data-args='["supplies"]' id="nav-supplies"><span class="ni">📦</span><span>Supplies</span></div>
+<div class="nav-item" data-action="showView" data-args='["guide"]' id="nav-guide"><span class="ni">❧</span><span>Mead Guide</span></div>
+<div class="nav-item" data-action="showView" data-args='["cider-guide"]' id="nav-cider-guide" style="display:none"><span class="ni">❧</span><span>Cider Guide</span></div>
+<div class="nav-item" data-action="showView" data-args='["troubleshoot"]' id="nav-troubleshoot"><span class="ni">🛠</span><span>Troubleshoot</span></div>
 <div class="sidebar-section" style="margin-top:8px" id="side-sec-active">Active Batches</div>
 <div class="sidebar-batch-list" id="sidebar-batches"></div>
 <div class="sidebar-bottom">
-<button class="btn btn-primary" style="width:100%;justify-content:center" onclick="openNewBatchModal()" id="btn-new-batch">＋ New Batch</button>
+<button class="btn btn-primary" style="width:100%;justify-content:center" data-action="openNewBatchModal" id="btn-new-batch">＋ New Batch</button>
 </div>
 </div>
 <div id="main"></div>
@@ -73,73 +73,10 @@
 <div id="toast"></div>
 <!-- MeadOS is modular: plain scripts in core/ sharing one global scope, loaded in
      order. Data first (so the logic sees BUILTIN_RECIPES, HONEY_PROFILES, etc.),
-     then the logic modules, with 14-bootstrap.js (init) last. No build step. -->
-<script src="/core/data/data-libraries.js"></script>
-<script src="/core/data/data-cider.js"></script>
-<script src="/core/data/data-cider-recipes.js"></script>
-<script src="/core/data/data-recipes.js"></script>
-<script src="/core/data/data-recipes-nl.js"></script>
-<script src="/core/data/data-libraries-nl.js"></script>
-<script src="/core/data/data-cider-nl.js"></script>
-<script src="/core/data/data-cider-detail-nl.js"></script>
-<script src="/core/data/data-cider-guide-nl.js"></script>
-<script src="/core/data/data-recipe-steps-nl.js"></script>
-<script src="/core/data/data-recipe-ingredients-nl.js"></script>
-<script src="/core/data/data-yeast-nl.js"></script>
-<script src="/core/data/data-nutrient-nl.js"></script>
-<script src="/core/data/data-honeyfit-nl.js"></script>
-<script src="/core/data/data-recipe-guide-nl.js"></script>
-<script src="/core/data/data-honeydetail-nl.js"></script>
-<script src="/core/state/01-state.js"></script>
-<script src="/core/state/i18n.js"></script>
-<script src="/core/domain/02-honey-domain.js"></script>
-<script src="/core/domain/03-brew-domain.js"></script>
-<script src="/core/domain/03d-mead-model.js"></script>
-<script src="/core/domain/03e-advisor.js"></script>
-<script src="/core/domain/03f-advisor-rules-fermentation.js"></script>
-<script src="/core/domain/03g-advisor-rules-packaging.js"></script>
-<script src="/core/sync/04-server-ha.js"></script>
-<script src="/core/domain/04b-bottle-helpers.js"></script>
-<script src="/core/state/05-utils-nav.js"></script>
-<script src="/core/views/06-views-batch.js"></script>
-<script src="/core/views/07-views-recipe.js"></script>
-<script src="/core/tools/08-tools.js"></script>
-<script src="/core/tools/08-guide-scanner.js"></script>
-<script src="/core/tools/08-search.js"></script>
-<script src="/core/tools/08-record-pdf.js"></script>
-<script src="/core/tools/08-beerxml.js"></script>
-<script src="/core/tools/08-rehydration.js"></script>
-<script src="/core/views/09-views-library.js"></script>
-<script src="/core/views/10-cellar.js"></script>
-<script src="/core/labels/10b-labels-print.js"></script>
-<script src="/core/views/10c-compare.js"></script>
-<script src="/core/views/10d-supplies.js"></script>
-<script src="/core/views/10e-cellar-misc.js"></script>
-<script src="/core/features/11-alerts.js"></script>
-<script src="/core/features/11-schedule.js"></script>
-<script src="/core/views/11-year-review.js"></script>
-<script src="/core/features/11-recipe-designer.js"></script>
-<script src="/core/features/11-tasting-exports.js"></script>
-<script src="/core/features/11-ha-additions-temp.js"></script>
-<script src="/core/views/12-troubleshoot.js"></script>
-<script src="/core/views/12-troubleshoot-nl.js"></script>
-<script src="/core/views/12-offflavor-nl.js"></script>
-<script src="/core/views/12-insights.js"></script>
-<script src="/core/views/12-advisor.js"></script>
-<script src="/core/features/12-tasting-analysis.js"></script>
-<script src="/core/features/12-records.js"></script>
-<script src="/core/tools/12-blending-yeast.js"></script>
-<script src="/core/features/12-gift-bottling.js"></script>
-<script src="/core/labels/13-label-designer.js"></script>
-<script src="/core/share/13-media-ha-ws.js"></script>
-<script src="/core/labels/13-image-upload.js"></script>
-<script src="/core/labels/13-misc-modals.js"></script>
-<script src="/core/share/13-share.js"></script>
-<script src="/core/labels/13-exports.js"></script>
-<script src="/core/labels/13b-label-studio.js"></script>
-<script src="/core/boot/14-schema.js"></script>
-<script src="/core/boot/14-storage-budget.js"></script>
-<script src="/core/boot/14-modals.js"></script>
-<script src="/core/boot/14-bootstrap.js"></script>
+     then the logic modules, with 14-bootstrap.js (init) last. No build step.
+     The order itself lives in ONE place — core/boot/00-manifest.js — loaded here
+     and by test.html so the two can't drift apart. -->
+<script src="/core/boot/00-manifest.js"></script>
+<script>MODULE_MANIFEST_LOAD();</script>
 </body>
 </html>

@@ -1488,7 +1488,7 @@ function showCalDayModal(dateStr){
       +'<div style="font-size:12.5px;color:var(--text2);font-style:italic;line-height:1.5">'+escHtml(it.step.desc||'')+'</div>'
       +'</div>';
   }).join(''):'<div style="text-align:center;color:var(--text3);font-style:italic;padding:20px">'+(nl?'Niets gepland voor deze dag.':'Nothing scheduled for this day.')+'</div>';
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:600px">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:600px">'
     +'<div class="modal-title">📅 '+fmtDate(dateStr)+'</div>'
     +rows
     +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'

@@ -199,7 +199,7 @@ function renderLabelWithABV(recipeId,abvText,opts){
     return'<div style="border:1px dashed var(--border);border-radius:var(--radius);padding:24px 16px;text-align:center;color:var(--text3);font-size:13px;line-height:1.6">'
       +'<div style="font-size:22px;opacity:0.4;margin-bottom:6px">🏷</div>'
       +'<div>Label not yet configured for this recipe.</div>'
-      +'<div style="font-size:11px;margin-top:6px;color:var(--text3);font-style:italic">Set one in <span style="color:var(--gold2);cursor:pointer;text-decoration:underline" onclick="showView(\'settings\')">Settings → Custom Labels</span> — upload an image, paste an image URL, or pick a Home Assistant media file.</div>'
+      +'<div style="font-size:11px;margin-top:6px;color:var(--text3);font-style:italic">Set one in <span style="color:var(--gold2);cursor:pointer;text-decoration:underline" data-action="showView" data-args=\'["settings"]\'>Settings → Custom Labels</span> — upload an image, paste an image URL, or pick a Home Assistant media file.</div>'
       +'</div>';
   }
   var recipe=(APP.recipes||[]).find(function(x){return x.id===recipeId;});
@@ -587,8 +587,8 @@ function renderStorageLabelPicker(){
     var onHand=typeof bottlesOnHand==='function'?bottlesOnHand(bot):(bot.bottleCount||0);
     var origTotal=typeof bottlesOriginal==='function'?bottlesOriginal(bot):(bot.bottleCount||0);
     var bottleInfo=onHand+' / '+origTotal+(_nl?' fles'+(origTotal!==1?'sen':'')+' in voorraad':' bottle'+(origTotal!==1?'s':'')+' on hand');
-    return'<div onclick="toggleStoragePrintSelection(\''+b.id+'\')" style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:'+(isSel?'rgba(232,196,106,0.10)':'var(--bg)')+';border-left:3px solid '+color+';border-radius:var(--radius);cursor:pointer;margin-bottom:6px;transition:background 0.15s">'
-      +'<input type="checkbox" '+(isSel?'checked':'')+' onclick="event.stopPropagation();toggleStoragePrintSelection(\''+b.id+'\')" style="width:18px;height:18px;cursor:pointer;accent-color:var(--gold2)">'
+    return'<div data-action="toggleStoragePrintSelection" data-args=\''+JSON.stringify([b.id])+'\' style="display:flex;align-items:center;gap:12px;padding:10px 12px;background:'+(isSel?'rgba(232,196,106,0.10)':'var(--bg)')+';border-left:3px solid '+color+';border-radius:var(--radius);cursor:pointer;margin-bottom:6px;transition:background 0.15s">'
+      +'<input type="checkbox" '+(isSel?'checked':'')+' data-action="toggleStoragePrintSelection" data-args=\''+JSON.stringify([b.id])+'\' style="width:18px;height:18px;cursor:pointer;accent-color:var(--gold2)">'
       +'<div style="flex:1;min-width:0">'
       +'<div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">'
         +'<div style="font-family:var(--font-display);font-size:14px;color:'+color+'">'+escHtml(b.name)+'</div>'
@@ -601,19 +601,19 @@ function renderStorageLabelPicker(){
       +'</div>';
   }).join('');
 
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:720px;max-height:90vh;display:flex;flex-direction:column">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:720px;max-height:90vh;display:flex;flex-direction:column">'
     +'<div class="modal-title">📦 PRINT STORAGE LABELS</div>'
     +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:14px;line-height:1.55">Select which batches to print labels for. Sorted newest-bottled first so a recent batch is at the top. Each selection prints a 15×10 cm label, stacked one per page on A4.</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--border)">'
-      +'<button class="btn btn-secondary btn-sm" onclick="setStoragePrintSelectionAll(true)">Select all</button>'
-      +'<button class="btn btn-secondary btn-sm" onclick="setStoragePrintSelectionAll(false)">Clear</button>'
-      +'<button class="btn btn-secondary btn-sm" onclick="setStoragePrintSelectionRecent(30)" title="Select batches bottled in the last 30 days">Recent (30d)</button>'
+      +'<button class="btn btn-secondary btn-sm" data-action="setStoragePrintSelectionAll" data-args=\'[true]\'>Select all</button>'
+      +'<button class="btn btn-secondary btn-sm" data-action="setStoragePrintSelectionAll" data-args=\'[false]\'>Clear</button>'
+      +'<button class="btn btn-secondary btn-sm" data-action="setStoragePrintSelectionRecent" data-args=\'[30]\' title="Select batches bottled in the last 30 days">Recent (30d)</button>'
       +'<div style="margin-left:auto;font-family:var(--font-mono);font-size:11px;color:'+(selCount?'var(--gold2)':'var(--text3)')+'">'+selCount+' / '+bottled.length+' selected</div>'
     +'</div>'
     +'<div style="flex:1;overflow-y:auto;margin:0 -4px;padding:0 4px">'+rows+'</div>'
     +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px">'
-      +'<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>'
-      +'<button class="btn btn-primary" '+(selCount===0?'disabled style="opacity:0.4;cursor:not-allowed"':'')+' onclick="printSelectedStorageLabels()">🖨 Print '+(selCount?selCount+' label'+(selCount===1?'':'s'):'…')+'</button>'
+      +'<button class="btn btn-secondary" data-action="closeModal">Cancel</button>'
+      +'<button class="btn btn-primary" '+(selCount===0?'disabled style="opacity:0.4;cursor:not-allowed"':'')+' data-action="printSelectedStorageLabels">🖨 Print '+(selCount?selCount+' label'+(selCount===1?'':'s'):'…')+'</button>'
     +'</div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
@@ -712,7 +712,7 @@ function openLabelSheetModal(batchIds){
     +'<option value="all">Every size × copies</option>'
     +'<option value="">Default design × copies</option>'
     +_sizeList.map(function(s){return '<option value="'+s+'">'+s+' ml only × copies</option>';}).join('');
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:540px">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:540px">'
     +'<div class="modal-title">PRINT LABEL SHEET</div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:14px">'+(appLang()==='nl'?'A4-vel met meerdere etiketten. <strong>Versie</strong> kiest welke maatvariant wordt afgedrukt — <em>Flesaantallen volgen</em> drukt exact zoveel van elke maat als je bottelde, met het etiket van die maat.':'A4 sheet with multiple labels. <strong>Version</strong> picks which size variant to print — <em>Match bottle counts</em> prints exactly as many of each size as you bottled, using that size\'s label.')+'</div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">Layout per A4 page</label><select class="form-select" id="ls-layout" onchange="updateLabelSheetTotals()">'
@@ -730,9 +730,9 @@ function openLabelSheetModal(batchIds){
     }).join('')
     +'</div>'
     +'<div class="modal-actions">'
-    +'<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>'
-    +'<button class="btn btn-secondary" onclick="setLabelCopiesPerBottle()" title="Print exactly as many labels as you bottled, per size, each in that size\'s variant">Match Bottle Counts</button>'
-    +'<button class="btn btn-primary" onclick="generateLabelSheet()">Generate &amp; Print</button>'
+    +'<button class="btn btn-secondary" data-action="closeModal">Cancel</button>'
+    +'<button class="btn btn-secondary" data-action="setLabelCopiesPerBottle" title="Print exactly as many labels as you bottled, per size, each in that size\'s variant">Match Bottle Counts</button>'
+    +'<button class="btn btn-primary" data-action="generateLabelSheet">Generate &amp; Print</button>'
     +'</div></div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
   setTimeout(updateLabelSheetTotals,30);

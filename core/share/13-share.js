@@ -233,7 +233,7 @@ function renderSharePhotos(b){
   var thumbs=sorted.map(function(p){
     var st=(typeof photoStage==='function')?photoStage(p.stage):{label:'',color:'#c9a84c'};
     var src=(typeof getResolvedMediaUrl==='function'&&getResolvedMediaUrl(p.url))||p.url;
-    return'<figure class="share-photo" onclick="openPhotoLightbox(\''+b.id+'\',\''+p.id+'\')">'
+    return'<figure class="share-photo" data-action="openPhotoLightbox" data-args=\''+JSON.stringify([b.id,p.id])+'\'>'
       +'<span class="share-photo-stage" style="background:'+st.color+'">'+escHtml((st.label||'').toUpperCase())+'</span>'
       +'<img src="'+escHtml(src)+'" alt="'+escHtml(p.caption||st.label||'Batch photo')+'" loading="lazy">'
       +(p.caption?'<figcaption>'+escHtml(p.caption)+'</figcaption>':'')
@@ -474,7 +474,7 @@ function renderPublicShareView(b){
     +(function(){
       // Language toggle (EN / NL) — defaults to the visitor's locale, lets them switch.
       return '<div style="position:fixed;top:10px;right:10px;z-index:50;display:flex;border:1px solid rgba(200,170,90,0.45);border-radius:8px;overflow:hidden;font-family:Georgia,serif;font-size:12px;letter-spacing:1px">'
-        +['en','nl'].map(function(L){var on=labelLocale()===L;return '<button onclick="shareSetLocale(\''+L+'\')" style="padding:6px 13px;border:0;cursor:pointer;background:'+(on?'#caa84c':'rgba(0,0,0,0.45)')+';color:'+(on?'#1a0f08':'#caa84c')+';font-weight:'+(on?'700':'400')+'">'+L.toUpperCase()+'</button>';}).join('')
+        +['en','nl'].map(function(L){var on=labelLocale()===L;return '<button data-action="shareSetLocale" data-args=\''+JSON.stringify([L])+'\' style="padding:6px 13px;border:0;cursor:pointer;background:'+(on?'#caa84c':'rgba(0,0,0,0.45)')+';color:'+(on?'#1a0f08':'#caa84c')+';font-weight:'+(on?'700':'400')+'">'+L.toUpperCase()+'</button>';}).join('')
         +'</div>';
     }())
     +'<header class="share-header">'

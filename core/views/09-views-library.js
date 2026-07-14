@@ -1249,13 +1249,38 @@ function renderProtocolGuide(){
 }
 
 // ==================== SETTINGS ====================
+// Two independent backup mechanisms, both surfaced here:
+//  - Manual: the Export Backup button (a JSON file the brewer downloads and
+//    can move anywhere themselves) — tracked client-side via lastBackupAt.
+//  - Automated: server.py's scheduled SQLite copy (see /api/backup-status),
+//    which happens on its own with no one needing to remember anything, but
+//    lands on the same disk unless --backup-dir points elsewhere.
+function _backupAgoText(iso){
+  var days=Math.floor((Date.now()-new Date(iso).getTime())/86400000);
+  return days<=0?'today':days+' day'+(days===1?'':'s')+' ago';
+}
+function _automatedBackupStatusHtml(){
+  var b=APP._backupStatus;
+  if(!b)return''; // not loaded yet (offline boot, or fetch still in flight)
+  if(!b.enabled)return'<div style="font-size:12.5px;color:var(--gold2);margin-bottom:6px">Automated server backups are disabled (--backup-retain 0).</div>';
+  if(!b.lastBackupAt)return'<div style="font-size:12.5px;color:var(--text3);margin-bottom:6px">Automated server backups are enabled — first copy hasn\'t run yet.</div>';
+  var days=Math.floor((Date.now()-new Date(b.lastBackupAt).getTime())/86400000);
+  var color=days<=2?'var(--green2)':(days<=8?'var(--gold2)':'var(--red2)');
+  var offMachineNote=b.backupDirExplicit
+    ?''
+    :' <span style="color:var(--gold2)">— same disk as the database; pass --backup-dir to point this at another machine/drive</span>';
+  return'<div style="font-size:12.5px;color:'+color+';margin-bottom:6px">Automated backup: '+_backupAgoText(b.lastBackupAt)+' · '+b.count+' kept in <code style="background:var(--bg4);padding:1px 5px;border-radius:3px;font-family:var(--font-mono);font-size:11px">'+escHtml(b.backupDir)+'</code>'+offMachineNote+'</div>';
+}
 function _backupStatusHtml(){
   var last=APP.settings.lastBackupAt;
-  if(!last)return'<div style="font-size:12.5px;color:var(--red2);margin-bottom:10px">⚠ No backup taken yet — this data only lives on this device/server.</div>';
-  var days=Math.floor((Date.now()-new Date(last).getTime())/86400000);
-  var color=days<=7?'var(--green2)':(days<=30?'var(--gold2)':'var(--red2)');
-  var when=days<=0?'today':days+' day'+(days===1?'':'s')+' ago';
-  return'<div style="font-size:12.5px;color:'+color+';margin-bottom:10px">Last backup: '+when+' · '+fmtDate(last)+'</div>';
+  var manual=!last
+    ?'<div style="font-size:12.5px;color:var(--red2);margin-bottom:10px">⚠ No manual backup exported yet.</div>'
+    :(function(){
+        var days=Math.floor((Date.now()-new Date(last).getTime())/86400000);
+        var color=days<=7?'var(--green2)':(days<=30?'var(--gold2)':'var(--red2)');
+        return'<div style="font-size:12.5px;color:'+color+';margin-bottom:10px">Last manual export: '+_backupAgoText(last)+' · '+fmtDate(last)+'</div>';
+      })();
+  return _automatedBackupStatusHtml()+manual;
 }
 function renderSettings(){
   return'<div class="page-title">Settings</div><div class="page-subtitle">Configuration &amp; Data Management</div>'
@@ -1430,7 +1455,7 @@ function renderSettings(){
     +'<div style="font-size:14px;color:var(--text2);line-height:1.8">'
     +'<strong>Run the server:</strong> <code style="background:var(--bg4);padding:2px 6px;border-radius:3px;font-family:var(--font-mono);font-size:12px">python3 server.py</code> — serves this app and stores all data in <code style="background:var(--bg4);padding:2px 6px;border-radius:3px;font-family:var(--font-mono);font-size:12px">meados.db</code> (SQLite).<br><br>'
     +'<strong>Share with others:</strong> anyone who can reach the machine opens <code style="background:var(--bg4);padding:2px 6px;border-radius:3px;font-family:var(--font-mono);font-size:12px">http://&lt;host&gt;:8080</code> and sees the same shared data.<br><br>'
-    +'<strong>Backup:</strong> copy <code style="background:var(--bg4);padding:2px 6px;border-radius:3px;font-family:var(--font-mono);font-size:12px">meados.db</code>, or use Export Backup on the left. The server also keeps the last 200 saves in a history table.<br><br>'
+    +'<strong>Backup:</strong> the server automatically writes a full, standalone copy of the database on a schedule (see the automated-backup card on the left) — by default to a <code style="background:var(--bg4);padding:2px 6px;border-radius:3px;font-family:var(--font-mono);font-size:12px">backups/</code> folder next to <code style="background:var(--bg4);padding:2px 6px;border-radius:3px;font-family:var(--font-mono);font-size:12px">meados.db</code>, or wherever <code style="background:var(--bg4);padding:2px 6px;border-radius:3px;font-family:var(--font-mono);font-size:12px">--backup-dir</code> points (use a mounted network share or external drive for real off-machine protection). You can also copy <code style="background:var(--bg4);padding:2px 6px;border-radius:3px;font-family:var(--font-mono);font-size:12px">meados.db</code> by hand, or use Export Backup on the left for a portable JSON file. The server separately keeps the last 200 saves in an in-database history table — that\'s undo, not a real backup, since it lives in the same file.<br><br>'
     +'<strong>Embed in Home Assistant (optional):</strong> add a Webpage/iframe card pointing at this app\'s URL.'
     +'</div></div>'
     +'<div class="card"><div class="card-header"><div class="card-title">DANGER ZONE</div></div>'
@@ -1556,7 +1581,7 @@ function fermCapToLitres(inputId,selId,fallback){
 }
 function openAddFermenterModal(){
   closeModal();
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-title">⚗ ADD FERMENTER</div>'
+  var html='<div class="modal-overlay"><div class="modal"><div class="modal-title">⚗ ADD FERMENTER</div>'
     +'<div class="form-group"><label class="form-label">Name</label><input class="form-input" id="af-name" placeholder="e.g. Fermenter 3, 30L Plastic, Glass Carboy"></div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">Capacity</label><div style="display:flex;gap:6px"><input class="form-input" id="af-capacity" type="number" step="0.1" value="'+fermCapDefault(7.6)+'" style="flex:1">'+fermCapUnitSelect('af-capunit','af-capacity')+'</div></div>'
     +'<div class="form-group"><label class="form-label">Color</label><input class="form-input" id="af-color" type="color" value="#c9a84c"></div></div>'
@@ -1586,7 +1611,7 @@ function openEditFermenterModal(id){
   closeModal();
   var f=getFermenter(id);
   if(!f){toast('⚠ Fermenter not found');return;}
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-title">EDIT FERMENTER</div>'
+  var html='<div class="modal-overlay"><div class="modal"><div class="modal-title">EDIT FERMENTER</div>'
     +'<div class="form-group"><label class="form-label">Name</label><input class="form-input" id="ef-name" value="'+escHtml(f.name)+'"></div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">Capacity</label><div style="display:flex;gap:6px"><input class="form-input" id="ef-capacity" type="number" step="0.1" value="'+fermCapDefault(f.capacity||7.6)+'" style="flex:1">'+fermCapUnitSelect('ef-capunit','ef-capacity')+'</div></div>'
     +'<div class="form-group"><label class="form-label">Color</label><input class="form-input" id="ef-color" type="color" value="'+escHtml(f.color||'#c9a84c')+'"></div></div>'

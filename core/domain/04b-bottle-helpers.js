@@ -151,6 +151,15 @@ function getReservedBottleCount(batch){
   return getActiveTimeCapsules(batch).reduce(function(s,tc){return s+(parseInt(tc.count)||0);},0);
 }
 
+// data-args is fixed at RENDER time — this form's values need to be read at
+// CLICK time instead, so the button names this wrapper (batchId only) and
+// it does the live document.getElementById() reads itself.
+function _addTimeCapsuleFromForm(batchId){
+  addTimeCapsule(batchId,
+    document.getElementById('tc-count').value,
+    document.getElementById('tc-date').value,
+    document.getElementById('tc-reason').value);
+}
 function addTimeCapsule(batchId,count,openDate,reason){
   var b=getBatch(batchId);
   if(!b){toast('⚠ Batch not found');return;}
@@ -196,7 +205,7 @@ function renderTimeCapsulesCard(b){
     return'<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border)">'
       +'<div style="font-family:var(--font-display);font-size:18px;color:var(--gold2);flex-shrink:0;width:40px;text-align:center">'+tc.count+'×</div>'
       +'<div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--text)">'+escHtml(tc.reason||'(no reason)')+'</div><div style="font-size:11px;color:var(--text3);margin-top:2px">Open '+escHtml(openLabel)+' '+status+'</div></div>'
-      +'<button class="btn btn-danger btn-sm" onclick="removeTimeCapsule(\''+b.id+'\',\''+tc.id+'\')" title="Remove reservation">✕</button>'
+      +'<button class="btn btn-danger btn-sm" data-action="removeTimeCapsule" data-args=\''+JSON.stringify([b.id,tc.id])+'\' title="Remove reservation">✕</button>'
       +'</div>';
   }).join('');
   return'<div class="card" style="margin-top:16px"><div class="card-header"><div class="card-title">🕰 TIME CAPSULE RESERVATIONS</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+reserved+' OF '+onHand+' RESERVED · '+available+' FREE</div></div>'
@@ -206,7 +215,7 @@ function renderTimeCapsulesCard(b){
       ?'<div class="form-row"><div class="form-group"><label class="form-label">Bottles to reserve</label><input class="form-input" type="number" id="tc-count" min="1" max="'+available+'" placeholder="e.g. 4"></div>'
         +'<div class="form-group"><label class="form-label">Open date (optional)</label><input class="form-input" type="date" id="tc-date"></div></div>'
         +'<div class="form-group"><label class="form-label">Reason / occasion</label><input class="form-input" type="text" id="tc-reason" placeholder="e.g. 10th anniversary, baby\'s 18th, vintage 2030 tasting"></div>'
-        +'<button class="btn btn-secondary btn-sm" onclick="addTimeCapsule(\''+b.id+'\',document.getElementById(\'tc-count\').value,document.getElementById(\'tc-date\').value,document.getElementById(\'tc-reason\').value)">＋ Add reservation</button>'
+        +'<button class="btn btn-secondary btn-sm" data-action="_addTimeCapsuleFromForm" data-args=\''+JSON.stringify([b.id])+'\'>＋ Add reservation</button>'
       :'<div style="font-size:12px;color:var(--text3);font-style:italic;padding:10px 0">'+(appLang()==='nl'?'Alle aanwezige flessen zijn gereserveerd. Open of geef reserveringen vrij om er meer toe te voegen.':'All on-hand bottles are reserved. Open or release reservations to add more.')+'</div>')
     +'</div>';
 }
@@ -224,18 +233,18 @@ function renderCellarSublocationCard(b){
     var shelf=hit&&hit.shelf;
     var legacyText=bot.cellarSublocation||'';
     return'<div class="card" style="margin-top:16px"><div class="card-header"><div class="card-title">🏠 CELLAR PLACEMENT</div>'
-      +'<button class="btn btn-secondary btn-sm" onclick="openShelfAssignmentModal(\''+b.id+'\')">'+(shelf?'Move':'Place on shelf')+'</button>'
+      +'<button class="btn btn-secondary btn-sm" data-action="openShelfAssignmentModal" data-args=\''+JSON.stringify([b.id])+'\'>'+(shelf?'Move':'Place on shelf')+'</button>'
       +'</div>'
       +(shelf
         ?'<div style="background:var(--bg);border-left:3px solid var(--gold);border-radius:6px;padding:10px 14px;font-size:13px"><div style="font-family:var(--font-display);font-size:14px;color:var(--gold2)">📍 '+escHtml(shelf.label)+'</div><div style="font-family:var(--font-mono);font-size:10.5px;color:var(--text3);letter-spacing:1px;margin-top:3px">'+escHtml((hit&&hit.cabinet&&(hit.cabinet.name||hit.cabinet.model))||'Cellar')+' · '+(shelf.type==='open'?'OPEN':(shelf.type==='fermenter_slot'?'FERMENTER SLOT':'BOTTLE RACK'))+'</div></div>'
         :'<div style="font-size:12.5px;color:var(--text3);font-style:italic;padding:10px 0">Not yet placed on a shelf. Click "Place on shelf" to assign.</div>')
-      +(legacyText?'<div style="margin-top:10px;font-size:11px;color:var(--text3);background:var(--bg);padding:8px 10px;border-radius:4px"><strong>Legacy note:</strong> '+escHtml(legacyText)+' <a onclick="clearLegacySublocation(\''+b.id+'\')" style="color:var(--red2);cursor:pointer;margin-left:8px">clear</a></div>':'')
+      +(legacyText?'<div style="margin-top:10px;font-size:11px;color:var(--text3);background:var(--bg);padding:8px 10px;border-radius:4px"><strong>Legacy note:</strong> '+escHtml(legacyText)+' <a data-action="clearLegacySublocation" data-args=\''+JSON.stringify([b.id])+'\' style="color:var(--red2);cursor:pointer;margin-left:8px">clear</a></div>':'')
       +'</div>';
   }
   // Legacy mode (no cellar configured) — keep the free-text field
   var current=bot.cellarSublocation||'';
   return'<div class="card" style="margin-top:16px"><div class="card-header"><div class="card-title">📍 CELLAR SUB-LOCATION</div>'
-    +'<button class="btn btn-secondary btn-sm" onclick="showView(\'cellar-map\')" title="Set up your cellar with shelves for structured placement tracking">🏠 Configure cellar</button>'
+    +'<button class="btn btn-secondary btn-sm" data-action="showView" data-args=\''+JSON.stringify(['cellar-map'])+'\' title="Set up your cellar with shelves for structured placement tracking">🏠 Configure cellar</button>'
     +'</div>'
     +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:12px;line-height:1.55">'+(appLang()==='nl'?'Waar wordt deze partij in je kelder bewaard? Vrij-tekstlabel zoals "Plank A doos 3". Voor uitgebreidere plaatsregistratie (visuele planken, sensorkoppeling) stel je je kelder in via Mijn Kelder in de zijbalk.':'Where is this batch stored in your cellar? Free-text label like "Shelf A box 3". For richer placement tracking (visual shelves, sensor binding), configure your cellar via My Cellar in the sidebar.')+'</div>'
     +'<div class="form-row"><div class="form-group" style="flex:1"><input class="form-input" type="text" id="sub-loc-'+b.id+'" value="'+escHtml(current)+'" placeholder="e.g. Shelf A box 3" oninput="updateSublocation(\''+b.id+'\',this.value)" style="font-family:var(--font-mono);font-size:12.5px"></div></div>'
@@ -400,6 +409,17 @@ function packageState(){
 
 function applyState(d){
   if(!d)return;
+  // Check the root shape BEFORE migration: migrateData()'s steps assign
+  // properties directly onto d and assume an object, so a non-object root
+  // (a string, a number...) needs to be rejected here first rather than
+  // reaching migration at all. See validateState() in 14-schema.js.
+  if(typeof validateState==='function'){
+    var rootValidation=validateState(d);
+    if(!rootValidation.sanitized){
+      if(typeof reportStateValidation==='function')reportStateValidation(rootValidation,'applyState');
+      return; // root itself wasn't a usable object — leave APP untouched
+    }
+  }
   // Run schema migrations first so later code sees a normalized shape.
   var migrationReport=null;
   if(typeof migrateData==='function'){
@@ -409,6 +429,16 @@ function applyState(d){
   }
   // Add to APP so it can be surfaced later (showMigrationReport is called once after first render)
   if(migrationReport)APP._pendingMigrationReport=migrationReport;
+  // Re-check per-bucket shape after migration: a bucket can still be the
+  // wrong type (a string where `batches` should be an array) even though the
+  // root itself was fine — drop just that bucket rather than letting it sail
+  // into APP and fail unpredictably somewhere downstream.
+  if(typeof validateState==='function'){
+    var validation=validateState(d);
+    if(typeof reportStateValidation==='function')reportStateValidation(validation,'applyState');
+    if(!validation.sanitized)return;
+    d=validation.sanitized;
+  }
   // Also remember templates + celebrated milestones + temp anomalies + custom user data buckets
   APP.templates=d.templates||APP.templates||[];
   APP.stepTemplates=Array.isArray(d.stepTemplates)?d.stepTemplates:(APP.stepTemplates||[]);

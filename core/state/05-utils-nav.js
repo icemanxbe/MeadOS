@@ -379,7 +379,7 @@ function renderSidebar(){
   }
   el.innerHTML=active.map(function(b){
     var color=getBatchColor(b);
-    return'<div class="batch-pill '+(currentBatchId===b.id&&currentView==='batch'?'active':'')+'" onclick="showView(\'batch\',\''+b.id+'\')">'
+    return'<div class="batch-pill '+(currentBatchId===b.id&&currentView==='batch'?'active':'')+'" data-action="showView" data-args=\''+JSON.stringify(['batch',b.id])+'\'>'
       +'<div class="batch-dot" style="background:'+color+';color:'+color+'"></div>'
       +'<div class="batch-pill-name">'+escHtml(b.name)+'</div>'
       +'<div class="batch-pill-day">'+fmtDurationCompact(daysSince(b.startDate)).toUpperCase().replace(/\s/g,'')+'</div></div>';

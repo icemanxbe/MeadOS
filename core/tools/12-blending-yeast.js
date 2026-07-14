@@ -33,7 +33,7 @@ function renderBlendingTool(){
     +'<div class="form-group"><label class="form-label">Blend Ratio · A : B = <span id="blend-ratio-display">'+ratioA+' : '+(100-ratioA)+'</span></label>'
     +'<input type="range" min="10" max="90" step="5" value="'+ratioA+'" id="blend-ratio" oninput="window._blendRatio=parseInt(this.value);document.getElementById(\'blend-ratio-display\').textContent=this.value+\' : \'+(100-this.value);updateBlendOutput()" style="width:100%;cursor:pointer"></div>'
     +'<div id="blend-output" style="margin-top:14px">'+initialOutput+'</div>'
-    +'<button class="btn btn-primary btn-sm" style="margin-top:12px" onclick="createBlendedBatch()" title="Commit this blend as a new batch with lineage back to its sources">🥂 '+(appLang()==='nl'?'Maak er een partij van':'Create as a batch')+'</button>'
+    +'<button class="btn btn-primary btn-sm" style="margin-top:12px" data-action="createBlendedBatch" title="Commit this blend as a new batch with lineage back to its sources">🥂 '+(appLang()==='nl'?'Maak er een partij van':'Create as a batch')+'</button>'
     +'</div>';
 }
 

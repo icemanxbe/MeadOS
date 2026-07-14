@@ -757,7 +757,7 @@ function studioPrintFor(recipeId,batchId,sides){
 function openLabelStudio(recipeId,batchId){
   closeModal();
   window._studio={recipeId:recipeId,batchId:batchId||null,side:'front',selId:null,volume:null};
-  document.body.insertAdjacentHTML('beforeend','<div class="modal-overlay modal-static" id="studio-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" id="studio-modal" style="max-width:1120px;width:96vw;max-height:94vh;display:flex;flex-direction:column;padding:0;overflow:hidden"></div></div>');
+  document.body.insertAdjacentHTML('beforeend','<div class="modal-overlay modal-static" id="studio-overlay"><div class="modal" id="studio-modal" style="max-width:1120px;width:96vw;max-height:94vh;display:flex;flex-direction:column;padding:0;overflow:hidden"></div></div>');
   renderLabelStudio();
 }
 function studioDesign(){return labelStudioGet(window._studio.recipeId,window._studio.volume);}
@@ -781,7 +781,7 @@ function studioVolumePicker(){
     var has=studioVariantKey(rid,v)===rid+'#'+v;   // ✓ marks sizes with a dedicated variant
     return '<option value="'+v+'"'+(String(cur)===String(v)?' selected':'')+'>'+v+' ml'+(has?' ✓':'')+'</option>';
   }).join('');
-  var del=window._studio.volume?'<button class="btn btn-secondary btn-sm" title="Remove this size-specific variant (falls back to the default design)" onclick="studioDeleteVariant()" style="padding:3px 8px">✕</button>':'';
+  var del=window._studio.volume?'<button class="btn btn-secondary btn-sm" title="Remove this size-specific variant (falls back to the default design)" data-action="studioDeleteVariant" style="padding:3px 8px">✕</button>':'';
   return '<label style="display:flex;align-items:center;gap:5px;font-size:11.5px;color:var(--text2);white-space:nowrap" title="Design a label specific to a bottle size"><span>🍶</span><select onchange="studioSetVolume(this.value)" style="background:var(--bg2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:3px 6px;font-size:11.5px">'+opts+'</select></label>'+del;
 }
 function studioDeleteVariant(){
@@ -799,16 +799,16 @@ function renderLabelStudio(){
     '<div style="display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);flex-wrap:wrap">'
       +'<div class="modal-title" style="margin:0">🎨 Label Studio</div>'
       +'<div style="display:flex;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">'
-        +(['front'].concat(d.backEnabled!==false?['back']:[])).map(function(sd){var on=st.side===sd;return '<button onclick="studioSetSide(\''+sd+'\')" style="padding:6px 16px;border:none;cursor:pointer;font-family:var(--font-mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;background:'+(on?'var(--gold)':'var(--bg2)')+';color:'+(on?'#000':'var(--text2)')+'">'+sd+'</button>';}).join('')+'</div>'
+        +(['front'].concat(d.backEnabled!==false?['back']:[])).map(function(sd){var on=st.side===sd;return '<button data-action="studioSetSide" data-args=\''+JSON.stringify([sd])+'\' style="padding:6px 16px;border:none;cursor:pointer;font-family:var(--font-mono);font-size:11px;letter-spacing:1px;text-transform:uppercase;background:'+(on?'var(--gold)':'var(--bg2)')+';color:'+(on?'#000':'var(--text2)')+'">'+sd+'</button>';}).join('')+'</div>'
         +'<label style="display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--text2);cursor:pointer;white-space:nowrap" title="Include a back label"><input type="checkbox" '+(d.backEnabled!==false?'checked':'')+' onchange="studioToggleBack(this.checked)" style="accent-color:var(--gold)"> Back label</label>'
       +studioVolumePicker()
       +studioLocalePicker()
       +'<div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">'
-        +'<button class="btn btn-secondary btn-sm" onclick="studioResetDefault()" title="Reset both sides to the default design">↺ Default</button>'
-        +'<button class="btn btn-secondary btn-sm" onclick="exportLabelStudioPNG()">⬇ PNG ('+st.side+')</button>'
-        +'<button class="btn btn-secondary btn-sm" onclick="printLabelStudio()">🖨 Print sheet</button>'
-        +'<button class="btn btn-primary btn-sm" onclick="labelStudioSave();toast(\'✦ Label saved\')">Save</button>'
-        +'<button class="btn btn-secondary btn-sm" onclick="closeModal()">✕</button>'
+        +'<button class="btn btn-secondary btn-sm" data-action="studioResetDefault" title="Reset both sides to the default design">↺ Default</button>'
+        +'<button class="btn btn-secondary btn-sm" data-action="exportLabelStudioPNG">⬇ PNG ('+st.side+')</button>'
+        +'<button class="btn btn-secondary btn-sm" data-action="printLabelStudio">🖨 Print sheet</button>'
+        +'<button class="btn btn-primary btn-sm" data-action="_studioSaveAndToast">Save</button>'
+        +'<button class="btn btn-secondary btn-sm" data-action="closeModal">✕</button>'
       +'</div>'
     +'</div>'
     // Body: tools | canvas | props
@@ -828,7 +828,7 @@ function studioRefreshCanvas(){var w=document.getElementById('studio-canvas-wrap
 
 function studioToolsHtml(d){
   function sect(t){return '<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;margin:14px 0 8px">'+t+'</div>';}
-  var addBtn=function(label,onclick){return '<button class="btn btn-secondary btn-sm" style="width:100%;justify-content:flex-start;margin-bottom:6px" onclick="'+onclick+'">'+label+'</button>';};
+  var addBtn=function(label,action,args){return '<button class="btn btn-secondary btn-sm" style="width:100%;justify-content:flex-start;margin-bottom:6px" data-action="'+action+'"'+(args?' data-args=\''+JSON.stringify(args)+'\'':'')+'>'+label+'</button>';};
   var fieldOpts=LABEL_FIELDS.map(function(f){
     var o='<option value="'+f.key+'">'+escHtml(f.label)+'</option>';
     // Offer a "value only" variant in the picker for fields that carry a prefix
@@ -837,32 +837,32 @@ function studioToolsHtml(d){
     return o;
   }).join('');
   var s=studioSide();
-  var tplBtns=LABEL_TEMPLATES.map(function(t){return '<button class="btn btn-secondary btn-sm" style="margin:0 6px 6px 0" onclick="studioApplyTemplate(\''+t.key+'\')" title="'+escHtml(t.hint||'')+'">'+escHtml(t.label)+'</button>';}).join('');
-  return '<button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:8px" onclick="studioUploadOwn()">📤 Upload my own design</button>'
+  var tplBtns=LABEL_TEMPLATES.map(function(t){return '<button class="btn btn-secondary btn-sm" style="margin:0 6px 6px 0" data-action="studioApplyTemplate" data-args=\''+JSON.stringify([t.key])+'\' title="'+escHtml(t.hint||'')+'">'+escHtml(t.label)+'</button>';}).join('');
+  return '<button class="btn btn-primary btn-sm" style="width:100%;margin-bottom:8px" data-action="studioUploadOwn">📤 Upload my own design</button>'
     +'<div style="font-size:10.5px;color:var(--text3);font-style:italic;line-height:1.5;margin-bottom:6px">Upload a finished label image, then drop live data (batch №, % vol…) onto its blank spots.</div>'
-    +(s.bgImage?'<button class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:6px" onclick="studioSetCanvas(\'bgImage\',null)">✕ Remove uploaded design</button>':'')
+    +(s.bgImage?'<button class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:6px" data-action="studioSetCanvas" data-args=\'["bgImage",null]\'>✕ Remove uploaded design</button>':'')
     +sect('TEMPLATES')+'<div style="display:flex;flex-wrap:wrap">'+tplBtns+'</div>'
     +studioLayoutsHtml()
     +sect('ADD ELEMENT')
-    +addBtn('＋ Text',"studioAdd('text')")
-    +addBtn('＋ Rectangle',"studioAdd('rect')")
-    +addBtn('＋ Line',"studioAdd('line')")
-    +addBtn('＋ Brand logo',"studioAdd('logo')")
-    +addBtn('＋ Image…',"studioAddImage()")
-    +addBtn('＋ QR code',"studioAdd('qr')")
-    +addBtn('＋ Sweetness scale',"studioAdd('sweetscale')")
-    +addBtn('＋ Honeycomb patch',"studioAdd('honeycomb')")
-    +addBtn('＋ Honey drop',"studioAdd('honeydrop')")
-    +'<div style="display:flex;gap:6px;margin-bottom:6px"><select id="studio-field-pick" class="form-input" style="flex:1;font-size:12px">'+fieldOpts+'</select><button class="btn btn-primary btn-sm" onclick="studioAddField()" title="Add the selected data field">＋</button></div>'
+    +addBtn('＋ Text','studioAdd',['text'])
+    +addBtn('＋ Rectangle','studioAdd',['rect'])
+    +addBtn('＋ Line','studioAdd',['line'])
+    +addBtn('＋ Brand logo','studioAdd',['logo'])
+    +addBtn('＋ Image…','studioAddImage')
+    +addBtn('＋ QR code','studioAdd',['qr'])
+    +addBtn('＋ Sweetness scale','studioAdd',['sweetscale'])
+    +addBtn('＋ Honeycomb patch','studioAdd',['honeycomb'])
+    +addBtn('＋ Honey drop','studioAdd',['honeydrop'])
+    +'<div style="display:flex;gap:6px;margin-bottom:6px"><select id="studio-field-pick" class="form-input" style="flex:1;font-size:12px">'+fieldOpts+'</select><button class="btn btn-primary btn-sm" data-action="studioAddField" title="Add the selected data field">＋</button></div>'
     +'<div style="font-size:10.5px;color:var(--text3);font-style:italic;line-height:1.5;margin-bottom:4px">Data fields pull live from the batch, recipe & honey.</div>'
     +sect('CANVAS')
     +'<label class="form-label">Shape</label><select class="form-input" onchange="studioSetCanvas(\'shape\',this.value)" style="margin-bottom:8px">'+LABEL_SHAPES.map(function(x){return '<option value="'+x.key+'"'+(s.shape===x.key?' selected':'')+'>'+x.label+'</option>';}).join('')+'</select>'
     +'<label class="form-label">Size</label><select class="form-input" onchange="studioSetSize(this.value)" style="margin-bottom:8px">'+LABEL_SIZES.map(function(x){return '<option value="'+x.key+'"'+(d.w===x.w&&d.h===x.h?' selected':'')+'>'+x.label+' ('+x.w+'×'+x.h+')</option>';}).join('')+'</select>'
     +'<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><label class="form-label" style="margin:0">Background</label><input type="color" value="'+(s.bg||'#17110a')+'" oninput="studioSetCanvas(\'bg\',this.value)" style="width:38px;height:26px;padding:0;border:1px solid var(--border);border-radius:4px;background:none"></div>'
-    +'<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><label class="form-label" style="margin:0">Border</label><input type="color" value="'+(s.border||'#c9a84c')+'" oninput="studioSetCanvas(\'border\',this.value)" style="width:38px;height:26px;padding:0;border:1px solid var(--border);border-radius:4px;background:none"><button class="btn btn-secondary btn-sm" onclick="studioSetCanvas(\'border\',null)">none</button></div>'
+    +'<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><label class="form-label" style="margin:0">Border</label><input type="color" value="'+(s.border||'#c9a84c')+'" oninput="studioSetCanvas(\'border\',this.value)" style="width:38px;height:26px;padding:0;border:1px solid var(--border);border-radius:4px;background:none"><button class="btn btn-secondary btn-sm" data-action="studioSetCanvas" data-args=\'["border",null]\'>none</button></div>'
     +'<label style="display:flex;align-items:center;gap:8px;margin:6px 0 8px;font-size:12.5px;color:var(--text2);cursor:pointer"><input type="checkbox" '+(s.honeycomb?'checked':'')+' onchange="studioSetCanvas(\'honeycomb\',this.checked?true:null)" style="accent-color:var(--gold)"> 🍯 Honeycomb texture</label>'
     +(s.honeycomb?'<div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><label class="form-label" style="margin:0">Tint</label><input type="color" value="'+(s.honeycombColor||'#c9a84c')+'" oninput="studioSetCanvas(\'honeycombColor\',this.value)" style="width:38px;height:26px;padding:0;border:1px solid var(--border);border-radius:4px"></div>':'')
-    +'<button class="btn btn-secondary btn-sm" style="width:100%" onclick="studioBgImage()">Background image…</button>';
+    +'<button class="btn btn-secondary btn-sm" style="width:100%" data-action="studioBgImage">Background image…</button>';
 }
 
 function studioPropsHtml(){
@@ -880,32 +880,33 @@ function studioPropsHtml(){
     row('Size / colour','<div style="display:flex;gap:8px"><input type="number" class="form-input" style="flex:1" value="'+(el.size||13)+'" min="6" max="64" oninput="studioUpd(\'size\',parseFloat(this.value))"><input type="color" value="'+(el.color||'#e8e0d0')+'" oninput="studioUpd(\'color\',this.value)" style="width:38px;height:36px;padding:0;border:1px solid var(--border);border-radius:4px"></div>');
   }
   if(el.type==='text'||el.type==='field'){
-    row('Align','<div style="display:flex;gap:6px">'+['left','center','right'].map(function(a){return '<button class="btn '+(el.align===a?'btn-primary':'btn-secondary')+' btn-sm" style="flex:1" onclick="studioUpd(\'align\',\''+a+'\')">'+a+'</button>';}).join('')+'</div>');
-    row('Style','<div style="display:flex;gap:6px"><button class="btn '+(el.weight==='700'?'btn-primary':'btn-secondary')+' btn-sm" style="flex:1" onclick="studioToggle(\'weight\',\'700\',\'400\')">Bold</button><button class="btn '+(el.italic?'btn-primary':'btn-secondary')+' btn-sm" style="flex:1" onclick="studioToggle(\'italic\',true,false)">Italic</button><button class="btn '+(el.upper?'btn-primary':'btn-secondary')+' btn-sm" style="flex:1" onclick="studioToggle(\'upper\',true,false)">CAPS</button></div>');
+    row('Align','<div style="display:flex;gap:6px">'+['left','center','right'].map(function(a){return '<button class="btn '+(el.align===a?'btn-primary':'btn-secondary')+' btn-sm" style="flex:1" data-action="studioUpd" data-args=\''+JSON.stringify(['align',a])+'\'>'+a+'</button>';}).join('')+'</div>');
+    row('Style','<div style="display:flex;gap:6px"><button class="btn '+(el.weight==='700'?'btn-primary':'btn-secondary')+' btn-sm" style="flex:1" data-action="studioToggle" data-args=\'["weight","700","400"]\'>Bold</button><button class="btn '+(el.italic?'btn-primary':'btn-secondary')+' btn-sm" style="flex:1" data-action="studioToggle" data-args=\'["italic",true,false]\'>Italic</button><button class="btn '+(el.upper?'btn-primary':'btn-secondary')+' btn-sm" style="flex:1" data-action="studioToggle" data-args=\'["upper",true,false]\'>CAPS</button></div>');
   }
   if(el.type==='field'&&/^(abv|netvol|serial|bottled)$/.test(el.field)){
-    row('Value','<button class="btn '+(el.raw?'btn-primary':'btn-secondary')+' btn-sm" style="width:100%" onclick="studioToggle(\'raw\',true,false)" title="Show just the number/value, without the &quot;% ABV&quot; / &quot;№&quot; label — for designs that already print it">'+(el.raw?'✓ Number / value only':'Number / value only')+'</button>');
+    row('Value','<button class="btn '+(el.raw?'btn-primary':'btn-secondary')+' btn-sm" style="width:100%" data-action="studioToggle" data-args=\'["raw",true,false]\' title="Show just the number/value, without the &quot;% ABV&quot; / &quot;№&quot; label — for designs that already print it">'+(el.raw?'✓ Number / value only':'Number / value only')+'</button>');
   }
   if(el.type==='field'&&el.field==='netvol'){
-    row('Unit','<div style="display:flex;gap:6px">'+['ml','cl','l'].map(function(u){return '<button class="btn '+((el.unit||'ml')===u?'btn-primary':'btn-secondary')+' btn-sm" style="flex:1" onclick="studioSetProp(\'unit\',\''+u+'\')">'+u+'</button>';}).join('')+'</div>');
+    row('Unit','<div style="display:flex;gap:6px">'+['ml','cl','l'].map(function(u){return '<button class="btn '+((el.unit||'ml')===u?'btn-primary':'btn-secondary')+' btn-sm" style="flex:1" data-action="studioSetProp" data-args=\''+JSON.stringify(['unit',u])+'\'>'+u+'</button>';}).join('')+'</div>');
   }
   if(el.type==='honeycomb'||el.type==='honeydrop'){
     row('Colour','<input type="color" value="'+(el.color||'#c9a84c')+'" oninput="studioUpd(\'color\',this.value)" style="width:48px;height:32px;padding:0;border:1px solid var(--border);border-radius:4px">');
   }
   if(el.type==='shape'){
-    if(el.kind!=='line')row('Fill','<div style="display:flex;gap:6px;align-items:center"><input type="color" value="'+(el.fill&&el.fill!=='none'?el.fill:'#c9a84c')+'" oninput="studioUpd(\'fill\',this.value)" style="width:38px;height:32px;padding:0;border:1px solid var(--border);border-radius:4px"><button class="btn btn-secondary btn-sm" onclick="studioUpd(\'fill\',\'none\')">none</button></div>');
+    if(el.kind!=='line')row('Fill','<div style="display:flex;gap:6px;align-items:center"><input type="color" value="'+(el.fill&&el.fill!=='none'?el.fill:'#c9a84c')+'" oninput="studioUpd(\'fill\',this.value)" style="width:38px;height:32px;padding:0;border:1px solid var(--border);border-radius:4px"><button class="btn btn-secondary btn-sm" data-action="studioUpd" data-args=\'["fill","none"]\'>none</button></div>');
     row('Stroke','<div style="display:flex;gap:6px;align-items:center"><input type="color" value="'+(el.stroke&&el.stroke!=='none'?el.stroke:'#c9a84c')+'" oninput="studioUpd(\'stroke\',this.value)" style="width:38px;height:32px;padding:0;border:1px solid var(--border);border-radius:4px"><input type="number" class="form-input" style="flex:1" value="'+(el.strokeW||1)+'" min="0" max="12" step="0.5" oninput="studioUpd(\'strokeW\',parseFloat(this.value))"></div>');
     if(el.kind==='rect')row('Corner radius',num('radius',0,40));
   }
   row('Position','<div style="display:flex;gap:8px">'+num('x',-50,600)+num('y',-50,700)+'</div>');
   if(el.type!=='shape'||el.kind!=='line')row('Size (w × h)','<div style="display:flex;gap:8px">'+num('w',8,600)+num('h',2,700)+'</div>');
   else row('Length',num('w',8,600));
-  rows+='<div style="display:flex;gap:6px;margin-top:14px"><button class="btn btn-secondary btn-sm" style="flex:1" onclick="studioOrder(1)">▲ Front</button><button class="btn btn-secondary btn-sm" style="flex:1" onclick="studioOrder(-1)">▼ Back</button></div>';
-  rows+='<button class="btn btn-danger btn-sm" style="width:100%;margin-top:8px" onclick="studioDelete()">🗑 Delete element</button>';
+  rows+='<div style="display:flex;gap:6px;margin-top:14px"><button class="btn btn-secondary btn-sm" style="flex:1" data-action="studioOrder" data-args=\'[1]\'>▲ Front</button><button class="btn btn-secondary btn-sm" style="flex:1" data-action="studioOrder" data-args=\'[-1]\'>▼ Back</button></div>';
+  rows+='<button class="btn btn-danger btn-sm" style="width:100%;margin-top:8px" data-action="studioDelete">🗑 Delete element</button>';
   return rows;
 }
 
 // ── Editor actions ──────────────────────────────────────────────────────────
+function _studioSaveAndToast(){labelStudioSave();toast('✦ Label saved');}
 function studioSetSide(sd){window._studio.side=sd;window._studio.selId=null;renderLabelStudio();}
 function studioToggleBack(on){
   var d=studioDesign();d.backEnabled=!!on;
@@ -934,13 +935,13 @@ function studioLayoutsHtml(){
   var hdr='<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;margin:14px 0 8px">MY LAYOUTS</div>';
   var chips=list.map(function(l){
     return '<span style="display:inline-flex;align-items:center;margin:0 6px 6px 0;border:1px solid var(--border);border-radius:6px;overflow:hidden">'
-      +'<button class="btn btn-secondary btn-sm" style="border:none;margin:0" onclick="studioApplyLayout(\''+l.id+'\')" title="Apply this saved layout to the current label">'+escHtml(l.name||'Layout')+'</button>'
-      +'<button class="btn btn-secondary btn-sm" style="border:none;margin:0;padding:4px 7px;color:#cc8a7a" onclick="studioDeleteLayout(\''+l.id+'\')" title="Delete this saved layout">✕</button>'
+      +'<button class="btn btn-secondary btn-sm" style="border:none;margin:0" data-action="studioApplyLayout" data-args=\''+JSON.stringify([l.id])+'\' title="Apply this saved layout to the current label">'+escHtml(l.name||'Layout')+'</button>'
+      +'<button class="btn btn-secondary btn-sm" style="border:none;margin:0;padding:4px 7px;color:#cc8a7a" data-action="studioDeleteLayout" data-args=\''+JSON.stringify([l.id])+'\' title="Delete this saved layout">✕</button>'
       +'</span>';
   }).join('');
   return hdr
     +(chips?'<div style="display:flex;flex-wrap:wrap">'+chips+'</div>':'<div style="font-size:10.5px;color:var(--text3);font-style:italic;margin-bottom:6px">Save the current element layout to reuse it identically on other labels.</div>')
-    +'<button class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:6px" onclick="studioSaveLayout()">💾 Save current layout</button>';
+    +'<button class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:6px" data-action="studioSaveLayout">💾 Save current layout</button>';
 }
 function studioSaveLayout(){
   var name=prompt('Name this layout (e.g. "750 ml classic"):');

@@ -79,9 +79,9 @@ function renderYearReview(){
   var canPrev=year>minYear;
   var canNext=year<currentYear;
   var yearNav='<div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">'
-    +'<button class="btn btn-secondary btn-sm" '+(canPrev?'onclick="navYearReview(-1)"':'disabled style="opacity:0.3;cursor:not-allowed"')+' title="Previous year">← '+(year-1)+'</button>'
-    +(year!==currentYear?'<button class="btn btn-secondary btn-sm" onclick="navYearReviewToCurrent()" title="Jump to current year">↺ '+currentYear+'</button>':'')
-    +'<button class="btn btn-secondary btn-sm" '+(canNext?'onclick="navYearReview(1)"':'disabled style="opacity:0.3;cursor:not-allowed"')+' title="Next year">'+(year+1)+' →</button>'
+    +'<button class="btn btn-secondary btn-sm" '+(canPrev?'data-action="navYearReview" data-args=\'[-1]\'':'disabled style="opacity:0.3;cursor:not-allowed"')+' title="Previous year">← '+(year-1)+'</button>'
+    +(year!==currentYear?'<button class="btn btn-secondary btn-sm" data-action="navYearReviewToCurrent" title="Jump to current year">↺ '+currentYear+'</button>':'')
+    +'<button class="btn btn-secondary btn-sm" '+(canNext?'data-action="navYearReview" data-args=\'[1]\'':'disabled style="opacity:0.3;cursor:not-allowed"')+' title="Next year">'+(year+1)+' →</button>'
     +'</div>';
   return'<div class="page-title">Year in Review</div><div class="page-subtitle">Your meadwright\'s record for '+year+(year===currentYear?'':' · historical view')+'</div>'
     +yearNav
@@ -108,7 +108,7 @@ function renderYearReview(){
       +'<div style="padding:8px 0"><div style="font-family:var(--font-display);font-size:18px;color:'+getBatchColor(bestTasting.batch)+'">'+escHtml(bestTasting.batch.name)+'</div>'
       +'<div style="font-size:13px;color:var(--text3);margin:4px 0">'+fmtDate(bestTasting.tasting.date)+' · '+'★'.repeat(bestTasting.tasting.rating)+'☆'.repeat(5-bestTasting.tasting.rating)+'</div>'
       +(bestTasting.tasting.flavor?'<div style="font-style:italic;color:var(--text2);margin-top:8px">"'+escHtml(bestTasting.tasting.flavor)+'"</div>':'')
-      +'<button class="btn btn-secondary btn-sm" style="margin-top:10px" onclick="showView(\'batch\',\''+bestTasting.batch.id+'\')">View Batch →</button>'
+      +'<button class="btn btn-secondary btn-sm" style="margin-top:10px" data-action="showView" data-args=\''+JSON.stringify(['batch',bestTasting.batch.id])+'\'>View Batch →</button>'
       +'</div></div>':'')
     +(perBottleAvg!=='—'?'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">💰 ECONOMICS</div></div>'
       +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px"><div style="text-align:center"><div class="yr-stat-val" style="font-size:24px">'+ccy+totalCost.toFixed(0)+'</div><div class="yr-stat-lbl">Total Spent</div></div>'
@@ -116,7 +116,7 @@ function renderYearReview(){
       +'<div style="text-align:center"><div class="yr-stat-val" style="font-size:24px">'+(thisYearBatches.length>0?ccy+(totalCost/thisYearBatches.length).toFixed(0):'—')+'</div><div class="yr-stat-lbl">Per Batch</div></div></div>'
       +'</div>':'')
     +renderPersonalRecords()
-    +'<div style="text-align:center;margin-top:24px"><button class="btn btn-secondary" onclick="printYearReview('+year+')">🖨 Print Year in Review</button></div>';
+    +'<div style="text-align:center;margin-top:24px"><button class="btn btn-secondary" data-action="printYearReview" data-args=\''+JSON.stringify([year])+'\'>🖨 Print Year in Review</button></div>';
 }
 
 function navYearReview(delta){

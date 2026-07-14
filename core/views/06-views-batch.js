@@ -1046,7 +1046,7 @@ function openStepEditor(batchId){
   var tplPicker=tpls.length?'<div style="margin-bottom:10px"><select class="form-select" onchange="applyStepTemplate(\''+b.id+'\',this.value)"><option value="">'+(nl?'Sjabloon laden…':'Load template…')+'</option>'+tpls.map(function(t){return '<option value="'+t.id+'">'+escHtml(t.name)+' ('+((t.steps||[]).length)+')</option>';}).join('')+'</select></div>':'';
   closeModal();
   document.body.insertAdjacentHTML('beforeend',
-    '<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:700px;max-height:88vh;display:flex;flex-direction:column">'
+    '<div class="modal-overlay"><div class="modal" style="max-width:700px;max-height:88vh;display:flex;flex-direction:column">'
     +'<div class="modal-title">✎ '+(nl?'Stappenschema bewerken':'Edit step schedule')+'</div>'
     +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px">'+(nl?'Pas dagen, titels en omschrijvingen aan. Een opgeslagen schema overschrijft het recept voor déze partij.':'Adjust days, titles and descriptions. A saved schedule overrides the recipe for this batch only.')+(custom?'':' '+(nl?'(Begint vanaf het recept.)':'(Starting from the recipe.)'))+'</div>'
     +tplPicker
@@ -1444,14 +1444,20 @@ function isTaskDone(id){
 function isTaskCompletedToday(id){
   return APP.tasksDone&&APP.tasksDone[id]===today();
 }
+// el is an explicit-call holdover (onclick="toggleTask('id',this)", not yet
+// converted everywhere); a data-action call passes no second argument, but
+// _delegateClick's fn.apply(el,args) already binds `this` to the clicked
+// element, so el falls back to it — either calling style updates the
+// checkbox instantly without waiting for a full re-render.
 function toggleTask(id,el){
+  el=el||this;
   if(!APP.tasksDone)APP.tasksDone={};
   if(APP.tasksDone[id]){
     delete APP.tasksDone[id];
-    if(el){el.classList.remove('checked');el.innerHTML='';}
+    if(el&&el.classList){el.classList.remove('checked');el.innerHTML='';}
   }else{
     APP.tasksDone[id]=today();
-    if(el){el.classList.add('checked');el.innerHTML='✓';}
+    if(el&&el.classList){el.classList.add('checked');el.innerHTML='✓';}
   }
   scheduleSave();
 }

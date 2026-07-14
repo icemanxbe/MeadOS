@@ -65,14 +65,14 @@ function renderSupplies(){
         +(priceLine?(it.openDate||it.expiryDate?' · ':'')+priceLine:'')
         +(it.notes?' · '+escHtml(it.notes):'')
         +'</div></div>'
-        +'<div style="display:flex;gap:4px"><button class="cellar-mini-btn" onclick="adjustSupply(\''+it.id+'\',-1)" title="Use one">−</button>'
-        +'<button class="cellar-mini-btn" onclick="adjustSupply(\''+it.id+'\',1)" title="Add one">+</button>'
-        +'<button class="cellar-mini-btn" onclick="useSupplyAmount(\''+it.id+'\')" title="Use a specific amount">±</button>'
-        +'<button class="btn-icon" style="width:26px;height:26px" onclick="openSupplyEditModal(\''+it.id+'\')" title="Edit">✏</button>'
-        +'<button class="btn-icon" style="width:26px;height:26px;border-color:var(--red);color:var(--red2)" onclick="deleteSupply(\''+it.id+'\')" title="Delete">🗑</button></div>'
+        +'<div style="display:flex;gap:4px"><button class="cellar-mini-btn" data-action="adjustSupply" data-args=\''+JSON.stringify([it.id,-1])+'\' title="Use one">−</button>'
+        +'<button class="cellar-mini-btn" data-action="adjustSupply" data-args=\''+JSON.stringify([it.id,1])+'\' title="Add one">+</button>'
+        +'<button class="cellar-mini-btn" data-action="useSupplyAmount" data-args=\''+JSON.stringify([it.id])+'\' title="Use a specific amount">±</button>'
+        +'<button class="btn-icon" style="width:26px;height:26px" data-action="openSupplyEditModal" data-args=\''+JSON.stringify([it.id])+'\' title="Edit">✏</button>'
+        +'<button class="btn-icon" style="width:26px;height:26px;border-color:var(--red);color:var(--red2)" data-action="deleteSupply" data-args=\''+JSON.stringify([it.id])+'\' title="Delete">🗑</button></div>'
         +'</div>';
     }).join(''):'<div style="font-size:13px;color:var(--text3);font-style:italic;padding:8px 0">None tracked</div>';
-    return'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">'+t.icon+' '+t.label.toUpperCase()+' · '+arr.length+'</div><button class="btn btn-secondary btn-sm" onclick="openSupplyEditModal(null,\''+t.key+'\')">＋ Add</button></div>'+rows+'</div>';
+    return'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">'+t.icon+' '+t.label.toUpperCase()+' · '+arr.length+'</div><button class="btn btn-secondary btn-sm" data-action="openSupplyEditModal" data-args=\''+JSON.stringify([null,t.key])+'\'>＋ Add</button></div>'+rows+'</div>';
   }).join('');
   return'<div class="page-title">Supplies</div><div class="page-subtitle">Inventory of yeast, chemicals, and consumables · '+items.length+' tracked · stored in the shared server database</div>'
     +renderShoppingListCard()
@@ -92,6 +92,10 @@ function renderSupplies(){
 
 // Supply categories a supplier can carry — so the rolodex isn't honey-only.
 var SUPPLY_CATEGORIES=['Honey','Bottles','Crown caps','Corks','Yeast','Nutrient','Fruit & adjuncts','Spices & herbs','Oak','Acids & chemicals','Equipment','Other'];
+function _openHoneyFromSupplier(name){
+  currentHoneyName=name;
+  showView('honey-detail');
+}
 function renderSuppliersView(){
   var suppliers=APP.suppliers||[];
   // Sort: rated > unrated, then by name
@@ -105,7 +109,7 @@ function renderSuppliersView(){
     var honeyTags=(s.honeys||[]).map(function(h){
       var prof=HONEY_PROFILES[h];
       var color=(prof&&prof.color)||'var(--gold)';
-      return'<span onclick="event.stopPropagation();currentHoneyName=\''+h.replace(/\'/g,"\\\'")+'\';showView(\'honey-detail\')" style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-family:var(--font-mono);font-size:9.5px;background:rgba(0,0,0,0.20);color:'+color+';border:1px solid '+color+'66;padding:1px 6px;border-radius:6px;margin:2px 3px 2px 0">'+escHtml(h)+'</span>';
+      return'<span data-action="_openHoneyFromSupplier" data-args=\''+JSON.stringify([h])+'\' style="display:inline-flex;align-items:center;gap:4px;cursor:pointer;font-family:var(--font-mono);font-size:9.5px;background:rgba(0,0,0,0.20);color:'+color+';border:1px solid '+color+'66;padding:1px 6px;border-radius:6px;margin:2px 3px 2px 0">'+escHtml(h)+'</span>';
     }).join('');
     var catTags=(s.categories||[]).map(function(c){
       return'<span style="font-family:var(--font-mono);font-size:9px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);padding:1px 7px;border-radius:6px;margin:2px 3px 2px 0;letter-spacing:0.5px">'+escHtml(c)+'</span>';
@@ -117,7 +121,7 @@ function renderSuppliersView(){
       +'<div style="flex:1;padding:12px 16px">'
       +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px">'
       +'<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><div style="font-family:var(--font-display);font-size:15px;color:var(--gold2)">'+escHtml(s.name)+'</div>'+typeBadge+'<div>'+stars+'</div></div>'
-      +'<div style="display:flex;gap:6px"><button class="btn btn-secondary btn-sm" onclick="openEditSupplierModal(\''+s.id+'\')">✏</button><button class="btn btn-secondary btn-sm" onclick="deleteSupplier(\''+s.id+'\')" style="color:var(--red2)">✕</button></div>'
+      +'<div style="display:flex;gap:6px"><button class="btn btn-secondary btn-sm" data-action="openEditSupplierModal" data-args=\''+JSON.stringify([s.id])+'\'>✏</button><button class="btn btn-secondary btn-sm" data-action="deleteSupplier" data-args=\''+JSON.stringify([s.id])+'\' style="color:var(--red2)">✕</button></div>'
       +'</div>'
       +(contactLine?'<div style="font-size:11.5px;color:var(--text3);margin-bottom:6px;font-style:italic">'+escHtml(contactLine)+(s.url?' <a href="'+escHtml(s.url)+'" target="_blank" rel="noopener" style="color:var(--gold2);text-decoration:none;margin-left:4px">↗</a>':'')+'</div>':'')
       +(catTags?'<div style="margin:6px 0">'+catTags+'</div>':'')
@@ -126,7 +130,7 @@ function renderSuppliersView(){
       +'</div></div></div>';
   }).join('');
   return'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;flex-wrap:wrap;gap:8px"><div><div class="page-title" style="margin-bottom:0">Suppliers</div></div>'
-    +'<button class="btn btn-primary btn-sm" onclick="openEditSupplierModal()">＋ Add Supplier</button>'
+    +'<button class="btn btn-primary btn-sm" data-action="openEditSupplierModal">＋ Add Supplier</button>'
     +'</div>'
     +'<div class="page-subtitle">Beekeepers, mead shops, brewing-supply stores · '+suppliers.length+' entries</div>'
     +(suppliers.length
@@ -149,7 +153,7 @@ function openEditSupplierModal(id){
     var sel=(s.honeys||[]).indexOf(h)>=0;
     return'<label style="display:inline-flex;align-items:center;gap:5px;font-size:11.5px;margin:2px 4px 2px 0;cursor:pointer;background:'+(sel?'rgba(232,196,106,0.15)':'var(--bg)')+';border:1px solid '+(sel?'var(--gold)':'var(--border)')+';padding:3px 7px;border-radius:6px;color:'+(sel?'var(--gold2)':'var(--text2)')+'"><input type="checkbox" data-honey="'+escHtml(h)+'" '+(sel?'checked':'')+' style="margin:0;cursor:pointer;accent-color:var(--gold2)">'+escHtml(h)+'</label>';
   }).join('');
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:640px;max-height:92vh;display:flex;flex-direction:column">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:640px;max-height:92vh;display:flex;flex-direction:column">'
     +'<div class="modal-title">'+(isNew?'＋ ADD SUPPLIER':'✏ EDIT SUPPLIER')+'</div>'
     +'<div style="flex:1;overflow-y:auto;padding-right:4px">'
     +'<div class="form-row"><div class="form-group" style="flex:2"><label class="form-label">Name</label><input class="form-input" id="sup-name" value="'+escHtml(s.name)+'" placeholder="e.g. Local Beekeeper Co / Homebrew Shop / Online Apiary"></div>'
@@ -161,14 +165,14 @@ function openEditSupplierModal(id){
     +'<div class="form-row"><div class="form-group"><label class="form-label">Contact (phone/email)</label><input class="form-input" id="sup-contact" value="'+escHtml(s.contact||'')+'" placeholder="email or phone"></div>'
     +'<div class="form-group"><label class="form-label">Website</label><input class="form-input" id="sup-url" value="'+escHtml(s.url||'')+'" placeholder="https://…" style="font-family:var(--font-mono);font-size:12px"></div></div>'
     +'<div class="form-group"><label class="form-label">Rating</label><div style="display:flex;gap:4px" id="sup-rating-row">'
-    +[1,2,3,4,5].map(function(n){return'<span onclick="document.getElementById(\'sup-rating\').value='+n+';renderSupRatingStars()" style="font-size:24px;cursor:pointer;color:'+(s.rating>=n?'var(--gold2)':'var(--bg4)')+';transition:color 0.15s" class="sup-star" data-n="'+n+'">★</span>';}).join('')
+    +[1,2,3,4,5].map(function(n){return'<span data-action="_setSupRating" data-args=\''+JSON.stringify([n])+'\' style="font-size:24px;cursor:pointer;color:'+(s.rating>=n?'var(--gold2)':'var(--bg4)')+';transition:color 0.15s" class="sup-star" data-n="'+n+'">★</span>';}).join('')
     +'<input type="hidden" id="sup-rating" value="'+(s.rating||0)+'"></div></div>'
     +'<div class="form-group"><label class="form-label">What they supply <span style="font-weight:400;color:var(--text3);font-size:11px;margin-left:6px">click to toggle</span></label><div id="sup-cats" style="line-height:2">'+catChecks+'</div></div>'
     +'<div class="form-group"><label class="form-label">Honey varieties <span style="font-weight:400;color:var(--text3);font-size:11px;margin-left:6px">if they sell honey · click to toggle</span></label><div id="sup-honeys" style="line-height:2">'+honeyChecks+'</div></div>'
     +'<div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="sup-notes" placeholder="What\'s the best they sell? Pricing notes? Any quality remarks?" style="min-height:90px">'+escHtml(s.notes||'')+'</textarea></div>'
     +'</div>'
-    +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button>'
-    +'<button class="btn btn-primary" onclick="saveSupplier('+(isNew?'null':'\''+s.id+'\'')+')">'+(isNew?'Add Supplier':'Save')+'</button></div>'
+    +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px"><button class="btn btn-secondary" data-action="closeModal">Cancel</button>'
+    +'<button class="btn btn-primary" data-action="saveSupplier" data-args=\''+JSON.stringify([isNew?null:s.id])+'\'>'+(isNew?'Add Supplier':'Save')+'</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
   setTimeout(function(){var el=document.getElementById('sup-name');if(el&&isNew)el.focus();},50);
@@ -180,6 +184,10 @@ function renderSupRatingStars(){
     var v=parseInt(el.dataset.n);
     el.style.color=v<=n?'var(--gold2)':'var(--bg4)';
   });
+}
+function _setSupRating(n){
+  document.getElementById('sup-rating').value=n;
+  renderSupRatingStars();
 }
 
 function saveSupplier(id){
@@ -257,7 +265,7 @@ function openSupplyEditModal(id,defaultType){
   // Yeast variety datalist — same idea, suggests yeast strains
   var yeastVarietyOpts=(typeof YEAST_STRAINS!=='undefined'&&YEAST_STRAINS.length)?
     '<datalist id="yeast-variety-list">'+YEAST_STRAINS.map(function(y){return'<option value="'+escHtml(y.name)+'"></option>';}).join('')+'</datalist>':'';
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">'
+  var html='<div class="modal-overlay"><div class="modal">'
     +'<div class="modal-title">'+(isNew?'ADD':'EDIT')+' SUPPLY</div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="sup-type" onchange="onSupplyTypeChange()">'+typeOpts+'</select></div>'
     +'<div class="form-group"><label class="form-label" id="sup-name-label">Name</label>'
@@ -281,7 +289,7 @@ function openSupplyEditModal(id,defaultType){
     +'<div style="font-size:11px;color:var(--text3);margin-top:4px;font-style:italic">Grams per packet/sachet. Recipes show grams + computed packet count using this. Defaults to 10g (yeast) or 12g (nutrient) if left blank.</div>'
     +'</div><div class="form-group"></div></div>'
     +'<div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="sup-notes">'+escHtml(it&&it.notes||'')+'</textarea></div>'
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveSupply(\''+(it?it.id:'')+'\')">Save</button></div>'
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Cancel</button><button class="btn btn-primary" data-action="saveSupply" data-args=\''+JSON.stringify([it?it.id:''])+'\'>Save</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }

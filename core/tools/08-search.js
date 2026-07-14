@@ -25,7 +25,7 @@ function openGlobalSearch(){
 function renderGlobalSearchModal(){
   closeModal();
   var q=(window._globalSearch&&window._globalSearch.query)||'';
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()" id="gs-overlay">'
+  var html='<div class="modal-overlay" id="gs-overlay">'
     +'<div class="modal" style="max-width:720px;max-height:88vh;display:flex;flex-direction:column">'
     +'<div class="modal-title">🔍 SEARCH EVERYTHING</div>'
     +'<input type="text" id="gs-input" placeholder="Search batches, tastings, notes, additions, supplies, recipes…" '
@@ -34,14 +34,27 @@ function renderGlobalSearchModal(){
       +'style="width:100%;padding:14px 16px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:15px;font-family:inherit;margin-bottom:12px">'
     +'<div id="gs-hint" style="font-size:11px;color:var(--text3);font-style:italic;margin-bottom:10px;line-height:1.55">'+(appLang()==='nl'?'Tip: typ een paar woorden van overal uit je dagboek — partijnamen, proefsmaken, toevoegingsnotities, leveranciersnamen. Resultaten worden per type gegroepeerd. Druk op ':'Tip: type a couple of words from anywhere in your journal — batch names, tasting flavors, addition notes, supplier names. Results group by type. Press ')+'<kbd style="background:var(--bg4);padding:1px 5px;border-radius:3px;font-family:var(--font-mono);font-size:10px">Enter</kbd>'+(appLang()==='nl'?' om het bovenste resultaat te openen.':' to open the top result.')+'</div>'
     +'<div id="gs-results" style="flex:1;overflow-y:auto;min-height:200px"></div>'
-    +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:12px;margin-top:8px"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'
+    +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:12px;margin-top:8px"><button class="btn btn-secondary" data-action="closeModal">Close</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
   updateGlobalSearchResults();
 }
 
-// Cached "first result" id+kind so Enter can activate it from anywhere
+// Cached "first result" {action,args} so Enter can activate it from
+// anywhere without re-deriving which result was on top.
 var _gsFirstHit=null;
+
+// Every result row navigates somewhere AND closes the search modal — two
+// steps data-action can't express as one function name, so each result
+// kind gets its own tiny wrapper instead of building a string of JS to
+// hand to `new Function()` (the previous approach: functionally an eval,
+// which the rendering refactor is specifically trying to get away from —
+// see 05b-delegate.js's own comment on why onclick="..." forces
+// 'unsafe-inline' in the CSP; new Function() has the equivalent
+// 'unsafe-eval' problem).
+function _gsOpenBatch(batchId){showView('batch',batchId);closeModal();}
+function _gsOpenSupplies(){showView('supplies');closeModal();}
+function _gsOpenRecipe(recipeId){currentRecipeId=recipeId;showView('recipe-detail');closeModal();}
 
 function updateGlobalSearchResults(){
   var container=document.getElementById('gs-results');
@@ -88,54 +101,48 @@ function updateGlobalSearchResults(){
 
   var html='';
   // Capture the first activatable result so Enter knows what to open
-  function recordFirst(action){if(!_gsFirstHit)_gsFirstHit=action;}
+  function recordFirst(action,args){if(!_gsFirstHit)_gsFirstHit={action:action,args:args||[]};}
 
   html+=section('BATCHES','⚗',hits.batches,function(b){
-    var act='showView(\'batch\',\''+b.id+'\');closeModal()';
-    recordFirst(act);
-    return'<div onclick="'+act+'" style="padding:10px 12px;background:var(--bg);border-left:3px solid '+getBatchColor(b)+';border-radius:var(--radius);cursor:pointer;margin-bottom:4px;transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
+    recordFirst('_gsOpenBatch',[b.id]);
+    return'<div data-action="_gsOpenBatch" data-args=\''+JSON.stringify([b.id])+'\' style="padding:10px 12px;background:var(--bg);border-left:3px solid '+getBatchColor(b)+';border-radius:var(--radius);cursor:pointer;margin-bottom:4px;transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
       +'<div style="font-family:var(--font-display);font-size:13.5px;color:'+getBatchColor(b)+'">'+highlight(b.name,q)+(b.serial?'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);padding:1px 6px;border-radius:6px;margin-left:8px">#'+highlight(b.serial,q)+'</span>':'')+'</div>'
       +'<div style="font-size:11.5px;color:var(--text3);margin-top:2px">'+escHtml(fmtDate(b.startDate))+' · '+escHtml(b.style||(getRecipe(b.recipeId)||{}).style||'Custom')
       +(b.notes&&b.notes.toLowerCase().indexOf(q)>=0?'<br><span style="font-style:italic">'+highlight(b.notes,q)+'</span>':'')
       +'</div></div>';
   });
   html+=section('TASTING NOTES','🍷',hits.tastings,function(h){
-    var act='showView(\'batch\',\''+h.batch.id+'\');closeModal()';
-    recordFirst(act);
-    return'<div onclick="'+act+'" style="padding:10px 12px;background:var(--bg);border-left:3px solid '+getBatchColor(h.batch)+';border-radius:var(--radius);cursor:pointer;margin-bottom:4px" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
+    recordFirst('_gsOpenBatch',[h.batch.id]);
+    return'<div data-action="_gsOpenBatch" data-args=\''+JSON.stringify([h.batch.id])+'\' style="padding:10px 12px;background:var(--bg);border-left:3px solid '+getBatchColor(h.batch)+';border-radius:var(--radius);cursor:pointer;margin-bottom:4px" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
       +'<div style="font-family:var(--font-display);font-size:13px;color:'+getBatchColor(h.batch)+'">'+escHtml(h.batch.name)+' · '+fmtDate(h.tasting.date)+'</div>'
       +'<div style="font-size:11.5px;color:var(--text2);margin-top:3px;line-height:1.5">'+highlight(h.matchedText,q)+'</div>'
       +'</div>';
   });
   html+=section('LOG ENTRIES','📊',hits.logs,function(h){
-    var act='showView(\'batch\',\''+h.batch.id+'\');closeModal()';
-    recordFirst(act);
-    return'<div onclick="'+act+'" style="padding:10px 12px;background:var(--bg);border-left:3px solid '+getBatchColor(h.batch)+';border-radius:var(--radius);cursor:pointer;margin-bottom:4px" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
+    recordFirst('_gsOpenBatch',[h.batch.id]);
+    return'<div data-action="_gsOpenBatch" data-args=\''+JSON.stringify([h.batch.id])+'\' style="padding:10px 12px;background:var(--bg);border-left:3px solid '+getBatchColor(h.batch)+';border-radius:var(--radius);cursor:pointer;margin-bottom:4px" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
       +'<div style="font-family:var(--font-display);font-size:13px;color:'+getBatchColor(h.batch)+'">'+escHtml(h.batch.name)+' · '+fmtDate(h.log.date)+(h.log.gravity?' · SG '+h.log.gravity:'')+'</div>'
       +'<div style="font-size:11.5px;color:var(--text2);margin-top:3px;line-height:1.5;font-style:italic">'+highlight(h.log.note||'',q)+'</div>'
       +'</div>';
   });
   html+=section('ADDITIONS','➕',hits.additions,function(h){
-    var act='showView(\'batch\',\''+h.batch.id+'\');closeModal()';
-    recordFirst(act);
-    return'<div onclick="'+act+'" style="padding:10px 12px;background:var(--bg);border-left:3px solid '+getBatchColor(h.batch)+';border-radius:var(--radius);cursor:pointer;margin-bottom:4px" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
+    recordFirst('_gsOpenBatch',[h.batch.id]);
+    return'<div data-action="_gsOpenBatch" data-args=\''+JSON.stringify([h.batch.id])+'\' style="padding:10px 12px;background:var(--bg);border-left:3px solid '+getBatchColor(h.batch)+';border-radius:var(--radius);cursor:pointer;margin-bottom:4px" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
       +'<div style="font-family:var(--font-display);font-size:13px;color:'+getBatchColor(h.batch)+'">'+escHtml(h.batch.name)+' · '+fmtDate(h.addition.date)+'</div>'
       +'<div style="font-size:11.5px;color:var(--text2);margin-top:3px;line-height:1.5">'
       +highlight((h.addition.item||'')+(h.addition.amount?' · '+h.addition.amount:'')+(h.addition.notes?' — '+h.addition.notes:''),q)
       +'</div></div>';
   });
   html+=section('SUPPLIES','📦',hits.supplies,function(s){
-    var act='showView(\'supplies\');closeModal()';
-    recordFirst(act);
-    return'<div onclick="'+act+'" style="padding:10px 12px;background:var(--bg);border-left:3px solid var(--gold);border-radius:var(--radius);cursor:pointer;margin-bottom:4px" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
+    recordFirst('_gsOpenSupplies',[]);
+    return'<div data-action="_gsOpenSupplies" style="padding:10px 12px;background:var(--bg);border-left:3px solid var(--gold);border-radius:var(--radius);cursor:pointer;margin-bottom:4px" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
       +'<div style="font-family:var(--font-display);font-size:13px;color:var(--gold2)">'+highlight(s.name||'',q)+'</div>'
       +'<div style="font-size:11.5px;color:var(--text3);margin-top:2px">'+escHtml((s.qty||0)+' '+(s.unit||''))+(s.notes?' · '+highlight(s.notes,q):'')+'</div>'
       +'</div>';
   });
   html+=section('RECIPES','📜',hits.recipes,function(r){
-    var act='currentRecipeId=\''+r.id+'\';showView(\'recipe-detail\');closeModal()';
-    recordFirst(act);
-    return'<div onclick="'+act+'" style="padding:10px 12px;background:var(--bg);border-left:3px solid '+(r.brandColor||'var(--gold)')+';border-radius:var(--radius);cursor:pointer;margin-bottom:4px" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
+    recordFirst('_gsOpenRecipe',[r.id]);
+    return'<div data-action="_gsOpenRecipe" data-args=\''+JSON.stringify([r.id])+'\' style="padding:10px 12px;background:var(--bg);border-left:3px solid '+(r.brandColor||'var(--gold)')+';border-radius:var(--radius);cursor:pointer;margin-bottom:4px" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
       +'<div style="font-family:var(--font-display);font-size:13px;color:'+(r.brandColor||'var(--gold2)')+'">'+highlight(r.name,q)+'</div>'
       +'<div style="font-size:11.5px;color:var(--text3);margin-top:2px">'+escHtml(r.style+' · '+r.difficulty)+'</div>'
       +'</div>';
@@ -200,11 +207,9 @@ function performGlobalSearch(q){
 }
 
 function gsActivateFirstResult(){
-  if(_gsFirstHit){
-    // _gsFirstHit is a string of JS to eval (the onclick handler). Safe here
-    // because we constructed it ourselves from known-good batch IDs.
-    try{(new Function(_gsFirstHit))();}catch(e){console.warn('gs activate failed:',e);}
-  }
+  if(!_gsFirstHit)return;
+  var fn=window[_gsFirstHit.action];
+  if(typeof fn==='function')fn.apply(null,_gsFirstHit.args);
 }
 
 // Keyboard shortcut: Ctrl/Cmd-K opens global search anywhere

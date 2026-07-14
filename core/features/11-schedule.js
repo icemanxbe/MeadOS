@@ -4,6 +4,10 @@
 // ==========================================================================
 
 // ==================== AGING TIMELINE (Gantt) ====================
+function _toggleAgingShowFinished(){
+  window._agingShowFinished=!window._agingShowFinished;
+  renderMain();
+}
 function renderTimeline(){
   var allBottled=visibleBatches().filter(function(b){return APP.bottling[b.id]&&!b.failed;});
   // Finished batches (drunk/gifted to zero) have nothing left to age — hide
@@ -13,7 +17,7 @@ function renderTimeline(){
   var showFinished=!!window._agingShowFinished;
   var bottled=showFinished?allBottled:allBottled.filter(function(b){return!isFinished(b);});
   bottled.sort(function(a,b){return (APP.bottling[a.id].date||'').localeCompare(APP.bottling[b.id].date||'');});
-  var finishedToggle=finishedCount?'<button class="btn btn-secondary btn-sm" onclick="window._agingShowFinished='+(showFinished?'false':'true')+';renderMain()">'+(showFinished?'🙈 Hide '+finishedCount+' finished':'👁 Show '+finishedCount+' finished')+'</button>':'';
+  var finishedToggle=finishedCount?'<button class="btn btn-secondary btn-sm" data-action="_toggleAgingShowFinished">'+(showFinished?'🙈 Hide '+finishedCount+' finished':'👁 Show '+finishedCount+' finished')+'</button>':'';
   if(!bottled.length){
     return'<div class="page-title">Aging Timeline</div><div class="page-subtitle">Bottle Aging Forecast</div>'
       +'<div class="empty-state"><div class="es-icon">⌛</div><p>'+(finishedCount?'All bottled batches are finished. '+finishedToggle:'No bottled batches yet. Once you bottle, this view will plot each batch\'s ready → peak → past-peak windows on a timeline so you can plan ahead.')+'</p></div>';
@@ -70,7 +74,7 @@ function renderTimeline(){
     var pastW=maxPct-peakPct;
     return'<div class="gantt-lane">'
       +'<div class="gantt-row-label" style="color:'+color+'">'+escHtml(r.batch.name)+'</div>'
-      +'<div class="gantt-track" onclick="showView(\'batch\',\''+r.batch.id+'\')">'
+      +'<div class="gantt-track" data-action="showView" data-args=\''+JSON.stringify(['batch',r.batch.id])+'\'>'
       +markerHtml
       +'<div class="gantt-bar maturing" style="left:'+startPct+'%;width:'+maturingW+'%;background:'+color+'" title="Maturing · '+fmtDate(r.startDate.toISOString().slice(0,10))+' → '+fmtDate(r.minDate.toISOString().slice(0,10))+' ('+r.profile.minDays+' days)"></div>'
       +'<div class="gantt-bar peak" style="left:'+minPct+'%;width:'+peakW+'%;background:linear-gradient(90deg,'+color+',var(--gold2))" title="Ready → Peak window · '+fmtDate(r.minDate.toISOString().slice(0,10))+' → '+fmtDate(r.peakDate.toISOString().slice(0,10))+'">'+(peakW>5?'READY → PEAK':'')+'</div>'
@@ -106,7 +110,7 @@ function renderTimeline(){
   var upcomingHtml=upcoming.length?'<div class="card" style="margin-top:16px"><div class="card-header"><div class="card-title">🏆 NEXT TO PEAK</div></div>'
     +upcoming.map(function(r){
       var days=Math.ceil((r.peakDate-now)/86400000);
-      return'<div style="display:flex;align-items:center;gap:14px;padding:8px 4px;border-bottom:1px solid var(--border);cursor:pointer" onclick="showView(\'batch\',\''+r.batch.id+'\')">'
+      return'<div style="display:flex;align-items:center;gap:14px;padding:8px 4px;border-bottom:1px solid var(--border);cursor:pointer" data-action="showView" data-args=\''+JSON.stringify(['batch',r.batch.id])+'\'>'
         +'<div style="width:8px;height:8px;border-radius:4px;background:'+r.color+';box-shadow:0 0 6px '+r.color+'"></div>'
         +'<div style="flex:1"><div style="font-family:var(--font-display);font-size:14px;color:'+r.color+'">'+escHtml(r.batch.name)+'</div><div style="font-size:12px;color:var(--text3)">Peaks on '+fmtDate(r.peakDate.toISOString().slice(0,10))+'</div></div>'
         +'<div style="font-family:var(--font-mono);font-size:12px;color:var(--gold2)">'+fmtDurationCompact(days)+'</div>'
@@ -135,7 +139,7 @@ function renderFermenterTimeline(){
   if(!APP.fermenters||!APP.fermenters.length){
     return'<div class="page-title">Fermenter Schedule</div>'
       +'<div class="page-subtitle">When each vessel is busy</div>'
-      +'<div class="empty-state"><div class="es-icon">⚗</div><p>No fermenters configured yet. Add one in <a href="#" onclick="showView(\'settings\');return false;" style="color:var(--gold2)">Settings → Fermenters</a> to start tracking vessel occupancy.</p></div>';
+      +'<div class="empty-state"><div class="es-icon">⚗</div><p>No fermenters configured yet. Add one in <a data-action="showView" data-args=\'["settings"]\' style="color:var(--gold2);cursor:pointer">Settings → Fermenters</a> to start tracking vessel occupancy.</p></div>';
   }
   if(window._ftOffset==null)window._ftOffset=0;
   // Window: desktop shows a 6-back / 12-forward overview; mobile zooms to a
@@ -206,7 +210,7 @@ function renderFermenterTimeline(){
         var labelText=(rackedIn?'↳ ':'')+b.name;
         var statusLabel=projected?'projected':(seg.endDate&&bot&&bot.date===seg.endDate?'bottled':'racked');
         var tooltip=escHtml(b.name)+' · '+statusLabel+' segment in '+escHtml(f.name)+' · '+fmtDate(seg.startDate)+' → '+(seg.endDate?fmtDate(seg.endDate):'now');
-        bars.push('<div class="gantt-bar" style="left:'+leftPct+'%;width:'+widthPct+'%;background:'+color+';'+(projected?'opacity:0.65;border:1px dashed rgba(255,255,255,0.4);':'')+'" onclick="event.stopPropagation();showView(\'batch\',\''+b.id+'\')" title="'+tooltip+'">'+(widthPct>4?escHtml(labelText.length>22?labelText.slice(0,20)+'…':labelText):'')+'</div>');
+        bars.push('<div class="gantt-bar" style="left:'+leftPct+'%;width:'+widthPct+'%;background:'+color+';'+(projected?'opacity:0.65;border:1px dashed rgba(255,255,255,0.4);':'')+'" data-action="showView" data-args=\''+JSON.stringify(['batch',b.id])+'\' title="'+tooltip+'">'+(widthPct>4?escHtml(labelText.length>22?labelText.slice(0,20)+'…':labelText):'')+'</div>');
       });
     });
     // Planned (not-yet-brewed) batches assigned to this vessel render as ghost
@@ -226,7 +230,7 @@ function renderFermenterTimeline(){
       var pColor=(prec&&prec.brandColor)||'#8a8a8a';
       var pName=(prec?prec.name:'Planned batch');
       var pTip='◷ PLANNED · '+escHtml(pName)+' in '+escHtml(f.name)+' · brew '+fmtDate(pb.plannedStart);
-      bars.push('<div class="gantt-bar gantt-bar-planned" style="left:'+pLeft+'%;width:'+pWidth+'%;background:repeating-linear-gradient(135deg,'+pColor+'33,'+pColor+'33 6px,'+pColor+'1a 6px,'+pColor+'1a 12px);border:1px dotted '+pColor+';color:'+pColor+'" onclick="event.stopPropagation();openPlanBatchModal(\''+pb.id+'\')" title="'+pTip+'">'+(pWidth>4?'◷ '+escHtml(pName.length>18?pName.slice(0,16)+'…':pName):'')+'</div>');
+      bars.push('<div class="gantt-bar gantt-bar-planned" style="left:'+pLeft+'%;width:'+pWidth+'%;background:repeating-linear-gradient(135deg,'+pColor+'33,'+pColor+'33 6px,'+pColor+'1a 6px,'+pColor+'1a 12px);border:1px dotted '+pColor+';color:'+pColor+'" data-action="openPlanBatchModal" data-args=\''+JSON.stringify([pb.id])+'\' title="'+pTip+'">'+(pWidth>4?'◷ '+escHtml(pName.length>18?pName.slice(0,16)+'…':pName):'')+'</div>');
     });
     var batchCount=APP.batches.filter(function(b){
       return getBatchVesselHistory(b).some(function(s){return s.fermenterId===f.id;});
@@ -248,9 +252,9 @@ function renderFermenterTimeline(){
   var ftStep=ftMobile?1:3;  // page month-by-month on mobile's zoomed-in view
   var nav='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;gap:10px;flex-wrap:wrap">'
     +'<div style="display:flex;gap:6px">'
-    +'<button class="btn btn-secondary btn-sm" onclick="navFermTimeline(-'+ftStep+')" title="Shift '+ftStep+' month'+(ftStep===1?'':'s')+' back">◀ −'+ftStep+'mo</button>'
-    +'<button class="btn btn-secondary btn-sm" onclick="navFermTimeline(0)" title="Reset to today">⌂ Today</button>'
-    +'<button class="btn btn-secondary btn-sm" onclick="navFermTimeline('+ftStep+')" title="Shift '+ftStep+' month'+(ftStep===1?'':'s')+' forward">+'+ftStep+'mo ▶</button>'
+    +'<button class="btn btn-secondary btn-sm" data-action="navFermTimeline" data-args=\''+JSON.stringify([-ftStep])+'\' title="Shift '+ftStep+' month'+(ftStep===1?'':'s')+' back">◀ −'+ftStep+'mo</button>'
+    +'<button class="btn btn-secondary btn-sm" data-action="navFermTimeline" data-args=\'[0]\' title="Reset to today">⌂ Today</button>'
+    +'<button class="btn btn-secondary btn-sm" data-action="navFermTimeline" data-args=\''+JSON.stringify([ftStep])+'\' title="Shift '+ftStep+' month'+(ftStep===1?'':'s')+' forward">+'+ftStep+'mo ▶</button>'
     +'</div>'
     +'<div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);letter-spacing:1px">'
     +new Date(startMs).toLocaleString(_dloc(),{month:'short',year:'numeric'})
@@ -305,7 +309,7 @@ function renderBrewPlanCard(){
   var plans=(APP.plannedBatches||[]).filter(function(p){return typeof inActiveMode!=='function'||inActiveMode(p);}).slice().sort(function(a,b){
     return new Date(a.plannedStart||0)-new Date(b.plannedStart||0);
   });
-  var addBtn='<button class="btn btn-primary btn-sm" onclick="openPlanBatchModal()">＋ Plan a Batch</button>';
+  var addBtn='<button class="btn btn-primary btn-sm" data-action="openPlanBatchModal">＋ Plan a Batch</button>';
   var head='<div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><div class="card-title">◷ BREW PLAN</div>'+addBtn+'</div>';
   if(!plans.length){
     return'<div class="card" style="margin-top:16px">'+head
@@ -348,9 +352,9 @@ function renderBrewPlanCard(){
       }())
       +(pb.notes?'<div style="font-size:11.5px;color:var(--text3);font-style:italic;margin-top:2px">'+escHtml(pb.notes)+'</div>':'')+'</div>'
       +'<div style="display:flex;gap:5px;flex-shrink:0">'
-      +'<button class="btn btn-primary btn-sm" onclick="deployPlannedBatch(\''+pb.id+'\')" title="Start this batch now">▸ Deploy</button>'
-      +'<button class="btn btn-secondary btn-sm" onclick="openPlanBatchModal(\''+pb.id+'\')" title="Edit plan">✎</button>'
-      +'<button class="btn btn-secondary btn-sm" onclick="removePlannedBatch(\''+pb.id+'\')" title="Remove from plan">✕</button>'
+      +'<button class="btn btn-primary btn-sm" data-action="deployPlannedBatch" data-args=\''+JSON.stringify([pb.id])+'\' title="Start this batch now">▸ Deploy</button>'
+      +'<button class="btn btn-secondary btn-sm" data-action="openPlanBatchModal" data-args=\''+JSON.stringify([pb.id])+'\' title="Edit plan">✎</button>'
+      +'<button class="btn btn-secondary btn-sm" data-action="removePlannedBatch" data-args=\''+JSON.stringify([pb.id])+'\' title="Remove from plan">✕</button>'
       +'</div></div>';
   }).join('');
   return'<div class="card" style="margin-top:16px">'+head+rows+'</div>';
@@ -576,7 +580,7 @@ function renderBwyhList(){
     if(ok&&x.starves.length)badge='<span class="recipe-tag" style="color:var(--gold2);border-color:var(--gold2)">⚠ '+escHtml(x.starves.join('/'))+' reserved</span>';
     else if(ok)badge='<span class="recipe-tag" style="color:#a8d27a;border-color:rgba(122,160,64,0.5)">✓ Ready to brew</span>';
     else badge='<span class="recipe-tag" style="color:var(--red2);border-color:var(--red2)">Needs '+escHtml(x.missing.join(', '))+'</span>';
-    return'<div class="recipe-card" style="cursor:pointer" onclick="openPlanBatchModal(null,\''+rec.id+'\','+window._bwyhVol+')" title="Plan a '+escHtml(fmtVol(window._bwyhVol))+' batch of '+escHtml(rec.name)+'">'
+    return'<div class="recipe-card" style="cursor:pointer" data-action="openPlanBatchModal" data-args=\''+JSON.stringify([null,rec.id,window._bwyhVol])+'\' title="Plan a '+escHtml(fmtVol(window._bwyhVol))+' batch of '+escHtml(rec.name)+'">'
       +'<div class="recipe-card-bar" style="background:'+color+'"></div>'
       +'<div class="recipe-card-body" style="padding:13px 14px">'
       +'<div class="recipe-name" style="color:'+color+'">'+escHtml(rec.name)+'</div>'
@@ -595,7 +599,7 @@ function renderBrewWhatYouHaveCard(){
   var r=computeBrewableRecipes(window._bwyhVol);
   var makeableCount=r.list.filter(function(x){return x.makeable;}).length;
   var header='<div class="card" id="bwyh-card" style="margin-bottom:16px">'
-    +'<div onclick="toggleBrewWhatYouHave()" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none">'
+    +'<div data-action="toggleBrewWhatYouHave" style="display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none">'
     +'<div class="card-title">'+(r.isCider?'🍎':'🍯')+' BREW WITH WHAT YOU HAVE</div>'
     +'<div style="display:flex;align-items:center;gap:10px"><span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:0.5px">'+(r.isCider?makeableCount+' ready · '+fmtVol(r.have.juice)+' juice':makeableCount+' ready · '+fmtWt(r.have.honey)+' honey')+'</span><span class="bwyh-chev" style="color:var(--gold2);font-size:13px">'+(window._bwyhOpen?'▾':'▸')+'</span></div>'
     +'</div>';
@@ -652,7 +656,7 @@ function renderShoppingListCard(){
       }).join('');
   }
   return'<div class="card" style="margin-top:16px"><div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><div class="card-title">🛒 SHOPPING LIST</div>'
-    +'<button class="btn btn-secondary btn-sm" onclick="copyShoppingList()" title="Copy as text">⧉ Copy</button></div>'
+    +'<button class="btn btn-secondary btn-sm" data-action="copyShoppingList" title="Copy as text">⧉ Copy</button></div>'
     +planHtml+lowHtml+'</div>';
 }
 
@@ -733,7 +737,7 @@ function openPlanBatchModal(planId,presetRecipeId,presetVolSI){
   var curBottle=editing&&editing.bottleSize||'mixed';
   var unitBtns=['metric','us','imperial'].map(function(s){
     var lbl={metric:'Metric · L',us:'US · gal',imperial:'Imp · gal'}[s];var on=(s===us);
-    return'<button type="button" id="pb-unit-'+s+'" onclick="onPlanUnitChange(\''+s+'\')" style="flex:1;padding:6px 4px;border-radius:var(--radius);cursor:pointer;font-family:var(--font-mono);font-size:10px;letter-spacing:0.3px;border:1px solid '+(on?'var(--gold)':'var(--border)')+';background:'+(on?'rgba(201,168,76,0.14)':'var(--bg3)')+';color:'+(on?'var(--gold2)':'var(--text3)')+'">'+lbl+'</button>';
+    return'<button type="button" id="pb-unit-'+s+'" data-action="onPlanUnitChange" data-args=\''+JSON.stringify([s])+'\' style="flex:1;padding:6px 4px;border-radius:var(--radius);cursor:pointer;font-family:var(--font-mono);font-size:10px;letter-spacing:0.3px;border:1px solid '+(on?'var(--gold)':'var(--border)')+';background:'+(on?'rgba(201,168,76,0.14)':'var(--bg3)')+';color:'+(on?'var(--gold2)':'var(--text3)')+'">'+lbl+'</button>';
   }).join('');
   // Filtered to this plan's own beverage — see openNewBatchModal for the same treatment.
   var yeastOpts=YEAST_STRAINS.filter(function(y){return y.id===curYeast||(y.beverageTypes||['mead']).indexOf(isCider?'cider':'mead')>=0;})
@@ -742,7 +746,7 @@ function openPlanBatchModal(planId,presetRecipeId,presetVolSI){
   var honeyOpts=(isCider?CIDER_FRUIT_TYPES:HONEY_TYPES).map(function(t){return'<option value="'+escHtml(t)+'"'+(t===curHoney?' selected':'')+'>'+escHtml(t)+'</option>';}).join('');
   var bottleOpts=[['mixed','Mixed (750 ml + a 500 ml remainder)'],['750','750 ml only'],['500','500 ml only']]
     .map(function(b){return'<option value="'+b[0]+'"'+(b[0]===curBottle?' selected':'')+'>'+b[1]+'</option>';}).join('');
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:620px">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:620px">'
     +'<div class="modal-title">◷ '+(editing?'EDIT PLANNED BATCH':'PLAN A BATCH')+'</div>'
     +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:12px">Queue a future brew with everything this recipe needs. It appears on the schedule and rolls into your shopping list — no supplies are deducted until you deploy it.</div>'
     +'<div class="form-group"><label class="form-label">Recipe</label><select class="form-select" id="pb-recipe" onchange="onPlanRecipeChange()">'+recipeOpts+'</select></div>'
@@ -755,7 +759,7 @@ function openPlanBatchModal(planId,presetRecipeId,presetVolSI){
     +'<div class="form-group"><label class="form-label">Bottle Type</label><select class="form-select" id="pb-bottle">'+bottleOpts+'</select></div></div>'
     +'<div class="form-group"><label class="form-label">Planned Brew Date</label><input class="form-input" id="pb-date" type="date" value="'+defDate+'"></div>'
     +'<div class="form-group"><label class="form-label">Notes (optional)</label><textarea class="form-textarea" id="pb-notes" placeholder="e.g. gift batch for the holidays, try the new orange-blossom honey">'+escHtml(editing&&editing.notes||'')+'</textarea></div>'
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="savePlannedBatch('+(editing?'\''+editing.id+'\'':'null')+')">'+(editing?'Save':'Add to Plan')+'</button></div>'
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Cancel</button><button class="btn btn-primary" data-action="savePlannedBatch" data-args=\''+JSON.stringify([editing?editing.id:null])+'\'>'+(editing?'Save':'Add to Plan')+'</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }

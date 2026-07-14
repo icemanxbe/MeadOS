@@ -1126,7 +1126,7 @@ function openShelfAssignmentModal(batchId){
       +'</div>';
     }).join('');
   }).join('');
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:520px;max-height:88vh;display:flex;flex-direction:column">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:520px;max-height:88vh;display:flex;flex-direction:column">'
     +'<div class="modal-title">📍 ASSIGN TO SHELF</div>'
     +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:14px;line-height:1.55">Pick a shelf for <strong style="color:var(--gold2)">'+escHtml(b.name)+'</strong>'+(b.serial?' (#'+escHtml(b.serial)+')':'')+'.</div>'
     +'<div style="flex:1;overflow-y:auto;padding-right:4px">'+shelfOptions+'</div>'
@@ -1174,7 +1174,7 @@ function openShelfDetailModal(shelfId){
   var batches=byShelf[shelfId]||[];
   var byShelfFerm=fermentersByShelf();
   var fermenters=byShelfFerm[shelfId]||[];
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:560px;max-height:90vh;display:flex;flex-direction:column">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:560px;max-height:90vh;display:flex;flex-direction:column">'
     +'<div class="modal-title">'+(s.type==='open'?'⏐':(s.type==='fermenter_slot'?'⚗':'🍾'))+' '+escHtml(s.label)+'</div>'
     +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:14px;line-height:1.55">Type: '+(s.type==='open'?'Open (rack removed)':(s.type==='fermenter_slot'?'Fermenter slot':'Bottle rack'))+(s.capacity?' · Capacity '+s.capacity+' bottles':'')+(s.note?'<br>Note: '+escHtml(s.note):'')+'</div>'
     +'<div style="flex:1;overflow-y:auto;padding-right:4px">';
@@ -1311,7 +1311,7 @@ function openFermenterShelfAssignmentModal(fermenterId){
       +'</div>';
     }).join('');
   }).join('');
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:520px;max-height:88vh;display:flex;flex-direction:column">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:520px;max-height:88vh;display:flex;flex-direction:column">'
     +'<div class="modal-title">⚗ PLACE FERMENTER</div>'
     +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:14px;line-height:1.55">Pick a shelf for <strong style="color:var(--gold2)">'+escHtml(f.name)+'</strong>'+(f.capacity?' ('+f.capacity+'L)':'')+'. Multiple fermenters can share a wide shelf.</div>'
     +'<div style="flex:1;overflow-y:auto;padding-right:4px">'+shelfOptions+'</div>'
@@ -1358,7 +1358,7 @@ function openCellarConfigModal(cabinetId){
       +'<button class="btn btn-danger btn-sm" onclick="removeShelfFromConfig(\''+s.id+'\')" title="Delete shelf">✕</button>'
     +'</div>';
   }).join('');
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:680px;max-height:90vh;display:flex;flex-direction:column">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:680px;max-height:90vh;display:flex;flex-direction:column">'
     +'<div class="modal-title">⚙ CABINET CONFIGURATION</div>'
     +'<div style="flex:1;overflow-y:auto;padding-right:4px">'
       +'<div class="form-group"><label class="form-label">Cabinet name</label><input class="form-input" id="cellar-name" value="'+escHtml(c.name||'')+'" placeholder="e.g. Wine fridge, Basement rack, Attic shelf"></div>'
@@ -1637,7 +1637,7 @@ function openCellarEditModal(batchId){
     var origN=bottlesOriginalBySize(bot,size);
     return'<div class="form-group"><label class="form-label">Originally bottled ('+size+'ml)</label><input class="form-input" type="number" min="0" id="ce-orig-'+size+'" value="'+origN+'"></div>';
   }).join('');
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:640px">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:640px">'
     +'<div class="modal-title">EDIT BOTTLING · '+escHtml(b.name)+'</div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">Bottle Date</label><input class="form-input" type="date" id="ce-date" value="'+(bot.date||today())+'"></div>'
     +'<div class="form-group"><label class="form-label">Final ABV %</label><input class="form-input" type="number" step="0.1" id="ce-abv" value="'+(bot.abv||'')+'"></div></div>'

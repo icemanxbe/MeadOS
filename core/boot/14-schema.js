@@ -217,7 +217,11 @@ var SCHEMA_MIGRATIONS={
 };
 
 function migrateData(d){
-  if(!d)return{result:d,steps:[]};
+  // Migration steps below assign properties directly onto d (e.g. d.fermenters=[...]),
+  // which throws under 'use strict' if d is a non-object primitive (a string, a
+  // number...) rather than the object every migration assumes. Bail out before
+  // that instead of letting a malformed root crash mid-migration.
+  if(!d||typeof d!=='object'||Array.isArray(d))return{result:d,steps:[]};
   var fromVersion=d.dataVersion||1;
   var steps=[];
   for(var v=fromVersion+1;v<=CURRENT_SCHEMA_VERSION;v++){
@@ -235,16 +239,72 @@ function migrateData(d){
   return{result:d,steps:steps,fromVersion:fromVersion,toVersion:CURRENT_SCHEMA_VERSION};
 }
 
+// ==================== STATE SHAPE VALIDATION ====================
+// applyState()/importData() used to trust every bucket's type implicitly —
+// `APP.batches=d.batches||[]` only guards against falsy values, so a
+// truthy-but-wrong-type value (a string, a number, `true`) sailed straight
+// into APP and corrupted state silently; the failure would surface later,
+// far from the cause, as some unrelated .map()/.filter() crash. This checks
+// every known top-level bucket against its expected shape (array vs plain
+// object) BEFORE it's applied, so a bad bucket is dropped (falls back to
+// applyState's existing `||[]`/`||{}` defaults) and reported loudly instead
+// of silently propagating.
+var STATE_ARRAY_BUCKETS=['batches','supplies','customRecipes','fermenters','plannedBatches','suppliers','templates','stepTemplates','tempAnomalies','cabinets'];
+var STATE_OBJECT_BUCKETS=['logs','tasksDone','tastings','competitions','bottling','shareTokens','additions','notifiedTasks','celebrated','photos','settings','sharedSettings'];
+
+function _isPlainObject(v){return !!v&&typeof v==='object'&&!Array.isArray(v);}
+
+// Returns {ok, errors:[{bucket,expected,got}], sanitized}. `sanitized` is a
+// shallow copy of `d` with any bucket that fails its type check deleted
+// (not coerced) — deleting lets the caller's existing `||[]`/`||{}` fallback
+// take over exactly as it does for a bucket that was simply absent.
+function validateState(d){
+  var errors=[];
+  if(!d||typeof d!=='object'||Array.isArray(d)){
+    return{ok:false,errors:[{bucket:'(root)',expected:'object',got:d===null?'null':Array.isArray(d)?'array':typeof d}],sanitized:null};
+  }
+  var sanitized=Object.assign({},d);
+  STATE_ARRAY_BUCKETS.forEach(function(key){
+    var v=d[key];
+    if(v!==undefined&&v!==null&&!Array.isArray(v)){
+      errors.push({bucket:key,expected:'array',got:typeof v});
+      delete sanitized[key];
+    }
+  });
+  STATE_OBJECT_BUCKETS.forEach(function(key){
+    var v=d[key];
+    if(v!==undefined&&v!==null&&!_isPlainObject(v)){
+      errors.push({bucket:key,expected:'object',got:Array.isArray(v)?'array':typeof v});
+      delete sanitized[key];
+    }
+  });
+  return{ok:errors.length===0,errors:errors,sanitized:sanitized};
+}
+
+// Logs + (if a toast function is loaded) surfaces validation problems. Kept
+// separate from validateState() itself so callers that want to inspect
+// results before deciding whether to proceed (e.g. importData rejecting a
+// wholesale-wrong file) can still do so silently first.
+function reportStateValidation(validation,context){
+  if(!validation||validation.ok)return;
+  console.error('[MeadOS] state validation problems ('+(context||'unknown source')+'): '+JSON.stringify(validation.errors));
+  APP._lastStateValidationErrors=validation.errors;
+  if(typeof toast==='function'){
+    var names=validation.errors.map(function(e){return e.bucket;}).join(', ');
+    toast('⚠ Some stored data had an unexpected shape ('+names+') — reset to defaults, see console');
+  }
+}
+
 function showMigrationReport(report){
   if(!report||!report.steps||!report.steps.length)return;
   if(report.fromVersion===report.toVersion)return;
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:540px">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:540px">'
     +'<div class="modal-title">⚙ DATA MIGRATED</div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px">Your stored data was upgraded from schema <strong>v'+report.fromVersion+'</strong> to <strong>v'+report.toVersion+'</strong>. The original data is preserved; this is just a non-destructive reshape so newer features can read older batches.</div>'
     +'<div style="background:var(--bg3);padding:12px;border-radius:var(--radius);font-family:var(--font-mono);font-size:12px;line-height:1.8">'
     +report.steps.map(function(s){return'<div>'+(s.ok?'<span style="color:var(--green2)">✓</span>':'<span style="color:var(--red2)">✗</span>')+' v'+s.from+' → v'+s.to+(s.error?' <span style="color:var(--red2)">'+escHtml(s.error)+'</span>':'')+'</div>';}).join('')
     +'</div>'
-    +'<div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">OK</button></div>'
+    +'<div class="modal-actions"><button class="btn btn-primary" data-action="closeModal">OK</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }

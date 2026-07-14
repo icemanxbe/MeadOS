@@ -166,6 +166,14 @@ python3 server.py --db /path/meados.db   # a different database location
 python3 server.py --host 127.0.0.1       # local-only; don't expose on the LAN
 ```
 
+The server also writes a full, standalone backup copy of the database on a schedule (daily by default, next to `meados.db` unless you point it elsewhere) — separate from the in-database undo history, which lives in the same file and doesn't survive a lost disk:
+
+```sh
+python3 server.py --backup-dir /Volumes/backup-drive/meados   # point backups at another machine/drive
+python3 server.py --backup-interval-hours 6                   # back up more often (default 24)
+python3 server.py --backup-retain 60                           # keep more copies (default 30, 0 disables)
+```
+
 **Want it running in the background, starting on login and restarting itself if it ever crashes?** Use the install script for your OS — no extra dependencies either way:
 
 ```sh

@@ -278,6 +278,13 @@ function wizFinish(){
   window._wiz=null;
   renderRecipeEditor(); // hand off to the existing editor for fine-tune + save
 }
+// Cancelling the wizard (Cancel button or backdrop click) needs to also
+// clear window._wiz, not just close the modal — otherwise reopening the
+// wizard would resume the abandoned draft instead of starting fresh.
+function _closeWizardModal(){
+  closeModal();
+  window._wiz=null;
+}
 function renderRecipeWizard(){
   var w=window._wiz;if(!w)return;
   var existing=document.querySelector('.modal-overlay');if(existing)existing.remove();
@@ -293,11 +300,11 @@ function renderRecipeWizard(){
   if(w.step===0){
     var styleBtns=styleList.map(function(s){
       var on=w.style===s.key;
-      return'<button type="button" onclick="wizSet(\'style\',\''+s.key+'\')" style="text-align:left;padding:10px 12px;border-radius:var(--radius);cursor:pointer;border:1px solid '+(on?s.color:'var(--border)')+';background:'+(on?s.color+'22':'var(--bg3)')+'"><div style="font-size:13px;color:'+(on?s.color:'var(--text)')+';font-weight:500">'+s.label+'</div><div style="font-size:11px;color:var(--text3);line-height:1.3;margin-top:2px">'+s.desc+'</div></button>';
+      return'<button type="button" data-action="wizSet" data-args=\''+JSON.stringify(['style',s.key])+'\' style="text-align:left;padding:10px 12px;border-radius:var(--radius);cursor:pointer;border:1px solid '+(on?s.color:'var(--border)')+';background:'+(on?s.color+'22':'var(--bg3)')+'"><div style="font-size:13px;color:'+(on?s.color:'var(--text)')+';font-weight:500">'+s.label+'</div><div style="font-size:11px;color:var(--text3);line-height:1.3;margin-top:2px">'+s.desc+'</div></button>';
     }).join('');
     var sweetBtns=sweetList.map(function(s){
       var on=w.sweetness===s.key;
-      return'<button type="button" onclick="wizSet(\'sweetness\',\''+s.key+'\')" style="flex:1;min-width:84px;padding:8px 6px;border-radius:var(--radius);cursor:pointer;border:1px solid '+(on?'var(--gold)':'var(--border)')+';background:'+(on?'rgba(201,168,76,0.14)':'var(--bg3)')+'"><div style="font-size:12px;color:'+(on?'var(--gold2)':'var(--text)')+'">'+s.label+'</div><div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3);margin-top:2px">FG '+s.fg.toFixed(3)+'</div></button>';
+      return'<button type="button" data-action="wizSet" data-args=\''+JSON.stringify(['sweetness',s.key])+'\' style="flex:1;min-width:84px;padding:8px 6px;border-radius:var(--radius);cursor:pointer;border:1px solid '+(on?'var(--gold)':'var(--border)')+';background:'+(on?'rgba(201,168,76,0.14)':'var(--bg3)')+'"><div style="font-size:12px;color:'+(on?'var(--gold2)':'var(--text)')+'">'+s.label+'</div><div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3);margin-top:2px">FG '+s.fg.toFixed(3)+'</div></button>';
     }).join('');
     body='<div class="form-group"><label class="form-label">Recipe Name</label><input class="form-input" id="wiz-name" value="'+escHtml(w.name)+'" placeholder="'+(isCider?'My Designer Cider':'My Designer Mead')+'"></div>'
       +'<div class="form-group"><label class="form-label">Style</label><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'+styleBtns+'</div></div>'
@@ -361,9 +368,9 @@ function renderRecipeWizard(){
       +built.steps.map(function(s){return'<div style="font-size:12px;color:var(--text2);padding:2px 0">Day '+s.day+' — '+escHtml(s.title)+'</div>';}).join('')
       +'</div>';
   }
-  var backBtn=w.step>0?'<button class="btn btn-secondary" onclick="wizNav(-1)">← Back</button>':'<button class="btn btn-secondary" onclick="closeModal();window._wiz=null">Cancel</button>';
-  var nextBtn=w.step<3?'<button class="btn btn-primary" onclick="wizNav(1)">Next →</button>':'<button class="btn btn-primary" onclick="wizFinish()">Open in Editor →</button>';
-  var html='<div class="modal-overlay" onclick="if(event.target===this){closeModal();window._wiz=null;}"><div class="modal" style="max-width:640px">'
+  var backBtn=w.step>0?'<button class="btn btn-secondary" data-action="wizNav" data-args=\''+JSON.stringify([-1])+'\'>← Back</button>':'<button class="btn btn-secondary" data-action="_closeWizardModal">Cancel</button>';
+  var nextBtn=w.step<3?'<button class="btn btn-primary" data-action="wizNav" data-args=\''+JSON.stringify([1])+'\'>Next →</button>':'<button class="btn btn-primary" data-action="wizFinish">Open in Editor →</button>';
+  var html='<div class="modal-overlay" data-backdrop-action="_closeWizardModal"><div class="modal" style="max-width:640px">'
     +'<div class="modal-title">✦ RECIPE DESIGNER</div>'
     +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:16px;flex-wrap:wrap">'+dots+'</div>'
     +body
@@ -428,7 +435,7 @@ function renderRecipeEditor(){
   var existing=document.querySelector('.modal-overlay');
   if(existing)existing.remove();
   var isEdit=r.id&&APP.customRecipes.some(function(x){return x.id===r.id;});
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:700px">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:700px">'
     +'<div class="modal-title">'+(isEdit?'EDIT':'NEW')+' CUSTOM RECIPE</div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">Name</label><input class="form-input" id="cr-name" value="'+escHtml(r.name)+'" placeholder="My Cherry-Vanilla Melomel"></div>'
     +'<div class="form-group"><label class="form-label">Style</label><input class="form-input" id="cr-style" value="'+escHtml(r.style)+'"></div></div>'
@@ -444,23 +451,33 @@ function renderRecipeEditor(){
     +'<div class="form-row"><div class="form-group"><label class="form-label">Peak (days)</label><input class="form-input" id="cr-peak" type="number" value="'+(r.peakAgeDays||r.peakDays||180)+'"></div></div>'
     +'<div class="form-group"><label class="form-label">Description</label><textarea class="form-textarea" id="cr-desc" rows="2">'+escHtml(r.description)+'</textarea></div>'
     +'<div class="form-group"><label class="form-label">Tags (comma-separated)</label><input class="form-input" id="cr-tags" value="'+escHtml((r.tags||[]).join(', '))+'" placeholder="cherry, autumn, sweet"></div>'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px"><div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase">Ingredients</div><button class="btn btn-secondary btn-sm" onclick="addRecipeIngredient()">＋ Add Row</button></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px"><div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase">Ingredients</div><button class="btn btn-secondary btn-sm" data-action="addRecipeIngredient">＋ Add Row</button></div>'
     +'<div id="cr-ingredients">'+r.ingredients.map(function(ing,i){return ingredientRowHtml(ing,i);}).join('')+'</div>'
-    +'<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px"><div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase">Steps</div><button class="btn btn-secondary btn-sm" onclick="addRecipeStep()">＋ Add Step</button></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;margin:14px 0 8px"><div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase">Steps</div><button class="btn btn-secondary btn-sm" data-action="addRecipeStep">＋ Add Step</button></div>'
     +'<div id="cr-steps">'+r.steps.map(function(s,i){return stepRowHtml(s,i);}).join('')+'</div>'
     +'<div class="modal-actions">'
-    +(isEdit?'<button class="btn btn-danger" style="margin-right:auto" onclick="deleteCustomRecipe(\''+r.id+'\')">Delete</button>':'')
-    +'<button class="btn btn-secondary" onclick="closeModal();window._editingRecipe=null">Cancel</button>'
-    +'<button class="btn btn-primary" onclick="saveCustomRecipe()">Save Recipe</button>'
+    +(isEdit?'<button class="btn btn-danger" style="margin-right:auto" data-action="deleteCustomRecipe" data-args=\''+JSON.stringify([r.id])+'\'>Delete</button>':'')
+    +'<button class="btn btn-secondary" data-action="_cancelRecipeEdit">Cancel</button>'
+    +'<button class="btn btn-primary" data-action="saveCustomRecipe">Save Recipe</button>'
     +'</div></div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }
 
+function _cancelRecipeEdit(){
+  closeModal();
+  window._editingRecipe=null;
+}
+function _removeIngRow(){
+  this.closest('[data-ing-row]').remove();
+}
+function _removeStepRow(){
+  this.closest('[data-step-row]').remove();
+}
 function ingredientRowHtml(ing,i){
-  return'<div class="form-row-3" style="margin-bottom:6px" data-ing-row="'+i+'"><input class="form-input cr-ing-item" placeholder="Item" value="'+escHtml(ing.item||'')+'"><input class="form-input cr-ing-amount" placeholder="Amount" value="'+escHtml(ing.amount||'')+'"><div style="display:flex;gap:4px"><input class="form-input cr-ing-notes" placeholder="Notes" value="'+escHtml(ing.notes||'')+'" style="flex:1"><button class="btn-icon" onclick="this.closest(\'[data-ing-row]\').remove()" title="Remove">×</button></div></div>';
+  return'<div class="form-row-3" style="margin-bottom:6px" data-ing-row="'+i+'"><input class="form-input cr-ing-item" placeholder="Item" value="'+escHtml(ing.item||'')+'"><input class="form-input cr-ing-amount" placeholder="Amount" value="'+escHtml(ing.amount||'')+'"><div style="display:flex;gap:4px"><input class="form-input cr-ing-notes" placeholder="Notes" value="'+escHtml(ing.notes||'')+'" style="flex:1"><button class="btn-icon" data-action="_removeIngRow" title="Remove">×</button></div></div>';
 }
 function stepRowHtml(s,i){
-  return'<div style="display:grid;grid-template-columns:60px 1fr;gap:6px;margin-bottom:6px" data-step-row="'+i+'"><input class="form-input cr-step-day" type="number" placeholder="Day" value="'+(s.day||0)+'"><div style="display:flex;flex-direction:column;gap:4px"><div style="display:flex;gap:4px"><input class="form-input cr-step-title" placeholder="Title" value="'+escHtml(s.title||'')+'" style="flex:1"><button class="btn-icon" onclick="this.closest(\'[data-step-row]\').remove()" title="Remove">×</button></div><textarea class="form-textarea cr-step-desc" placeholder="Description" rows="2">'+escHtml(s.desc||'')+'</textarea></div></div>';
+  return'<div style="display:grid;grid-template-columns:60px 1fr;gap:6px;margin-bottom:6px" data-step-row="'+i+'"><input class="form-input cr-step-day" type="number" placeholder="Day" value="'+(s.day||0)+'"><div style="display:flex;flex-direction:column;gap:4px"><div style="display:flex;gap:4px"><input class="form-input cr-step-title" placeholder="Title" value="'+escHtml(s.title||'')+'" style="flex:1"><button class="btn-icon" data-action="_removeStepRow" title="Remove">×</button></div><textarea class="form-textarea cr-step-desc" placeholder="Description" rows="2">'+escHtml(s.desc||'')+'</textarea></div></div>';
 }
 function addRecipeIngredient(){
   document.getElementById('cr-ingredients').insertAdjacentHTML('beforeend',ingredientRowHtml({item:'',amount:'',notes:''},Date.now()));

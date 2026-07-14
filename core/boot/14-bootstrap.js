@@ -9,6 +9,12 @@ function updateTopbarDate(){
 }
 
 async function init(){
+  // One delegated click listener for the whole page (see core/state/05b-delegate.js)
+  // — covers both normal mode (#app persists, #main's innerHTML changes on
+  // every render) and share mode (document.body.innerHTML is replaced
+  // wholesale), since delegation only cares that the root element itself
+  // stays attached, not what's inside it.
+  if(typeof _delegateClick==='function')_delegateClick(document.body);
   // Register the service worker for offline support + installability. Fire and
   // forget — never block app start on it, and stay silent on failure (e.g.
   // unsupported browser, or http:// on a non-localhost host where SW is
@@ -59,6 +65,9 @@ async function init(){
   // Learn whether the server holds an HA token (and when it expires) — the
   // token itself never comes to the browser. Drives haConfigured() & reminders.
   await loadHAConfig();
+  // Automated server-side backup status (separate from the manual Export
+  // Backup button) — drives the Settings backup card.
+  if(typeof loadBackupStatus==='function')await loadBackupStatus();
   // Backfill the square dark-background PWA/app icon for a brand logo that was
   // set before this feature existed — one-time, then it rides the shared blob.
   if(APP.settings&&APP.settings.brandLogo&&!APP.settings.appIcon&&typeof regenerateAppIcon==='function'){

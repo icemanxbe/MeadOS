@@ -94,7 +94,7 @@ function renderTastingWheel(currentValues,onChange){
     +TASTING_AXES.map(function(ax){
       var val=(currentValues&&currentValues[ax.key])||0;
       var dots=[1,2,3,4,5].map(function(n){
-        return'<div class="tw-dot '+(n<=val?'active':'')+'" onclick="setTastingAxis(\''+ax.key+'\','+n+')" title="'+ax.hint+'">'+n+'</div>';
+        return'<div class="tw-dot '+(n<=val?'active':'')+'" data-action="setTastingAxis" data-args=\''+JSON.stringify([ax.key,n])+'\' title="'+ax.hint+'">'+n+'</div>';
       }).join('');
       return'<div class="tw-axis"><div class="tw-axis-label" title="'+ax.hint+'">'+ax.label+'</div><div class="tw-axis-dots">'+dots+'</div></div>';
     }).join('')

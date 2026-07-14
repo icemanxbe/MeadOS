@@ -4,6 +4,17 @@
 // the label + share-page i18n (APP.settings.labelLocale) — so one switch changes
 // everything. Deep per-view body text is still English; new strings opt in via
 // _UI(en, nl). Switch language in Settings → Language · Taal.
+//
+// translateChrome()/findUntranslated() below cover the rest via a reverse
+// EN->NL text-match dictionary (UI_NAV, UI_STRINGS, etc.) — it's a real hack:
+// correctness is coupled to the EXACT rendered English string, so an
+// unrelated copy edit silently breaks that string's Dutch translation with
+// no error anywhere. A third language would mean tripling this dictionary.
+// FROZEN: don't extend this pattern. Every new UI string should go through
+// _UI(en, nl) inline at the call site instead of relying on this file to
+// catch it after the fact. test.html's "i18n ratchet" check renders every
+// parameterless view in Dutch and fails if the reverse-dictionary gap grows
+// — that's a regression backstop for existing debt, not a place to add more.
 // ==========================================================================
 function appLang(){return (APP.settings&&APP.settings.labelLocale)||'en';}
 function _UI(en,nl){return appLang()==='nl'?nl:en;}

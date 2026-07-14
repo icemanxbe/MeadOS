@@ -52,7 +52,7 @@ function openNewBatchModal(recipeId,scaledVol,opts){
   var unitBtns=['metric','us','imperial'].map(function(s){
     var lbl={metric:'Metric · L / kg',us:'US · gal / lb',imperial:'Imperial · gal / lb'}[s];
     var on=(s===us);
-    return'<button type="button" id="nb-unit-'+s+'" onclick="onBatchUnitChange(\''+s+'\')" style="flex:1;padding:7px 4px;border-radius:var(--radius);cursor:pointer;font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.3px;border:1px solid '+(on?'var(--gold)':'var(--border)')+';background:'+(on?'rgba(201,168,76,0.14)':'var(--bg3)')+';color:'+(on?'var(--gold2)':'var(--text3)')+'">'+lbl+'</button>';
+    return'<button type="button" id="nb-unit-'+s+'" data-action="onBatchUnitChange" data-args=\''+JSON.stringify([s])+'\' style="flex:1;padding:7px 4px;border-radius:var(--radius);cursor:pointer;font-family:var(--font-mono);font-size:10.5px;letter-spacing:0.3px;border:1px solid '+(on?'var(--gold)':'var(--border)')+';background:'+(on?'rgba(201,168,76,0.14)':'var(--bg3)')+';color:'+(on?'var(--gold2)':'var(--text3)')+'">'+lbl+'</button>';
   }).join('');
   // Fermenter picker — show all fermenters with availability badges
   var defaultFermId=defaultFermenterIdForNewBatch();
@@ -66,7 +66,7 @@ function openNewBatchModal(recipeId,scaledVol,opts){
   var fermenterRow=fermenterOpts?
     '<div class="form-group"><label class="form-label">Fermenter</label><select class="form-select" id="nb-fermenter">'+fermenterOpts+'</select><div style="font-size:11px;color:var(--text3);margin-top:4px;font-style:italic">Occupied fermenters can still be selected (e.g., if you bottle and re-pitch the same day).</div></div>':
     '';
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-title">⚗ NEW BATCH</div>'
+  var html='<div class="modal-overlay"><div class="modal"><div class="modal-title">⚗ NEW BATCH</div>'
     +'<div class="form-group"><label class="form-label">Choose Recipe</label><select class="form-select" id="nb-recipe" onchange="updateRecipeFields();updateYeastCompatibility()">'+recipeOpts+'</select></div>'
     +'<div class="form-group"><label class="form-label">Batch Name</label><input class="form-input" id="nb-name" placeholder="e.g., Spring Batch #1" value="'+escHtml((initial?initial.name:(activeBevMode()==='cider'?'Cider':'Mead'))+' #'+(visibleBatches().length+1))+'"></div>'
     +'<div class="form-group"><label class="form-label">Units</label><div style="display:flex;gap:6px">'+unitBtns+'</div></div>'
@@ -190,7 +190,7 @@ function openNewBatchModal(recipeId,scaledVol,opts){
     +'<div class="form-row"><div class="form-group"><label class="form-label">'+(isCider?'Juice Cost':'Honey Cost')+' ('+(APP.settings.currency||'€')+')</label><input class="form-input" id="nb-cost-honey" type="number" step="0.01" value="'+initialCost+'" placeholder="e.g. 18.00"></div>'
     +'<div class="form-group"><label class="form-label">Extras Cost ('+(APP.settings.currency||'€')+')</label><input class="form-input" id="nb-cost-extras" type="number" step="0.01" placeholder="'+(isCider?'spices, oak, etc.':'fruit, spices, etc.')+'"></div></div>'
     +'<div class="form-group"><label class="form-label">Notes (optional)</label><textarea class="form-textarea" id="nb-notes" placeholder="'+(isCider?'Juice source, pressing date, intentions…':'Honey source, intentions, anything worth remembering…')+'"></textarea></div>'
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="createBatch()">Create Batch</button></div></div></div>';
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Cancel</button><button class="btn btn-primary" data-action="createBatch">Create Batch</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
   // Deploy pre-fills: when launched from a planned batch, seed the target
   // vessel, brew date, and notes so the brewer just confirms.
@@ -496,13 +496,13 @@ function openRackModal(batchId){
     var label=f.name+(f.capacity?' ('+f.capacity+'L)':'')+(occ?' — currently has '+occ.name:' — free');
     return'<option value="'+f.id+'"'+(occ?' style="color:#a07060"':'')+'>'+escHtml(label)+'</option>';
   }).join('');
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">'
+  var html='<div class="modal-overlay"><div class="modal">'
     +'<div class="modal-title">🔁 RACK '+escHtml(b.name)+' TO NEW VESSEL</div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px">Currently in: <strong style="color:'+(currentVessel&&currentVessel.color||'var(--gold2)')+'">'+escHtml(currentVessel?currentVessel.name:'(unassigned)')+'</strong>. This records the move on the Fermenter Schedule and frees up the current vessel for new batches.</div>'
     +'<div class="form-group"><label class="form-label">Rack To</label><select class="form-select" id="rack-target">'+opts+'</select></div>'
     +'<div class="form-group"><label class="form-label">Racking Date</label><input class="form-input" id="rack-date" type="date" value="'+today()+'"></div>'
     +'<div class="form-group"><label class="form-label">Notes (optional)</label><textarea class="form-textarea" id="rack-notes" placeholder="e.g. left lees behind, added 0.5g K-meta, gravity 1.012"></textarea></div>'
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveRack(\''+batchId+'\')">Rack Batch</button></div>'
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Cancel</button><button class="btn btn-primary" data-action="saveRack" data-args=\''+JSON.stringify([batchId])+'\'>Rack Batch</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }
@@ -571,7 +571,7 @@ function openEditBatchModal(id){
   var yeastRow=yeastOpts?'<div class="form-group"><label class="form-label">Yeast</label><select class="form-select" id="eb-yeast">'+yeastOpts+'</select>'
     +(hasGravityHistory?'<div style="font-size:11px;color:var(--text3);margin-top:4px;font-style:italic">Changing this updates how the advisor judges temperature range, attenuation and tolerance for the WHOLE batch going forward — it doesn\'t reinterpret past readings differently. If this is correcting a mistake, that\'s exactly right. If it\'s recording a real mid-ferment repitch, know that early-fermentation advice will now be judged against the new strain, not the one that was actually there.</div>':'')
     +'</div>':'';
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal"><div class="modal-title">EDIT BATCH</div>'
+  var html='<div class="modal-overlay"><div class="modal"><div class="modal-title">EDIT BATCH</div>'
     +'<div class="form-group"><label class="form-label">Name</label><input class="form-input" id="eb-name" value="'+escHtml(b.name)+'"></div>'
     +fermenterRow
     +'<div class="form-row"><div class="form-group"><label class="form-label">Start Date</label><input class="form-input" id="eb-date" type="date" value="'+b.startDate+'"></div>'
@@ -589,7 +589,7 @@ function openEditBatchModal(id){
       +'<input class="form-input" id="eb-gravsensor" type="text" placeholder="sensor.ispindel_floor_gravity (leave blank if you measure manually)" value="'+escHtml(b.gravitySensorEntity||'')+'" style="font-family:var(--font-mono);font-size:12px">'
       +'<div style="font-size:11.5px;color:var(--text3);margin-top:6px;line-height:1.55;font-style:italic">When set, a 📡 button appears on the gravity-log form to pull the current sensor reading with one tap. You still confirm and save each reading manually — automated logging would create noisy data, so this is just a convenience shortcut. Compatible with iSpindel, Tilt Hydrometer, RAPT Pill, or any HA sensor reporting SG (e.g. 1.045).</div>'
     +'</div>'
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveBatchEdit(\''+id+'\')">Save</button></div></div></div>';
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Cancel</button><button class="btn btn-primary" data-action="saveBatchEdit" data-args=\''+JSON.stringify([id])+'\'>Save</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }
 
@@ -729,7 +729,7 @@ function photoStage(key){return PHOTO_STAGES.find(function(s){return s.key===key
 
 function renderBatchPhotos(b){
   var photos=(APP.photos[b.id]||[]).slice().sort(function(a,c){return(c.date||c.addedAt||'').localeCompare(a.date||a.addedAt||'');});
-  var addBtn='<button class="btn btn-primary btn-sm" onclick="addBatchPhoto(\''+b.id+'\')">📷 Add Photo</button>';
+  var addBtn='<button class="btn btn-primary btn-sm" data-action="addBatchPhoto" data-args=\''+JSON.stringify([b.id])+'\'>📷 Add Photo</button>';
   var head='<div class="card-header" style="display:flex;justify-content:space-between;align-items:center"><div class="card-title">📷 PHOTO JOURNAL</div>'+addBtn+'</div>';
   if(!photos.length){
     return'<div class="card">'+head
@@ -740,13 +740,13 @@ function renderBatchPhotos(b){
     var st=photoStage(p.stage);
     var src=(typeof getResolvedMediaUrl==='function'&&getResolvedMediaUrl(p.url))||p.url;
     return'<div style="border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;background:var(--bg3)">'
-      +'<div style="position:relative;aspect-ratio:4/3;background:var(--bg);cursor:pointer;overflow:hidden" onclick="openPhotoLightbox(\''+b.id+'\',\''+p.id+'\')">'
+      +'<div style="position:relative;aspect-ratio:4/3;background:var(--bg);cursor:pointer;overflow:hidden" data-action="openPhotoLightbox" data-args=\''+JSON.stringify([b.id,p.id])+'\'>'
       +'<img src="'+escHtml(src)+'" style="width:100%;height:100%;object-fit:cover;display:block" loading="lazy" alt="'+escHtml(p.caption||st.label)+'">'
       +'<span style="position:absolute;top:6px;left:6px;font-family:var(--font-mono);font-size:9px;letter-spacing:1px;padding:2px 7px;border-radius:8px;background:'+st.color+'cc;color:#0f0f0a">'+st.label.toUpperCase()+'</span></div>'
       +'<div style="padding:8px 10px">'
       +'<div style="font-size:12.5px;color:var(--text2);line-height:1.4;min-height:18px">'+escHtml(p.caption||'')+'</div>'
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px"><span style="font-family:var(--font-mono);font-size:10px;color:var(--text3)">'+fmtDate(p.date||p.addedAt)+'</span>'
-      +'<button class="btn-icon" style="font-size:12px" onclick="deleteBatchPhoto(\''+b.id+'\',\''+p.id+'\')" title="Delete photo">🗑</button></div>'
+      +'<button class="btn-icon" style="font-size:12px" data-action="deleteBatchPhoto" data-args=\''+JSON.stringify([b.id,p.id])+'\' title="Delete photo">🗑</button></div>'
       +'</div></div>';
   }).join('');
   return'<div class="card">'+head
@@ -775,14 +775,14 @@ function openPhotoMetaModal(batchId,url){
   closeModal();
   var src=(typeof getResolvedMediaUrl==='function'&&getResolvedMediaUrl(url))||url;
   var stageOpts=PHOTO_STAGES.map(function(s){return'<option value="'+s.key+'">'+s.label+'</option>';}).join('');
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal">'
+  var html='<div class="modal-overlay"><div class="modal">'
     +'<div class="modal-title">📷 ADD PHOTO</div>'
     +'<div style="text-align:center;margin-bottom:14px"><img src="'+escHtml(src)+'" style="max-width:100%;max-height:240px;border-radius:var(--radius);border:1px solid var(--border)"></div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">Stage</label><select class="form-select" id="ph-stage">'+stageOpts+'</select></div>'
     +'<div class="form-group"><label class="form-label">Date</label><input class="form-input" id="ph-date" type="date" value="'+today()+'"></div></div>'
     +'<div class="form-group"><label class="form-label">Caption (optional)</label><input class="form-input" id="ph-caption" placeholder="e.g. vigorous krausen on day 3"></div>'
     +'<input type="hidden" id="ph-url" value="'+escHtml(url)+'">'
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="savePhoto(\''+batchId+'\')">Save Photo</button></div>'
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Cancel</button><button class="btn btn-primary" data-action="savePhoto" data-args=\''+JSON.stringify([batchId])+'\'>Save Photo</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }
@@ -832,15 +832,15 @@ function renderPhotoLightbox(){
   var st=photoStage(p.stage);
   var src=(typeof getResolvedMediaUrl==='function'&&getResolvedMediaUrl(p.url))||p.url;
   var multi=lb.ids.length>1;
-  var html='<div id="photo-lightbox" class="modal-overlay" style="z-index:9999;background:rgba(8,8,6,0.94)" onclick="if(event.target===this)closePhotoLightbox()">'
+  var html='<div id="photo-lightbox" class="modal-overlay" style="z-index:9999;background:rgba(8,8,6,0.94)" data-backdrop-action="closePhotoLightbox">'
     +'<div style="max-width:92vw;max-height:92vh;display:flex;flex-direction:column;align-items:center;gap:10px">'
     +'<img src="'+escHtml(src)+'" style="max-width:92vw;max-height:78vh;object-fit:contain;border-radius:6px;box-shadow:0 8px 40px rgba(0,0,0,0.6)">'
     +'<div style="text-align:center;color:var(--text2)">'
     +'<span style="font-family:var(--font-mono);font-size:10px;letter-spacing:1px;padding:2px 8px;border-radius:8px;background:'+st.color+';color:#0f0f0a">'+st.label.toUpperCase()+'</span>'
     +(p.caption?'<div style="font-size:14px;margin-top:8px">'+escHtml(p.caption)+'</div>':'')
     +'<div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-top:4px">'+fmtDate(p.date||p.addedAt)+(multi?' · '+(lb.idx+1)+'/'+lb.ids.length:'')+'</div></div>'
-    +(multi?'<div style="display:flex;gap:10px;margin-top:4px"><button class="btn btn-secondary" onclick="event.stopPropagation();navPhotoLightbox(-1)">← Prev</button><button class="btn btn-secondary" onclick="event.stopPropagation();navPhotoLightbox(1)">Next →</button></div>':'')
-    +'<button class="btn btn-secondary btn-sm" onclick="closePhotoLightbox()" style="margin-top:2px">Close</button>'
+    +(multi?'<div style="display:flex;gap:10px;margin-top:4px"><button class="btn btn-secondary" data-action="navPhotoLightbox" data-args=\'[-1]\'>← Prev</button><button class="btn btn-secondary" data-action="navPhotoLightbox" data-args=\'[1]\'>Next →</button></div>':'')
+    +'<button class="btn btn-secondary btn-sm" data-action="closePhotoLightbox" style="margin-top:2px">Close</button>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }
@@ -1020,6 +1020,19 @@ var FAILURE_CATEGORIES=[
   {id:'other',label:'Other',icon:'❓'}
 ];
 
+function _selectFailureCategory(catId){
+  document.querySelectorAll('.fail-cat-chip').forEach(function(el){
+    el.classList.remove('sel');
+    el.style.background='var(--bg)';
+    el.style.color='var(--text2)';
+    el.style.borderColor='var(--border)';
+  });
+  this.classList.add('sel');
+  this.style.background='rgba(232,196,106,0.15)';
+  this.style.color='var(--gold2)';
+  this.style.borderColor='var(--gold)';
+  document.getElementById('fail-cat').value=catId;
+}
 function openFailureModal(batchId){
   closeModal();
   var b=getBatch(batchId);
@@ -1028,9 +1041,9 @@ function openFailureModal(batchId){
   var isEdit=!!b.failed;
   var catChips=FAILURE_CATEGORIES.map(function(c){
     var isSel=f.category===c.id;
-    return'<span onclick="document.querySelectorAll(\'.fail-cat-chip\').forEach(function(el){el.classList.remove(\'sel\');el.style.background=\'var(--bg)\';el.style.color=\'var(--text2)\';el.style.borderColor=\'var(--border)\'});this.classList.add(\'sel\');this.style.background=\'rgba(232,196,106,0.15)\';this.style.color=\'var(--gold2)\';this.style.borderColor=\'var(--gold)\';document.getElementById(\'fail-cat\').value=\''+c.id+'\'" class="fail-cat-chip'+(isSel?' sel':'')+'" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;background:'+(isSel?'rgba(232,196,106,0.15)':'var(--bg)')+';border:1px solid '+(isSel?'var(--gold)':'var(--border)')+';color:'+(isSel?'var(--gold2)':'var(--text2)')+';padding:5px 11px;border-radius:14px;margin:3px 4px 3px 0;transition:all 0.15s">'+c.icon+' '+escHtml(proseL(c.label))+'</span>';
+    return'<span data-action="_selectFailureCategory" data-args=\''+JSON.stringify([c.id])+'\' class="fail-cat-chip'+(isSel?' sel':'')+'" style="display:inline-flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;background:'+(isSel?'rgba(232,196,106,0.15)':'var(--bg)')+';border:1px solid '+(isSel?'var(--gold)':'var(--border)')+';color:'+(isSel?'var(--gold2)':'var(--text2)')+';padding:5px 11px;border-radius:14px;margin:3px 4px 3px 0;transition:all 0.15s">'+c.icon+' '+escHtml(proseL(c.label))+'</span>';
   }).join('');
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:680px;max-height:92vh;display:flex;flex-direction:column">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:680px;max-height:92vh;display:flex;flex-direction:column">'
     +'<div class="modal-title">⚰ '+(isEdit?'EDIT POSTMORTEM':'MARK BATCH AS FAILED')+'</div>'
     +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:14px;line-height:1.6">Recording a postmortem preserves the lesson — far better than just deleting the batch. The batch stays in your database (so year-end stats are honest) but is marked failed: it stops appearing on aging timelines and fermenter schedules, but contributes to "what your failed batches share" analysis. You can unfail it later if you change your mind.</div>'
     +'<div style="flex:1;overflow-y:auto;padding-right:4px">'
@@ -1045,8 +1058,8 @@ function openFailureModal(batchId){
     +'<div class="form-group"><label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2)"><input type="checkbox" id="fail-saved" '+(f.wasSaved?'checked':'')+' style="width:16px;height:16px;cursor:pointer;accent-color:var(--gold2)"> The mead was salvaged (bottled as cooking mead, vinegar, etc.) rather than dumped</label></div>'
     +'</div>'
     +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px">'
-      +'<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>'
-      +'<button class="btn btn-primary" onclick="saveFailurePostmortem(\''+batchId+'\')">'+(isEdit?'Save Postmortem':'Mark Failed & Save')+'</button>'
+      +'<button class="btn btn-secondary" data-action="closeModal">Cancel</button>'
+      +'<button class="btn btn-primary" data-action="saveFailurePostmortem" data-args=\''+JSON.stringify([batchId])+'\'>'+(isEdit?'Save Postmortem':'Mark Failed & Save')+'</button>'
     +'</div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
@@ -1241,7 +1254,7 @@ async function scanOrphanImages(){
     if(!n){if(el)el.innerHTML='<span style="color:var(--green2)">✓ No unused images — everything on disk is in use.</span>';return;}
     window._orphanNames=j.orphans.map(function(o){return o.name;});
     if(el)el.innerHTML='<div style="margin-bottom:10px"><strong style="color:var(--gold2)">'+n+'</strong> unused image'+(n===1?'':'s')+' · '+fmtBytes(j.totalBytes||0)+' reclaimable.</div>'
-      +'<button class="btn btn-danger btn-sm" onclick="deleteOrphanImages()">🗑 Delete '+n+' unused image'+(n===1?'':'s')+'</button>';
+      +'<button class="btn btn-danger btn-sm" data-action="deleteOrphanImages">🗑 Delete '+n+' unused image'+(n===1?'':'s')+'</button>';
   }catch(e){if(el)el.innerHTML='<span style="color:var(--red2)">Scan failed.</span>';}
 }
 async function deleteOrphanImages(){
@@ -1311,6 +1324,22 @@ function importData(event){
   reader.onload=function(e){
     try{
       var d=JSON.parse(e.target.result);
+      // A destructive, explicit "replace everything" action deserves a hard
+      // rejection for a wholesale-wrong file (wrong export, truncated
+      // download, unrelated JSON) rather than silently "importing" garbage —
+      // see validateState() in 14-schema.js. Bucket-level issues in an
+      // otherwise-real backup are still sanitized + reported below via the
+      // same check inside applyState(), which is the more common case (an
+      // older/partial backup missing a field entirely is fine).
+      if(typeof validateState==='function'){
+        var rootCheck=validateState(d);
+        var knownBuckets=STATE_ARRAY_BUCKETS.concat(STATE_OBJECT_BUCKETS);
+        var looksLikeBackup=rootCheck.sanitized&&knownBuckets.some(function(k){return k in d;});
+        if(!looksLikeBackup){
+          toast('⚠ That file doesn\'t look like a MeadOS backup — import cancelled');
+          return;
+        }
+      }
       // Run migrations on the imported payload so older backups (v1-v5) come
       // up to the current shape before we apply them. migrateData mutates in
       // place and stamps dataVersion.

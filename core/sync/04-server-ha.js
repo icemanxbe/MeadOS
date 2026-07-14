@@ -47,6 +47,19 @@ async function loadHAConfig(){
   }catch(e){}
 }
 
+// Server-side automated backup status (see /api/backup-status in server.py).
+// The 200-row history table is undo, not backup — it's the same SQLite file
+// as the primary data. This surfaces the SEPARATE, scheduled, standalone-file
+// backup so Settings can show real automated-backup status alongside the
+// manual Export Backup button, not just "did I remember to click export".
+async function loadBackupStatus(){
+  try{
+    var r=await fetch('/api/backup-status');
+    if(!r.ok)return;
+    APP._backupStatus=await r.json();
+  }catch(e){}
+}
+
 // ---- Dual-URL resolution (internal + external) ----
 // Two base URLs can be configured: internal/LAN and external (Nabu Casa or a
 // reverse proxy). REST calls are proxied server-side now; this only feeds the
@@ -319,8 +332,8 @@ function onSaveConflict(){
     +'<div class="modal-title">⚠ SAVE CONFLICT</div>'
     +'<div style="font-size:13px;color:var(--text2);line-height:1.65;margin-bottom:16px">Another device saved newer data while you were editing. To avoid silently overwriting it, your last change was <strong>not</strong> saved. Choose how to resolve:</div>'
     +'<div style="display:flex;flex-direction:column;gap:8px">'
-    +'<button class="btn btn-secondary" onclick="resolveSaveConflict(\'reload\')">↻ Load their version (discard my unsaved changes)</button>'
-    +'<button class="btn btn-danger" onclick="resolveSaveConflict(\'overwrite\')">⚠ Keep mine (overwrite the server)</button>'
+    +'<button class="btn btn-secondary" data-action="resolveSaveConflict" data-args=\'["reload"]\'>↻ Load their version (discard my unsaved changes)</button>'
+    +'<button class="btn btn-danger" data-action="resolveSaveConflict" data-args=\'["overwrite"]\'>⚠ Keep mine (overwrite the server)</button>'
     +'</div></div></div>');
 }
 function resolveSaveConflict(choice){
@@ -382,7 +395,7 @@ async function loadHistoryPanel(){
     var summaryLine=it.summary?'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+escHtml(it.summary)+'</div>':'';
     return'<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">'
       +'<div><span style="color:var(--text)">'+label+'</span> <span style="font-family:var(--font-mono);font-size:11px;color:var(--text3);margin-left:6px">'+kb+'</span>'+summaryLine+'</div>'
-      +'<button class="btn btn-secondary btn-sm" onclick="restoreHistorySnapshot('+it.id+',&quot;'+label.replace(/"/g,'')+'&quot;)">Restore</button>'
+      +'<button class="btn btn-secondary btn-sm" data-action="restoreHistorySnapshot" data-args=\''+JSON.stringify([it.id,label])+'\'>Restore</button>'
       +'</div>';
   }).join('');
 }
@@ -402,11 +415,11 @@ async function restoreHistorySnapshot(id,label){
 // button on each. Reachable from the Storage Budget card.
 function openSnapshotRestoreModal(){
   if(typeof closeModal==='function')closeModal();
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:520px">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:520px">'
     +'<div class="modal-title">🕘 Restore from snapshot</div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.55">'+(appLang()==='nl'?'De server bewaart je recente opgeslagen momentopnames. Herstellen rolt <strong>al</strong> je data terug naar dat punt — je huidige data wordt eerst als een nieuwe momentopname opgeslagen, dus het is omkeerbaar.':'The server keeps your recent saved snapshots. Restoring rolls <strong>all</strong> your data back to that point — your current data is saved as a new snapshot first, so it\'s reversible.')+'</div>'
     +'<div id="history-list" style="font-size:13px;color:var(--text3);max-height:55vh;overflow:auto">Loading…</div>'
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Close</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
   if(typeof loadHistoryPanel==='function')loadHistoryPanel();
@@ -915,11 +928,11 @@ function fermentAdviceRow(t,yeast,contextLabel){
 
 function tempAdviceModal(title,tempLine,bodyHtml){
   closeModal();
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:560px;max-height:90vh;display:flex;flex-direction:column">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:560px;max-height:90vh;display:flex;flex-direction:column">'
     +'<div class="modal-title">'+title+'</div>'
     +(tempLine?'<div style="font-family:var(--font-display);font-size:30px;color:var(--gold2);text-align:center;margin:4px 0 14px">'+tempLine+'</div>':'')
     +'<div style="flex:1;overflow-y:auto;min-height:0;padding-right:4px">'+bodyHtml+'</div>'
-    +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'
+    +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px"><button class="btn btn-secondary" data-action="closeModal">Close</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }

@@ -46,14 +46,9 @@ function getResolvedMediaUrl(ref){
       resolveMediaSourceId(ref).then(function(url){
         // Signed URLs typically last ~10 minutes; refresh at 8min to be safe
         window._mediaResolveCache[ref]={url:url,expiresAt:Date.now()+8*60*1000,refreshing:false};
-        // Trigger re-renders so the new URL shows up immediately. We refresh
-        // BOTH the main view (in case a label is visible there) AND the
-        // designer modal if it's open (since renderMain doesn't touch the
-        // designer's preview). Without the designer refresh, picking an HA
-        // Media file would show the fallback label until the user reopened
-        // the designer.
+        // Trigger a re-render so the new URL shows up immediately (in case a
+        // label using it is visible).
         if(!APP._shareMode&&typeof renderMain==='function')renderMain();
-        if(window._designerState&&typeof refreshDesigner==='function')refreshDesigner();
         // Also refresh the topbar crest if this resolve was for the brand
         // logo — renderMain doesn't touch the topbar.
         if(APP.settings&&APP.settings.brandLogo===ref){

@@ -136,6 +136,6 @@ function renderStorageBudgetCard(){
       +'+ '+escHtml(freeItems.join(', '))+' — references only, no storage cost'
       +'</div>':'')
     +recommendation
-    +'<button class="btn btn-secondary btn-sm" style="margin-top:12px;width:100%;justify-content:center" onclick="openSnapshotRestoreModal()" title="Roll back all your data to a recent saved snapshot">🕘 Restore from snapshot…</button>'
+    +'<button class="btn btn-secondary btn-sm" style="margin-top:12px;width:100%;justify-content:center" data-action="openSnapshotRestoreModal" title="Roll back all your data to a recent saved snapshot">🕘 Restore from snapshot…</button>'
     +'</div>';
 }

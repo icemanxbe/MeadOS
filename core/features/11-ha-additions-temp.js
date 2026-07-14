@@ -171,13 +171,13 @@ function previewLovelaceCard(){
     +(s.drinkingWindowCount?'<div style="font-size:12px;color:var(--gold2);font-weight:600;margin-bottom:4px">🍷 Drinking Window</div>'
     +'<div style="font-size:12px;color:var(--text2);white-space:pre-wrap;font-family:var(--font-mono);line-height:1.6">'+escHtml(s.drinkingLines)+'</div>':'')
     +'</div>';
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:760px">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:760px">'
     +'<div class="modal-title">👁 LOVELACE CARD PREVIEW</div>'
     +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px">A mock-up of how this card will look in your HA dashboard, using your actual current data:</div>'
     +preview
     +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px;margin:14px 0 4px">YAML SOURCE ('+yaml.length+' bytes)</div>'
     +'<textarea readonly style="width:100%;height:140px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);padding:8px;font-family:var(--font-mono);font-size:10px;line-height:1.4">'+escHtml(yaml)+'</textarea>'
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Close</button><button class="btn btn-primary" onclick="copyLovelaceCard()">📋 Copy YAML</button></div>'
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Close</button><button class="btn btn-primary" data-action="copyLovelaceCard">📋 Copy YAML</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }
@@ -237,15 +237,15 @@ function renderAdditionsTab(batch){
       +'<div style="font-size:11px;color:var(--text3);font-family:var(--font-mono);margin-top:2px">'+typeInfo.label+' · added '+fmtDate(a.date)+(a.amount?' · '+escHtml(a.amount):'')+'</div></div>'
       +statusBadge
       +'<div style="display:flex;gap:4px">'
-      +(inBatch?'<button class="btn btn-secondary btn-sm" onclick="markAdditionRemoved(\''+batchId+'\',\''+a.id+'\')" title="Mark as removed today">✓ Remove</button>':'')
-      +'<button class="btn btn-secondary btn-sm" onclick="openAdditionModal(\''+batchId+'\',\''+a.id+'\')">✏</button>'
-      +'<button class="btn btn-danger btn-sm" onclick="deleteAddition(\''+batchId+'\',\''+a.id+'\')">✕</button>'
+      +(inBatch?'<button class="btn btn-secondary btn-sm" data-action="markAdditionRemoved" data-args=\''+JSON.stringify([batchId,a.id])+'\' title="Mark as removed today">✓ Remove</button>':'')
+      +'<button class="btn btn-secondary btn-sm" data-action="openAdditionModal" data-args=\''+JSON.stringify([batchId,a.id])+'\'>✏</button>'
+      +'<button class="btn btn-danger btn-sm" data-action="deleteAddition" data-args=\''+JSON.stringify([batchId,a.id])+'\'>✕</button>'
       +'</div></div>'
       +(a.notes?'<div style="font-size:12px;color:var(--text3);font-style:italic;margin-top:4px;padding-left:30px">'+escHtml(a.notes)+'</div>':'')
       +'</div>';
   }).join(''):'<div style="text-align:center;color:var(--text3);font-style:italic;padding:30px">No additions logged yet. Use this tab when you backsweeten, add fruit/spice/oak, or stabilize.</div>';
   return'<div class="grid-2">'
-    +'<div><div class="card"><div class="card-header"><div class="card-title">ADDITIONS &amp; INFUSIONS</div><button class="btn btn-primary btn-sm" onclick="openAdditionModal(\''+batchId+'\')">＋ Log Addition</button></div>'
+    +'<div><div class="card"><div class="card-header"><div class="card-title">ADDITIONS &amp; INFUSIONS</div><button class="btn btn-primary btn-sm" data-action="openAdditionModal" data-args=\''+JSON.stringify([batchId])+'\'>＋ Log Addition</button></div>'
     +rows
     +'</div></div>'
     +'<div><div class="card"><div class="card-header"><div class="card-title">REFERENCE · TYPICAL TIMINGS</div></div>'
@@ -267,7 +267,7 @@ function openAdditionModal(batchId,additionId){
     var d=new Date();d.setDate(d.getDate()+3);
     defaultRemoveBy=d.toISOString().split('T')[0];
   }
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:520px">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:520px">'
     +'<div class="modal-title">'+(isEdit?'EDIT':'LOG')+' ADDITION</div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">Type</label><select class="form-select" id="ad-type" onchange="updateAdditionTypeHint()">'+typeOpts+'</select></div>'
     +'<div class="form-group"><label class="form-label">Date Added</label><input class="form-input" type="date" id="ad-date" value="'+(existing?existing.date:today())+'"></div></div>'
@@ -279,7 +279,7 @@ function openAdditionModal(batchId,additionId){
     +'</div>'
     +'<div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="ad-notes" placeholder="Why added, expected effect, tasting impressions…">'+escHtml(existing?existing.notes:'')+'</textarea></div>'
     +'<div id="ad-hint" style="font-size:12px;color:var(--text3);font-style:italic;margin-top:6px;padding:8px;background:var(--bg4);border-radius:var(--radius)"></div>'
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveAddition(\''+batchId+'\','+(existing?'\''+additionId+'\'':'null')+')">Save</button></div>'
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Cancel</button><button class="btn btn-primary" data-action="saveAddition" data-args=\''+JSON.stringify([batchId,existing?additionId:null])+'\'>Save</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
   updateAdditionTypeHint();

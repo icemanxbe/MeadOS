@@ -29,70 +29,14 @@
 <div id="summary"></div>
 <div id="results"></div>
 
-<!-- The app is served as ordered modules under core/ (the old /app.js bundle is gone). -->
+<!-- The app is served as ordered modules under core/ (the old /app.js bundle is gone).
+     Load order lives in ONE place — core/boot/00-manifest.js — shared with index.html
+     so the two can't drift apart (this used to omit data-cider.js/data-cider-recipes.js
+     and the cider NL data files despite the cider-recipe assertions below depending
+     on cider mode being fully loaded; the shared manifest makes that gap impossible). -->
 <script src="/chart.umd.js"></script>
-<script src="/core/data/data-libraries.js"></script>
-<script src="/core/data/data-recipes.js"></script>
-<script src="/core/data/data-recipes-nl.js"></script>
-<script src="/core/data/data-libraries-nl.js"></script>
-<script src="/core/data/data-recipe-steps-nl.js"></script>
-<script src="/core/data/data-recipe-ingredients-nl.js"></script>
-<script src="/core/data/data-yeast-nl.js"></script>
-<script src="/core/data/data-nutrient-nl.js"></script>
-<script src="/core/data/data-honeyfit-nl.js"></script>
-<script src="/core/data/data-recipe-guide-nl.js"></script>
-<script src="/core/data/data-honeydetail-nl.js"></script>
-<script src="/core/state/01-state.js"></script>
-<script src="/core/state/i18n.js"></script>
-<script src="/core/domain/02-honey-domain.js"></script>
-<script src="/core/domain/03-brew-domain.js"></script>
-<script src="/core/domain/03d-mead-model.js"></script>
-<script src="/core/domain/03e-advisor.js"></script>
-<script src="/core/domain/03f-advisor-rules-fermentation.js"></script>
-<script src="/core/domain/03g-advisor-rules-packaging.js"></script>
-<script src="/core/sync/04-server-ha.js"></script>
-<script src="/core/domain/04b-bottle-helpers.js"></script>
-<script src="/core/state/05-utils-nav.js"></script>
-<script src="/core/views/06-views-batch.js"></script>
-<script src="/core/views/07-views-recipe.js"></script>
-<script src="/core/tools/08-tools.js"></script>
-<script src="/core/tools/08-guide-scanner.js"></script>
-<script src="/core/tools/08-search.js"></script>
-<script src="/core/tools/08-record-pdf.js"></script>
-<script src="/core/tools/08-beerxml.js"></script>
-<script src="/core/tools/08-rehydration.js"></script>
-<script src="/core/views/09-views-library.js"></script>
-<script src="/core/views/10-cellar.js"></script>
-<script src="/core/labels/10b-labels-print.js"></script>
-<script src="/core/views/10c-compare.js"></script>
-<script src="/core/views/10d-supplies.js"></script>
-<script src="/core/views/10e-cellar-misc.js"></script>
-<script src="/core/features/11-alerts.js"></script>
-<script src="/core/features/11-schedule.js"></script>
-<script src="/core/views/11-year-review.js"></script>
-<script src="/core/features/11-recipe-designer.js"></script>
-<script src="/core/features/11-tasting-exports.js"></script>
-<script src="/core/features/11-ha-additions-temp.js"></script>
-<script src="/core/views/12-troubleshoot.js"></script>
-<script src="/core/views/12-troubleshoot-nl.js"></script>
-<script src="/core/views/12-offflavor-nl.js"></script>
-<script src="/core/views/12-insights.js"></script>
-<script src="/core/views/12-advisor.js"></script>
-<script src="/core/features/12-tasting-analysis.js"></script>
-<script src="/core/features/12-records.js"></script>
-<script src="/core/tools/12-blending-yeast.js"></script>
-<script src="/core/features/12-gift-bottling.js"></script>
-<script src="/core/labels/13-label-designer.js"></script>
-<script src="/core/share/13-media-ha-ws.js"></script>
-<script src="/core/labels/13-image-upload.js"></script>
-<script src="/core/labels/13-misc-modals.js"></script>
-<script src="/core/share/13-share.js"></script>
-<script src="/core/labels/13-exports.js"></script>
-<script src="/core/labels/13b-label-studio.js"></script>
-<script src="/core/boot/14-schema.js"></script>
-<script src="/core/boot/14-storage-budget.js"></script>
-<script src="/core/boot/14-modals.js"></script>
-<script src="/core/boot/14-bootstrap.js"></script>
+<script src="/core/boot/00-manifest.js"></script>
+<script>MODULE_MANIFEST_LOAD();</script>
 <script>
 (function(){
   var out=document.getElementById('results'), pass=0, fail=0;
@@ -1919,6 +1863,91 @@
     APP.settings.labelLocale=origLocale;
 
     APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.logs={};APP.bottling={};
+  })();
+
+  // validateState() — the state trust-boundary check (core/boot/14-schema.js).
+  // Guards against a truthy-but-wrong-type bucket (e.g. batches as a string)
+  // silently corrupting APP instead of being dropped + reported loudly.
+  (function(){
+    var clean={batches:[{id:'b1'}],settings:{units:'metric'},logs:{},supplies:[]};
+    var v1=validateState(clean);
+    ok('validateState: a well-shaped blob is ok with no errors', v1.ok&&v1.errors.length===0, JSON.stringify(v1.errors));
+    eq('validateState: sanitized keeps a valid array bucket intact', v1.sanitized.batches.length, 1);
+
+    var badArray={batches:'not-an-array',settings:{}};
+    var v2=validateState(badArray);
+    ok('validateState: a string where an array bucket belongs is flagged', !v2.ok&&v2.errors.some(function(e){return e.bucket==='batches';}), JSON.stringify(v2.errors));
+    ok('validateState: the bad bucket is dropped from sanitized (falls back to defaults), not coerced', !('batches' in v2.sanitized), JSON.stringify(v2.sanitized));
+    ok('validateState: an unrelated valid bucket is left alone', v2.sanitized.settings&&typeof v2.sanitized.settings==='object', JSON.stringify(v2.sanitized));
+
+    var badObject={batches:[],logs:['not','an','object']};
+    var v3=validateState(badObject);
+    ok('validateState: an array where an object bucket belongs is flagged', !v3.ok&&v3.errors.some(function(e){return e.bucket==='logs';}), JSON.stringify(v3.errors));
+
+    var v4=validateState(null);
+    ok('validateState: null root -> not ok, sanitized is null', !v4.ok&&v4.sanitized===null, JSON.stringify(v4));
+    var v5=validateState('a string, not an object');
+    ok('validateState: non-object root -> not ok, sanitized is null', !v5.ok&&v5.sanitized===null, JSON.stringify(v5));
+    var v6=validateState([1,2,3]);
+    ok('validateState: an array root (not a plain object) -> not ok', !v6.ok, JSON.stringify(v6));
+
+    var v7=validateState({});
+    ok('validateState: an empty object has no buckets to complain about', v7.ok&&v7.errors.length===0, JSON.stringify(v7.errors));
+
+    // applyState() must not crash and must leave APP untouched when handed a
+    // completely unusable root (the "reject loudly, don't half-apply" case).
+    var priorBatches=APP.batches;
+    applyState('garbage');
+    ok('applyState: a non-object root is rejected without touching APP.batches', APP.batches===priorBatches, '');
+
+    // A partially-corrupt-but-real blob still applies, with the bad bucket
+    // reset to empty rather than propagating the wrong type into APP.
+    applyState({batches:'oops',settings:{units:'metric'},dataVersion:CURRENT_SCHEMA_VERSION});
+    ok('applyState: a corrupted array bucket is sanitized to [] rather than left as a string', Array.isArray(APP.batches)&&APP.batches.length===0, JSON.stringify(APP.batches));
+    APP.batches=[];
+  })();
+
+  // ---- i18n regression ratchet ----
+  // translateChrome()/findUntranslated() (core/state/i18n.js) work off a
+  // reverse EN->NL dictionary keyed on exact rendered English text — there's
+  // no build-time check that a new English string shipped with a translation,
+  // so a copy edit silently regresses the Dutch UI with no error anywhere.
+  // This can't get that debt to zero in one pass (~24 views, many strings
+  // still uncovered), but it CAN stop it from growing: render every
+  // parameterless view in Dutch, count what findUntranslated() still flags,
+  // and fail if that count goes UP from the recorded baseline. A real drop
+  // in count (someone adding translations) requires lowering the baseline
+  // here — that's the point, it's a ratchet, not a suppression.
+  (function(){
+    var origLocale=APP.settings.labelLocale,origView=currentView,origBatch=currentBatchId;
+    var origLog=console.error; // renderMain sometimes logs during error paths; keep test output clean
+    var PARAMLESS_VIEWS=['dashboard','batches','cellar','compare','supplies','timeline','ferm-timeline',
+      'insights','suppliers','troubleshoot','recipes','calendar','tools','guide','honey',
+      'yeast-library','nutrient-library','settings'];
+    APP.settings.labelLocale='nl';
+    var total=0,perView={};
+    PARAMLESS_VIEWS.forEach(function(v){
+      try{
+        console.error=function(){};
+        showView(v);
+        console.error=origLog;
+        var found=(typeof findUntranslated==='function')?findUntranslated(document.getElementById('main')):[];
+        perView[v]=found.length;
+        total+=found.length;
+      }catch(e){
+        console.error=origLog;
+        perView[v]='(render threw: '+e.message+')';
+      }
+    });
+    APP.settings.labelLocale=origLocale;currentView=origView;currentBatchId=origBatch;
+    // Baseline measured 2026-07-14 across the 18 parameterless views above.
+    // On failure, the assertion detail (below) has the full per-view
+    // breakdown — add the new string's translation to the reverse map in
+    // core/state/i18n.js and only raise this number if it genuinely can't
+    // be translated yet.
+    var I18N_RATCHET_MAX=1235;
+    ok('i18n ratchet: untranslated-string count across '+PARAMLESS_VIEWS.length+' views has not grown ('+total+' <= '+I18N_RATCHET_MAX+')',
+      total<=I18N_RATCHET_MAX, JSON.stringify(perView));
   })();
 
   var s=document.getElementById('summary');

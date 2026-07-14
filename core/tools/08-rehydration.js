@@ -46,6 +46,11 @@ function setYeastRehydrationStep(stepIdx){
   persistYeastRehydration();
   renderYeastRehydrationModal();
 }
+function _yrStartTimer(stepIdx){
+  window._yeastRehydration.stepStartTimes[stepIdx]=Date.now();
+  persistYeastRehydration();
+  renderYeastRehydrationModal();
+}
 
 function resetYeastRehydration(){
   if(!confirm('Reset the rehydration workflow? In-progress state will be lost.'))return;
@@ -120,7 +125,7 @@ function renderYeastRehydrationModal(){
       detail:_nl?'Giet de geacclimatiseerde slurry in de most. Roer voorzichtig om te mengen. Sluit het gistingsvat, plaats het waterslot. Eerste tekenen van gisting zouden binnen 12-48 uur moeten verschijnen.':'Pour the acclimated slurry into the must. Stir gently to incorporate. Cap the fermenter, attach the airlock. First signs of fermentation should appear in 12-48 hours.',
       content:function(){
         return'<div class="info-box" style="border-left-color:var(--green2);background:rgba(122,160,64,0.10)"><div style="font-size:13px;line-height:1.65">'+(_nl?'<strong>Je bent klaar.</strong> Log je partijstart nu als je dat nog niet deed — en vergeet niet de eerste SNA/TOSNA-dosis voor over 24 u in te plannen.':'<strong>You\'re done.</strong> Log your batch start now if you haven\'t — and remember to schedule the first SNA / TOSNA dose for 24h from now.')+'</div></div>'
-          +'<div style="margin-top:14px;text-align:center"><button class="btn btn-secondary btn-sm" onclick="resetYeastRehydration()">↻ '+(_nl?'Workflow resetten':'Reset workflow')+'</button></div>';
+          +'<div style="margin-top:14px;text-align:center"><button class="btn btn-secondary btn-sm" data-action="resetYeastRehydration">↻ '+(_nl?'Workflow resetten':'Reset workflow')+'</button></div>';
       },
       timer:null
     }
@@ -145,17 +150,17 @@ function renderYeastRehydrationModal(){
       },1000);
     }
   }else if(step.timer){
-    timerBlock='<button class="btn btn-secondary" onclick="window._yeastRehydration.stepStartTimes['+s.stepIdx+']=Date.now();persistYeastRehydration();renderYeastRehydrationModal()" style="width:100%;margin:12px 0">▶ Start '+(step.timer/60)+'-minute timer</button>';
+    timerBlock='<button class="btn btn-secondary" data-action="_yrStartTimer" data-args=\''+JSON.stringify([s.stepIdx])+'\' style="width:100%;margin:12px 0">▶ Start '+(step.timer/60)+'-minute timer</button>';
   }
 
   // Step pip strip
   var pips=steps.map(function(_,i){
     var isActive=i===s.stepIdx;
     var isDone=i<s.stepIdx;
-    return'<div onclick="setYeastRehydrationStep('+i+')" style="flex:1;height:6px;background:'+(isDone?'var(--green2)':isActive?'var(--gold2)':'var(--bg4)')+';border-radius:3px;cursor:pointer;transition:background 0.2s" title="Step '+(i+1)+': '+escHtml(steps[i].title)+'"></div>';
+    return'<div data-action="setYeastRehydrationStep" data-args=\''+JSON.stringify([i])+'\' style="flex:1;height:6px;background:'+(isDone?'var(--green2)':isActive?'var(--gold2)':'var(--bg4)')+';border-radius:3px;cursor:pointer;transition:background 0.2s" title="Step '+(i+1)+': '+escHtml(steps[i].title)+'"></div>';
   }).join('');
 
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:680px;max-height:92vh;display:flex;flex-direction:column">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:680px;max-height:92vh;display:flex;flex-direction:column">'
     +'<div class="modal-title">🧫 YEAST REHYDRATION · STEP '+(s.stepIdx+1)+' OF '+steps.length+'</div>'
     +'<div style="display:flex;gap:4px;margin-bottom:14px">'+pips+'</div>'
     +'<div style="flex:1;overflow-y:auto;padding-right:4px">'
@@ -165,8 +170,8 @@ function renderYeastRehydrationModal(){
     +timerBlock
     +'</div>'
     +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px;gap:8px">'
-    +(s.stepIdx>0?'<button class="btn btn-secondary" onclick="setYeastRehydrationStep('+(s.stepIdx-1)+')">← Back</button>':'<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>')
-    +(s.stepIdx<steps.length-1?'<button class="btn btn-primary" onclick="setYeastRehydrationStep('+(s.stepIdx+1)+')">Next →</button>':'<button class="btn btn-primary" onclick="resetYeastRehydration()">Finish</button>')
+    +(s.stepIdx>0?'<button class="btn btn-secondary" data-action="setYeastRehydrationStep" data-args=\''+JSON.stringify([s.stepIdx-1])+'\'>← Back</button>':'<button class="btn btn-secondary" data-action="closeModal">Cancel</button>')
+    +(s.stepIdx<steps.length-1?'<button class="btn btn-primary" data-action="setYeastRehydrationStep" data-args=\''+JSON.stringify([s.stepIdx+1])+'\'>Next →</button>':'<button class="btn btn-primary" data-action="resetYeastRehydration">Finish</button>')
     +'</div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
@@ -236,8 +241,8 @@ function renderTOSNAPlan(){
       ?'<div style="padding:10px 12px;background:rgba(122,160,64,0.12);border-left:3px solid var(--green2);border-radius:var(--radius);font-size:12px;color:var(--green2)">'+(_nl?'✓ Deze partij volgt al het TOSNA-protocol — Fermaid-O is de ingestelde voeding. Gebruik de knop hieronder om <em>ook</em> expliciete doses in het toevoegingenlogboek te schrijven ter registratie.':'✓ This batch is already on the TOSNA protocol — Fermaid-O is the configured nutrient. Use the button below to <em>also</em> write explicit doses into the additions log for tracking.')+'</div>'
       :'<div style="padding:10px 12px;background:rgba(200,160,64,0.10);border-left:3px solid var(--gold2);border-radius:var(--radius);font-size:12px;color:var(--text2)">Applying will switch this batch\'s nutrient from <strong>'+escHtml((getNutrientById(currentNutrient)||{}).name||currentNutrient)+'</strong> to <strong>Fermaid-O (TOSNA)</strong> and write the 4 doses above into the additions log.</div>')
     +'<div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">'
-    +'<button class="btn btn-primary" onclick="applyTOSNAToBatch(\''+batchId+'\')">Apply TOSNA plan to this batch</button>'
-    +'<button class="btn btn-secondary" onclick="showView(\'batch\',\''+batchId+'\')">Open batch →</button>'
+    +'<button class="btn btn-primary" data-action="applyTOSNAToBatch" data-args=\''+JSON.stringify([batchId])+'\'>Apply TOSNA plan to this batch</button>'
+    +'<button class="btn btn-secondary" data-action="showView" data-args=\''+JSON.stringify(['batch',batchId])+'\'>Open batch →</button>'
     +'</div>';
 }
 

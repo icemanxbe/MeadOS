@@ -90,15 +90,15 @@ async function refreshSecurityStatus(){
   if(s.lan){
     controls='<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;align-items:center">'
       +'<input class="form-input" id="sec-password" type="password" placeholder="'+(s.protected?'New password':'Choose a password')+'" style="max-width:240px" onkeydown="if(event.key===\'Enter\')setExternalPassword()">'
-      +'<button class="btn btn-secondary btn-sm" onclick="setExternalPassword()">'+(s.protected?'Change password':'Enable')+'</button>'
-      +(s.protected?'<button class="btn btn-danger btn-sm" onclick="disableExternalPassword()">Disable</button>':'')
+      +'<button class="btn btn-secondary btn-sm" data-action="setExternalPassword">'+(s.protected?'Change password':'Enable')+'</button>'
+      +(s.protected?'<button class="btn btn-danger btn-sm" data-action="disableExternalPassword">Disable</button>':'')
       +'</div>'
       +(s.protected?'<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text2);cursor:pointer;margin-top:10px"><input type="checkbox" id="sec-lan-req" '+(s.lanRequiresPassword?'checked':'')+' onchange="saveLanRequiresPassword()" style="cursor:pointer"> Require the password on LAN devices too (no automatic bypass)</label>':'')
       +'<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">'
       +'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3);letter-spacing:1.5px;margin-bottom:6px">TRUSTED NETWORKS — COUNT AS LAN</div>'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
       +'<input class="form-input" id="sec-trusted" type="text" placeholder="e.g. 100.64.0.0/10, 81.x.x.x/32" value="'+escHtml((s.trustedNets||[]).join(', '))+'" style="max-width:340px;font-family:var(--font-mono);font-size:12px">'
-      +'<button class="btn btn-secondary btn-sm" onclick="saveTrustedNetworks()">Save</button>'
+      +'<button class="btn btn-secondary btn-sm" data-action="saveTrustedNetworks">Save</button>'
       +'</div>'
       +'<label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text2);cursor:pointer;margin-top:8px"><input type="checkbox" id="sec-trust-cf" '+(s.trustCf?'checked':'')+' onchange="saveTrustedNetworks()" style="cursor:pointer"> Behind Cloudflare: identify clients via the <code style="font-size:11px">CF-Connecting-IP</code> header</label>'
       +'<div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic;line-height:1.5">Comma-separated CIDRs that never get the password prompt — your WAN IP for hairpin access, VPN ranges, Tailscale (add 100.64.0.0/10). Standard private ranges (10.x, 172.16-31.x, 192.168.x) always count as LAN. Only enable the Cloudflare option if the domain actually goes through Cloudflare — otherwise the header is spoofable.</div>'

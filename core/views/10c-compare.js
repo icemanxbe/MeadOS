@@ -4,6 +4,10 @@
 // ==========================================================================
 
 // ==================== COMPARE VIEW ====================
+function clearCompareSelection(){
+  APP.compareSelection=[];
+  renderMain();
+}
 function renderCompare(){
   var selected=APP.compareSelection||[];
   var modeBatches=visibleBatches();
@@ -19,7 +23,7 @@ function renderCompare(){
     var status=getBatchStatus(b);
     var logs=getBatchLogs(b.id);
     var lastG=logs.length?logs[logs.length-1].gravity:b.og;
-    return'<div class="compare-card '+(sel?'selected':'')+'" onclick="toggleCompare(\''+b.id+'\')" style="border-left:3px solid '+color+'">'
+    return'<div class="compare-card '+(sel?'selected':'')+'" data-action="toggleCompare" data-args=\''+JSON.stringify([b.id])+'\' style="border-left:3px solid '+color+'">'
       +'<div class="check">✓</div>'
       +'<div style="font-family:var(--font-display);font-size:14px;color:'+color+';margin-bottom:4px;padding-right:24px">'+escHtml(b.name)+'</div>'
       +'<div style="font-size:11px;color:var(--text3);font-family:var(--font-mono)">'+(b.style||'Custom')+' · '+(b.og||'?')+' → '+(lastG||'?')+' · '+(b.volume||'?')+'L</div>'
@@ -119,7 +123,7 @@ function renderCompare(){
   }
 
   return'<div class="page-title">Compare</div><div class="page-subtitle">Side-by-side analysis · select 2-4 batches to overlay gravity curves and stats'+(selected.length?' · '+selected.length+' selected':'')+'</div>'
-    +(selected.length>0?'<div style="margin-bottom:12px"><button class="btn btn-secondary btn-sm" onclick="APP.compareSelection=[];renderMain()">Clear Selection</button></div>':'')
+    +(selected.length>0?'<div style="margin-bottom:12px"><button class="btn btn-secondary btn-sm" data-action="clearCompareSelection">Clear Selection</button></div>':'')
     +(modeBatches.length?'<div class="grid-3" style="gap:10px">'+cards+'</div>':'<div class="empty-state"><p>No batches to compare yet.</p></div>')
     +comparisonHtml;
 }

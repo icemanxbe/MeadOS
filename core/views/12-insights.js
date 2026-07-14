@@ -25,7 +25,7 @@ function renderTrophyShelf(){
   var rows=entries.map(function(e){
     var am=_compAwardMeta(e.c.award);
     var score=(e.c.score!==''&&e.c.score!=null&&e.c.score!=='')?(e.c.score+(e.c.maxScore?'/'+e.c.maxScore:'')):'';
-    return '<div onclick="showView(\'batch\',\''+e.b.id+'\')" style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-left:3px solid '+am.c+';background:var(--bg3);border-radius:var(--radius);margin-bottom:6px;cursor:pointer">'
+    return '<div data-action="showView" data-args=\''+JSON.stringify(['batch',e.b.id])+'\' style="display:flex;align-items:center;gap:10px;padding:8px 10px;border-left:3px solid '+am.c+';background:var(--bg3);border-radius:var(--radius);margin-bottom:6px;cursor:pointer">'
       +'<span style="font-size:18px">'+am.icon+'</span>'
       +'<div style="flex:1;min-width:0"><div style="font-size:13px;color:'+getBatchColor(e.b)+';font-family:var(--font-display)">'+escHtml(e.b.name)+'</div>'
       +'<div style="font-size:11px;color:var(--text3)">'+escHtml(e.c.competition||'')+(e.c.category?' · '+escHtml(e.c.category):'')+(score?' · '+escHtml(score):'')+'</div></div>'
@@ -38,7 +38,7 @@ function _insightsTitleBar(){
   var nl=(typeof appLang==='function'&&appLang()==='nl');
   return '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">'
     +'<div class="page-title" style="margin-bottom:0">Insights</div>'
-    +((APP.batches||[]).length?'<button class="btn btn-secondary btn-sm" onclick="openProductionReport()" title="Print a production &amp; cost report across all batches">'+(nl?'📊 Productierapport':'📊 Production Report')+'</button>':'')
+    +((APP.batches||[]).length?'<button class="btn btn-secondary btn-sm" data-action="openProductionReport" title="Print a production &amp; cost report across all batches">'+(nl?'📊 Productierapport':'📊 Production Report')+'</button>':'')
     +'</div>';
 }
 function renderInsightsView(){
@@ -196,7 +196,7 @@ function renderFailedBatchInsights(){
     var f=b.failed;
     var cat=FAILURE_CATEGORIES.find(function(c){return c.id===f.category;})||{label:f.category,icon:'⚰'};
     var color=getBatchColor(b);
-    return'<div onclick="showView(\'batch\',\''+b.id+'\')" style="cursor:pointer;background:var(--bg);border-left:3px solid var(--red2);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
+    return'<div data-action="showView" data-args=\''+JSON.stringify(['batch',b.id])+'\' style="cursor:pointer;background:var(--bg);border-left:3px solid var(--red2);border-radius:var(--radius);padding:12px 14px;margin-bottom:8px;transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
       +'<div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px">'
         +'<div style="display:flex;align-items:baseline;gap:8px"><div style="font-family:var(--font-display);font-size:13px;color:'+color+'">'+escHtml(b.name)+'</div>'+(b.serial?'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3)">#'+escHtml(b.serial)+'</div>':'')+'</div>'
         +'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--red2);letter-spacing:1.5px">'+cat.icon+' '+escHtml(proseL(cat.label).toUpperCase())+'</div>'
@@ -299,7 +299,7 @@ function renderBestTastingInsights(){
   topRated.sort(function(a,b){return b.rating-a.rating;});
   var batchList=topRated.slice(0,5).map(function(s){
     var stars='★'.repeat(s.rating)+'<span style="color:var(--bg4)">'+'★'.repeat(5-s.rating)+'</span>';
-    return'<div onclick="showView(\'batch\',\''+s.batch.id+'\')" style="cursor:pointer;padding:8px 12px;background:var(--bg);border-left:3px solid '+getBatchColor(s.batch)+';border-radius:var(--radius);margin-bottom:4px"><div style="display:flex;justify-content:space-between;align-items:center"><div style="font-family:var(--font-display);font-size:13px;color:'+getBatchColor(s.batch)+'">'+escHtml(s.batch.name)+'</div><div>'+stars+'</div></div></div>';
+    return'<div data-action="showView" data-args=\''+JSON.stringify(['batch',s.batch.id])+'\' style="cursor:pointer;padding:8px 12px;background:var(--bg);border-left:3px solid '+getBatchColor(s.batch)+';border-radius:var(--radius);margin-bottom:4px"><div style="display:flex;justify-content:space-between;align-items:center"><div style="font-family:var(--font-display);font-size:13px;color:'+getBatchColor(s.batch)+'">'+escHtml(s.batch.name)+'</div><div>'+stars+'</div></div></div>';
   }).join('');
   return'<div class="card" style="margin-bottom:16px;border-left:3px solid var(--gold2)"><div class="card-header"><div class="card-title">🌟 WHAT YOUR BEST BATCHES SHARE</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+topRated.length+' BATCHES · 4★ AND ABOVE</div></div>'
     +rows

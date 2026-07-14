@@ -205,7 +205,7 @@ function renderOffFlavorWizard(){
   }).map(function(name){
     var isSel=!!sel[name];
     var entry=OFF_FLAVOR_DB[name];
-    return'<span class="filter-chip '+(isSel?'active':'')+'" onclick="toggleOffFlavorSelection(\''+name.replace(/'/g,"\\'")+'\')" style="cursor:pointer;'+(isSel?'background:rgba(232,196,106,0.2);border-color:var(--gold);color:var(--gold2)':'')+'">'+entry.icon+' '+escHtml(name)+'</span>';
+    return'<span class="filter-chip '+(isSel?'active':'')+'" data-action="toggleOffFlavorSelection" data-args=\''+escHtml(JSON.stringify([name]))+'\' style="cursor:pointer;'+(isSel?'background:rgba(232,196,106,0.2);border-color:var(--gold);color:var(--gold2)':'')+'">'+entry.icon+' '+escHtml(name)+'</span>';
   }).join('');
 
   // Tally causes across selected flavors — cider mode prefers ciderCauses when present
@@ -238,12 +238,12 @@ function renderOffFlavorWizard(){
     }).join('');
   }
 
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:780px;max-height:92vh;display:flex;flex-direction:column">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:780px;max-height:92vh;display:flex;flex-direction:column">'
     +'<div class="modal-title">🧭 OFF-FLAVOR DIAGNOSTIC WIZARD</div>'
     +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:14px;line-height:1.55">Pick the flavors and aromas you\'re detecting in your batch. Multiple selections combine — common causes float to the top.</div>'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:12px;border-bottom:1px solid var(--border)">'+chips+'</div>'
     +'<div style="flex:1;overflow-y:auto">'+diagnosis+'</div>'
-    +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'
+    +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px"><button class="btn btn-secondary" data-action="closeModal">Close</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }
@@ -258,11 +258,11 @@ function openTroubleshootTopic(id){
   t=tsLocalizeTopic(t);
   closeModal();
   var stepsHtml=t.steps.map(function(s){return'<li style="margin-bottom:10px;line-height:1.55">'+s+'</li>';}).join('');
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:600px">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:600px">'
     +'<div class="modal-title">'+t.icon+' '+escHtml(t.title)+'</div>'
     +(t.category?'<div style="font-family:var(--font-mono);font-size:10px;letter-spacing:1.5px;color:var(--text3);text-transform:uppercase;margin:-12px 0 14px">'+escHtml(t.category)+'</div>':'')
     +'<ol style="padding-left:22px;margin:0;font-size:13.5px;color:var(--text2)">'+stepsHtml+'</ol>'
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Close</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }
@@ -300,7 +300,7 @@ function renderTroubleshoot(){
   // Same tile as the Mead Guide topic cards (icon + title + teaser + footer link).
   function topicCard(t){
     t=tsLocalizeTopic(t);
-    return'<div class="card" style="cursor:pointer;margin:0" onclick="openTroubleshootTopic(\''+t.id+'\')">'
+    return'<div class="card" style="cursor:pointer;margin:0" data-action="openTroubleshootTopic" data-args=\''+JSON.stringify([t.id])+'\'>'
       +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px"><span style="font-size:20px">'+t.icon+'</span><div class="card-title" style="font-size:12.5px">'+escHtml(t.title.toUpperCase())+'</div></div>'
       +'<div style="font-size:12.5px;color:var(--text3);line-height:1.5">'+escHtml(tsTeaser(t))+'…</div>'
       +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--gold2);letter-spacing:1px;margin-top:10px">'+t.steps.length+' STEP'+(t.steps.length===1?'':'S')+' →</div>'
@@ -318,7 +318,7 @@ function renderTroubleshoot(){
   var appCard=catSection('App & Sync Issues',APP_TROUBLESHOOT_TOPICS,'🖥');
   return'<div class="page-title">Troubleshooting</div><div class="page-subtitle">Brewing problems and process guidance</div>'
     +'<div class="ornament">— ⬡ ✦ ⬡ —</div>'
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><button class="btn btn-primary" onclick="openOffFlavorWizard()">🧭 Off-flavor diagnostic wizard</button></div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px"><button class="btn btn-primary" data-action="openOffFlavorWizard">🧭 Off-flavor diagnostic wizard</button></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:16px;font-style:italic">Pick a category, then tap a topic for step-by-step guidance — or use the diagnostic wizard above to work backward from observed flavors.</div>'
     +brewingHtml
     +appCard;
@@ -431,7 +431,7 @@ function renderTastingCompareModal(){
   var chips=tastings.map(function(t){
     var sel=s.selectedIds.indexOf(t.id)!==-1;
     var label=fmtDate(t.date)+(t.rating?' · '+'★'.repeat(t.rating):'');
-    return'<span class="filter-chip '+(sel?'active':'')+'" style="cursor:pointer;'+(sel?'background:rgba(232,196,106,0.2);border-color:var(--gold);color:var(--gold2)':'')+'" onclick="toggleTastingCompare(\''+t.id+'\')">'+escHtml(label)+'</span>';
+    return'<span class="filter-chip '+(sel?'active':'')+'" style="cursor:pointer;'+(sel?'background:rgba(232,196,106,0.2);border-color:var(--gold);color:var(--gold2)':'')+'" data-action="toggleTastingCompare" data-args=\''+JSON.stringify([t.id])+'\'>'+escHtml(label)+'</span>';
   }).join('');
 
   var selected=tastings.filter(function(t){return s.selectedIds.indexOf(t.id)!==-1;});
@@ -511,12 +511,12 @@ function renderTastingCompareModal(){
     body='<div style="display:flex;gap:10px;flex-wrap:wrap;align-items:stretch">'+cols+'</div>'+wheelOverlay;
   }
 
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:980px;max-height:92vh;display:flex;flex-direction:column">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:980px;max-height:92vh;display:flex;flex-direction:column">'
     +'<div class="modal-title">📊 COMPARE TASTINGS · '+escHtml(b.name)+'</div>'
     +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:10px;line-height:1.55">Pick 2-3 tastings to view side by side. The radar overlay below combines tasting-wheel scores for batches that have them.</div>'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)">'+chips+'</div>'
     +'<div style="flex:1;overflow-y:auto">'+body+'</div>'
-    +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'
+    +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px"><button class="btn btn-secondary" data-action="closeModal">Close</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }

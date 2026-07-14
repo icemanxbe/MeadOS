@@ -185,7 +185,7 @@ function renderImagePickerModal(){
   var s=window._pickerState;
   var tabBtn=function(key,label,enabled){
     var active=s.mode===key;
-    return'<button onclick="setPickerMode(\''+key+'\')" '+(enabled?'':'disabled')+' '
+    return'<button data-action="setPickerMode" data-args=\''+JSON.stringify([key])+'\' '+(enabled?'':'disabled')+' '
       +'style="padding:8px 14px;border:1px solid '+(active?'var(--gold)':'var(--border)')+';'
       +'background:'+(active?'rgba(201,163,80,0.1)':'transparent')+';'
       +'color:'+(enabled?'var(--text)':'var(--text3)')+';'
@@ -197,11 +197,11 @@ function renderImagePickerModal(){
   if(s.mode==='upload')body=renderPickerUpload();
   else if(s.mode==='media')body=renderPickerMedia();
   else body=renderPickerUrl();
-  return'<div class="modal-overlay modal-static" id="picker-overlay" onclick="if(event.target===this)closeImagePicker()">'
+  return'<div class="modal-overlay modal-static" id="picker-overlay" data-backdrop-action="closeImagePicker">'
     +'<div class="modal" style="max-width:760px;width:94vw;max-height:88vh;overflow:auto;background:var(--bg2)">'
     +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px">'
     +'<div class="modal-title" style="margin:0">🖼 '+escHtml(s.title)+'</div>'
-    +'<button class="btn btn-secondary btn-sm" onclick="closeImagePicker()">✕</button>'
+    +'<button class="btn btn-secondary btn-sm" data-action="closeImagePicker">✕</button>'
     +'</div>'
     +'<div style="display:flex;margin-bottom:14px;border-bottom:1px solid var(--border);padding-bottom:10px">'
     +tabBtn('upload','📤 Upload',true)
@@ -223,13 +223,16 @@ function setPickerMode(mode){
   }
 }
 
+function _pickerChooseFile(){
+  document.getElementById('picker-file-input').click();
+}
 function renderPickerUpload(){
   return'<div style="text-align:center;padding:30px 20px;border:2px dashed var(--border);border-radius:6px">'
     +'<div style="font-size:32px;margin-bottom:8px">📤</div>'
     +'<div style="font-family:var(--font-display);font-size:16px;color:var(--text);margin-bottom:8px">Upload from device</div>'
     +'<div style="font-size:12px;color:var(--text3);margin-bottom:18px">PNG, JPEG, WEBP, or SVG · auto-resized to '+window._pickerState.maxDim+'px max</div>'
     +'<input type="file" id="picker-file-input" accept="image/png,image/jpeg,image/webp,image/svg+xml" onchange="handlePickerUpload(this)" style="display:none">'
-    +'<button class="btn btn-primary" onclick="document.getElementById(\'picker-file-input\').click()">Choose image…</button>'
+    +'<button class="btn btn-primary" data-action="_pickerChooseFile">Choose image…</button>'
     +'<div id="picker-upload-status" style="margin-top:14px;font-size:12px;color:var(--text3)"></div>'
     +'</div>';
 }
@@ -262,7 +265,7 @@ function renderPickerUrl(){
     +'<div style="font-size:12px;color:var(--text3);margin-bottom:14px">A direct URL to a PNG/JPEG/SVG. Works for /local/… paths inside HA or external https URLs.</div>'
     +'<div style="display:flex;gap:8px">'
     +'<input type="text" id="picker-url-input" class="form-input" style="flex:1" placeholder="/local/labels/my-mead.png or https://...">'
-    +'<button class="btn btn-primary" onclick="confirmPickerUrl()">Use URL</button>'
+    +'<button class="btn btn-primary" data-action="confirmPickerUrl">Use URL</button>'
     +'</div>'
     +'</div>';
 }
@@ -287,7 +290,7 @@ function renderPickerMedia(){
       .replace('media-source://media_source/local','/config/media');
     return'<div style="padding:30px;text-align:center;color:var(--text3);font-style:italic">'
       +'Empty folder. Drop images into <code>'+escHtml(friendly)+'</code> on your HA.'
-      +(s.currentFolder!=='media-source://media_source/local'?'<div style="margin-top:10px;font-size:11px"><button class="btn btn-secondary btn-sm" onclick="loadMediaFolder(\'media-source://media_source/local\')">↰ Back to /config/media</button></div>':'')
+      +(s.currentFolder!=='media-source://media_source/local'?'<div style="margin-top:10px;font-size:11px"><button class="btn btn-secondary btn-sm" data-action="loadMediaFolder" data-args=\'["media-source://media_source/local"]\'>↰ Back to /config/media</button></div>':'')
       +'</div>';
   }
   // Path breadcrumb
@@ -298,7 +301,7 @@ function renderPickerMedia(){
     var isFolder=c.media_class==='directory';
     var isImage=c.media_class==='image'||/\.(png|jpe?g|webp|svg)$/i.test(c.title||'');
     if(isFolder){
-      return'<button onclick="loadMediaFolder(\''+escHtml(c.media_content_id).replace(/'/g,"\\'")+'\')" '
+      return'<button data-action="loadMediaFolder" data-args=\''+escHtml(JSON.stringify([c.media_content_id]))+'\' '
         +'style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 8px;background:var(--bg);'
         +'border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text);font-family:var(--font);font-size:12px">'
         +'<div style="font-size:28px">📁</div>'
@@ -307,7 +310,7 @@ function renderPickerMedia(){
     }
     if(!isImage)return'';
     // Image item — show thumbnail if available, else filename
-    return'<button onclick="confirmPickerMedia(\''+escHtml(c.media_content_id).replace(/'/g,"\\'")+'\')" '
+    return'<button data-action="confirmPickerMedia" data-args=\''+escHtml(JSON.stringify([c.media_content_id]))+'\' '
       +'style="display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px;background:var(--bg);'
       +'border:1px solid var(--border);border-radius:4px;cursor:pointer;color:var(--text)" '
       +'onmouseenter="this.style.borderColor=\'var(--gold)\'" onmouseleave="this.style.borderColor=\'var(--border)\'">'
@@ -317,7 +320,7 @@ function renderPickerMedia(){
   }).filter(Boolean).join('');
   return crumb
     +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px">'+grid+'</div>'
-    +(s.currentFolder!=='media-source://media_source/local'?'<div style="margin-top:14px"><button class="btn btn-secondary btn-sm" onclick="loadMediaFolder(\'media-source://media_source/local\')">↰ Up to /config/media</button></div>':'');
+    +(s.currentFolder!=='media-source://media_source/local'?'<div style="margin-top:14px"><button class="btn btn-secondary btn-sm" data-action="loadMediaFolder" data-args=\'["media-source://media_source/local"]\'>↰ Up to /config/media</button></div>':'');
 }
 
 function loadMediaFolder(mediaContentId){
@@ -354,64 +357,6 @@ function closeImagePicker(){
   window._pickerState=null;
 }
 
-// Render the BACKGROUND IMAGE card in the Label Designer's left column.
-// Shows what artwork the label is currently using and provides upload/clear.
-function renderDesignerBackgroundCard(){
-  var s=window._designerState;
-  if(!s)return'';
-  var customRef=(APP.settings.customLabels||{})[s.recipeId];
-  var kind=classifyLabelRef(customRef);
-  var source,sourceColor;
-  if(kind==='data'){source='Uploaded image';sourceColor='var(--green2)';}
-  else if(kind==='media'){source='HA media · '+(customRef.replace(/^media-source:\/\/[^\/]+\/[^\/]+\//,''));sourceColor='var(--blue2)';}
-  else if(kind==='url'){source='URL';sourceColor='var(--blue2)';}
-  else{
-    var isGen=(typeof recipeUsesGenericLabel==='function')&&recipeUsesGenericLabel(s.recipeId);
-    source=isGen?'Generated artwork':'Built-in image';
-    sourceColor='var(--text3)';
-  }
-  return'<div style="margin-top:16px;padding:12px;background:var(--bg);border-radius:4px;border:1px solid var(--border)">'
-    +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px;margin-bottom:8px">BACKGROUND IMAGE</div>'
-    +'<div style="font-size:12px;color:'+sourceColor+';margin-bottom:10px;word-break:break-all">'+escHtml(source)+'</div>'
-    +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
-    +'<button class="btn btn-secondary btn-sm" onclick="pickDesignerBackground()" style="flex:1">🖼 Pick image…</button>'
-    +(kind!=='none'?'<button class="btn btn-secondary btn-sm" onclick="clearDesignerBackground()">Clear</button>':'')
-    +'</div>'
-    +'</div>';
-}
-
-// Opens the image picker, on selection stores the ref in customLabels and
-// refreshes the designer preview.
-function pickDesignerBackground(){
-  var s=window._designerState;
-  openImagePicker({
-    title:'Pick background image for label',
-    maxDim:900,
-    onPick:function(ref){
-      if(!APP.settings.customLabels)APP.settings.customLabels={};
-      var prev=APP.settings.customLabels[s.recipeId];
-      APP.settings.customLabels[s.recipeId]=ref;
-      // If it's a media-source ID, kick off resolution immediately
-      if(classifyLabelRef(ref)==='media')getResolvedMediaUrl(ref);
-      // Save right away so it survives a Cancel
-      scheduleSave();
-      // The replaced background's file is orphaned if nothing else uses it.
-      if(prev&&prev!==ref&&typeof deleteAssetIfUnused==='function')deleteAssetIfUnused(prev);
-      refreshDesigner();
-      toast('✦ Background updated');
-    }
-  });
-}
-
-function clearDesignerBackground(){
-  var s=window._designerState;
-  var prev=APP.settings.customLabels&&APP.settings.customLabels[s.recipeId];
-  if(APP.settings.customLabels)delete APP.settings.customLabels[s.recipeId];
-  scheduleSave();
-  if(typeof deleteAssetIfUnused==='function')deleteAssetIfUnused(prev);
-  refreshDesigner();
-  toast('Background reverted to default');
-}
 
 // ==================== BRAND LOGO PICKER ====================
 // Wraps the image picker for the topbar/dashboard logo. Stored server-side as

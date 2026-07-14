@@ -6,6 +6,23 @@
 // The quick-gravity FAB and its modal were removed per user request — log
 // readings from a batch's own gravity-log screen instead.
 
+// ==================== ALERT-CLICK WRAPPERS ====================
+// Shared by the stock-alert / proactive-alert / going-away-check renderers
+// below — each bundles a compound action (navigate + delayed tab switch, or
+// close-then-navigate) that data-action can't express as a single call.
+function _alertOpenBatchTab(batchId,tab){
+  showView('batch',batchId);
+  setTimeout(function(){setBatchTab(batchId,tab);},10);
+}
+function _alertCloseAndOpenBatch(batchId){
+  closeModal();
+  showView('batch',batchId);
+}
+function _alertCloseAndOpenSupplies(){
+  closeModal();
+  showView('supplies');
+}
+
 // ==================== LOW-STOCK SUPPLY ALERT ====================
 function getLowSupplies(){
   return(APP.supplies||[]).filter(function(s){
@@ -36,13 +53,13 @@ function renderStockAlerts(){
   if(!low.length&&!exp.length&&!overdueAdds.length)return'';
   var items=[];
   if(overdueAdds.length){
-    items.push('<div class="stock-alert" style="cursor:pointer" onclick="showView(\'batch\',\''+overdueAdds[0].batch.id+'\');setTimeout(function(){setBatchTab(\''+overdueAdds[0].batch.id+'\',\'additions\')},10)"><span class="icon">⚠</span><span><strong>Overdue removal:</strong> '+overdueAdds.map(function(o){return escHtml(o.addition.item)+' in '+escHtml(o.batch.name);}).join(', ')+' — <span style="text-decoration:underline">remove now</span></span></div>');
+    items.push('<div class="stock-alert" style="cursor:pointer" data-action="_alertOpenBatchTab" data-args=\''+JSON.stringify([overdueAdds[0].batch.id,'additions'])+'\'><span class="icon">⚠</span><span><strong>Overdue removal:</strong> '+overdueAdds.map(function(o){return escHtml(o.addition.item)+' in '+escHtml(o.batch.name);}).join(', ')+' — <span style="text-decoration:underline">remove now</span></span></div>');
   }
   if(low.length){
-    items.push('<div class="stock-alert" onclick="showView(\'supplies\')" style="cursor:pointer"><span class="icon">⚠</span><span><strong>Low stock:</strong> '+low.map(function(s){return escHtml(s.name)+' ('+s.qty+(s.unit?' '+s.unit:'')+')';}).join(', ')+' — <span style="text-decoration:underline">manage supplies</span></span></div>');
+    items.push('<div class="stock-alert" data-action="showView" data-args=\'["supplies"]\' style="cursor:pointer"><span class="icon">⚠</span><span><strong>Low stock:</strong> '+low.map(function(s){return escHtml(s.name)+' ('+s.qty+(s.unit?' '+s.unit:'')+')';}).join(', ')+' — <span style="text-decoration:underline">manage supplies</span></span></div>');
   }
   if(exp.length){
-    items.push('<div class="stock-alert warn" onclick="showView(\'supplies\')" style="cursor:pointer"><span class="icon">⏳</span><span><strong>Expiring soon:</strong> '+exp.map(function(s){return escHtml(s.name)+' ('+fmtDate(s.expiryDate)+')';}).join(', ')+' — <span style="text-decoration:underline">check supplies</span></span></div>');
+    items.push('<div class="stock-alert warn" data-action="showView" data-args=\'["supplies"]\' style="cursor:pointer"><span class="icon">⏳</span><span><strong>Expiring soon:</strong> '+exp.map(function(s){return escHtml(s.name)+' ('+fmtDate(s.expiryDate)+')';}).join(', ')+' — <span style="text-decoration:underline">check supplies</span></span></div>');
   }
   return items.join('');
 }
@@ -198,7 +215,7 @@ function renderProactiveAlerts(){
         +'(at '+(s.currentGravity||'?')+', target ≈'+s.targetFG+'). '
         +'<span style="text-decoration:underline">Check temperature, add nutrient, or repitch →</span>';
     items.push(
-      '<div class="stock-alert" style="cursor:pointer;border-left-color:var(--red);background:rgba(200,48,32,0.10)" onclick="showView(\'batch\',\''+s.batch.id+'\');setTimeout(function(){setBatchTab(\''+s.batch.id+'\',\'log\')},10)">'
+      '<div class="stock-alert" style="cursor:pointer;border-left-color:var(--red);background:rgba(200,48,32,0.10)" data-action="_alertOpenBatchTab" data-args=\''+JSON.stringify([s.batch.id,'log'])+'\'>'
         +'<span class="icon">🛑</span>'
         +'<span>'+msg+'</span>'
       +'</div>'
@@ -215,7 +232,7 @@ function renderProactiveAlerts(){
       ?'<strong>Past peak window:</strong> '+escHtml(a.batch.name)+' ('+a.onHand+' bottle'+(a.onHand===1?'':'s')+' on hand) is now '+Math.abs(a.daysUntilMax)+' day'+(Math.abs(a.daysUntilMax)===1?'':'s')+' past its drink-by guidance. Open soon to catch it at its best.'
       :'<strong>Drinking window closing:</strong> '+escHtml(a.batch.name)+' ('+a.onHand+' bottle'+(a.onHand===1?'':'s')+' on hand) reaches max age in '+a.daysUntilMax+' day'+(a.daysUntilMax===1?'':'s')+'. Plan to drink, gift, or save.';
     items.push(
-      '<div class="stock-alert" style="cursor:pointer;border-left-color:'+border+';background:'+bg+'" onclick="showView(\'batch\',\''+a.batch.id+'\')">'
+      '<div class="stock-alert" style="cursor:pointer;border-left-color:'+border+';background:'+bg+'" data-action="showView" data-args=\''+JSON.stringify(['batch',a.batch.id])+'\'>'
         +'<span class="icon">'+icon+'</span>'
         +'<span>'+msg+' <span style="text-decoration:underline">Open batch →</span></span>'
       +'</div>'
@@ -230,7 +247,7 @@ function renderProactiveAlerts(){
         ?'never tasted'
         :'last tasted '+p.daysSinceLastTasting+' days ago';
       items.push(
-        '<div class="stock-alert warn" style="cursor:pointer" onclick="showView(\'batch\',\''+p.batch.id+'\');setTimeout(function(){setBatchTab(\''+p.batch.id+'\',\'tasting\')},10)">'
+        '<div class="stock-alert warn" style="cursor:pointer" data-action="_alertOpenBatchTab" data-args=\''+JSON.stringify([p.batch.id,'tasting'])+'\'>'
           +'<span class="icon">🍷</span>'
           +'<span><strong>Time for a tasting?</strong> '+escHtml(p.batch.name)+' is '+p.milestoneLabel+' aged · '+lastNote+'. <span style="text-decoration:underline">Log a fresh tasting →</span></span>'
         +'</div>'
@@ -295,27 +312,27 @@ function openGoingAwayCheck(){
         +taskItems.map(function(x){
           var t=x.task;
           var tag=t.isOverdue?' <span style="color:var(--red2)">(overdue)</span>':(t.isDue?' <span style="color:var(--gold2)">(today)</span>':' <span style="color:var(--text3)">(in '+(-t.daysFromDue)+'d)</span>');
-          return'<div class="stock-alert" style="cursor:pointer" onclick="closeModal();showView(\'batch\',\''+x.batch.id+'\')"><span class="icon">⚗</span><span>'+escHtml(x.batch.name)+' — <strong>'+escHtml(t.title)+'</strong>'+tag+'</span></div>';
+          return'<div class="stock-alert" style="cursor:pointer" data-action="_alertCloseAndOpenBatch" data-args=\''+JSON.stringify([x.batch.id])+'\'><span class="icon">⚗</span><span>'+escHtml(x.batch.name)+' — <strong>'+escHtml(t.title)+'</strong>'+tag+'</span></div>';
         }).join('');
     }
     if(additionItems.length){
       body+='<div style="font-family:var(--font-mono);font-size:10px;color:var(--gold2);letter-spacing:1.5px;margin:14px 0 6px">🍒 ADDITIONS TO REMOVE</div>'
         +additionItems.map(function(x){
           var tag=x.overdue?' <span style="color:var(--red2)">(overdue)</span>':' <span style="color:var(--text3)">(by '+fmtDate(x.addition.removeBy)+')</span>';
-          return'<div class="stock-alert" style="cursor:pointer" onclick="closeModal();showView(\'batch\',\''+x.batch.id+'\')"><span class="icon">🍒</span><span>'+escHtml(x.addition.item)+' in '+escHtml(x.batch.name)+tag+'</span></div>';
+          return'<div class="stock-alert" style="cursor:pointer" data-action="_alertCloseAndOpenBatch" data-args=\''+JSON.stringify([x.batch.id])+'\'><span class="icon">🍒</span><span>'+escHtml(x.addition.item)+' in '+escHtml(x.batch.name)+tag+'</span></div>';
         }).join('');
     }
     if(lowSupplies.length||expSupplies.length){
       body+='<div style="font-family:var(--font-mono);font-size:10px;color:var(--gold2);letter-spacing:1.5px;margin:14px 0 6px">📦 SUPPLIES</div>';
-      if(lowSupplies.length)body+='<div class="stock-alert" style="cursor:pointer" onclick="closeModal();showView(\'supplies\')"><span class="icon">⚠</span><span><strong>Already low:</strong> '+lowSupplies.map(function(s){return escHtml(s.name);}).join(', ')+'</span></div>';
-      if(expSupplies.length)body+='<div class="stock-alert warn" style="cursor:pointer" onclick="closeModal();showView(\'supplies\')"><span class="icon">⏳</span><span><strong>Expiring within '+days+'d:</strong> '+expSupplies.map(function(s){return escHtml(s.name)+' ('+fmtDate(s.expiryDate)+')';}).join(', ')+'</span></div>';
+      if(lowSupplies.length)body+='<div class="stock-alert" style="cursor:pointer" data-action="_alertCloseAndOpenSupplies"><span class="icon">⚠</span><span><strong>Already low:</strong> '+lowSupplies.map(function(s){return escHtml(s.name);}).join(', ')+'</span></div>';
+      if(expSupplies.length)body+='<div class="stock-alert warn" style="cursor:pointer" data-action="_alertCloseAndOpenSupplies"><span class="icon">⏳</span><span><strong>Expiring within '+days+'d:</strong> '+expSupplies.map(function(s){return escHtml(s.name)+' ('+fmtDate(s.expiryDate)+')';}).join(', ')+'</span></div>';
     }
   }
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:560px">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:560px">'
     +'<div class="modal-title">🧳 Going away for '+days+' day'+(days===1?'':'s')+'?</div>'
     +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:10px">Everything with a due date inside your trip window, across all active batches.</div>'
     +body
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Close</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }

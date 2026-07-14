@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Chrome
+        uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
+
+      - name: Start MeadOS server
+        run: |
+          python3 server.py --port 8123 --db /tmp/ci_meados.db &
+          echo $! > /tmp/meados_server.pid
+          for i in $(seq 1 40); do
+            curl -sf http://127.0.0.1:8123/api/health > /dev/null && break
+            sleep 0.5
+          done
+          curl -sf http://127.0.0.1:8123/api/health || (echo "server never came up" && exit 1)
+
+      - name: Server API smoke test
+        run: python3 ci/server_smoke_test.py http://127.0.0.1:8123
+
+      - name: Run in-page unit checks (test.html) headlessly
+        run: |
+          "${{ steps.setup-chrome.outputs.chrome-path }}" \
+            --headless=new --disable-gpu --no-sandbox --hide-scrollbars \
+            --virtual-time-budget=15000 \
+            --dump-dom "http://127.0.0.1:8123/test.html" > /tmp/test_dom.html
+          python3 ci/check_test_results.py /tmp/test_dom.html
+
+      - name: Stop MeadOS server
+        if: always()
+        run: kill "$(cat /tmp/meados_server.pid)" 2>/dev/null || true

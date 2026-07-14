@@ -723,7 +723,7 @@ function renderBatchAdvisorStrip(b){
         :'<div style="font-size:13px;color:var(--green2)">'+escHtml(quietTxt)+'</div>'+missingTxt)
     +(r?'<div style="font-size:11px;color:var(--text3);margin-top:5px;font-family:var(--font-mono)">'+(nl?'DRINKBAARHEID':'READINESS')+' '+r.pct+'%</div>':'')
     +'</div>'
-    +'<button class="btn btn-secondary btn-sm" onclick="setBatchTab(\''+b.id+'\',\'coach\')">'+(nl?'Adviseur →':'Advisor →')+'</button>'
+    +'<button class="btn btn-secondary btn-sm" data-action="setBatchTab" data-args=\''+JSON.stringify([b.id,'coach'])+'\'>'+(nl?'Adviseur →':'Advisor →')+'</button>'
     +'</div></div>';
 }
 
@@ -932,7 +932,7 @@ function renderWhatIfCard(b){
   if(!s||!s.active)return '';
   var scenarios=_advWhatIfScenarios(s);
   if(!scenarios.length)return '';
-  var btns=scenarios.map(function(sc){return '<button class="btn btn-secondary btn-sm" onclick="advisorRunWhatIf(\''+b.id+'\',\''+sc.key+'\')" style="margin:3px 6px 3px 0">'+escHtml(sc.label)+'</button>';}).join('');
+  var btns=scenarios.map(function(sc){return '<button class="btn btn-secondary btn-sm" data-action="advisorRunWhatIf" data-args=\''+JSON.stringify([b.id,sc.key])+'\' style="margin:3px 6px 3px 0">'+escHtml(sc.label)+'</button>';}).join('');
   return '<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">'+(nl?'🔮 WAT ALS...':'🔮 WHAT IF...')+'</div></div>'
     +'<div style="font-size:12px;color:var(--text3);margin-bottom:8px">'+(nl?'Simuleert alleen — verandert niets aan je partij.':'Simulates only — changes nothing about your batch.')+'</div>'
     +btns+'<div id="whatif-result-'+b.id+'" style="margin-top:8px"></div></div>';
@@ -1158,7 +1158,7 @@ function renderBatchAdvisor(b){
       // second call-to-action next to the real one.
       var guide=showProse?_advGuideLink(it):null;
       var guideHtml=guide?('<div style="margin-top:6px;font-family:var(--font-mono);font-size:10.5px;color:var(--text3)">'
-        +'<a href="#" onclick="event.preventDefault();openTroubleshootTopic(\''+guide.topicId+'\')" style="color:inherit;text-decoration:underline;text-decoration-color:rgba(255,255,255,0.25)">'
+        +'<a data-action="openTroubleshootTopic" data-args=\''+JSON.stringify([guide.topicId])+'\' style="color:inherit;text-decoration:underline;text-decoration-color:rgba(255,255,255,0.25);cursor:pointer">'
         +'📖 '+(nl?'Meer lezen':'Read more')+': '+guide.icon+' '+escHtml(guide.title)+'</a></div>'):'';
       // Beginner persona, critical severity: scoped version of "color-
       // intensity changes" — a first-time brewer most needs to not miss
@@ -1251,7 +1251,7 @@ function renderBatchAdvisor(b){
     return '<div class="coach-box" style="margin-bottom:12px'+(overdue?';border-color:var(--red);border-left:4px solid var(--red2)':'')+'"><div class="coach-title"'+(overdue?' style="color:var(--red2)"':'')+'>'+(overdue?'⚠':'⚗')+' '+(nl?'ACTIE VEREIST — DAG ':'ACTION DUE — DAY ')+td.day+_coachDayLabel(td)+'</div>'
       +'<div style="font-family:var(--font-display);font-size:15px;color:'+(overdue?'var(--red2)':'var(--gold2)')+';margin-bottom:8px">'+escHtml(typeof stepTitleL==='function'?stepTitleL(td.title):td.title)+'</div>'
       +'<div class="coach-text">'+escHtml(typeof stepDescL==='function'?stepDescL(td.desc):td.desc)+'</div>'
-      +'<div class="coach-tasks" style="margin-top:12px"><div class="coach-task"><div class="task-cb '+(td.done?'checked':'')+'" onclick="toggleTask(\''+td.id+'\',this)">'+(td.done?'✓':'')+'</div><span style="font-size:13px">'+(td.done?(nl?'Vandaag gedaan — vink uit indien niet':'Done today — uncheck if not'):(nl?'Markeer als gedaan':'Mark as completed'))+'</span></div></div></div>';
+      +'<div class="coach-tasks" style="margin-top:12px"><div class="coach-task"><div class="task-cb '+(td.done?'checked':'')+'" data-action="toggleTask" data-args=\''+JSON.stringify([td.id])+'\'>'+(td.done?'✓':'')+'</div><span style="font-size:13px">'+(td.done?(nl?'Vandaag gedaan — vink uit indien niet':'Done today — uncheck if not'):(nl?'Markeer als gedaan':'Mark as completed'))+'</span></div></div></div>';
   }
   // A brewer who's fallen behind on several steps needs a checklist to catch
   // up, not N identical full-height red boxes stacked down the page — only
@@ -1260,7 +1260,7 @@ function renderBatchAdvisor(b){
   function _coachRow(td){
     var overdue=td.isOverdue;
     return '<div style="display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border)">'
-      +'<div class="task-cb '+(td.done?'checked':'')+'" onclick="toggleTask(\''+td.id+'\',this)" style="margin-top:2px;flex-shrink:0">'+(td.done?'✓':'')+'</div>'
+      +'<div class="task-cb '+(td.done?'checked':'')+'" data-action="toggleTask" data-args=\''+JSON.stringify([td.id])+'\' style="margin-top:2px;flex-shrink:0">'+(td.done?'✓':'')+'</div>'
       +'<div style="flex:1;font-size:13px;color:'+(overdue?'var(--red2)':'var(--text)')+'">'+(nl?'Dag ':'Day ')+td.day+' · '+escHtml(typeof stepTitleL==='function'?stepTitleL(td.title):td.title)+_coachDayLabel(td)+'</div></div>';
   }
   var sortedToday=todayTasks.slice().sort(function(a,b){return a.day-b.day;});

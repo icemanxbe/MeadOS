@@ -33,10 +33,10 @@ function openGuideSection(i){
   var s=GUIDE_SECTIONS()[i];
   if(!s)return;
   closeModal();
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:640px">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:640px">'
     +'<div class="modal-title">'+s.icon+' '+escHtml(s.title.toUpperCase())+'</div>'
     +'<div style="font-size:14px;color:var(--text2);line-height:1.8;white-space:pre-line">'+escHtml(s.content)+'</div>'
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Close</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }
@@ -45,7 +45,7 @@ function renderGuide(){
   var cards=sections.map(function(s,i){
     if(s.type==='honey-library')return'';
     var teaser=String(s.content||'').replace(/\s+/g,' ').trim().slice(0,104);
-    return'<div class="card" style="cursor:pointer;margin:0" onclick="openGuideSection('+i+')">'
+    return'<div class="card" style="cursor:pointer;margin:0" data-action="openGuideSection" data-args=\''+JSON.stringify([i])+'\'>'
       +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px"><span style="font-size:20px">'+s.icon+'</span><div class="card-title" style="font-size:12.5px">'+escHtml(s.title.toUpperCase())+'</div></div>'
       +'<div style="font-size:12.5px;color:var(--text3);line-height:1.5">'+escHtml(teaser)+'…</div>'
       +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--gold2);letter-spacing:1px;margin-top:10px">READ →</div>'
@@ -80,10 +80,10 @@ function openCiderGuideSection(i){
   if(!s)return;
   closeModal();
   var title=proseL(s.title).toUpperCase();
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:640px">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:640px">'
     +'<div class="modal-title">'+s.icon+' '+escHtml(title)+'</div>'
     +'<div style="font-size:14px;color:var(--text2);line-height:1.8;white-space:pre-line">'+escHtml(proseL(s.content))+'</div>'
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Close</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }
@@ -94,7 +94,7 @@ function renderCiderGuide(){
     var content=proseL(s.content);
     var title=proseL(s.title).toUpperCase();
     var teaser=String(content||'').replace(/\s+/g,' ').trim().slice(0,104);
-    return'<div class="card" style="cursor:pointer;margin:0" onclick="openCiderGuideSection('+i+')">'
+    return'<div class="card" style="cursor:pointer;margin:0" data-action="openCiderGuideSection" data-args=\''+JSON.stringify([i])+'\'>'
       +'<div style="display:flex;align-items:center;gap:10px;margin-bottom:7px"><span style="font-size:20px">'+s.icon+'</span><div class="card-title" style="font-size:12.5px">'+escHtml(title)+'</div></div>'
       +'<div style="font-size:12.5px;color:var(--text3);line-height:1.5">'+escHtml(teaser)+'…</div>'
       +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--gold2);letter-spacing:1px;margin-top:10px">'+(nl?'LEZEN →':'READ →')+'</div>'
@@ -130,12 +130,21 @@ function openBottleScanner(){
   setTimeout(startBottleScanner,100);
 }
 
+// Backdrop click needs to also stop the camera stream, not just close the
+// modal — see data-backdrop-action on the overlay below.
+function _closeBottleScannerBackdrop(){
+  stopBottleScanner();
+  closeModal();
+}
+function _bsSubmitFallbackUrl(){
+  handleBottleScannerURL(document.getElementById('bs-fallback-url').value);
+}
 function renderBottleScannerModal(){
   closeModal();
   // Always show the camera UI — we'll figure out which decode path works at
   // runtime. The old "your browser doesn't support" message fired for every
   // desktop Chrome and Firefox user even though jsQR works there fine.
-  var html='<div class="modal-overlay" onclick="if(event.target===this){stopBottleScanner();closeModal();}"><div class="modal" style="max-width:560px;display:flex;flex-direction:column">'
+  var html='<div class="modal-overlay" data-backdrop-action="_closeBottleScannerBackdrop"><div class="modal" style="max-width:560px;display:flex;flex-direction:column">'
     +'<div class="modal-title">📷 SCAN BOTTLE QR</div>'
     +'<div style="font-size:12.5px;color:var(--text3);margin-bottom:12px;line-height:1.55">Point your camera at a QR code on a bottle or storage label. The batch opens automatically once detected.</div>'
     +'<div style="position:relative;background:#000;border-radius:var(--radius);overflow:hidden;aspect-ratio:4/3;margin-bottom:14px">'
@@ -150,8 +159,8 @@ function renderBottleScannerModal(){
     +'</div>'
     +'<div style="font-size:11.5px;color:var(--text3);margin-bottom:10px;line-height:1.55;text-align:center">Or paste a share URL if the camera isn\'t cooperating:</div>'
     +'<input type="text" id="bs-fallback-url" placeholder="https://your-meados-server/share/&lt;token&gt;" style="width:100%;padding:10px 12px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-size:12px;font-family:var(--font-mono);margin-bottom:10px" onkeydown="if(event.key===\'Enter\')handleBottleScannerURL(this.value)">'
-    +'<button class="btn btn-secondary btn-sm" onclick="handleBottleScannerURL(document.getElementById(\'bs-fallback-url\').value)" style="width:100%">Open from pasted URL</button>'
-    +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px"><button class="btn btn-secondary" onclick="stopBottleScanner();closeModal()">Close</button></div>'
+    +'<button class="btn btn-secondary btn-sm" data-action="_bsSubmitFallbackUrl" style="width:100%">Open from pasted URL</button>'
+    +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px"><button class="btn btn-secondary" data-action="_closeBottleScannerBackdrop">Close</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }

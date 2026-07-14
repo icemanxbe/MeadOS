@@ -22,7 +22,7 @@ function showStuckFermDiagnosis(batchId){
       +d.actions.map(function(a){return'<li>'+escHtml(a)+'</li>';}).join('')
       +'</ol></div>'
     :'';
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:600px">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:600px">'
     +'<div class="modal-title">🔬 FERMENTATION DIAGNOSIS</div>'
     +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">'
     +'<div style="padding:10px;background:var(--bg3);border-radius:var(--radius);text-align:center"><div style="font-family:var(--font-display);font-size:20px;color:var(--gold2)">'+d.daysSinceStart+'</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);letter-spacing:1.5px;margin-top:2px">DAYS</div></div>'
@@ -31,7 +31,7 @@ function showStuckFermDiagnosis(batchId){
     +'</div>'
     +(diagHtml||'<div style="padding:12px;background:var(--bg4);border-radius:var(--radius);color:var(--text3);font-style:italic">No diagnostic findings — fermentation may be proceeding normally.</div>')
     +actionHtml
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Close</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }
@@ -47,7 +47,7 @@ function renderCostLeaderboard(){
     var color=getBatchColor(d.batch);
     var ratingDisplay=d.avgRating?d.avgRating.toFixed(1)+'★':'<span style="color:var(--text3)">—</span>';
     var valueScore=d.avgRating&&d.costPerBottle?(d.avgRating/d.costPerBottle).toFixed(2):'—';
-    return'<tr style="cursor:pointer" onclick="showView(\'batch\',\''+d.batch.id+'\')">'
+    return'<tr style="cursor:pointer" data-action="showView" data-args=\''+JSON.stringify(['batch',d.batch.id])+'\'>'
       +'<td style="color:'+color+';font-family:var(--font-display);padding:8px 10px">'+escHtml(d.batch.name)+'</td>'
       +'<td style="text-align:right;font-family:var(--font-mono)">'+ccy+d.totalCost.toFixed(2)+'</td>'
       +'<td style="text-align:right;font-family:var(--font-mono)">'+d.bottles+'</td>'
@@ -88,8 +88,8 @@ function renderTemplatesSection(){
         +(recipe?escHtml(recipe.name):'Unknown recipe')+' · '+(t.volume||'?')+'L · OG '+(t.og||'?')+(t.honeyType?' · '+escHtml(t.honeyType):'')+(t.yeast?' · '+escHtml((getYeastById(t.yeast)||{}).name||'').split('—')[0].trim():'')
         +(t.costPerLitre?' · '+ccy+t.costPerLitre.toFixed(2)+'/L':'')
         +'</div></div>'
-        +'<div style="display:flex;gap:6px"><button class="btn btn-primary btn-sm" onclick="applyTemplate(\''+t.id+'\')">Apply</button>'
-        +'<button class="btn btn-danger btn-sm" onclick="deleteTemplate(\''+t.id+'\')">✕</button></div>'
+        +'<div style="display:flex;gap:6px"><button class="btn btn-primary btn-sm" data-action="applyTemplate" data-args=\''+JSON.stringify([t.id])+'\'>Apply</button>'
+        +'<button class="btn btn-danger btn-sm" data-action="deleteTemplate" data-args=\''+JSON.stringify([t.id])+'\'>✕</button></div>'
         +'</div>';
     }).join('')
     +'</div>';
@@ -101,14 +101,14 @@ function openRecipeScalingWizard(recipeId){
   var r=getRecipe(recipeId);
   if(!r){toast('⚠ Recipe not found');return;}
   var defaultVol=r.volume||5;
-  var html='<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:560px">'
+  var html='<div class="modal-overlay"><div class="modal" style="max-width:560px">'
     +'<div class="modal-title">📐 SCALE RECIPE</div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:14px">'+(appLang()==='nl'?'<strong>'+escHtml(r.name)+'</strong> is ontworpen voor <strong>'+defaultVol+'L</strong>. Voer je doelvolume in om alle ingrediënten proportioneel te schalen.':'<strong>'+escHtml(r.name)+'</strong> is designed for <strong>'+defaultVol+'L</strong>. Enter your target volume to scale all ingredients proportionally.')+'</div>'
     +'<div class="form-row"><div class="form-group"><label class="form-label">Original Volume (L)</label><input class="form-input" id="rs-orig" type="number" value="'+defaultVol+'" step="0.1" disabled style="opacity:0.7"></div>'
     +'<div class="form-group"><label class="form-label">Target Volume (L)</label><input class="form-input" id="rs-target" type="number" value="'+defaultVol+'" step="0.1" oninput="updateRecipeScaling(\''+recipeId+'\')" autofocus></div></div>'
     +'<div id="rs-output" style="margin-top:10px"></div>'
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button>'
-    +'<button class="btn btn-primary" onclick="startScaledBatch(\''+recipeId+'\')">Start Batch with This Scaling</button></div>'
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Cancel</button>'
+    +'<button class="btn btn-primary" data-action="startScaledBatch" data-args=\''+JSON.stringify([recipeId])+'\'>Start Batch with This Scaling</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
   updateRecipeScaling(recipeId);
@@ -150,5 +150,5 @@ function startScaledBatch(recipeId){
 
 // Wire scale button into recipe detail view
 function recipeDetailScaleButton(recipeId){
-  return'<button class="btn btn-secondary btn-sm" onclick="openRecipeScalingWizard(\''+recipeId+'\')">📐 Scale to Volume</button>';
+  return'<button class="btn btn-secondary btn-sm" data-action="openRecipeScalingWizard" data-args=\''+JSON.stringify([recipeId])+'\'>📐 Scale to Volume</button>';
 }

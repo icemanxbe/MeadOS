@@ -20,7 +20,7 @@ function openGiftRecipientModal(batchId,deltaCount,size){
   });
   var dataListOpts=Object.keys(priorRecipients).map(function(n){return'<option value="'+escHtml(n)+'">';}).join('');
   document.body.insertAdjacentHTML('beforeend',
-    '<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:460px">'
+    '<div class="modal-overlay"><div class="modal" style="max-width:460px">'
     +'<div class="modal-title">'+(appLang()==='nl'?'🎁 CADEAU REGISTREREN':'🎁 RECORD GIFT')+(deltaCount>1?' ('+deltaCount+' × '+size+'ml)':' ('+size+'ml)')+'</div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:14px">'+(appLang()==='nl'?deltaCount+' × '+size+'ml cadeau'+(deltaCount!==1?'s':'')+' van <strong style="color:var(--gold2)">'+escHtml(b.name)+'</strong> registreren. Houd bij wie de fles'+(deltaCount!==1?'sen':'')+' kreeg zodat je later kunt opvolgen.':'Recording '+deltaCount+' × '+size+'ml gift'+(deltaCount!==1?'s':'')+' of <strong style="color:var(--gold2)">'+escHtml(b.name)+'</strong>. Track who got the bottle'+(deltaCount!==1?'s':'')+' so you can follow up later.')+'</div>'
     +'<input type="hidden" id="gift-size" value="'+size+'">'
@@ -31,8 +31,8 @@ function openGiftRecipientModal(batchId,deltaCount,size){
     +'<div class="form-group"><label class="form-label">Occasion (optional)</label><input class="form-input" id="gift-occasion" placeholder="Birthday / Christmas / Just because"></div>'
     +'<div class="form-group"><label class="form-label">Notes (optional)</label><textarea class="form-textarea" id="gift-notes" placeholder="They loved the cherry one last time, prefer drier…"></textarea></div>'
     +'<div class="modal-actions">'
-    +'<button class="btn btn-secondary" onclick="skipGiftRecording(\''+batchId+'\','+deltaCount+','+size+')">Skip — Just Count</button>'
-    +'<button class="btn btn-primary" onclick="saveGiftRecord(\''+batchId+'\','+deltaCount+','+size+')">Save Gift</button>'
+    +'<button class="btn btn-secondary" data-action="skipGiftRecording" data-args=\''+JSON.stringify([batchId,deltaCount,size])+'\'>Skip — Just Count</button>'
+    +'<button class="btn btn-primary" data-action="saveGiftRecord" data-args=\''+JSON.stringify([batchId,deltaCount,size])+'\'>Save Gift</button>'
     +'</div></div></div>');
   setTimeout(function(){var r=document.getElementById('gift-recipient');if(r)r.focus();},50);
 }
@@ -122,7 +122,7 @@ function renderGiftHistory(bot,batchId){
   }).join(', ');
   return'<div style="margin-top:8px;font-size:11px;color:var(--text3);padding:6px 8px;background:var(--bg4);border-radius:6px;border-left:2px solid var(--gold)">'
     +'<span style="font-family:var(--font-mono);letter-spacing:1px;color:var(--gold2)">🎁 GIVEN TO:</span> '+summary
-    +' <button class="btn btn-secondary btn-sm" style="margin-left:6px;padding:2px 8px;font-size:10px" onclick="showGiftDetails(\''+batchId+'\')">Details</button>'
+    +' <button class="btn btn-secondary btn-sm" style="margin-left:6px;padding:2px 8px;font-size:10px" data-action="showGiftDetails" data-args=\''+JSON.stringify([batchId])+'\'>Details</button>'
     +'</div>';
 }
 
@@ -137,15 +137,15 @@ function showGiftDetails(batchId){
       +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+fmtDate(g.date)+(g.occasion?' · '+escHtml(g.occasion):'')+'</div>'
       +(g.notes?'<div style="font-size:12px;color:var(--text2);margin-top:4px;font-style:italic">'+escHtml(g.notes)+'</div>':'')+'</div>'
       +'<div style="text-align:right"><div style="font-family:var(--font-display);font-size:16px;color:var(--gold2)">'+g.count+'</div><div style="font-size:9px;color:var(--text3);font-family:var(--font-mono)">BOTTLE'+(g.count!==1?'S':'')+'</div></div>'
-      +'<button class="btn-icon" onclick="deleteGiftRecord(\''+batchId+'\',\''+g.id+'\')" title="Delete record">×</button>'
+      +'<button class="btn-icon" data-action="deleteGiftRecord" data-args=\''+JSON.stringify([batchId,g.id])+'\' title="Delete record">×</button>'
       +'</div>';
   }).join('');
   document.body.insertAdjacentHTML('beforeend',
-    '<div class="modal-overlay" onclick="if(event.target===this)closeModal()"><div class="modal" style="max-width:520px">'
+    '<div class="modal-overlay"><div class="modal" style="max-width:520px">'
     +'<div class="modal-title">🎁 GIFTS · '+escHtml(b?b.name:'')+'</div>'
     +'<div style="font-size:12px;color:var(--text3);margin-bottom:8px;font-family:var(--font-mono);letter-spacing:1px">'+bot.gifts.length+' gift'+(bot.gifts.length!==1?'s':'')+' · '+bot.gifts.reduce(function(s,g){return s+g.count;},0)+' bottles total</div>'
     +rows
-    +'<div class="modal-actions"><button class="btn btn-primary" onclick="closeModal()">Close</button></div>'
+    +'<div class="modal-actions"><button class="btn btn-primary" data-action="closeModal">Close</button></div>'
     +'</div></div>');
 }
 
@@ -258,6 +258,15 @@ function resetSanitizeTimer(){
   renderBottlingWorkflow();
 }
 
+// Two distinct confirm wordings preserved as-is from the original inline
+// handlers (backdrop click vs the Cancel button) rather than unified —
+// this refactor doesn't change behavior/copy, just how it's wired up.
+function _closeBottlingWorkflowBackdrop(){
+  if(confirm('Cancel bottling workflow? Progress will be lost.'))closeModal();
+}
+function _cancelBottlingWorkflow(){
+  if(confirm('Cancel bottling workflow?'))closeModal();
+}
 function renderBottlingWorkflow(){
   closeModal();
   var s=bottlingWorkflowState;
@@ -274,17 +283,27 @@ function renderBottlingWorkflow(){
   var canNext=canAdvanceBottlingStep(step.id,s);
   var isLast=s.stepIdx===BOTTLING_STEPS.length-1;
   document.body.insertAdjacentHTML('beforeend',
-    '<div class="modal-overlay modal-static" onclick="if(event.target===this&&confirm(\'Cancel bottling workflow? Progress will be lost.\'))closeModal()"><div class="modal" style="max-width:640px;max-height:90vh;display:flex;flex-direction:column">'
+    '<div class="modal-overlay modal-static" data-backdrop-action="_closeBottlingWorkflowBackdrop"><div class="modal" style="max-width:640px;max-height:90vh;display:flex;flex-direction:column">'
     +'<div class="modal-title">🍾 GUIDED BOTTLING · '+escHtml(b.name)+'</div>'
     +'<div style="display:flex;gap:0;align-items:center;margin-bottom:18px">'+stepper+'</div>'
     +'<div style="flex:1;overflow-y:auto">'+content+'</div>'
     +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px">'
-    +(canPrev?'<button class="btn btn-secondary" onclick="bottlingPrevStep()">← Back</button>':'<span></span>')
-    +'<button class="btn btn-secondary" onclick="if(confirm(\'Cancel bottling workflow?\'))closeModal()">Cancel</button>'
-    +(isLast?'<button class="btn btn-primary" onclick="finishBottlingWorkflow()">✦ Complete Bottling</button>':'<button class="btn btn-primary" id="bw-next-btn" onclick="bottlingNextStep()" '+(canNext?'':'disabled style="opacity:0.4;cursor:not-allowed"')+'>Next →</button>')
+    +(canPrev?'<button class="btn btn-secondary" data-action="bottlingPrevStep">← Back</button>':'<span></span>')
+    +'<button class="btn btn-secondary" data-action="_cancelBottlingWorkflow">Cancel</button>'
+    +(isLast?'<button class="btn btn-primary" data-action="finishBottlingWorkflow">✦ Complete Bottling</button>':'<button class="btn btn-primary" id="bw-next-btn" data-action="bottlingNextStep" '+(canNext?'':'disabled style="opacity:0.4;cursor:not-allowed"')+'>Next →</button>')
     +'</div></div></div>');
 }
 
+function _stampBottlingAbvAndDownloadLabel(batchId,abv){
+  var tempBot={abv:abv||0};
+  APP.bottling[batchId]=Object.assign({},APP.bottling[batchId]||{},tempBot);
+  downloadLabel(batchId);
+}
+function _stampBottlingAbvAndPrintLabel(batchId,abv){
+  var tempBot={abv:abv||0};
+  APP.bottling[batchId]=Object.assign({},APP.bottling[batchId]||{},tempBot);
+  printLabel(batchId);
+}
 function renderBottlingStepContent(stepId,s,b){
   if(stepId==='preflight'){
     var items=[
@@ -353,9 +372,9 @@ function renderBottlingStepContent(stepId,s,b){
       +'<div style="font-family:var(--font-mono);font-size:11px;color:var(--text3);letter-spacing:2px;margin-top:8px">'+(s.sanitizerCompleted?'✓ SANITIZATION COMPLETE':running?'SANITIZING — KEEP IN CONTACT':'2-MINUTE TIMER')+'</div>'
       +(running||s.sanitizerCompleted?'<div style="margin-top:14px;height:6px;background:var(--bg4);border-radius:3px;overflow:hidden"><div style="height:100%;width:'+progress+'%;background:linear-gradient(90deg,var(--gold),var(--green2));transition:width 1s linear"></div></div>':'')
       +'</div>'
-      +(!s.sanitizerStartedAt?'<button class="btn btn-primary" style="width:100%" onclick="startSanitizeTimer()">▶ Start 2-Minute Timer</button>':'')
-      +(running?'<button class="btn btn-secondary" style="width:100%" onclick="completeSanitizeTimer()">Skip — Already Done</button>':'')
-      +(s.sanitizerCompleted?'<div style="padding:10px;background:#0d1f12;border-left:3px solid var(--green);border-radius:var(--radius);font-size:12px;color:var(--green2);margin-bottom:8px">✓ Sanitization complete. Drain bottles and proceed to filling.</div><button class="btn btn-secondary btn-sm" onclick="resetSanitizeTimer()">↻ Reset Timer</button>':'');
+      +(!s.sanitizerStartedAt?'<button class="btn btn-primary" style="width:100%" data-action="startSanitizeTimer">▶ Start 2-Minute Timer</button>':'')
+      +(running?'<button class="btn btn-secondary" style="width:100%" data-action="completeSanitizeTimer">Skip — Already Done</button>':'')
+      +(s.sanitizerCompleted?'<div style="padding:10px;background:#0d1f12;border-left:3px solid var(--green);border-radius:var(--radius);font-size:12px;color:var(--green2);margin-bottom:8px">✓ Sanitization complete. Drain bottles and proceed to filling.</div><button class="btn btn-secondary btn-sm" data-action="resetSanitizeTimer">↻ Reset Timer</button>':'');
   }
   if(stepId==='fill'){
     var totalBot=s.counts[500]+s.counts[750]+(s.customSize>0?s.customQty:0);
@@ -373,7 +392,7 @@ function renderBottlingStepContent(stepId,s,b){
       +'<div class="form-group"><label class="form-label">Final Sweetness Profile</label><select class="form-select" id="bw-sweetness" onchange="bottlingWorkflowState.sweetness=this.value">'
       +sweetnessOptionLabels(b.beverageType).map(function(o){return'<option value="'+o+'"'+(s.sweetness===o?' selected':'')+'>'+(o||'(set after tasting)')+'</option>';}).join('')
       +'</select><div style="font-size:11px;color:var(--text3);margin-top:4px">'+_bottlingSweetHintHtml(s.fg,b.beverageType)+'</div>'
-      +((typeof mwBatchSignals==='function'&&mwBatchSignals(b).sparkling)?'<button type="button" class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="openCarbonationCalcForBatch(\''+b.id+'\')">🍾 Priming Calculator</button>':'')
+      +((typeof mwBatchSignals==='function'&&mwBatchSignals(b).sparkling)?'<button type="button" class="btn btn-secondary btn-sm" style="margin-top:6px" data-action="openCarbonationCalcForBatch" data-args=\''+JSON.stringify([b.id])+'\'>🍾 Priming Calculator</button>':'')
       +'</div>'
       +'<div class="form-group"><label class="form-label">Closure</label><select class="form-select" id="bw-closure" onchange="bottlingWorkflowState.closure=this.value">'
       +'<option value="crown"'+((s.closure||'crown')==='crown'?' selected':'')+'>⭕ Crown caps</option>'
@@ -391,9 +410,9 @@ function renderBottlingStepContent(stepId,s,b){
       +renderBatchLabel(recipe?recipe.id:'r1',abvForLabel||0,{batch:b})
       +'</div>'
       +'<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">'
-      +'<button class="btn btn-secondary" onclick="(function(){var tempBot={abv:'+(abvForLabel||0)+'};APP.bottling[\''+b.id+'\']=Object.assign({},APP.bottling[\''+b.id+'\']||{},tempBot);downloadLabel(\''+b.id+'\');}())">⬇ Save PNG</button>'
-      +'<button class="btn btn-secondary" onclick="(function(){var tempBot={abv:'+(abvForLabel||0)+'};APP.bottling[\''+b.id+'\']=Object.assign({},APP.bottling[\''+b.id+'\']||{},tempBot);printLabel(\''+b.id+'\');}())">🖨 Print</button>'
-      +'<button class="btn btn-secondary" onclick="bottlingNextStep()">Skip for Now</button>'
+      +'<button class="btn btn-secondary" data-action="_stampBottlingAbvAndDownloadLabel" data-args=\''+JSON.stringify([b.id,abvForLabel||0])+'\'>⬇ Save PNG</button>'
+      +'<button class="btn btn-secondary" data-action="_stampBottlingAbvAndPrintLabel" data-args=\''+JSON.stringify([b.id,abvForLabel||0])+'\'>🖨 Print</button>'
+      +'<button class="btn btn-secondary" data-action="bottlingNextStep">Skip for Now</button>'
       +'</div>';
   }
   if(stepId==='finish'){

@@ -75,7 +75,7 @@ function renderTools(){
     +'</div></div>'
     +'<div class="card"><div class="card-header"><div class="card-title">🧫 YEAST REHYDRATION TIMER</div></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.55">For yeasts that require rehydration (most champagne strains, EC-1118, K1V-1116, D47, etc.). M05 sprinkles directly — skip this for M05. Go-Ferm Sterol Flash protocol improves viability dramatically.</div>'
-    +'<button class="btn btn-primary" onclick="openYeastRehydrationModal()" style="width:100%">Start Rehydration Workflow</button>'
+    +'<button class="btn btn-primary" data-action="openYeastRehydrationModal" style="width:100%">Start Rehydration Workflow</button>'
     +'</div>'
     +'<div class="card"><div class="card-header"><div class="card-title">🌾 TOSNA PLANNER</div></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.55">Generate a 4-dose Fermaid-O TOSNA schedule for an active batch — then apply it. Applying switches the batch\'s nutrient to Fermaid-O and writes the 4 doses into the additions log so they show up in the coach and calendar.</div>'
@@ -201,6 +201,10 @@ function renderTools(){
 // a simple global (matching this codebase's existing window._wiz/
 // bottlingWorkflowState pattern) so the tool that prevents bottle bombs is
 // reachable, pre-filled, and stability-aware right from the batch itself.
+function _carbUnlinkBatch(){
+  window._carbBatchId=null;
+  renderMain();
+}
 function _carbBatchLinkHtml(){
   var b=window._carbBatchId?getBatch(window._carbBatchId):null;
   if(!b)return '';
@@ -211,7 +215,7 @@ function _carbBatchLinkHtml(){
   }else if(sig&&sig.gravityConfirmedStable){
     stableHtml='<div style="margin-top:8px;padding:6px 10px;border-radius:var(--radius);border-left:3px solid var(--green);background:rgba(45,106,79,0.08);font-size:11.5px;color:var(--green2)">✓ Confirmed stable — safe to prime.</div>';
   }
-  return '<div style="margin-bottom:10px;padding:8px 10px;background:var(--bg4);border-radius:var(--radius);font-size:12px;color:var(--text2)">🔗 Linked to <strong>'+escHtml(b.name)+'</strong> <button class="btn btn-secondary btn-sm" style="margin-left:6px" onclick="window._carbBatchId=null;renderMain()">Unlink</button></div>'+stableHtml;
+  return '<div style="margin-bottom:10px;padding:8px 10px;background:var(--bg4);border-radius:var(--radius);font-size:12px;color:var(--text2)">🔗 Linked to <strong>'+escHtml(b.name)+'</strong> <button class="btn btn-secondary btn-sm" style="margin-left:6px" data-action="_carbUnlinkBatch">Unlink</button></div>'+stableHtml;
 }
 function _carbDefaultVol(){
   var b=window._carbBatchId?getBatch(window._carbBatchId):null;

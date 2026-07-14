@@ -147,6 +147,21 @@ MAX_ASSET = 16 * 1024 * 1024
 
 DB_PATH = os.path.join(BASE_DIR, "meados.db")  # overridden by --db
 
+# ---- Automated backups ----
+# The 200-row history table is undo, not backup — it lives in the SAME
+# SQLite file as the primary data, so a lost/corrupted disk takes both out
+# at once. This writes a real standalone copy on a schedule, using SQLite's
+# online backup API (safe against concurrent writers under WAL mode, unlike
+# a raw file copy which can grab a torn WAL state). --backup-dir lets the
+# operator point it at a mounted network share/external drive for genuine
+# off-machine protection; unconfigured, it still defaults to a sibling
+# folder so there's SOME automated protection out of the box.
+BACKUP_DIR = None            # resolved in main() from --backup-dir or the DB_PATH default
+BACKUP_DIR_EXPLICIT = False  # True only if --backup-dir was actually passed
+BACKUP_INTERVAL = 24 * 3600  # seconds between automated backups
+BACKUP_RETAIN = 30           # keep this many most-recent backup files
+BACKUP_FILE_RE = re.compile(r"^meados-backup-\d{8}-\d{6}\.db$")
+
 
 def find_user_asset(name):
     """Locate a content-addressed upload by filename across the user-asset dirs
@@ -1547,6 +1562,21 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {"ok": True, "token": get_config("ha_token") or ""})
         elif path == "/api/health":
             self._send(200, db_health())
+        elif path == "/api/backup-status":
+            files = backup_list()
+            last = files[-1] if files else None
+            self._send(200, {
+                "ok": True,
+                "enabled": BACKUP_RETAIN > 0,
+                "backupDir": BACKUP_DIR,
+                "backupDirExplicit": BACKUP_DIR_EXPLICIT,
+                "intervalHours": round(BACKUP_INTERVAL / 3600.0, 2),
+                "retain": BACKUP_RETAIN,
+                "count": len(files),
+                "lastBackupAt": (datetime.fromtimestamp(os.path.getmtime(last), tz=timezone.utc).isoformat()
+                                 if last else None),
+                "lastBackupBytes": os.path.getsize(last) if last else None,
+            })
         elif path == "/api/assets/orphans":
             orphans = scan_orphan_assets()
             self._send(200, {"ok": True, "orphans": orphans,
@@ -2012,16 +2042,74 @@ def temp_watch_loop():
         threading.Event().wait(TEMP_WATCH_INTERVAL)
 
 
+def backup_list():
+    """Existing backup files in BACKUP_DIR, oldest first."""
+    if not BACKUP_DIR or not os.path.isdir(BACKUP_DIR):
+        return []
+    names = sorted(n for n in os.listdir(BACKUP_DIR) if BACKUP_FILE_RE.match(n))
+    return [os.path.join(BACKUP_DIR, n) for n in names]
+
+
+def backup_tick():
+    """Writes one timestamped, consistent copy of the live database via
+    SQLite's online backup API, then prunes beyond BACKUP_RETAIN. Using
+    Connection.backup() (rather than a plain file copy) matters under WAL
+    mode: a raw copy can grab the main file mid-checkpoint with WAL frames
+    not yet applied, producing a backup that looks fine to `ls` but is
+    actually missing recent writes."""
+    os.makedirs(BACKUP_DIR, exist_ok=True)
+    dest_path = os.path.join(BACKUP_DIR, "meados-backup-%s.db" % datetime.now().strftime("%Y%m%d-%H%M%S"))
+    src = sqlite3.connect(DB_PATH)
+    try:
+        dest = sqlite3.connect(dest_path)
+        try:
+            src.backup(dest)
+        finally:
+            dest.close()
+    finally:
+        src.close()
+    existing = backup_list()
+    for stale in existing[:-BACKUP_RETAIN] if BACKUP_RETAIN > 0 else []:
+        try:
+            os.remove(stale)
+        except OSError:
+            pass
+
+
+def backup_loop():
+    # First backup shortly after startup (don't make a fresh install wait a
+    # full BACKUP_INTERVAL for its first automated copy), then on schedule.
+    threading.Event().wait(60)
+    while True:
+        try:
+            backup_tick()
+        except Exception as e:  # never let one bad tick kill the background thread
+            print("backup error:", e)
+        threading.Event().wait(BACKUP_INTERVAL)
+
+
 def main():
-    global DB_PATH
+    global DB_PATH, BACKUP_DIR, BACKUP_DIR_EXPLICIT, BACKUP_INTERVAL, BACKUP_RETAIN
     ap = argparse.ArgumentParser(description="MeadOS server (SQLite-backed)")
     ap.add_argument("--host", default="0.0.0.0", help="bind address (default 0.0.0.0)")
     ap.add_argument("--port", type=int, default=8080, help="port (default 8080)")
     ap.add_argument("--db", default=DB_PATH, help="SQLite database path (default meados.db)")
     ap.add_argument("--trust", action="append", default=[], metavar="CIDR",
                     help="extra network that counts as LAN (repeatable), e.g. --trust 100.64.0.0/10")
+    ap.add_argument("--backup-dir", default=None, metavar="PATH",
+                    help="directory for automated database backups (default: a 'backups' folder "
+                         "next to the database). Point this at a mounted network share or external "
+                         "drive for genuine off-machine protection.")
+    ap.add_argument("--backup-interval-hours", type=float, default=BACKUP_INTERVAL / 3600.0,
+                    help="hours between automated backups (default 24)")
+    ap.add_argument("--backup-retain", type=int, default=BACKUP_RETAIN,
+                    help="number of automated backups to keep (default 30, 0 disables automated backups)")
     args = ap.parse_args()
     DB_PATH = os.path.abspath(args.db)
+    BACKUP_DIR_EXPLICIT = args.backup_dir is not None
+    BACKUP_DIR = os.path.abspath(args.backup_dir) if args.backup_dir else os.path.join(os.path.dirname(DB_PATH), "backups")
+    BACKUP_INTERVAL = max(1, args.backup_interval_hours) * 3600.0
+    BACKUP_RETAIN = max(0, args.backup_retain)
     for s in args.trust:
         TRUSTED_NETS_CLI.append(ipaddress.ip_network(s, strict=False))
     db_init()
@@ -2031,6 +2119,11 @@ def main():
     print("MeadOS server running on http://%s:%d" % (args.host, args.port))
     print("Data: %s (SQLite, WAL mode, last %d saves kept in history)" % (DB_PATH, HISTORY_KEEP))
     threading.Thread(target=temp_watch_loop, daemon=True).start()
+    if BACKUP_RETAIN > 0:
+        print("Backups: %s (every %.1fh, keeping %d)%s" % (
+            BACKUP_DIR, BACKUP_INTERVAL / 3600.0, BACKUP_RETAIN,
+            "" if BACKUP_DIR_EXPLICIT else " — same disk as the db; pass --backup-dir for real off-machine protection"))
+        threading.Thread(target=backup_loop, daemon=True).start()
     try:
         srv.serve_forever()
     except KeyboardInterrupt:
