@@ -307,9 +307,11 @@ async function saveData(force){
     // Success — capture the new rev, update the delta baseline, clear pending.
     try{var b=await res.json();if(b&&b.updatedAt)window._dataRev=b.updatedAt;}catch(e){}
     window._lastSavedState=json;  // server now holds exactly this — next diff is against it
-    pendingSync=false;
+    // Only fully clear pending when the SEPARATE log-write queue is also
+    // empty — a blob save succeeding doesn't mean a queued reading write did.
+    pendingSync=hasQueuedLogs();
     try{
-      localStorage.removeItem('meadows_pendingSync');
+      if(!pendingSync)localStorage.removeItem('meadows_pendingSync');
       localStorage.setItem('meadows_lastSyncedTs',new Date().toISOString());
     }catch(e){}
     // Optional: refresh the HA companion-card summary entity
@@ -400,7 +402,7 @@ async function loadHistoryPanel(){
   }).join('');
 }
 async function restoreHistorySnapshot(id,label){
-  if(!confirm('Restore the snapshot from '+label+'?\n\nYour current data is saved as a new snapshot first, so you can switch back.'))return;
+  if(!confirm('Restore the snapshot from '+label+'?\n\nYour current data is saved as a new snapshot first, so you can switch back. Gravity readings are kept as-is — snapshots no longer include them.'))return;
   try{await saveData();}catch(e){}  // best-effort: ensure current state is in history
   var res=await apiFetch('/api/history/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})});
   if(!res||!res.ok){toast('⚠ Restore failed');return;}
@@ -417,7 +419,7 @@ function openSnapshotRestoreModal(){
   if(typeof closeModal==='function')closeModal();
   var html='<div class="modal-overlay"><div class="modal" style="max-width:520px">'
     +'<div class="modal-title">🕘 Restore from snapshot</div>'
-    +'<div style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.55">'+(appLang()==='nl'?'De server bewaart je recente opgeslagen momentopnames. Herstellen rolt <strong>al</strong> je data terug naar dat punt — je huidige data wordt eerst als een nieuwe momentopname opgeslagen, dus het is omkeerbaar.':'The server keeps your recent saved snapshots. Restoring rolls <strong>all</strong> your data back to that point — your current data is saved as a new snapshot first, so it\'s reversible.')+'</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.55">'+(appLang()==='nl'?'De server bewaart je recente opgeslagen momentopnames. Herstellen rolt je data terug naar dat punt — je huidige data wordt eerst als een nieuwe momentopname opgeslagen, dus het is omkeerbaar. Gistingsmetingen (SG) blijven ongewijzigd — momentopnames bevatten die niet meer.':'The server keeps your recent saved snapshots. Restoring rolls your data back to that point — your current data is saved as a new snapshot first, so it\'s reversible. Gravity readings are kept as-is — snapshots no longer include them.')+'</div>'
     +'<div id="history-list" style="font-size:13px;color:var(--text3);max-height:55vh;overflow:auto">Loading…</div>'
     +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Close</button></div>'
     +'</div></div>';
@@ -572,14 +574,15 @@ function markPendingSync(){
 function startPendingSyncWatcher(){
   if(pendingSyncTimer)return;  // already running
   pendingSyncTimer=setInterval(function(){
-    if(!pendingSync){
+    if(!pendingSync&&!hasQueuedLogs()){
       clearInterval(pendingSyncTimer);
       pendingSyncTimer=null;
       return;
     }
     if(!navigator.onLine)return;  // browser knows we're offline
-    // Retry the save silently
-    saveData().then(function(ok){
+    // Retry the save silently, and flush any queued reading writes.
+    if(hasQueuedLogs())flushLogQueue();
+    if(pendingSync)saveData().then(function(ok){
       if(ok&&typeof toast==='function')toast('✓ Synced (was pending)');
     });
   },30000);
@@ -594,6 +597,7 @@ if(typeof window!=='undefined'){
   }catch(e){}
   // Listen for connectivity restoration
   window.addEventListener('online',function(){
+    if(hasQueuedLogs())flushLogQueue();
     if(pendingSync){
       saveData().then(function(ok){
         if(ok&&typeof toast==='function')toast('✓ Reconnected — synced');
@@ -602,17 +606,112 @@ if(typeof window!=='undefined'){
   });
   // Listen for visibility change (user comes back to the tab — try to flush)
   document.addEventListener('visibilitychange',function(){
-    if(!document.hidden&&pendingSync&&navigator.onLine){
-      saveData();
+    if(!document.hidden&&navigator.onLine){
+      if(hasQueuedLogs())flushLogQueue();
+      if(pendingSync)saveData();
     }
   });
+}
+
+// ==================== GRAVITY READINGS (own table, not the state blob) ====================
+// APP.logs stays a synchronous in-memory cache — every existing read site
+// (getBatchLogs() and the direct APP.logs[...] reads) is untouched — fetched
+// once at boot from /api/logs and mirrored to localStorage. Writes go
+// straight to their own endpoints instead of riding the big state-blob save;
+// a small persisted queue keeps offline logging working exactly as it did
+// before (reuses the pendingSync/markPendingSync machinery above).
+function logQueue(){
+  try{var q=JSON.parse(localStorage.getItem('meados_logQueue')||'[]');return Array.isArray(q)?q:[];}catch(e){return[];}
+}
+function saveLogQueue(arr){
+  try{
+    if(arr.length)localStorage.setItem('meados_logQueue',JSON.stringify(arr));
+    else localStorage.removeItem('meados_logQueue');
+  }catch(e){}
+}
+function hasQueuedLogs(){return logQueue().length>0;}
+function enqueueLogOp(op){
+  var q=logQueue();q.push(op);saveLogQueue(q);
+  markPendingSync();
+}
+
+async function fetchLogs(){
+  if(APP._shareMode)return;
+  var res=await apiFetch('/api/logs');
+  if(res&&res.ok){
+    try{
+      var j=await res.json();
+      APP.logs=(j&&j.logs)||{};
+      try{localStorage.setItem('meados_logs',JSON.stringify(APP.logs));}catch(e){}
+      return;
+    }catch(e){}
+  }
+  // Unreachable — fall back to the last-known cache, then (first boot after
+  // upgrading only) to whatever the legacy blob cache still carries.
+  try{
+    var cached=localStorage.getItem('meados_logs');
+    if(cached){APP.logs=JSON.parse(cached);return;}
+    var legacy=localStorage.getItem('meadows_data');
+    if(legacy){var d=JSON.parse(legacy);if(d&&d.logs)APP.logs=d.logs;}
+  }catch(e){}
+}
+
+// Replays queued log ops oldest-first, stopping at the first failure so a
+// later op on the same reading never jumps ahead of an earlier one. Every op
+// is idempotent server-side, so a partial or repeated flush is always safe.
+async function flushLogQueue(){
+  var q=logQueue();
+  while(q.length){
+    var op=q[0],res=null;
+    if(op.op==='add')res=await apiFetch('/api/logs/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:op.batchId,entry:op.entry})});
+    else if(op.op==='delete')res=await apiFetch('/api/logs/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:op.batchId,id:op.id})});
+    else if(op.op==='deleteBatch')res=await apiFetch('/api/logs/delete-batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:op.batchId})});
+    else if(op.op==='replaceAll')res=await apiFetch('/api/logs/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({logs:op.logs})});
+    else{q.shift();saveLogQueue(q);continue;}  // unknown op — drop rather than jam the queue forever
+    if(!res||!res.ok)return;  // still offline/failing — stop, keep the queue, try again later
+    q.shift();saveLogQueue(q);
+  }
+}
+
+async function logSyncAdd(batchId,entry){
+  var res=await apiFetch('/api/logs/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:batchId,entry:entry})});
+  if(res&&res.ok){try{localStorage.setItem('meados_logs',JSON.stringify(APP.logs));}catch(e){}return true;}
+  if(res){toast('⚠ Reading not saved — server rejected it');return false;}  // 4xx: don't queue garbage
+  enqueueLogOp({op:'add',batchId:batchId,entry:entry});
+  return false;
+}
+async function logSyncDelete(batchId,id){
+  var res=await apiFetch('/api/logs/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:batchId,id:id})});
+  if(res&&res.ok){try{localStorage.setItem('meados_logs',JSON.stringify(APP.logs));}catch(e){}return true;}
+  if(res)return false;
+  enqueueLogOp({op:'delete',batchId:batchId,id:id});
+  return false;
+}
+async function logSyncDeleteBatch(batchId){
+  var res=await apiFetch('/api/logs/delete-batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:batchId})});
+  if(res&&res.ok)return true;
+  if(res)return false;
+  enqueueLogOp({op:'deleteBatch',batchId:batchId});
+  return false;
+}
+async function logSyncReplaceAll(logsMap){
+  var res=await apiFetch('/api/logs/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({logs:logsMap})});
+  if(res&&res.ok){try{localStorage.setItem('meados_logs',JSON.stringify(APP.logs));}catch(e){}return true;}
+  if(res)return false;
+  enqueueLogOp({op:'replaceAll',logs:logsMap});
+  return false;
 }
 
 async function loadData(){
   setSyncStatus('syncing');
   // Share mode reads the sanitized public endpoint (HA credentials stripped,
-  // not password-gated) so share links work for guests.
+  // not password-gated) so share links work for guests. Gravity readings are
+  // fetched in parallel — fetchLogs() no-ops in share mode (initShareMode
+  // seeds APP.logs from the share payload itself instead, see 14-bootstrap.js).
+  var logsPromise=fetchLogs();
   var res=await apiFetch(APP._shareMode?'/api/share':'/api/data');
+  await logsPromise;
+  if(!APP._shareMode&&hasQueuedLogs())flushLogQueue();  // replay anything queued while last offline
   if(res&&res.status===200){
     try{
       // Capture the rev so the next save can detect concurrent edits, and the

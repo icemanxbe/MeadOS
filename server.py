@@ -22,6 +22,16 @@ API:
     POST /api/asset    -> store an uploaded image as a file under labels/
     GET  /labels/<f>   -> serve label/logo images (public, immutable cache)
 
+Gravity readings live in their own table (not the state blob) — the highest-
+churn, most bounded slice of data, extracted so a routine reading no longer
+means rewriting and re-diffing the entire app state. See db_put_state()'s
+strip-and-adopt of a stale client's blob-embedded logs, and migrate_logs_to_table().
+    GET  /api/logs             -> {ok, logs:{batchId:[entry,...]}} — all readings
+    POST /api/logs/add         -> {batchId, entry} -> insert/replace one reading
+    POST /api/logs/delete      -> {batchId, id} -> delete one reading
+    POST /api/logs/delete-batch-> {batchId} -> delete all of a batch's readings
+    POST /api/logs/import      -> {logs:{batchId:[...]}} -> transactional replace-all
+
 Optional external-access password: when set (Settings -> Server Data, or
 POST /api/security from a LAN device), every request that does NOT originate
 from a private/LAN address must authenticate with HTTP Basic auth (the
@@ -443,6 +453,26 @@ def db_init():
                    value TEXT NOT NULL
                )"""
         )
+        # Gravity readings, extracted out of the state blob (see module docstring).
+        # Nullable gravity: a blend-composer seed reading can have none yet.
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS gravity_readings (
+                   id             TEXT PRIMARY KEY,
+                   batch_id       TEXT NOT NULL,
+                   date           TEXT NOT NULL,
+                   gravity        REAL,
+                   gravity_raw    REAL,
+                   temp_corrected INTEGER,
+                   temp           REAL,
+                   ph             REAL,
+                   airlock        TEXT,
+                   note           TEXT,
+                   created_at     TEXT NOT NULL
+               )"""
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_gravity_readings_batch ON gravity_readings(batch_id, date)"
+        )
 
 
 def get_config(key):
@@ -542,6 +572,49 @@ def migrate_ha_token():
         with db_connect() as conn:
             conn.execute("UPDATE state SET data = ?, bytes = ? WHERE id = 1",
                          (cleaned, len(cleaned)))
+
+
+def extract_and_adopt_logs(raw, adopt=True):
+    """If a state blob still carries the old top-level "logs" bucket (a stale
+    / SW-cached client, or a pre-cutover history snapshot being restored),
+    upsert its entries into gravity_readings (when adopt=True) and strip the
+    key from the blob. Returns the cleaned JSON string (same object when
+    nothing changed). Mirrors extract_ha_token's shape exactly.
+
+    adopt=False is used for /api/history/restore: an old snapshot's key is
+    still stripped (so it doesn't silently re-grow in the blob), but its
+    entries are NOT re-inserted — restoring history must not resurrect
+    readings the user has since deliberately deleted."""
+    if '"logs"' not in raw:
+        return raw
+    try:
+        obj = json.loads(raw)
+    except ValueError:
+        return raw
+    logs = obj.get("logs")
+    if not isinstance(logs, dict):
+        return raw
+    if adopt and logs:
+        db_logs_adopt(logs)
+    del obj["logs"]
+    return json.dumps(obj)
+
+
+def migrate_logs_to_table():
+    # One-time on boot: adopt any blob-embedded readings into the table, then
+    # strip the key. Guarded by a config marker rather than "is the table
+    # empty" — a user who deletes every reading and later restores a
+    # pre-cutover snapshot should not silently get them back on next restart.
+    if get_config("logs_migrated") == "1":
+        return
+    row = db_get_state()
+    if row:
+        cleaned = extract_and_adopt_logs(row[0], adopt=True)
+        if cleaned is not row[0]:
+            with db_connect() as conn:
+                conn.execute("UPDATE state SET data = ?, bytes = ? WHERE id = 1",
+                             (cleaned, len(cleaned)))
+    set_config("logs_migrated", "1")
 
 
 def ha_proxy_urls():
@@ -850,7 +923,14 @@ def build_share_payload(state, token):
     if not batch:
         return None
 
-    logs = (state.get("logs") or {}).get(batch_id) or []
+    # Readings live in their own table now (see module docstring), not the
+    # blob — query directly rather than reading state["logs"].
+    with db_connect() as conn:
+        log_rows = conn.execute(
+            "SELECT date, gravity FROM gravity_readings WHERE batch_id = ? ORDER BY date, created_at, id",
+            (batch_id,),
+        ).fetchall()
+    logs = [{"date": r[0], "gravity": r[1]} for r in log_rows]
     tastings = (state.get("tastings") or {}).get(batch_id) or []
     bottling = (state.get("bottling") or {}).get(batch_id) or {}
     # Photos ride along too (only /labels/ asset URLs — they're already public
@@ -968,6 +1048,154 @@ def build_ics(events, token):
     return "\r\n".join(lines) + "\r\n"
 
 
+# ---- gravity readings (own table, not the state blob — see module docstring) --
+LOG_ROW_SELECT = ("id, batch_id, date, gravity, gravity_raw, temp_corrected, "
+                   "temp, ph, airlock, note, created_at")
+
+
+def _gen_log_id():
+    return "srv" + os.urandom(6).hex()
+
+
+def _norm_log_entry(e):
+    """Validate + whitelist a client-supplied reading before it's stored.
+    Tolerates missing temp/ph/airlock/note/id (the blend-compose seed entry
+    omits several; a legacy pre-id backup omits id) and a null gravity."""
+    if not isinstance(e, dict):
+        raise ValueError("entry must be an object")
+    date = str(e.get("date") or "").strip()
+    if not date:
+        raise ValueError("entry.date is required")
+    eid = str(e.get("id") or "").strip() or _gen_log_id()
+
+    def _num(v):
+        if v is None or v == "":
+            return None
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    corrected = bool(e.get("tempCorrected"))
+    gravity_raw = _num(e.get("gravityRaw")) if corrected else None
+    return {
+        "id": eid, "date": date, "gravity": _num(e.get("gravity")),
+        "gravity_raw": gravity_raw,
+        "temp_corrected": 1 if (corrected and gravity_raw is not None) else None,
+        "temp": _num(e.get("temp")), "ph": _num(e.get("ph")),
+        "airlock": str(e.get("airlock") or "")[:200],
+        "note": str(e.get("note") or "")[:4000],
+    }
+
+
+def _row_to_log_entry(row):
+    # row = (id, batch_id, date, gravity, gravity_raw, temp_corrected, temp, ph, airlock, note, created_at)
+    entry = {"id": row[0], "date": row[2], "gravity": row[3],
+             "temp": row[6], "ph": row[7], "airlock": row[8] or "", "note": row[9] or ""}
+    if row[5]:  # temp_corrected
+        entry["gravityRaw"] = row[4]
+        entry["tempCorrected"] = True
+    return entry
+
+
+def db_logs_all():
+    with db_connect() as conn:
+        rows = conn.execute(
+            "SELECT " + LOG_ROW_SELECT + " FROM gravity_readings ORDER BY batch_id, date, created_at, id"
+        ).fetchall()
+    out = {}
+    for r in rows:
+        out.setdefault(r[1], []).append(_row_to_log_entry(r))
+    return out
+
+
+def db_log_add(batch_id, entry):
+    n = _norm_log_entry(entry)
+    now = utcnow()
+    with db_connect() as conn:
+        conn.execute(
+            """INSERT INTO gravity_readings
+                   (id, batch_id, date, gravity, gravity_raw, temp_corrected, temp, ph, airlock, note, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                   batch_id=excluded.batch_id, date=excluded.date, gravity=excluded.gravity,
+                   gravity_raw=excluded.gravity_raw, temp_corrected=excluded.temp_corrected,
+                   temp=excluded.temp, ph=excluded.ph, airlock=excluded.airlock, note=excluded.note""",
+            (n["id"], batch_id, n["date"], n["gravity"], n["gravity_raw"],
+             n["temp_corrected"], n["temp"], n["ph"], n["airlock"], n["note"], now),
+        )
+        row = conn.execute(
+            "SELECT " + LOG_ROW_SELECT + " FROM gravity_readings WHERE id = ?", (n["id"],)
+        ).fetchone()
+    return _row_to_log_entry(row)
+
+
+def db_log_delete(batch_id, entry_id):
+    with db_connect() as conn:
+        cur = conn.execute("DELETE FROM gravity_readings WHERE id = ? AND batch_id = ?", (entry_id, batch_id))
+        return cur.rowcount
+
+
+def db_log_delete_batch(batch_id):
+    with db_connect() as conn:
+        cur = conn.execute("DELETE FROM gravity_readings WHERE batch_id = ?", (batch_id,))
+        return cur.rowcount
+
+
+def _norm_logs_map_rows(logs_map, now):
+    rows = []
+    for batch_id, entries in (logs_map or {}).items():
+        if not isinstance(entries, list):
+            continue
+        for e in entries:
+            try:
+                n = _norm_log_entry(e)
+            except ValueError:
+                continue  # skip unusable entries rather than failing the whole call
+            rows.append((n["id"], str(batch_id), n["date"], n["gravity"], n["gravity_raw"],
+                        n["temp_corrected"], n["temp"], n["ph"], n["airlock"], n["note"], now))
+    return rows
+
+
+def db_logs_replace_all(logs_map):
+    """Transactional replace-all: serves manual-backup import and resetAllData."""
+    if not isinstance(logs_map, dict):
+        raise ValueError("logs must be an object")
+    rows = _norm_logs_map_rows(logs_map, utcnow())
+    with db_connect() as conn:
+        conn.execute("DELETE FROM gravity_readings")
+        if rows:
+            conn.executemany(
+                """INSERT INTO gravity_readings
+                       (id, batch_id, date, gravity, gravity_raw, temp_corrected, temp, ph, airlock, note, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                rows,
+            )
+    return len(rows)
+
+
+def db_logs_adopt(logs_map):
+    """Upsert every entry from a stale client's blob-embedded logs bucket into
+    the table (idempotent — INSERT OR REPLACE by entry id), WITHOUT touching
+    any row not present in logs_map. Used only by db_put_state's strip-and-
+    adopt guard — never a destructive replace."""
+    rows = _norm_logs_map_rows(logs_map, utcnow())
+    if not rows:
+        return 0
+    with db_connect() as conn:
+        conn.executemany(
+            """INSERT INTO gravity_readings
+                   (id, batch_id, date, gravity, gravity_raw, temp_corrected, temp, ph, airlock, note, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                   batch_id=excluded.batch_id, date=excluded.date, gravity=excluded.gravity,
+                   gravity_raw=excluded.gravity_raw, temp_corrected=excluded.temp_corrected,
+                   temp=excluded.temp, ph=excluded.ph, airlock=excluded.airlock, note=excluded.note""",
+            rows,
+        )
+    return len(rows)
+
+
 def db_get_state():
     with db_connect() as conn:
         row = conn.execute(
@@ -983,8 +1211,19 @@ def _hist_summary(parsed):
     # Best-effort: any missing/malformed field just contributes 0, never errors.
     try:
         n_batches = len(parsed.get("batches") or [])
-        logs = parsed.get("logs") or {}
-        n_logs = sum(len(v or []) for v in logs.values()) if isinstance(logs, dict) else 0
+        # Post-cutover, the blob no longer carries "logs" at all — count from
+        # the table instead. A pre-cutover snapshot (or one from before this
+        # code existed) still has the key, and that count is used as-is so old
+        # history entries keep their original, frozen-at-the-time meaning.
+        if "logs" in parsed:
+            logs = parsed.get("logs") or {}
+            n_logs = sum(len(v or []) for v in logs.values()) if isinstance(logs, dict) else 0
+        else:
+            try:
+                with db_connect() as conn:
+                    n_logs = conn.execute("SELECT COUNT(*) FROM gravity_readings").fetchone()[0]
+            except sqlite3.Error:
+                n_logs = 0
         bottling = parsed.get("bottling") or {}
         n_bottles = 0
         if isinstance(bottling, dict):
@@ -1004,10 +1243,15 @@ def _hist_summary(parsed):
         return None
 
 
-def db_put_state(raw):
+def db_put_state(raw, adopt_logs=True):
     # A stale (SW-cached) client could still ship the HA token inside the state
     # blob — relocate it to config so it never lands in the DB or history.
     raw = extract_ha_token(raw)
+    # Same idea for gravity readings (see module docstring): a stale client's
+    # blob-embedded "logs" is adopted into gravity_readings and stripped here
+    # so neither the live state nor a fresh history snapshot ever carries it
+    # again. adopt_logs=False for /api/history/restore — see its call site.
+    raw = extract_and_adopt_logs(raw, adopt=adopt_logs)
     saved_at = None
     summary = None
     try:
@@ -1551,6 +1795,10 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, row[0].encode("utf-8"), extra_headers={"X-Data-Rev": row[2] or "", "X-Data-Caps": "patch"})
             else:
                 self._send(404, {"ok": False, "error": "no data stored yet"})
+        elif path == "/api/logs":
+            # All gravity readings, grouped by batch — the client fetches this
+            # once at boot to populate its in-memory cache (see module docstring).
+            self._send(200, {"ok": True, "logs": db_logs_all()})
         elif path == "/api/ha-config":
             tok = get_config("ha_token")
             self._send(200, {"ok": True, "hasToken": bool(tok), "tokenExp": _jwt_exp(tok)})
@@ -1861,6 +2109,79 @@ class Handler(BaseHTTPRequestHandler):
                         pass
             self._send(200, {"ok": True, "deleted": deleted, "freedBytes": freed})
             return
+        if path == "/api/logs/add":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "invalid body"})
+                return
+            batch_id = str(body.get("batchId") or "")
+            if not batch_id:
+                self._send(400, {"ok": False, "error": "batchId required"})
+                return
+            try:
+                entry = db_log_add(batch_id, body.get("entry"))
+            except ValueError as e:
+                self._send(400, {"ok": False, "error": str(e)})
+                return
+            self._send(200, {"ok": True, "entry": entry})
+            return
+        if path == "/api/logs/delete":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "invalid body"})
+                return
+            batch_id = str(body.get("batchId") or "")
+            entry_id = str(body.get("id") or "")
+            if not batch_id or not entry_id:
+                self._send(400, {"ok": False, "error": "batchId and id required"})
+                return
+            deleted = db_log_delete(batch_id, entry_id)
+            self._send(200, {"ok": True, "deleted": deleted})
+            return
+        if path == "/api/logs/delete-batch":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "invalid body"})
+                return
+            batch_id = str(body.get("batchId") or "")
+            if not batch_id:
+                self._send(400, {"ok": False, "error": "batchId required"})
+                return
+            deleted = db_log_delete_batch(batch_id)
+            self._send(200, {"ok": True, "deleted": deleted})
+            return
+        if path == "/api/logs/import":
+            # Transactional replace-all: serves the manual JSON backup restore
+            # and resetAllData. Unlike /add, malformed entries are skipped
+            # rather than rejecting the whole call — an import should recover
+            # as much as possible, not fail atomically on one bad row.
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > MAX_BODY:
+                self.close_connection = True
+                self._send(413 if length > MAX_BODY else 400,
+                           {"ok": False, "error": "missing or oversized body"})
+                return
+            try:
+                body = json.loads(self.rfile.read(length).decode("utf-8"))
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "body is not valid JSON"})
+                return
+            try:
+                count = db_logs_replace_all(body.get("logs") if isinstance(body, dict) else None)
+            except ValueError as e:
+                self._send(400, {"ok": False, "error": str(e)})
+                return
+            self._send(200, {"ok": True, "count": count})
+            return
         if path == "/api/history/restore":
             try:
                 length = int(self.headers.get("Content-Length", 0))
@@ -1873,7 +2194,11 @@ class Handler(BaseHTTPRequestHandler):
             if data is None:
                 self._send(404, {"ok": False, "error": "snapshot not found"})
                 return
-            updated = db_put_state(data)  # becomes current + a fresh history entry
+            # adopt_logs=False: a pre-cutover snapshot's blob-embedded logs key
+            # is stripped like any other, but its entries are NOT re-inserted —
+            # restoring history must not resurrect readings deliberately deleted
+            # since the snapshot was taken (see extract_and_adopt_logs).
+            updated = db_put_state(data, adopt_logs=False)  # becomes current + a fresh history entry
             audit("history_restore", self._client_ip(), snapshot=hid, bytes=len(data))
             self._send(200, {"ok": True, "updatedAt": updated, "bytes": len(data)})
             return
@@ -2114,6 +2439,7 @@ def main():
         TRUSTED_NETS_CLI.append(ipaddress.ip_network(s, strict=False))
     db_init()
     migrate_ha_token()  # relocate any token still sitting in the stored state blob
+    migrate_logs_to_table()  # one-time: adopt blob-embedded gravity readings into their own table
     migrate_assets()    # tidy uploads + bundled assets into the assets/ tree
     srv = ThreadingHTTPServer((args.host, args.port), Handler)
     print("MeadOS server running on http://%s:%d" % (args.host, args.port))

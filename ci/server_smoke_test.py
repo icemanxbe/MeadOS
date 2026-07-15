@@ -116,6 +116,93 @@ check("POST /api/data with stale X-Base-Rev -> 409", status == 409, "got %d %r" 
 status, body, _ = post("/api/data", b"not json", headers={"X-Base-Rev": "*"})
 check("POST /api/data with non-JSON body -> 400", status == 400, "got %d %r" % (status, body[:200]))
 
+# 7. Gravity readings — own table, not the state blob (see server.py module
+# docstring). Round trip through add/get/delete, then a transactional import,
+# then the strip-and-adopt guard that protects a stale client's still-blob-
+# embedded "logs" from being silently destroyed by a newer client's save.
+status, body, _ = get("/api/logs")
+try:
+    logs0 = json.loads(body)
+except ValueError:
+    logs0 = {}
+check("GET /api/logs -> 200, ok:true, logs:{}", status == 200 and logs0.get("ok") is True and isinstance(logs0.get("logs"), dict),
+      "got %d %r" % (status, body[:200]))
+
+status, body, _ = post("/api/logs/add", {"batchId": "smoke-b1", "entry": {"id": "smoke-e1", "date": "2026-01-01", "gravity": 1.05}})
+try:
+    added = json.loads(body)
+except ValueError:
+    added = {}
+check("POST /api/logs/add -> 200, echoes the normalized entry",
+      status == 200 and added.get("ok") is True and added.get("entry", {}).get("id") == "smoke-e1",
+      "got %d %r" % (status, body[:200]))
+
+status, body, _ = get("/api/logs")
+try:
+    logs1 = json.loads(body)
+except ValueError:
+    logs1 = {}
+check("GET /api/logs after add -> contains smoke-b1/smoke-e1",
+      any(e.get("id") == "smoke-e1" for e in (logs1.get("logs") or {}).get("smoke-b1", [])),
+      "got %r" % (logs1.get("logs"),))
+
+status, body, _ = post("/api/logs/delete", {"batchId": "smoke-b1", "id": "smoke-e1"})
+try:
+    deleted = json.loads(body)
+except ValueError:
+    deleted = {}
+check("POST /api/logs/delete -> 200, deleted:1", status == 200 and deleted.get("deleted") == 1, "got %d %r" % (status, body[:200]))
+
+status, body, _ = get("/api/logs")
+try:
+    logs2 = json.loads(body)
+except ValueError:
+    logs2 = {}
+check("GET /api/logs after delete -> smoke-b1 gone", "smoke-b1" not in (logs2.get("logs") or {}), "got %r" % (logs2.get("logs"),))
+
+status, body, _ = post("/api/logs/import", {"logs": {"smoke-b2": [{"id": "smoke-i1", "date": "2026-01-02", "gravity": 1.04},
+                                                                    {"date": "2026-01-03", "gravity": 1.02}]}})
+try:
+    imported = json.loads(body)
+except ValueError:
+    imported = {}
+check("POST /api/logs/import -> 200, count:2 (missing id auto-generated)",
+      status == 200 and imported.get("ok") is True and imported.get("count") == 2,
+      "got %d %r" % (status, body[:200]))
+
+status, body, _ = get("/api/logs")
+try:
+    logs3 = json.loads(body)
+except ValueError:
+    logs3 = {}
+check("GET /api/logs after import -> smoke-b2 has exactly 2 entries, both with ids",
+      len((logs3.get("logs") or {}).get("smoke-b2", [])) == 2
+      and all(e.get("id") for e in (logs3.get("logs") or {}).get("smoke-b2", [])),
+      "got %r" % (logs3.get("logs"),))
+
+# Adoption: a stale client's state blob still carrying "logs" gets those
+# entries upserted into the table AND the key stripped from what's stored —
+# so neither a fresh save nor a fresh history snapshot ever carries it again.
+status, body, _ = post("/api/data", {"batches": [], "logs": {"smoke-b3": [{"id": "smoke-stale1", "date": "2026-01-04", "gravity": 1.06}]},
+                                      "_smokeTest": True})
+check("POST /api/data with embedded logs bucket -> 200", status == 200, "got %d %r" % (status, body[:200]))
+
+status, body, _ = get("/api/data")
+try:
+    reloaded2 = json.loads(body)
+except ValueError:
+    reloaded2 = {}
+check("GET /api/data after stale-client save -> 'logs' key stripped", "logs" not in reloaded2, "got keys: %r" % (list(reloaded2.keys()),))
+
+status, body, _ = get("/api/logs")
+try:
+    logs4 = json.loads(body)
+except ValueError:
+    logs4 = {}
+check("GET /api/logs after stale-client save -> smoke-stale1 was adopted",
+      any(e.get("id") == "smoke-stale1" for e in (logs4.get("logs") or {}).get("smoke-b3", [])),
+      "got %r" % (logs4.get("logs"),))
+
 print()
 if failures:
     print("%d/%d checks failed: %s" % (len(failures), total, ", ".join(failures)))

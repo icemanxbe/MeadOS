@@ -334,9 +334,12 @@ function setSyncStatus(status){
 }
 
 function packageState(){
+  // Gravity readings are NOT included — they live in their own table now,
+  // synced through logSyncAdd/Delete/DeleteBatch/ReplaceAll (04-server-ha.js)
+  // rather than riding this blob. APP.logs itself stays populated (boot-fetched
+  // read cache, see fetchLogs) — just never written back through this path.
   return{
     batches:APP.batches,
-    logs:APP.logs,
     shareTokens:APP.shareTokens||{},
     // Calendar feed: token (private feed URL) + a snapshot of upcoming events
     // for the server to format as .ics. Recomputed on every save.
@@ -445,7 +448,10 @@ function applyState(d){
   APP.celebrated=d.celebrated||APP.celebrated||{};
   APP.tempAnomalies=d.tempAnomalies||APP.tempAnomalies||[];
   APP.batches=d.batches||[];
-  APP.logs=d.logs||{};
+  // APP.logs is deliberately NOT touched here — it's a boot-fetched read cache
+  // for the gravity_readings table (see fetchLogs, 04-server-ha.js), not part
+  // of the blob applyState is unpacking. Leaving this line in would wipe that
+  // cache on every applyState call, since d.logs no longer exists post-cutover.
   APP.tasksDone=d.tasksDone||{};
   APP.tastings=d.tastings||{};
   // Preserve-if-absent (not reset-to-empty) — matches stepTemplates/plannedBatches/

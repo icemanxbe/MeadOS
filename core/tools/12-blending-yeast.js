@@ -61,7 +61,9 @@ function createBlendedBatch(){
     blendOf:[{batchId:idA,fraction:Math.round(fa*100)/100},{batchId:isWater?'__water':idB,fraction:Math.round((1-fa)*100)/100}]};
   APP.batches.push(nb);
   if(!APP.logs)APP.logs={};
-  APP.logs[nb.id]=[{id:genId(),date:today(),gravity:r.fg!=null?Math.round(r.fg*1000)/1000:null,note:(nl?'Blend samengesteld':'Blend composed')}];
+  var seedEntry={id:genId(),date:today(),gravity:r.fg!=null?Math.round(r.fg*1000)/1000:null,note:(nl?'Blend samengesteld':'Blend composed')};
+  APP.logs[nb.id]=[seedEntry];
+  logSyncAdd(nb.id,seedEntry);
   if(typeof saveData==='function')saveData();
   showView('batch',nb.id);
   toast('🥂 '+(nl?'Blend aangemaakt':'Blend created')+(r.abv!=null?' · '+r.abv.toFixed(1)+'%':''));

@@ -4,6 +4,17 @@
 'use strict';
 // ==================== SCHEMA VERSIONING ====================
 // Current schema version. Bump when packageState/applyState changes shape.
+//
+// NOT bumped for the gravity-readings extraction: "logs" moved out of the
+// live blob into its own SQLite table (server.py), but deliberately has no
+// migration step here. A migration step runs inside migrateData(), which
+// importData() also calls on a restored backup — a `delete d.logs` step
+// would destroy the very readings an import is trying to restore. The
+// server's own strip-and-adopt (db_put_state) self-heals any stale blob-
+// embedded "logs" on the next save; nothing client-side needs to force it.
+// "logs" stays in STATE_OBJECT_BUCKETS below so validateState() still
+// usefully type-checks it on import, even though applyState() no longer
+// assigns it — see importData() in 14-modals.js for where it's actually applied.
 var CURRENT_SCHEMA_VERSION=13;
 
 var SCHEMA_MIGRATIONS={

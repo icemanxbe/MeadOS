@@ -663,7 +663,7 @@ function addLog(batchId){
   if(!APP.logs[batchId])APP.logs[batchId]=[];
   APP.logs[batchId].push(entry);
   APP.logs[batchId].sort(function(a,b){return a.date.localeCompare(b.date);});
-  scheduleSave();
+  logSyncAdd(batchId,entry);
   var _advMsg=corrApplied?'✦ Logged (corrected '+rawG.toFixed(3)+' → '+correctedG.toFixed(3)+' @ '+temp+'°C)':'✦ Reading logged';
   if(_advBatch&&typeof _advResolvedSuffix==='function')_advMsg+=_advResolvedSuffix(_advBatch,_advBefore);
   toast(_advMsg);
@@ -673,7 +673,7 @@ function addLog(batchId){
 function deleteLog(batchId,logId){
   if(!confirm('Delete this reading?'))return;
   APP.logs[batchId]=(getBatchLogs(batchId)).filter(function(l){return l.id!==logId;});
-  scheduleSave();toast('Reading deleted');renderMain();
+  logSyncDelete(batchId,logId);toast('Reading deleted');renderMain();
 }
 
 function setTastingStars(n){
@@ -994,6 +994,7 @@ function deleteBatch(id){
   if(!confirm('Permanently delete "'+b.name+'" and all associated logs, tastings, and bottling data?'))return;
   APP.batches=APP.batches.filter(function(x){return x.id!==id;});
   delete APP.logs[id];delete APP.tastings[id];delete APP.bottling[id];
+  logSyncDeleteBatch(id);
   scheduleSave();toast('Batch deleted');showView('batches');
 }
 
@@ -1370,6 +1371,11 @@ function importData(event){
         APP.tempAnomalies=d.tempAnomalies||[];
         APP.notifiedTasks=d.notifiedTasks||{};
       }
+      // Gravity readings live in their own table now, not the blob applyState
+      // just applied — restore them from the backup explicitly and push a
+      // transactional replace-all to the server.
+      APP.logs=(d.logs&&typeof d.logs==='object')?d.logs:{};
+      logSyncReplaceAll(APP.logs);
       if(typeof rebuildRecipes==='function')rebuildRecipes();
       saveSettings();scheduleSave();
       toast('✦ Backup imported');renderMain();
@@ -1423,6 +1429,7 @@ function resetAllData(){
   if(APP.fermenters&&APP.fermenters.length){
     APP.fermenters.forEach(function(f){f.batchId=null;});
   }
+  logSyncReplaceAll({});
   scheduleSave();
   toast('All batch data reset · labels & recipes preserved');
   showView('dashboard');
