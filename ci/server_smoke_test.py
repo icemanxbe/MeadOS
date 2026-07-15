@@ -203,6 +203,65 @@ check("GET /api/logs after stale-client save -> smoke-stale1 was adopted",
       any(e.get("id") == "smoke-stale1" for e in (logs4.get("logs") or {}).get("smoke-b3", [])),
       "got %r" % (logs4.get("logs"),))
 
+# 8. Competition entries — same own-table treatment as gravity readings,
+# reusing the shared strip-and-adopt/db_put_state machinery. One round trip
+# through add/get/delete/import is enough; the underlying plumbing is already
+# proven by section 7 above.
+status, body, _ = post("/api/competitions/add", {"batchId": "smoke-c1", "entry": {
+    "id": "smoke-ce1", "date": "2026-01-05", "competition": "NHC", "category": "M1A",
+    "score": "38.5", "maxScore": "50", "award": "gold", "notes": "Balanced"}})
+try:
+    comp_added = json.loads(body)
+except ValueError:
+    comp_added = {}
+check("POST /api/competitions/add -> 200, echoes the normalized entry",
+      status == 200 and comp_added.get("ok") is True and comp_added.get("entry", {}).get("id") == "smoke-ce1",
+      "got %d %r" % (status, body[:200]))
+
+status, body, _ = get("/api/competitions")
+try:
+    comps1 = json.loads(body)
+except ValueError:
+    comps1 = {}
+check("GET /api/competitions after add -> contains smoke-c1/smoke-ce1",
+      any(e.get("id") == "smoke-ce1" for e in (comps1.get("competitions") or {}).get("smoke-c1", [])),
+      "got %r" % (comps1.get("competitions"),))
+
+status, body, _ = post("/api/competitions/delete", {"batchId": "smoke-c1", "id": "smoke-ce1"})
+try:
+    comp_deleted = json.loads(body)
+except ValueError:
+    comp_deleted = {}
+check("POST /api/competitions/delete -> 200, deleted:1", status == 200 and comp_deleted.get("deleted") == 1, "got %d %r" % (status, body[:200]))
+
+status, body, _ = post("/api/competitions/import", {"competitions": {"smoke-c2": [
+    {"id": "smoke-ci1", "date": "2026-01-06", "competition": "Local Show", "award": "silver"}]}})
+try:
+    comp_imported = json.loads(body)
+except ValueError:
+    comp_imported = {}
+check("POST /api/competitions/import -> 200, count:1", status == 200 and comp_imported.get("count") == 1, "got %d %r" % (status, body[:200]))
+
+status, body, _ = post("/api/data", {"batches": [], "competitions": {"smoke-c3": [
+    {"id": "smoke-stale-comp", "date": "2026-01-07", "competition": "Old Show", "award": "bronze"}]}})
+check("POST /api/data with embedded competitions bucket -> 200", status == 200, "got %d %r" % (status, body[:200]))
+
+status, body, _ = get("/api/data")
+try:
+    reloaded3 = json.loads(body)
+except ValueError:
+    reloaded3 = {}
+check("GET /api/data after stale-client save -> 'competitions' key stripped", "competitions" not in reloaded3, "got keys: %r" % (list(reloaded3.keys()),))
+
+status, body, _ = get("/api/competitions")
+try:
+    comps2 = json.loads(body)
+except ValueError:
+    comps2 = {}
+check("GET /api/competitions after stale-client save -> smoke-stale-comp was adopted",
+      any(e.get("id") == "smoke-stale-comp" for e in (comps2.get("competitions") or {}).get("smoke-c3", [])),
+      "got %r" % (comps2.get("competitions"),))
+
 print()
 if failures:
     print("%d/%d checks failed: %s" % (len(failures), total, ", ".join(failures)))

@@ -1374,14 +1374,15 @@
     APP.recipes=BUILTIN_RECIPES();APP.batches=[];APP.bottling={};APP.logs={};
   })();
 
-  // competitions: survive the package→apply round-trip (persistence plumbing)
+  // competitions: own table now, NOT the state blob (same as gravity readings)
+  // — packageState must not send it, applyState must not overwrite the
+  // boot-fetched cache with whatever (or nothing) the blob carries.
   (function(){
     APP.competitions={bx:[{id:'c1',competition:'State Fair',category:'M1A',award:'gold',score:38,maxScore:50}]};
     var pkg=packageState();
-    ok('competitions: in packageState', pkg.competitions&&pkg.competitions.bx&&pkg.competitions.bx[0].award==='gold', '');
-    APP.competitions={};
+    ok('competitions: NOT included in packageState', !('competitions' in pkg), JSON.stringify(pkg.competitions));
     applyState({competitions:{by:[{id:'c2',award:'silver'}]},batches:[]});
-    ok('competitions: restored by applyState', APP.competitions.by&&APP.competitions.by[0].award==='silver', '');
+    ok('competitions: untouched by applyState (cache survives an absent/different blob key)', APP.competitions.bx&&APP.competitions.bx[0].award==='gold', JSON.stringify(APP.competitions));
     APP.competitions={};APP.batches=[];
   })();
 

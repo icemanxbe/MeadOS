@@ -334,10 +334,11 @@ function setSyncStatus(status){
 }
 
 function packageState(){
-  // Gravity readings are NOT included — they live in their own table now,
-  // synced through logSyncAdd/Delete/DeleteBatch/ReplaceAll (04-server-ha.js)
-  // rather than riding this blob. APP.logs itself stays populated (boot-fetched
-  // read cache, see fetchLogs) — just never written back through this path.
+  // Gravity readings and competitions are NOT included — they live in their
+  // own tables now, synced through bucketSyncAdd/Delete/DeleteBatch/ReplaceAll
+  // (04-server-ha.js) rather than riding this blob. APP.logs/APP.competitions
+  // stay populated (boot-fetched read caches, see fetchBucket) — just never
+  // written back through this path.
   return{
     batches:APP.batches,
     shareTokens:APP.shareTokens||{},
@@ -350,7 +351,6 @@ function packageState(){
     tempWatch:(typeof buildTempWatchList==='function')?buildTempWatchList():[],
     tasksDone:APP.tasksDone,
     tastings:APP.tastings,
-    competitions:APP.competitions||{},
     bottling:APP.bottling,
     supplies:APP.supplies,
     suppliers:APP.suppliers||[],
@@ -454,12 +454,15 @@ function applyState(d){
   // cache on every applyState call, since d.logs no longer exists post-cutover.
   APP.tasksDone=d.tasksDone||{};
   APP.tastings=d.tastings||{};
+  // APP.competitions is deliberately NOT touched here either, same reasoning
+  // as APP.logs just above — its own table now (see fetchBucket), and this
+  // line would wipe the boot-fetched cache since the blob no longer carries
+  // the key.
+  APP.bottling=d.bottling||{};
   // Preserve-if-absent (not reset-to-empty) — matches stepTemplates/plannedBatches/
   // photos below. A backup taken before these buckets existed in exportData()
   // still has no way to include them; importing one shouldn't wipe what's
   // already here just because the file predates the field.
-  APP.competitions=(d.competitions&&typeof d.competitions==='object')?d.competitions:(APP.competitions||{});
-  APP.bottling=d.bottling||{};
   APP.shareTokens=(d.shareTokens&&typeof d.shareTokens==='object')?d.shareTokens:(APP.shareTokens||{});
   // Calendar feed token rides the data blob so the feed URL is stable
   // cross-device; restore it into settings (where getCalendarToken reads it).

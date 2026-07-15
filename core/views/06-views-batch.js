@@ -1152,15 +1152,16 @@ function addCompetition(bid){
   if(!comp){toast(nl?'⚠ Vul een wedstrijdnaam in':'⚠ Enter a competition name');return;}
   if(!APP.competitions)APP.competitions={};
   if(!APP.competitions[bid])APP.competitions[bid]=[];
-  APP.competitions[bid].push({id:genId(),date:v('comp-date')||today(),competition:comp,category:v('comp-cat'),
-    score:v('comp-score'),maxScore:v('comp-max'),award:v('comp-award')||'entered',notes:v('comp-notes')});
-  if(typeof saveData==='function')saveData();
+  var entry={id:genId(),date:v('comp-date')||today(),competition:comp,category:v('comp-cat'),
+    score:v('comp-score'),maxScore:v('comp-max'),award:v('comp-award')||'entered',notes:v('comp-notes')};
+  APP.competitions[bid].push(entry);
+  competitionSyncAdd(bid,entry);
   renderMain();
   toast(nl?'🏆 Inzending toegevoegd':'🏆 Entry added');
 }
 function deleteCompetition(bid,id){
   if(APP.competitions&&APP.competitions[bid])APP.competitions[bid]=APP.competitions[bid].filter(function(c){return c.id!==id;});
-  if(typeof saveData==='function')saveData();
+  competitionSyncDelete(bid,id);
   renderMain();
 }
 function setBatchTab(id,tab){

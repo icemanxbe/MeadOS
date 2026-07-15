@@ -473,6 +473,27 @@ def db_init():
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_gravity_readings_batch ON gravity_readings(batch_id, date)"
         )
+        # Competition entries, extracted out of the state blob the same way gravity
+        # readings were (see module docstring). score/max_score stay TEXT — the
+        # client reads them from a text input's .trim()'d value, not a parsed
+        # number, and an empty/partial score ("", "38.5") should round-trip exactly.
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS competition_entries (
+                   id           TEXT PRIMARY KEY,
+                   batch_id     TEXT NOT NULL,
+                   date         TEXT NOT NULL,
+                   competition  TEXT,
+                   category     TEXT,
+                   score        TEXT,
+                   max_score    TEXT,
+                   award        TEXT,
+                   notes        TEXT,
+                   created_at   TEXT NOT NULL
+               )"""
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_competition_entries_batch ON competition_entries(batch_id, date)"
+        )
 
 
 def get_config(key):
@@ -600,6 +621,23 @@ def extract_and_adopt_logs(raw, adopt=True):
     return json.dumps(obj)
 
 
+def extract_and_adopt_competitions(raw, adopt=True):
+    """Same contract as extract_and_adopt_logs, for the "competitions" bucket."""
+    if '"competitions"' not in raw:
+        return raw
+    try:
+        obj = json.loads(raw)
+    except ValueError:
+        return raw
+    comps = obj.get("competitions")
+    if not isinstance(comps, dict):
+        return raw
+    if adopt and comps:
+        db_comps_adopt(comps)
+    del obj["competitions"]
+    return json.dumps(obj)
+
+
 def migrate_logs_to_table():
     # One-time on boot: adopt any blob-embedded readings into the table, then
     # strip the key. Guarded by a config marker rather than "is the table
@@ -615,6 +653,20 @@ def migrate_logs_to_table():
                 conn.execute("UPDATE state SET data = ?, bytes = ? WHERE id = 1",
                              (cleaned, len(cleaned)))
     set_config("logs_migrated", "1")
+
+
+def migrate_competitions_to_table():
+    # Same contract as migrate_logs_to_table, for the "competitions" bucket.
+    if get_config("competitions_migrated") == "1":
+        return
+    row = db_get_state()
+    if row:
+        cleaned = extract_and_adopt_competitions(row[0], adopt=True)
+        if cleaned is not row[0]:
+            with db_connect() as conn:
+                conn.execute("UPDATE state SET data = ?, bytes = ? WHERE id = 1",
+                             (cleaned, len(cleaned)))
+    set_config("competitions_migrated", "1")
 
 
 def ha_proxy_urls():
@@ -1196,6 +1248,132 @@ def db_logs_adopt(logs_map):
     return len(rows)
 
 
+# ---- competition entries (own table, not the state blob — see module docstring) --
+COMP_ROW_SELECT = "id, batch_id, date, competition, category, score, max_score, award, notes, created_at"
+
+
+def _norm_comp_entry(e):
+    """Validate + whitelist a client-supplied competition entry. Tolerates a
+    missing id (legacy pre-id backups)."""
+    if not isinstance(e, dict):
+        raise ValueError("entry must be an object")
+    date = str(e.get("date") or "").strip()
+    if not date:
+        raise ValueError("entry.date is required")
+    eid = str(e.get("id") or "").strip() or _gen_log_id()
+
+    def _s(v, cap=500):
+        return str(v)[:cap] if v is not None else ""
+
+    return {
+        "id": eid, "date": date, "competition": _s(e.get("competition")),
+        "category": _s(e.get("category")), "score": _s(e.get("score"), 32),
+        "max_score": _s(e.get("maxScore"), 32), "award": _s(e.get("award"), 64),
+        "notes": _s(e.get("notes"), 4000),
+    }
+
+
+def _row_to_comp_entry(row):
+    # row = (id, batch_id, date, competition, category, score, max_score, award, notes, created_at)
+    return {"id": row[0], "date": row[2], "competition": row[3] or "", "category": row[4] or "",
+            "score": row[5] or "", "maxScore": row[6] or "", "award": row[7] or "", "notes": row[8] or ""}
+
+
+def db_comps_all():
+    with db_connect() as conn:
+        rows = conn.execute(
+            "SELECT " + COMP_ROW_SELECT + " FROM competition_entries ORDER BY batch_id, date, created_at, id"
+        ).fetchall()
+    out = {}
+    for r in rows:
+        out.setdefault(r[1], []).append(_row_to_comp_entry(r))
+    return out
+
+
+def db_comp_add(batch_id, entry):
+    n = _norm_comp_entry(entry)
+    now = utcnow()
+    with db_connect() as conn:
+        conn.execute(
+            """INSERT INTO competition_entries
+                   (id, batch_id, date, competition, category, score, max_score, award, notes, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                   batch_id=excluded.batch_id, date=excluded.date, competition=excluded.competition,
+                   category=excluded.category, score=excluded.score, max_score=excluded.max_score,
+                   award=excluded.award, notes=excluded.notes""",
+            (n["id"], batch_id, n["date"], n["competition"], n["category"], n["score"],
+             n["max_score"], n["award"], n["notes"], now),
+        )
+        row = conn.execute(
+            "SELECT " + COMP_ROW_SELECT + " FROM competition_entries WHERE id = ?", (n["id"],)
+        ).fetchone()
+    return _row_to_comp_entry(row)
+
+
+def db_comp_delete(batch_id, entry_id):
+    with db_connect() as conn:
+        cur = conn.execute("DELETE FROM competition_entries WHERE id = ? AND batch_id = ?", (entry_id, batch_id))
+        return cur.rowcount
+
+
+def db_comp_delete_batch(batch_id):
+    with db_connect() as conn:
+        cur = conn.execute("DELETE FROM competition_entries WHERE batch_id = ?", (batch_id,))
+        return cur.rowcount
+
+
+def _norm_comps_map_rows(comps_map, now):
+    rows = []
+    for batch_id, entries in (comps_map or {}).items():
+        if not isinstance(entries, list):
+            continue
+        for e in entries:
+            try:
+                n = _norm_comp_entry(e)
+            except ValueError:
+                continue
+            rows.append((n["id"], str(batch_id), n["date"], n["competition"], n["category"],
+                        n["score"], n["max_score"], n["award"], n["notes"], now))
+    return rows
+
+
+def db_comps_replace_all(comps_map):
+    if not isinstance(comps_map, dict):
+        raise ValueError("competitions must be an object")
+    rows = _norm_comps_map_rows(comps_map, utcnow())
+    with db_connect() as conn:
+        conn.execute("DELETE FROM competition_entries")
+        if rows:
+            conn.executemany(
+                """INSERT INTO competition_entries
+                       (id, batch_id, date, competition, category, score, max_score, award, notes, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                rows,
+            )
+    return len(rows)
+
+
+def db_comps_adopt(comps_map):
+    """Same idempotent upsert-only contract as db_logs_adopt, for a stale
+    client's blob-embedded competitions bucket."""
+    rows = _norm_comps_map_rows(comps_map, utcnow())
+    if not rows:
+        return 0
+    with db_connect() as conn:
+        conn.executemany(
+            """INSERT INTO competition_entries
+                   (id, batch_id, date, competition, category, score, max_score, award, notes, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                   batch_id=excluded.batch_id, date=excluded.date, competition=excluded.competition,
+                   category=excluded.category, score=excluded.score, max_score=excluded.max_score,
+                   award=excluded.award, notes=excluded.notes""",
+            rows,
+        )
+    return len(rows)
+
+
 def db_get_state():
     with db_connect() as conn:
         row = conn.execute(
@@ -1243,15 +1421,18 @@ def _hist_summary(parsed):
         return None
 
 
-def db_put_state(raw, adopt_logs=True):
+def db_put_state(raw, adopt=True):
     # A stale (SW-cached) client could still ship the HA token inside the state
     # blob — relocate it to config so it never lands in the DB or history.
     raw = extract_ha_token(raw)
-    # Same idea for gravity readings (see module docstring): a stale client's
-    # blob-embedded "logs" is adopted into gravity_readings and stripped here
-    # so neither the live state nor a fresh history snapshot ever carries it
-    # again. adopt_logs=False for /api/history/restore — see its call site.
-    raw = extract_and_adopt_logs(raw, adopt=adopt_logs)
+    # Same idea for every bucket that's been extracted into its own table (see
+    # module docstring): a stale client's blob-embedded bucket is adopted into
+    # its table and stripped here so neither the live state nor a fresh
+    # history snapshot ever carries it again. One shared `adopt` flag, not one
+    # per bucket — they're never toggled independently; adopt=False is used
+    # only by /api/history/restore (see its call site).
+    raw = extract_and_adopt_logs(raw, adopt=adopt)
+    raw = extract_and_adopt_competitions(raw, adopt=adopt)
     saved_at = None
     summary = None
     try:
@@ -1799,6 +1980,8 @@ class Handler(BaseHTTPRequestHandler):
             # All gravity readings, grouped by batch — the client fetches this
             # once at boot to populate its in-memory cache (see module docstring).
             self._send(200, {"ok": True, "logs": db_logs_all()})
+        elif path == "/api/competitions":
+            self._send(200, {"ok": True, "competitions": db_comps_all()})
         elif path == "/api/ha-config":
             tok = get_config("ha_token")
             self._send(200, {"ok": True, "hasToken": bool(tok), "tokenExp": _jwt_exp(tok)})
@@ -2182,6 +2365,75 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._send(200, {"ok": True, "count": count})
             return
+        if path == "/api/competitions/add":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "invalid body"})
+                return
+            batch_id = str(body.get("batchId") or "")
+            if not batch_id:
+                self._send(400, {"ok": False, "error": "batchId required"})
+                return
+            try:
+                entry = db_comp_add(batch_id, body.get("entry"))
+            except ValueError as e:
+                self._send(400, {"ok": False, "error": str(e)})
+                return
+            self._send(200, {"ok": True, "entry": entry})
+            return
+        if path == "/api/competitions/delete":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "invalid body"})
+                return
+            batch_id = str(body.get("batchId") or "")
+            entry_id = str(body.get("id") or "")
+            if not batch_id or not entry_id:
+                self._send(400, {"ok": False, "error": "batchId and id required"})
+                return
+            deleted = db_comp_delete(batch_id, entry_id)
+            self._send(200, {"ok": True, "deleted": deleted})
+            return
+        if path == "/api/competitions/delete-batch":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "invalid body"})
+                return
+            batch_id = str(body.get("batchId") or "")
+            if not batch_id:
+                self._send(400, {"ok": False, "error": "batchId required"})
+                return
+            deleted = db_comp_delete_batch(batch_id)
+            self._send(200, {"ok": True, "deleted": deleted})
+            return
+        if path == "/api/competitions/import":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > MAX_BODY:
+                self.close_connection = True
+                self._send(413 if length > MAX_BODY else 400,
+                           {"ok": False, "error": "missing or oversized body"})
+                return
+            try:
+                body = json.loads(self.rfile.read(length).decode("utf-8"))
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "body is not valid JSON"})
+                return
+            try:
+                count = db_comps_replace_all(body.get("competitions") if isinstance(body, dict) else None)
+            except ValueError as e:
+                self._send(400, {"ok": False, "error": str(e)})
+                return
+            self._send(200, {"ok": True, "count": count})
+            return
         if path == "/api/history/restore":
             try:
                 length = int(self.headers.get("Content-Length", 0))
@@ -2194,11 +2446,12 @@ class Handler(BaseHTTPRequestHandler):
             if data is None:
                 self._send(404, {"ok": False, "error": "snapshot not found"})
                 return
-            # adopt_logs=False: a pre-cutover snapshot's blob-embedded logs key
-            # is stripped like any other, but its entries are NOT re-inserted —
-            # restoring history must not resurrect readings deliberately deleted
-            # since the snapshot was taken (see extract_and_adopt_logs).
-            updated = db_put_state(data, adopt_logs=False)  # becomes current + a fresh history entry
+            # adopt=False: a pre-cutover snapshot's blob-embedded extracted-bucket
+            # keys are stripped like any other, but their entries are NOT
+            # re-inserted — restoring history must not resurrect readings/entries
+            # deliberately deleted since the snapshot was taken (see
+            # extract_and_adopt_logs / extract_and_adopt_competitions).
+            updated = db_put_state(data, adopt=False)  # becomes current + a fresh history entry
             audit("history_restore", self._client_ip(), snapshot=hid, bytes=len(data))
             self._send(200, {"ok": True, "updatedAt": updated, "bytes": len(data)})
             return
@@ -2440,6 +2693,7 @@ def main():
     db_init()
     migrate_ha_token()  # relocate any token still sitting in the stored state blob
     migrate_logs_to_table()  # one-time: adopt blob-embedded gravity readings into their own table
+    migrate_competitions_to_table()  # one-time: same, for competition entries
     migrate_assets()    # tidy uploads + bundled assets into the assets/ tree
     srv = ThreadingHTTPServer((args.host, args.port), Handler)
     print("MeadOS server running on http://%s:%d" % (args.host, args.port))

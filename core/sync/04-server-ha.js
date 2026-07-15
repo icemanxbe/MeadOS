@@ -309,7 +309,7 @@ async function saveData(force){
     window._lastSavedState=json;  // server now holds exactly this — next diff is against it
     // Only fully clear pending when the SEPARATE log-write queue is also
     // empty — a blob save succeeding doesn't mean a queued reading write did.
-    pendingSync=hasQueuedLogs();
+    pendingSync=hasQueuedOps();
     try{
       if(!pendingSync)localStorage.removeItem('meadows_pendingSync');
       localStorage.setItem('meadows_lastSyncedTs',new Date().toISOString());
@@ -574,14 +574,14 @@ function markPendingSync(){
 function startPendingSyncWatcher(){
   if(pendingSyncTimer)return;  // already running
   pendingSyncTimer=setInterval(function(){
-    if(!pendingSync&&!hasQueuedLogs()){
+    if(!pendingSync&&!hasQueuedOps()){
       clearInterval(pendingSyncTimer);
       pendingSyncTimer=null;
       return;
     }
     if(!navigator.onLine)return;  // browser knows we're offline
     // Retry the save silently, and flush any queued reading writes.
-    if(hasQueuedLogs())flushLogQueue();
+    if(hasQueuedOps())flushAllBucketQueues();
     if(pendingSync)saveData().then(function(ok){
       if(ok&&typeof toast==='function')toast('✓ Synced (was pending)');
     });
@@ -597,7 +597,7 @@ if(typeof window!=='undefined'){
   }catch(e){}
   // Listen for connectivity restoration
   window.addEventListener('online',function(){
-    if(hasQueuedLogs())flushLogQueue();
+    if(hasQueuedOps())flushAllBucketQueues();
     if(pendingSync){
       saveData().then(function(ok){
         if(ok&&typeof toast==='function')toast('✓ Reconnected — synced');
@@ -607,111 +607,155 @@ if(typeof window!=='undefined'){
   // Listen for visibility change (user comes back to the tab — try to flush)
   document.addEventListener('visibilitychange',function(){
     if(!document.hidden&&navigator.onLine){
-      if(hasQueuedLogs())flushLogQueue();
+      if(hasQueuedOps())flushAllBucketQueues();
       if(pendingSync)saveData();
     }
   });
 }
 
-// ==================== GRAVITY READINGS (own table, not the state blob) ====================
-// APP.logs stays a synchronous in-memory cache — every existing read site
-// (getBatchLogs() and the direct APP.logs[...] reads) is untouched — fetched
-// once at boot from /api/logs and mirrored to localStorage. Writes go
-// straight to their own endpoints instead of riding the big state-blob save;
-// a small persisted queue keeps offline logging working exactly as it did
-// before (reuses the pendingSync/markPendingSync machinery above).
-function logQueue(){
-  try{var q=JSON.parse(localStorage.getItem('meados_logQueue')||'[]');return Array.isArray(q)?q:[];}catch(e){return[];}
+// ==================== EXTRACTED-BUCKET SYNC (own tables, not the state blob) ====================
+// Buckets pulled out of the state blob into their own SQLite tables (see
+// server.py's module docstring) all follow the same shape: APP[bucket] stays
+// a synchronous in-memory cache — every existing read site is untouched —
+// fetched once at boot and mirrored to localStorage; writes go straight to
+// their own REST endpoints instead of riding the big state-blob save; a
+// small persisted per-bucket queue keeps offline writes working exactly as
+// before (reuses the pendingSync/markPendingSync machinery above). One
+// generalized implementation, per-bucket config below — this is the second
+// bucket (after gravity readings), and a third is coming, so extracting the
+// shared mechanism now beats copy-pasting a ~80-line module a second time.
+var SYNCED_BUCKETS={
+  logs:{apiBase:'/api/logs',cacheKey:'meados_logs',listKey:'logs'},
+  competitions:{apiBase:'/api/competitions',cacheKey:'meados_competitions',listKey:'competitions'}
+};
+
+function bucketQueue(bucket){
+  try{var q=JSON.parse(localStorage.getItem('meados_'+bucket+'Queue')||'[]');return Array.isArray(q)?q:[];}catch(e){return[];}
 }
-function saveLogQueue(arr){
+function saveBucketQueue(bucket,arr){
   try{
-    if(arr.length)localStorage.setItem('meados_logQueue',JSON.stringify(arr));
-    else localStorage.removeItem('meados_logQueue');
+    if(arr.length)localStorage.setItem('meados_'+bucket+'Queue',JSON.stringify(arr));
+    else localStorage.removeItem('meados_'+bucket+'Queue');
   }catch(e){}
 }
-function hasQueuedLogs(){return logQueue().length>0;}
-function enqueueLogOp(op){
-  var q=logQueue();q.push(op);saveLogQueue(q);
+function hasQueuedOps(){
+  return Object.keys(SYNCED_BUCKETS).some(function(b){return bucketQueue(b).length>0;});
+}
+function enqueueBucketOp(bucket,op){
+  var q=bucketQueue(bucket);q.push(op);saveBucketQueue(bucket,q);
   markPendingSync();
 }
 
-async function fetchLogs(){
+async function fetchBucket(bucket){
   if(APP._shareMode)return;
-  var res=await apiFetch('/api/logs');
+  var cfg=SYNCED_BUCKETS[bucket];
+  var res=await apiFetch(cfg.apiBase);
   if(res&&res.ok){
     try{
       var j=await res.json();
-      APP.logs=(j&&j.logs)||{};
-      try{localStorage.setItem('meados_logs',JSON.stringify(APP.logs));}catch(e){}
+      APP[bucket]=(j&&j[cfg.listKey])||{};
+      try{localStorage.setItem(cfg.cacheKey,JSON.stringify(APP[bucket]));}catch(e){}
       return;
     }catch(e){}
   }
   // Unreachable — fall back to the last-known cache, then (first boot after
   // upgrading only) to whatever the legacy blob cache still carries.
   try{
-    var cached=localStorage.getItem('meados_logs');
-    if(cached){APP.logs=JSON.parse(cached);return;}
+    var cached=localStorage.getItem(cfg.cacheKey);
+    if(cached){APP[bucket]=JSON.parse(cached);return;}
     var legacy=localStorage.getItem('meadows_data');
-    if(legacy){var d=JSON.parse(legacy);if(d&&d.logs)APP.logs=d.logs;}
+    if(legacy){var d=JSON.parse(legacy);if(d&&d[bucket])APP[bucket]=d[bucket];}
   }catch(e){}
 }
 
-// Replays queued log ops oldest-first, stopping at the first failure so a
-// later op on the same reading never jumps ahead of an earlier one. Every op
-// is idempotent server-side, so a partial or repeated flush is always safe.
-async function flushLogQueue(){
-  var q=logQueue();
+// Replays one bucket's queued ops oldest-first, stopping at the first failure
+// so a later op on the same entry never jumps ahead of an earlier one. Every
+// op is idempotent server-side, so a partial or repeated flush is always
+// safe. replaceAll reads op.data (current shape) falling back to op[listKey]
+// (the shape gravity-readings queued before this was generalized — a real
+// user could still have one of these sitting in localStorage).
+async function flushBucketQueue(bucket){
+  var cfg=SYNCED_BUCKETS[bucket];
+  var q=bucketQueue(bucket);
   while(q.length){
     var op=q[0],res=null;
-    if(op.op==='add')res=await apiFetch('/api/logs/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:op.batchId,entry:op.entry})});
-    else if(op.op==='delete')res=await apiFetch('/api/logs/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:op.batchId,id:op.id})});
-    else if(op.op==='deleteBatch')res=await apiFetch('/api/logs/delete-batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:op.batchId})});
-    else if(op.op==='replaceAll')res=await apiFetch('/api/logs/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({logs:op.logs})});
-    else{q.shift();saveLogQueue(q);continue;}  // unknown op — drop rather than jam the queue forever
+    if(op.op==='add')res=await apiFetch(cfg.apiBase+'/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:op.batchId,entry:op.entry})});
+    else if(op.op==='delete')res=await apiFetch(cfg.apiBase+'/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:op.batchId,id:op.id})});
+    else if(op.op==='deleteBatch')res=await apiFetch(cfg.apiBase+'/delete-batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:op.batchId})});
+    else if(op.op==='replaceAll'){
+      var payload={};payload[cfg.listKey]=(op.data!==undefined?op.data:op[cfg.listKey]);
+      res=await apiFetch(cfg.apiBase+'/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    }
+    else{q.shift();saveBucketQueue(bucket,q);continue;}  // unknown op — drop rather than jam the queue forever
     if(!res||!res.ok)return;  // still offline/failing — stop, keep the queue, try again later
-    q.shift();saveLogQueue(q);
+    q.shift();saveBucketQueue(bucket,q);
   }
 }
+function flushAllBucketQueues(){
+  Object.keys(SYNCED_BUCKETS).forEach(function(b){if(bucketQueue(b).length)flushBucketQueue(b);});
+}
 
-async function logSyncAdd(batchId,entry){
-  var res=await apiFetch('/api/logs/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:batchId,entry:entry})});
-  if(res&&res.ok){try{localStorage.setItem('meados_logs',JSON.stringify(APP.logs));}catch(e){}return true;}
-  if(res){toast('⚠ Reading not saved — server rejected it');return false;}  // 4xx: don't queue garbage
-  enqueueLogOp({op:'add',batchId:batchId,entry:entry});
+async function bucketSyncAdd(bucket,batchId,entry){
+  var cfg=SYNCED_BUCKETS[bucket];
+  var res=await apiFetch(cfg.apiBase+'/add',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:batchId,entry:entry})});
+  if(res&&res.ok){try{localStorage.setItem(cfg.cacheKey,JSON.stringify(APP[bucket]));}catch(e){}return true;}
+  if(res){toast('⚠ Not saved — server rejected it');return false;}  // 4xx: don't queue garbage
+  enqueueBucketOp(bucket,{op:'add',batchId:batchId,entry:entry});
   return false;
 }
-async function logSyncDelete(batchId,id){
-  var res=await apiFetch('/api/logs/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:batchId,id:id})});
-  if(res&&res.ok){try{localStorage.setItem('meados_logs',JSON.stringify(APP.logs));}catch(e){}return true;}
+async function bucketSyncDelete(bucket,batchId,id){
+  var cfg=SYNCED_BUCKETS[bucket];
+  var res=await apiFetch(cfg.apiBase+'/delete',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:batchId,id:id})});
+  if(res&&res.ok){try{localStorage.setItem(cfg.cacheKey,JSON.stringify(APP[bucket]));}catch(e){}return true;}
   if(res)return false;
-  enqueueLogOp({op:'delete',batchId:batchId,id:id});
+  enqueueBucketOp(bucket,{op:'delete',batchId:batchId,id:id});
   return false;
 }
-async function logSyncDeleteBatch(batchId){
-  var res=await apiFetch('/api/logs/delete-batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:batchId})});
+async function bucketSyncDeleteBatch(bucket,batchId){
+  var cfg=SYNCED_BUCKETS[bucket];
+  var res=await apiFetch(cfg.apiBase+'/delete-batch',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({batchId:batchId})});
   if(res&&res.ok)return true;
   if(res)return false;
-  enqueueLogOp({op:'deleteBatch',batchId:batchId});
+  enqueueBucketOp(bucket,{op:'deleteBatch',batchId:batchId});
   return false;
 }
-async function logSyncReplaceAll(logsMap){
-  var res=await apiFetch('/api/logs/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({logs:logsMap})});
-  if(res&&res.ok){try{localStorage.setItem('meados_logs',JSON.stringify(APP.logs));}catch(e){}return true;}
+async function bucketSyncReplaceAll(bucket,data){
+  var cfg=SYNCED_BUCKETS[bucket];
+  var payload={};payload[cfg.listKey]=data;
+  var res=await apiFetch(cfg.apiBase+'/import',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  if(res&&res.ok){try{localStorage.setItem(cfg.cacheKey,JSON.stringify(APP[bucket]));}catch(e){}return true;}
   if(res)return false;
-  enqueueLogOp({op:'replaceAll',logs:logsMap});
+  enqueueBucketOp(bucket,{op:'replaceAll',data:data});
   return false;
 }
+
+// Thin per-bucket wrappers — kept as the call sites' actual API (14-modals.js
+// etc. call these exact names) so adding a new bucket never means touching
+// already-verified write-site code, just adding one more set of one-liners.
+function fetchLogs(){return fetchBucket('logs');}
+function logSyncAdd(batchId,entry){return bucketSyncAdd('logs',batchId,entry);}
+function logSyncDelete(batchId,id){return bucketSyncDelete('logs',batchId,id);}
+function logSyncDeleteBatch(batchId){return bucketSyncDeleteBatch('logs',batchId);}
+function logSyncReplaceAll(logsMap){return bucketSyncReplaceAll('logs',logsMap);}
+
+function fetchCompetitions(){return fetchBucket('competitions');}
+function competitionSyncAdd(batchId,entry){return bucketSyncAdd('competitions',batchId,entry);}
+function competitionSyncDelete(batchId,id){return bucketSyncDelete('competitions',batchId,id);}
+function competitionSyncDeleteBatch(batchId){return bucketSyncDeleteBatch('competitions',batchId);}
+function competitionSyncReplaceAll(compsMap){return bucketSyncReplaceAll('competitions',compsMap);}
 
 async function loadData(){
   setSyncStatus('syncing');
   // Share mode reads the sanitized public endpoint (HA credentials stripped,
-  // not password-gated) so share links work for guests. Gravity readings are
-  // fetched in parallel — fetchLogs() no-ops in share mode (initShareMode
-  // seeds APP.logs from the share payload itself instead, see 14-bootstrap.js).
-  var logsPromise=fetchLogs();
+  // not password-gated) so share links work for guests. Extracted-bucket data
+  // (gravity readings, competitions) is fetched in parallel — both no-op in
+  // share mode (initShareMode seeds APP.logs from the share payload itself
+  // instead, see 14-bootstrap.js; competitions aren't part of the public
+  // share payload at all).
+  var bucketPromises=Object.keys(SYNCED_BUCKETS).map(fetchBucket);
   var res=await apiFetch(APP._shareMode?'/api/share':'/api/data');
-  await logsPromise;
-  if(!APP._shareMode&&hasQueuedLogs())flushLogQueue();  // replay anything queued while last offline
+  await Promise.all(bucketPromises);
+  if(!APP._shareMode&&hasQueuedOps())flushAllBucketQueues();  // replay anything queued while last offline
   if(res&&res.status===200){
     try{
       // Capture the rev so the next save can detect concurrent edits, and the

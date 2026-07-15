@@ -993,8 +993,9 @@ function deleteBatch(id){
   if(!b)return;
   if(!confirm('Permanently delete "'+b.name+'" and all associated logs, tastings, and bottling data?'))return;
   APP.batches=APP.batches.filter(function(x){return x.id!==id;});
-  delete APP.logs[id];delete APP.tastings[id];delete APP.bottling[id];
+  delete APP.logs[id];delete APP.tastings[id];delete APP.bottling[id];delete APP.competitions[id];
   logSyncDeleteBatch(id);
+  competitionSyncDeleteBatch(id);
   scheduleSave();toast('Batch deleted');showView('batches');
 }
 
@@ -1371,11 +1372,13 @@ function importData(event){
         APP.tempAnomalies=d.tempAnomalies||[];
         APP.notifiedTasks=d.notifiedTasks||{};
       }
-      // Gravity readings live in their own table now, not the blob applyState
-      // just applied — restore them from the backup explicitly and push a
-      // transactional replace-all to the server.
+      // Gravity readings and competitions live in their own tables now, not
+      // the blob applyState just applied — restore them from the backup
+      // explicitly and push a transactional replace-all to the server.
       APP.logs=(d.logs&&typeof d.logs==='object')?d.logs:{};
       logSyncReplaceAll(APP.logs);
+      APP.competitions=(d.competitions&&typeof d.competitions==='object')?d.competitions:{};
+      competitionSyncReplaceAll(APP.competitions);
       if(typeof rebuildRecipes==='function')rebuildRecipes();
       saveSettings();scheduleSave();
       toast('✦ Backup imported');renderMain();
@@ -1416,6 +1419,7 @@ function resetAllData(){
   APP.logs={};
   APP.tasksDone={};
   APP.tastings={};
+  APP.competitions={};
   APP.bottling={};
   APP.supplies=[];
   APP.notifiedTasks={};
@@ -1430,6 +1434,7 @@ function resetAllData(){
     APP.fermenters.forEach(function(f){f.batchId=null;});
   }
   logSyncReplaceAll({});
+  competitionSyncReplaceAll({});
   scheduleSave();
   toast('All batch data reset · labels & recipes preserved');
   showView('dashboard');
