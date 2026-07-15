@@ -93,7 +93,7 @@ function renderSupplies(){
 // Supply categories a supplier can carry — so the rolodex isn't honey-only.
 var SUPPLY_CATEGORIES=['Honey','Bottles','Crown caps','Corks','Yeast','Nutrient','Fruit & adjuncts','Spices & herbs','Oak','Acids & chemicals','Equipment','Other'];
 function _openHoneyFromSupplier(name){
-  currentHoneyName=name;
+  window.currentHoneyName=name;
   showView('honey-detail');
 }
 function renderSuppliersView(){

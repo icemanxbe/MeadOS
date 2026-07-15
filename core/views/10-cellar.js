@@ -2,6 +2,66 @@
 // cellar, label images, storage-box labels, compare, supplies, suppliers
 // Plain script, shared global scope; loaded in order (see index.html).
 'use strict';
+function _toggleCellarShowFinished(){
+  window._cellarShowFinished=!window._cellarShowFinished;
+  renderMain();
+}
+function _openBatchTastingTab(id){
+  showView('batch',id);
+  setTimeout(function(){setBatchTab(id,'tasting');},10);
+}
+function _selectShelfPick(shelfId){
+  document.querySelectorAll('.shelf-pick').forEach(function(el){
+    el.classList.remove('sel');
+    el.style.background='var(--bg)';
+    el.style.borderColor='var(--border)';
+  });
+  this.classList.add('sel');
+  this.style.background='rgba(232,196,106,0.15)';
+  this.style.borderColor='var(--gold)';
+  document.getElementById('shelf-pick-id').value=shelfId;
+}
+function _selectFermShelfPick(shelfId){
+  document.querySelectorAll('.ferm-shelf-pick').forEach(function(el){
+    el.classList.remove('sel');
+    el.style.background='var(--bg)';
+    el.style.borderColor='var(--border)';
+  });
+  this.classList.add('sel');
+  this.style.background='rgba(232,196,106,0.15)';
+  this.style.borderColor='var(--gold)';
+  document.getElementById('ferm-shelf-pick-id').value=shelfId;
+}
+function _removeBatchFromShelfAndClose(id){
+  removeBatchFromShelf(id);
+  closeModal();
+}
+function _removeBatchFromShelfCloseRender(id){
+  removeBatchFromShelf(id);
+  closeModal();
+  renderMain();
+}
+function _removeFermenterFromShelfCloseRender(id){
+  removeFermenterFromShelf(id);
+  closeModal();
+  renderMain();
+}
+function _removeFermenterFromShelfAndClose(id){
+  removeFermenterFromShelf(id);
+  closeModal();
+}
+function _closeAndOpenBatch(id){
+  closeModal();
+  showView('batch',id);
+}
+function _closeAndEditCabinet(id){
+  closeModal();
+  openCellarConfigModal(id);
+}
+function _closeAndRemoveFromCellar(id){
+  closeModal();
+  removeFromCellar(id);
+}
 // ==================== BOTTLE AGING HELPERS ====================
 function bottleDaysAged(b){
   var bot=APP.bottling[b.id];
@@ -94,7 +154,7 @@ function renderCellar(){
     return'<div class="page-title">The Cellar</div><div class="page-subtitle">Bottle Aging Tracker</div>'
       +'<div class="empty-state"><div class="es-icon">🍾</div><p>No bottled batches yet.</p><br>'
       +'<p style="font-size:13px">Bottles you record will appear here with aging progress against optimal drinking windows.</p>'
-      +'<p style="margin-top:18px"><button class="btn btn-secondary btn-sm" onclick="showView(\'cellar-map\')" title="Configure your storage cabinet with shelves and sensors">🏠 My Cellar →</button></p></div>';
+      +'<p style="margin-top:18px"><button class="btn btn-secondary btn-sm" data-action="showView" data-args=\'["cellar-map"]\' title="Configure your storage cabinet with shelves and sensors">🏠 My Cellar →</button></p></div>';
   }
   // Finished batches (bottled, then every bottle drunk or gifted away) are
   // hidden by default so the cellar shows only what you can still pour. A
@@ -109,7 +169,7 @@ function renderCellar(){
   var finishedCount=bottled.filter(isFinishedBatch).length;
   if(!showFinished)bottled=bottled.filter(function(b){return!isFinishedBatch(b);});
   // Reusable toggle chip (shown whenever any finished batch exists).
-  var finishedToggle=finishedCount?'<button class="btn btn-secondary btn-sm" onclick="window._cellarShowFinished='+(showFinished?'false':'true')+';renderMain()" style="margin-left:8px">'+(showFinished?'🙈 Hide '+finishedCount+' finished':'👁 Show '+finishedCount+' finished')+'</button>':'';
+  var finishedToggle=finishedCount?'<button class="btn btn-secondary btn-sm" data-action="_toggleCellarShowFinished" style="margin-left:8px">'+(showFinished?'🙈 Hide '+finishedCount+' finished':'👁 Show '+finishedCount+' finished')+'</button>':'';
   if(!bottled.length){
     return'<div class="page-title">The Cellar</div><div class="page-subtitle">Bottle Aging Tracker</div>'
       +'<div class="empty-state"><div class="es-icon">🍷</div><p>Cellar is empty — all bottles drunk or gifted.</p><br>'
@@ -276,12 +336,12 @@ function renderCellar(){
       +'<div class="aging-status '+statusBadgeClass+'" style="'+(inconsistent?'color:var(--red2);border-color:var(--red);background:#1a0808':'')+'">'+statusBadgeText+'</div>'
       +'<div id="cellar-chev-'+b.id+'" style="font-family:var(--font-mono);font-size:14px;color:var(--text3);width:18px;text-align:center;transition:transform 0.2s;'+(isOpen?'transform:rotate(0deg)':'')+'">'+(isOpen?'▼':'▶')+'</div>'
       +'</div>';
-    var header='<div onclick="toggleCellarCard(\''+b.id+'\',event)" style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;user-select:none" title="Click to '+(isOpen?'collapse':'expand')+' inventory and aging details">'
+    var header='<div data-action="toggleCellarCard" data-args=\''+JSON.stringify([b.id])+'\' style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 16px;cursor:pointer;user-select:none" title="Click to '+(isOpen?'collapse':'expand')+' inventory and aging details">'
       +headerLeft+headerRight+'</div>';
 
     // Expanded body — bottle grid, aging bar, actions, etc.
     var body='<div id="cellar-body-'+b.id+'"><div style="padding:0 16px 16px">'
-      +(inconsistent?'<div class="stock-alert" style="margin-bottom:14px;flex-wrap:wrap"><span class="icon">⚠</span><span style="flex:1;min-width:200px"><strong>No bottles on hand</strong> — you recorded '+origCount+' bottled. Did you already drink/gift them, or was the cellar never filled in?</span><span style="display:flex;gap:8px"><button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();markBatchFinished(\''+b.id+'\')" style="white-space:nowrap">Mark finished</button><button class="btn btn-primary btn-sm" onclick="event.stopPropagation();fillCellarFromOriginal(\''+b.id+'\')" style="white-space:nowrap">Fill cellar ('+origCount+')</button></span></div>':'')
+      +(inconsistent?'<div class="stock-alert" style="margin-bottom:14px;flex-wrap:wrap"><span class="icon">⚠</span><span style="flex:1;min-width:200px"><strong>No bottles on hand</strong> — you recorded '+origCount+' bottled. Did you already drink/gift them, or was the cellar never filled in?</span><span style="display:flex;gap:8px"><button class="btn btn-secondary btn-sm" data-action="markBatchFinished" data-args=\''+JSON.stringify([b.id])+'\' style="white-space:nowrap">Mark finished</button><button class="btn btn-primary btn-sm" data-action="fillCellarFromOriginal" data-args=\''+JSON.stringify([b.id])+'\' style="white-space:nowrap">Fill cellar ('+origCount+')</button></span></div>':'')
       +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px">'
       +'<div style="text-align:center;padding:8px 4px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius)"><div style="font-family:var(--font-display);font-size:18px;color:var(--gold2)">'+fmtDaysShort(aged)+'</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-top:2px">AGED</div></div>'
       +'<div style="text-align:center;padding:8px 4px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius)"><div style="font-family:var(--font-display);font-size:18px;color:var(--blue2)">'+(bot.abv||'?')+'%</div><div style="font-family:var(--font-mono);font-size:9px;color:var(--text3);margin-top:2px">ABV</div></div>'
@@ -301,7 +361,7 @@ function renderCellar(){
             +'<div style="font-family:var(--font-mono);font-size:11px;color:var(--text2);text-align:right;padding-right:6px">'+size+'ml</div>'
             +locDefs.map(function(l){
               var n=bottlesInLocationBySize(bot,l.key,size);
-              return'<div class="loc-cell" style="margin:0"><input type="number" min="0" value="'+n+'" onchange="setBottleLocation(\''+b.id+'\',\''+l.key+'\','+size+',this.value)" onclick="event.stopPropagation()" style="text-align:center;width:100%"></div>';
+              return'<div class="loc-cell" style="margin:0"><input type="number" min="0" value="'+n+'" onchange="setBottleLocation(\''+b.id+'\',\''+l.key+'\','+size+',this.value)" style="text-align:center;width:100%"></div>';
             }).join('')
             +'</div>';
         }).join('');
@@ -316,20 +376,20 @@ function renderCellar(){
       +'</div>'
       +'<div class="aging-bar-markers"><span>0d</span><span style="color:var(--green2)">Ready · '+fmtDaysShort(profile.minDays)+'</span><span style="color:var(--gold2)">Peak · '+fmtDaysShort(profile.peakDays)+'</span><span>Max · '+fmtDaysShort(profile.maxDays)+'</span></div>'
       +'<div style="margin-top:8px;font-size:12px;color:var(--text2);font-style:italic">⏳ '+nextMilestone+'</div>'
-      +'<div class="cellar-actions" onclick="event.stopPropagation()">'
+      +'<div class="cellar-actions">'
       +(function(){
         var sizes=activeBottleSizes(bot);
         var buttons=sizes.map(function(size){
           var avail=bottlesInLocationBySize(bot,'cellar',size)+bottlesInLocationBySize(bot,'fridge',size)+bottlesInLocationBySize(bot,'other',size);
-          if(sizes.length>1)return'<button class="btn btn-secondary btn-sm" onclick="drinkBottle(\''+b.id+'\','+size+')"'+(avail<=0?' disabled':'')+'>🍷 Drank '+size+'ml</button>';
-          return'<button class="btn btn-secondary btn-sm" onclick="drinkBottle(\''+b.id+'\','+size+')"'+(avail<=0?' disabled':'')+'>🍷 Drank One</button>';
+          if(sizes.length>1)return'<button class="btn btn-secondary btn-sm" data-action="drinkBottle" data-args=\''+JSON.stringify([b.id,size])+'\''+(avail<=0?' disabled':'')+'>🍷 Drank '+size+'ml</button>';
+          return'<button class="btn btn-secondary btn-sm" data-action="drinkBottle" data-args=\''+JSON.stringify([b.id,size])+'\''+(avail<=0?' disabled':'')+'>🍷 Drank One</button>';
         });
         return buttons.join(' ');
       }())
-      +' <button class="btn btn-secondary btn-sm" onclick="openCellarEditModal(\''+b.id+'\')">✏ Edit</button>'
-      +'<button class="btn btn-secondary btn-sm" onclick="showView(\'batch\',\''+b.id+'\');setTimeout(function(){setBatchTab(\''+b.id+'\',\'tasting\');},10)">⭐ Tasting</button>'
-      +'<button class="btn btn-primary btn-sm" onclick="showView(\'batch\',\''+b.id+'\')" style="margin-left:6px">↗ Open Batch</button>'
-      +'<button class="btn btn-danger btn-sm" style="margin-left:auto" onclick="removeFromCellar(\''+b.id+'\')" title="Return to active batches">🗑</button>'
+      +' <button class="btn btn-secondary btn-sm" data-action="openCellarEditModal" data-args=\''+JSON.stringify([b.id])+'\'>✏ Edit</button>'
+      +'<button class="btn btn-secondary btn-sm" data-action="_openBatchTastingTab" data-args=\''+JSON.stringify([b.id])+'\'>⭐ Tasting</button>'
+      +'<button class="btn btn-primary btn-sm" data-action="showView" data-args=\''+JSON.stringify(['batch',b.id])+'\' style="margin-left:6px">↗ Open Batch</button>'
+      +'<button class="btn btn-danger btn-sm" style="margin-left:auto" data-action="removeFromCellar" data-args=\''+JSON.stringify([b.id])+'\' title="Return to active batches">🗑</button>'
       +'</div>'
       +'</div></div>';
 
@@ -356,13 +416,13 @@ function renderCellar(){
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">'
     +'<span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">SORT BY</span>'
     +sortSelect
-    +(bottled.length>1?'<button class="btn btn-secondary btn-sm" onclick="cellarExpandAll(true)" title="Expand all batches">▼ Expand All</button>':'')
-    +(bottled.length>1?'<button class="btn btn-secondary btn-sm" onclick="cellarExpandAll(false)" title="Collapse all batches">▶ Collapse All</button>':'')
+    +(bottled.length>1?'<button class="btn btn-secondary btn-sm" data-action="cellarExpandAll" data-args=\'[true]\' title="Expand all batches">▼ Expand All</button>':'')
+    +(bottled.length>1?'<button class="btn btn-secondary btn-sm" data-action="cellarExpandAll" data-args=\'[false]\' title="Collapse all batches">▶ Collapse All</button>':'')
     +finishedToggle
-    +(bottled.length?'<button class="btn btn-secondary btn-sm" onclick="showView(\'review\')">★ Year in Review</button>':'')
-    +'<button class="btn btn-secondary btn-sm" onclick="showView(\'cellar-map\')" title="Visual storage cabinet with shelves and sensor-linked temperature">🏠 My Cellar</button>'
-    +(bottled.length?'<button class="btn btn-secondary btn-sm" onclick="printAllLabels()">📑 Print Label Sheet</button>':'')
-    +(bottled.length?'<button class="btn btn-secondary btn-sm" onclick="openStorageLabelPicker()" title="Pick which bottled batches to print storage labels for">📦 Print Storage Labels</button>':'')
+    +(bottled.length?'<button class="btn btn-secondary btn-sm" data-action="showView" data-args=\'["review"]\'>★ Year in Review</button>':'')
+    +'<button class="btn btn-secondary btn-sm" data-action="showView" data-args=\'["cellar-map"]\' title="Visual storage cabinet with shelves and sensor-linked temperature">🏠 My Cellar</button>'
+    +(bottled.length?'<button class="btn btn-secondary btn-sm" data-action="printAllLabels">📑 Print Label Sheet</button>':'')
+    +(bottled.length?'<button class="btn btn-secondary btn-sm" data-action="openStorageLabelPicker" title="Pick which bottled batches to print storage labels for">📦 Print Storage Labels</button>':'')
     +'</div>'
     +'</div>'
     +'<div class="page-subtitle">Bottle Aging Tracker · '+bottled.length+' batch'+(bottled.length!==1?'es':'')+' resting · tap a header to expand</div>'
@@ -374,7 +434,7 @@ function renderCellar(){
     +'</div>'
     +(atPeak>0?'<div class="info-box" style="border-left-color:var(--gold2);margin-bottom:16px"><div style="font-size:14px;color:var(--gold2)"><strong>🏆 '+atPeak+' batch'+(atPeak!==1?'es':'')+' at peak drinking window.</strong> Now is the perfect time to taste, share, and savor.</div></div>':'')
     +cards
-    +(bottled.length>window._cellarLimit?'<div style="text-align:center;margin:16px 0"><button class="btn btn-secondary btn-sm" onclick="showMoreCellar()">Show more · '+(bottled.length-window._cellarLimit)+' more</button></div>':'')
+    +(bottled.length>window._cellarLimit?'<div style="text-align:center;margin:16px 0"><button class="btn btn-secondary btn-sm" data-action="showMoreCellar">Show more · '+(bottled.length-window._cellarLimit)+' more</button></div>':'')
     // ponytail: analytics merged into one collapsed <details> at the bottom — native, no JS.
     +(function(){var a=renderCellarInventoryByStyle()+renderYeastAnalytics();
       return a?'<details class="card" style="margin-top:16px;background:var(--bg2)"><summary style="cursor:pointer;font-family:var(--font-display);font-size:12px;color:var(--text3);letter-spacing:2px">CELLAR ANALYTICS</summary><div style="margin-top:14px">'+a+'</div></details>':'';}());
@@ -408,7 +468,7 @@ function renderCellarTempHistoryCard(){
   ];
   var chips=ranges.map(function(r){
     var isActive=r.hours===window._cellarTempRange;
-    return'<button class="btn btn-secondary btn-sm" onclick="setCellarTempRange('+r.hours+')" style="'+(isActive?'background:rgba(232,196,106,0.18);color:var(--gold2);border-color:var(--gold)':'')+'">'+r.label+'</button>';
+    return'<button class="btn btn-secondary btn-sm" data-action="setCellarTempRange" data-args=\''+JSON.stringify([r.hours])+'\' style="'+(isActive?'background:rgba(232,196,106,0.18);color:var(--gold2);border-color:var(--gold)':'')+'">'+r.label+'</button>';
   }).join('');
   return entries.map(function(en){
     return'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">🌡 '+escHtml(en.label.toUpperCase())+' · TEMPERATURE HISTORY</div><div style="display:flex;gap:6px">'+chips+'</div></div>'
@@ -657,8 +717,8 @@ function renderMyCellar(){
         +'<div style="font-size:48px;margin-bottom:14px">🏠</div>'
         +'<div style="font-family:var(--font-display);font-size:18px;color:var(--gold2);margin-bottom:10px">No cabinets configured yet</div>'
         +'<div style="font-size:13px;color:var(--text3);max-width:480px;margin:0 auto 18px;line-height:1.6">Add one or more storage cabinets — a wine fridge, a basement rack, a closet shelf — to track which batches sit where, monitor live temperature and humidity, and get alerts when conditions drift outside the aging band.</div>'
-        +'<button class="btn btn-primary" onclick="addCabinet()">＋ Add cabinet</button>'
-        +'<button class="btn btn-secondary" style="margin-left:10px" onclick="quickSetupWineFridge()" title="Pre-configures a wine fridge with numbered shelves">Quick setup: wine fridge</button>'
+        +'<button class="btn btn-primary" data-action="addCabinet">＋ Add cabinet</button>'
+        +'<button class="btn btn-secondary" style="margin-left:10px" data-action="quickSetupWineFridge" title="Pre-configures a wine fridge with numbered shelves">Quick setup: wine fridge</button>'
       +'</div>'
       +renderLegacyCellarSublocations();
   }
@@ -672,7 +732,7 @@ function renderMyCellar(){
     return'<div style="margin-bottom:18px">'
       +'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:6px">'
         +'<div style="font-family:var(--font-display);font-size:14px;color:var(--gold2)">'+escHtml(c.name||c.model||'Cabinet')+(c.location?' <span style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">· '+escHtml(c.location.toUpperCase())+'</span>':'')+'</div>'
-        +'<div style="display:flex;gap:6px"><button class="btn btn-secondary btn-sm" onclick="openCellarConfigModal(\''+c.id+'\')">⚙ Configure</button><button class="btn btn-secondary btn-sm" onclick="deleteCabinet(\''+c.id+'\')" style="color:var(--red2)" title="Remove this cabinet">✕</button></div>'
+        +'<div style="display:flex;gap:6px"><button class="btn btn-secondary btn-sm" data-action="openCellarConfigModal" data-args=\''+JSON.stringify([c.id])+'\'>⚙ Configure</button><button class="btn btn-secondary btn-sm" data-action="deleteCabinet" data-args=\''+JSON.stringify([c.id])+'\' style="color:var(--red2)" title="Remove this cabinet">✕</button></div>'
       +'</div>'
       +renderCellarShelves(c,byShelf,byShelfFerm)
     +'</div>';
@@ -680,7 +740,7 @@ function renderMyCellar(){
 
   return'<div style="display:flex;align-items:baseline;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:14px">'
       +'<div><div class="page-title" style="margin-bottom:6px">My Cellar</div><div class="page-subtitle" style="margin-bottom:0">'+cabs.length+' cabinet'+(cabs.length===1?'':'s')+' · '+totalShelves+' shelves</div></div>'
-      +'<button class="btn btn-primary btn-sm" onclick="addCabinet()">＋ Add cabinet</button>'
+      +'<button class="btn btn-primary btn-sm" data-action="addCabinet">＋ Add cabinet</button>'
     +'</div>'
     +'<div class="cellar-layout" style="display:grid;gap:18px;align-items:start" id="cellar-layout-grid">'
       +'<div>'+cabinetsHtml+'</div>'
@@ -739,7 +799,7 @@ function renderCellarLedStrip(c){
       +'<div style="font-family:var(--font-display);font-size:13px;color:#e8c46a;letter-spacing:2px;text-transform:uppercase">'+escHtml(c.name||c.model||'Storage Cabinet')+'</div>'
       +'<div style="font-family:var(--font-mono);font-size:9px;color:#5a4530;letter-spacing:1.5px;margin-top:2px">'+escHtml((c.location||'').toUpperCase()||'MEAD CELLAR')+'</div>'
     +'</div>'
-    +'<div onclick="event.stopPropagation();showCabinetTempAdvice(\''+c.id+'\')" title="'+(c.tempSensorEntity?'Click for temperature advice (fermenting + aging)':'')+'" style="background:#000000;border-radius:3px;padding:7px 14px;display:flex;align-items:center;gap:10px;border:1px solid #1a1612;min-width:200px;justify-content:center'+(c.tempSensorEntity?';cursor:pointer':'')+'">'
+    +'<div data-action="showCabinetTempAdvice" data-args=\''+JSON.stringify([c.id])+'\' title="'+(c.tempSensorEntity?'Click for temperature advice (fermenting + aging)':'')+'" style="background:#000000;border-radius:3px;padding:7px 14px;display:flex;align-items:center;gap:10px;border:1px solid #1a1612;min-width:200px;justify-content:center'+(c.tempSensorEntity?';cursor:pointer':'')+'">'
       +'<div style="text-align:center">'
         +'<div style="font-family:var(--font-mono);font-size:17px;color:'+tempColor+';letter-spacing:2px;font-weight:500">🌡 '+tempStr+humStr+'</div>'
         +'<div style="font-family:var(--font-mono);font-size:9px;color:'+tempColor+';opacity:0.7;letter-spacing:1.5px;margin-top:2px">'+tempSub+'  ·  '+assignedBottles+' BOTTLES'+(fermCount?' · '+fermCount+' ⚗':'')+'</div>'
@@ -772,7 +832,7 @@ function _cellarMixHex(c1,c2,t){
 // delegated to renderCellarShelfRow per shelf.
 function renderCellarShelves(c,byShelf,byShelfFerm){
   if(!c.shelves||!c.shelves.length){
-    return'<div class="card" style="padding:20px;text-align:center"><div style="color:var(--text3);font-size:13px;margin-bottom:14px">No shelves configured.</div><button class="btn btn-secondary btn-sm" onclick="openCellarConfigModal(\''+c.id+'\')">Add shelves</button></div>';
+    return'<div class="card" style="padding:20px;text-align:center"><div style="color:var(--text3);font-size:13px;margin-bottom:14px">No shelves configured.</div><button class="btn btn-secondary btn-sm" data-action="openCellarConfigModal" data-args=\''+JSON.stringify([c.id])+'\'>Add shelves</button></div>';
   }
   // Outer cabinet frame — dark wood + subtle inner shadow to suggest depth
   return'<div style="background:#0a0806;border:1px solid #3a2c1e;border-radius:8px;padding:6px;box-shadow:inset 0 0 40px rgba(0,0,0,0.5),0 2px 8px rgba(0,0,0,0.6)">'
@@ -889,7 +949,7 @@ function renderBottleShelfHTML(s,batches){
   // - `gap` provides consistent spacing in both directions
   // - `justify-content:center` keeps things visually balanced when the
   //   last row is partially filled
-  return'<div onclick="openShelfDetailModal(\''+s.id+'\')" '
+  return'<div data-action="openShelfDetailModal" data-args=\''+JSON.stringify([s.id])+'\' '
     +'style="background:#1a140e;border:1px solid #2a2018;border-radius:2px;padding:14px 14px 24px;margin-bottom:2px;cursor:pointer;position:relative;min-height:'+shelfMinHeight+'px;transition:background 0.15s" '
     +'onmouseover="this.style.background=\'#221a13\'" onmouseout="this.style.background=\'#1a140e\'">'
     +'<div style="font-family:var(--font-display);font-size:11px;color:#e8c46a;letter-spacing:1px">'+escHtml(s.label)+'</div>'
@@ -972,7 +1032,7 @@ function renderFermenterShelfHTML(s,batches,fermenters){
         var color=getBatchColor(b);
         var bot=APP.bottling[b.id];
         var onHand=bot?bottlesOnHand(bot):0;
-        return'<span onclick="event.stopPropagation();showView(\'batch\',\''+b.id+'\')" style="background:#0a0806;border-left:2px solid '+color+';padding:3px 8px;font-size:10.5px;color:#c9a350;border-radius:3px;cursor:pointer;font-family:Georgia,serif">'+escHtml(b.name)+(onHand?' <span style="font-family:var(--font-mono);font-size:9px;color:#7a6240">'+onHand+'</span>':'')+'</span>';
+        return'<span data-action="showView" data-args=\''+JSON.stringify(['batch',b.id])+'\' style="background:#0a0806;border-left:2px solid '+color+';padding:3px 8px;font-size:10.5px;color:#c9a350;border-radius:3px;cursor:pointer;font-family:Georgia,serif">'+escHtml(b.name)+(onHand?' <span style="font-family:var(--font-mono);font-size:9px;color:#7a6240">'+onHand+'</span>':'')+'</span>';
       }).join('')
     +'</div>';
   }
@@ -980,7 +1040,7 @@ function renderFermenterShelfHTML(s,batches,fermenters){
   // size. The bottom label is in normal flow (not absolute) so it pushes the
   // box down to fit everything. This removes the huge empty space below the
   // fermenters that used to result from over-generous min-height heuristics.
-  return'<div onclick="openShelfDetailModal(\''+s.id+'\')" '
+  return'<div data-action="openShelfDetailModal" data-args=\''+JSON.stringify([s.id])+'\' '
     +'style="background:#1a140e;border:1px solid #2a2018;border-radius:2px;padding:14px 14px 14px;margin-bottom:2px;cursor:pointer;position:relative;transition:background 0.15s" '
     +'onmouseover="this.style.background=\'#221a13\'" onmouseout="this.style.background=\'#1a140e\'">'
     +'<div style="font-family:var(--font-display);font-size:11px;color:#e8c46a;letter-spacing:1px">'+escHtml(s.label)+'</div>'
@@ -1006,7 +1066,7 @@ function renderCellarSidePanel(unassigned,unassignedFerm){
       var bot=APP.bottling[b.id];
       var onHand=bot?bottlesOnHand(bot):0;
       var color=getBatchColor(b);
-      html+='<div onclick="openShelfAssignmentModal(\''+b.id+'\')" style="background:var(--bg);border-left:3px solid '+color+';border-radius:4px;padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
+      html+='<div data-action="openShelfAssignmentModal" data-args=\''+JSON.stringify([b.id])+'\' style="background:var(--bg);border-left:3px solid '+color+';border-radius:4px;padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
         +'<div style="font-family:var(--font-display);font-size:12px;color:'+color+'">'+escHtml(b.name)+'</div>'
         +'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3);letter-spacing:0.5px;margin-top:2px">'+(b.serial?'#'+escHtml(b.serial)+' · ':'')+onHand+' bottle'+(onHand===1?'':'s')+'</div>'
       +'</div>';
@@ -1021,7 +1081,7 @@ function renderCellarSidePanel(unassigned,unassignedFerm){
     html+='<div style="font-size:11.5px;color:var(--text3);margin-bottom:8px;line-height:1.5">Click to place on a shelf:</div>';
     unassignedFerm.forEach(function(f){
       var active=activeBatchForFermenter(f.id);
-      html+='<div onclick="openFermenterShelfAssignmentModal(\''+f.id+'\')" style="background:var(--bg);border-left:3px solid '+(f.color||'var(--gold)')+';border-radius:4px;padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
+      html+='<div data-action="openFermenterShelfAssignmentModal" data-args=\''+JSON.stringify([f.id])+'\' style="background:var(--bg);border-left:3px solid '+(f.color||'var(--gold)')+';border-radius:4px;padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
         +'<div style="font-family:var(--font-display);font-size:12px;color:var(--gold2)">⚗ '+escHtml(f.name)+(f.capacity?' <span style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3)">'+f.capacity+'L</span>':'')+'</div>'
         +'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3);letter-spacing:0.5px;margin-top:2px">'+(active?escHtml(active.name):'empty')+'</div>'
       +'</div>';
@@ -1051,7 +1111,7 @@ function renderLegacyCellarSublocations(){
   keys.sort().forEach(function(loc){
     html+='<div style="background:var(--bg);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px"><div style="font-family:var(--font-display);font-size:13px;color:var(--gold2);margin-bottom:6px">📍 '+escHtml(loc)+'</div>';
     legacy[loc].forEach(function(b){
-      html+='<span onclick="showView(\'batch\',\''+b.id+'\')" style="display:inline-block;background:var(--bg2);border-radius:4px;padding:3px 8px;margin:2px 4px 2px 0;font-size:11px;cursor:pointer;color:var(--text2)">'+escHtml(b.name)+'</span>';
+      html+='<span data-action="showView" data-args=\''+JSON.stringify(['batch',b.id])+'\' style="display:inline-block;background:var(--bg2);border-radius:4px;padding:3px 8px;margin:2px 4px 2px 0;font-size:11px;cursor:pointer;color:var(--text2)">'+escHtml(b.name)+'</span>';
     });
     html+='</div>';
   });
@@ -1120,7 +1180,7 @@ function openShelfAssignmentModal(batchId){
     var sel=current===s.id?'sel':'';
     var bg=current===s.id?'rgba(232,196,106,0.15)':'var(--bg)';
     var borderColor=current===s.id?'var(--gold)':'var(--border)';
-    return'<div onclick="document.querySelectorAll(\'.shelf-pick\').forEach(function(el){el.classList.remove(\'sel\');el.style.background=\'var(--bg)\';el.style.borderColor=\'var(--border)\'});this.classList.add(\'sel\');this.style.background=\'rgba(232,196,106,0.15)\';this.style.borderColor=\'var(--gold)\';document.getElementById(\'shelf-pick-id\').value=\''+s.id+'\'" class="shelf-pick '+sel+'" style="background:'+bg+';border:1px solid '+borderColor+';border-radius:6px;padding:9px 12px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:all 0.15s">'
+    return'<div data-action="_selectShelfPick" data-args=\''+JSON.stringify([s.id])+'\' class="shelf-pick '+sel+'" style="background:'+bg+';border:1px solid '+borderColor+';border-radius:6px;padding:9px 12px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:all 0.15s">'
       +'<div><div style="font-family:var(--font-display);font-size:13px;color:var(--gold2)">'+escHtml(s.label)+'</div><div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3);letter-spacing:1px">'+(s.type==='open'?'OPEN':(s.type==='fermenter_slot'?'FERMENTER':'RACK'))+(s.capacity?' · '+bottles+'/'+s.capacity:'')+'</div></div>'
       +(on.length?'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3)">'+on.length+' batch'+(on.length===1?'':'es')+'</div>':'<div style="font-size:11px;color:var(--text3);font-style:italic">empty</div>')
       +'</div>';
@@ -1132,9 +1192,9 @@ function openShelfAssignmentModal(batchId){
     +'<div style="flex:1;overflow-y:auto;padding-right:4px">'+shelfOptions+'</div>'
     +'<input type="hidden" id="shelf-pick-id" value="'+escHtml(current)+'">'
     +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px">'
-      +(current?'<button class="btn btn-danger" style="margin-right:auto" onclick="removeBatchFromShelf(\''+batchId+'\');closeModal()">Remove assignment</button>':'')
-      +'<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>'
-      +'<button class="btn btn-primary" onclick="saveShelfAssignment(\''+batchId+'\')">Save</button>'
+      +(current?'<button class="btn btn-danger" style="margin-right:auto" data-action="_removeBatchFromShelfAndClose" data-args=\''+JSON.stringify([batchId])+'\'>Remove assignment</button>':'')
+      +'<button class="btn btn-secondary" data-action="closeModal">Cancel</button>'
+      +'<button class="btn btn-primary" data-action="saveShelfAssignment" data-args=\''+JSON.stringify([batchId])+'\'>Save</button>'
     +'</div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
@@ -1187,7 +1247,7 @@ function openShelfDetailModal(shelfId){
       var activeStr=active?'<span style="color:'+(getBatchColor(active)||'var(--gold2)')+'">'+escHtml(active.name)+(active.serial?' #'+escHtml(active.serial):'')+'</span>':'<span style="color:var(--text3);font-style:italic">empty (no active batch)</span>';
       html+='<div style="background:var(--bg);border-left:3px solid '+(f.color||'var(--gold)')+';border-radius:4px;padding:8px 10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center">'
         +'<div><div style="font-family:var(--font-display);font-size:13px;color:var(--gold2)">⚗ '+escHtml(f.name)+(f.capacity?' <span style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3)">'+f.capacity+'L</span>':'')+'</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);margin-top:3px">Currently: '+activeStr+'</div></div>'
-        +'<div onclick="removeFermenterFromShelf(\''+f.id+'\');closeModal();renderMain();" style="color:var(--red2);font-size:14px;padding:4px 8px;cursor:pointer" title="Remove fermenter from shelf">✕</div>'
+        +'<div data-action="_removeFermenterFromShelfCloseRender" data-args=\''+JSON.stringify([f.id])+'\' style="color:var(--red2);font-size:14px;padding:4px 8px;cursor:pointer" title="Remove fermenter from shelf">✕</div>'
       +'</div>';
     });
   }
@@ -1199,9 +1259,9 @@ function openShelfDetailModal(shelfId){
       var bot=APP.bottling[b.id];
       var onHand=bot?bottlesInLocation(bot,'cellar'):0; // the shelf holds cellar-located bottles
       var color=getBatchColor(b);
-      html+='<div onclick="closeModal();showView(\'batch\',\''+b.id+'\')" style="background:var(--bg);border-left:3px solid '+color+';border-radius:4px;padding:8px 10px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">'
+      html+='<div data-action="_closeAndOpenBatch" data-args=\''+JSON.stringify([b.id])+'\' style="background:var(--bg);border-left:3px solid '+color+';border-radius:4px;padding:8px 10px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">'
         +'<div><div style="font-family:var(--font-display);font-size:13px;color:'+color+'">'+escHtml(b.name)+'</div><div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3)">'+(b.serial?'#'+escHtml(b.serial)+' · ':'')+onHand+' bottle'+(onHand===1?'':'s')+'</div></div>'
-        +'<div onclick="event.stopPropagation();removeBatchFromShelf(\''+b.id+'\');closeModal();renderMain();" style="color:var(--red2);font-size:14px;padding:4px 8px;cursor:pointer" title="Remove from shelf">✕</div>'
+        +'<div data-action="_removeBatchFromShelfCloseRender" data-args=\''+JSON.stringify([b.id])+'\' style="color:var(--red2);font-size:14px;padding:4px 8px;cursor:pointer" title="Remove from shelf">✕</div>'
       +'</div>';
     });
   }
@@ -1218,7 +1278,7 @@ function openShelfDetailModal(shelfId){
     html+='<div style="font-family:var(--font-mono);font-size:10.5px;color:var(--text3);letter-spacing:1.5px;margin:18px 0 8px">PLACE FERMENTER HERE</div>';
     unassignedFerm.forEach(function(f){
       var active=activeBatchForFermenter(f.id);
-      html+='<div onclick="quickPlaceFermenterOnShelf(\''+f.id+'\',\''+shelfId+'\')" style="background:var(--bg);border-left:3px solid '+(f.color||'var(--gold)')+';border-radius:4px;padding:8px 10px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">'
+      html+='<div data-action="quickPlaceFermenterOnShelf" data-args=\''+JSON.stringify([f.id,shelfId])+'\' style="background:var(--bg);border-left:3px solid '+(f.color||'var(--gold)')+';border-radius:4px;padding:8px 10px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">'
         +'<div><div style="font-family:var(--font-display);font-size:13px;color:var(--gold2)">⚗ '+escHtml(f.name)+(f.capacity?' '+fmtVol(f.capacity):'')+'</div><div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3)">'+(active?escHtml(active.name):'empty')+'</div></div>'
         +'<div style="color:var(--gold2);font-size:12px">+</div>'
       +'</div>';
@@ -1231,14 +1291,14 @@ function openShelfDetailModal(shelfId){
       var bot=APP.bottling[b.id];
       var onHand=bot?bottlesOnHand(bot):0;
       var color=getBatchColor(b);
-      html+='<div onclick="quickPlaceOnShelf(\''+b.id+'\',\''+shelfId+'\')" style="background:var(--bg);border-left:3px solid '+color+';border-radius:4px;padding:8px 10px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">'
+      html+='<div data-action="quickPlaceOnShelf" data-args=\''+JSON.stringify([b.id,shelfId])+'\' style="background:var(--bg);border-left:3px solid '+color+';border-radius:4px;padding:8px 10px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center">'
         +'<div><div style="font-family:var(--font-display);font-size:13px;color:'+color+'">'+escHtml(b.name)+'</div><div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3)">'+(b.serial?'#'+escHtml(b.serial)+' · ':'')+onHand+' bottle'+(onHand===1?'':'s')+'</div></div>'
         +'<div style="color:var(--gold2);font-size:12px">+</div>'
       +'</div>';
     });
   }
 
-  html+='</div><div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px"><button class="btn btn-secondary" onclick="closeModal()">Close</button><button class="btn btn-secondary" onclick="closeModal();openCellarConfigModal(\''+hit.cabinet.id+'\')">Edit shelves</button></div></div></div>';
+  html+='</div><div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px"><button class="btn btn-secondary" data-action="closeModal">Close</button><button class="btn btn-secondary" data-action="_closeAndEditCabinet" data-args=\''+JSON.stringify([hit.cabinet.id])+'\'>Edit shelves</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }
 
@@ -1305,7 +1365,7 @@ function openFermenterShelfAssignmentModal(fermenterId){
     if(fermsOn.length)subtitle.push(fermsOn.length+' ferm'+(fermsOn.length===1?'':'s'));
     if(batchesOn.length)subtitle.push(batchesOn.length+' batch'+(batchesOn.length===1?'':'es'));
     if(!subtitle.length)subtitle.push('empty');
-    return'<div onclick="document.querySelectorAll(\'.ferm-shelf-pick\').forEach(function(el){el.classList.remove(\'sel\');el.style.background=\'var(--bg)\';el.style.borderColor=\'var(--border)\'});this.classList.add(\'sel\');this.style.background=\'rgba(232,196,106,0.15)\';this.style.borderColor=\'var(--gold)\';document.getElementById(\'ferm-shelf-pick-id\').value=\''+s.id+'\'" class="ferm-shelf-pick '+sel+'" style="background:'+bg+';border:1px solid '+borderColor+';border-radius:6px;padding:9px 12px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:all 0.15s">'
+    return'<div data-action="_selectFermShelfPick" data-args=\''+JSON.stringify([s.id])+'\' class="ferm-shelf-pick '+sel+'" style="background:'+bg+';border:1px solid '+borderColor+';border-radius:6px;padding:9px 12px;margin-bottom:6px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;transition:all 0.15s">'
       +'<div><div style="font-family:var(--font-display);font-size:13px;color:var(--gold2)">'+escHtml(s.label)+'</div><div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3);letter-spacing:1px">'+(s.type==='open'?'OPEN':(s.type==='fermenter_slot'?'FERMENTER':'RACK'))+'</div></div>'
       +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3)">'+subtitle.join(' · ')+'</div>'
       +'</div>';
@@ -1317,9 +1377,9 @@ function openFermenterShelfAssignmentModal(fermenterId){
     +'<div style="flex:1;overflow-y:auto;padding-right:4px">'+shelfOptions+'</div>'
     +'<input type="hidden" id="ferm-shelf-pick-id" value="'+escHtml(current)+'">'
     +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px">'
-      +(current?'<button class="btn btn-danger" style="margin-right:auto" onclick="removeFermenterFromShelf(\''+fermenterId+'\');closeModal()">Remove from shelf</button>':'')
-      +'<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>'
-      +'<button class="btn btn-primary" onclick="saveFermenterShelfAssignment(\''+fermenterId+'\')">Save</button>'
+      +(current?'<button class="btn btn-danger" style="margin-right:auto" data-action="_removeFermenterFromShelfAndClose" data-args=\''+JSON.stringify([fermenterId])+'\'>Remove from shelf</button>':'')
+      +'<button class="btn btn-secondary" data-action="closeModal">Cancel</button>'
+      +'<button class="btn btn-primary" data-action="saveFermenterShelfAssignment" data-args=\''+JSON.stringify([fermenterId])+'\'>Save</button>'
     +'</div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
@@ -1355,7 +1415,7 @@ function openCellarConfigModal(cabinetId){
         +'<option value="fermenter_slot"'+(s.type==='fermenter_slot'?' selected':'')+'>Fermenter slot</option>'
       +'</select>'
       +'<input class="form-input" style="width:70px" type="number" min="0" placeholder="Cap" value="'+(s.capacity||'')+'" oninput="getCabinet(window._editingCabinetId).shelves['+idx+'].capacity=parseInt(this.value)||0" title="Bottle capacity">'
-      +'<button class="btn btn-danger btn-sm" onclick="removeShelfFromConfig(\''+s.id+'\')" title="Delete shelf">✕</button>'
+      +'<button class="btn btn-danger btn-sm" data-action="removeShelfFromConfig" data-args=\''+JSON.stringify([s.id])+'\' title="Delete shelf">✕</button>'
     +'</div>';
   }).join('');
   var html='<div class="modal-overlay"><div class="modal" style="max-width:680px;max-height:90vh;display:flex;flex-direction:column">'
@@ -1377,14 +1437,14 @@ function openCellarConfigModal(cabinetId){
         +'<div><label class="form-label">Min humidity %</label><input class="form-input" id="cellar-humidity-min" type="number" min="0" max="100" value="'+(c.targetHumidityMin||50)+'"></div>'
         +'<div><label class="form-label">Max humidity %</label><input class="form-input" id="cellar-humidity-max" type="number" min="0" max="100" value="'+(c.targetHumidityMax||75)+'"></div>'
       +'</div>'
-      +'<div style="border-top:1px solid var(--border);margin:14px 0 10px;padding-top:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-family:var(--font-display);font-size:14px;color:var(--gold2)">Shelves ('+(c.shelves||[]).length+')</div><div><button class="btn btn-secondary btn-sm" onclick="addShelfToConfig()">+ Add shelf</button> <button class="btn btn-secondary btn-sm" onclick="resetShelvesToDefault()" title="Replace all shelves with a numbered default set">↻ Reset shelves…</button></div></div>'
+      +'<div style="border-top:1px solid var(--border);margin:14px 0 10px;padding-top:14px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div style="font-family:var(--font-display);font-size:14px;color:var(--gold2)">Shelves ('+(c.shelves||[]).length+')</div><div><button class="btn btn-secondary btn-sm" data-action="addShelfToConfig">+ Add shelf</button> <button class="btn btn-secondary btn-sm" data-action="resetShelvesToDefault" title="Replace all shelves with a numbered default set">↻ Reset shelves…</button></div></div>'
         +'<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Reorder by editing the labels (e.g. \'01 Top\', \'02 Upper\'). Set type to \'Open\' for shelves you removed to fit fermenters.</div>'
         +'<div id="cellar-shelves-list">'+shelfRows+'</div>'
       +'</div>'
     +'</div>'
     +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px">'
-      +'<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>'
-      +'<button class="btn btn-primary" onclick="saveCellarConfig()">Save</button>'
+      +'<button class="btn btn-secondary" data-action="closeModal">Cancel</button>'
+      +'<button class="btn btn-primary" data-action="saveCellarConfig">Save</button>'
     +'</div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
@@ -1651,9 +1711,9 @@ function openCellarEditModal(batchId){
     +'</details>'
     +'<div class="form-group" style="margin-top:14px"><label class="form-label">Notes</label><textarea class="form-textarea" id="ce-notes" placeholder="Bottle type, cap/cork, storage location…">'+escHtml(bot.notes||'')+'</textarea></div>'
     +'<div class="modal-actions">'
-    +'<button class="btn btn-danger" style="margin-right:auto" onclick="closeModal();removeFromCellar(\''+batchId+'\')">Remove from Cellar</button>'
-    +'<button class="btn btn-secondary" onclick="closeModal()">Cancel</button>'
-    +'<button class="btn btn-primary" onclick="saveCellarEdit(\''+batchId+'\')">Save</button>'
+    +'<button class="btn btn-danger" style="margin-right:auto" data-action="_closeAndRemoveFromCellar" data-args=\''+JSON.stringify([batchId])+'\'>Remove from Cellar</button>'
+    +'<button class="btn btn-secondary" data-action="closeModal">Cancel</button>'
+    +'<button class="btn btn-primary" data-action="saveCellarEdit" data-args=\''+JSON.stringify([batchId])+'\'>Save</button>'
     +'</div></div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }

@@ -2,6 +2,8 @@
 // dashboard, batch list & detail, task/coach, ICS feed
 // Plain script, shared global scope; loaded in order (see index.html).
 'use strict';
+function _openBatchLogTab(id){showView('batch',id);setBatchTab(id,'log');}
+function _removeBatchStepRow(){this.closest('[data-step-row]').remove();}
 // ==================== DASHBOARD ====================
 function renderDashboard(){
   // View filter (cider mode): only batches matching the active beverage mode
@@ -32,7 +34,7 @@ function renderDashboard(){
   var batchCards='';
   if(!modeBatches.length){
     batchCards='<div style="text-align:center;margin-bottom:16px">'+brandCrestSVG(280)+'<div style="margin-top:16px;font-size:14px;color:var(--text2);font-style:italic">'+((typeof activeBevMode==='function'&&activeBevMode()==='cider')?'The orchard tradition begins here.':'The family meadwright tradition begins here.')+'</div></div>'
-      +'<div class="empty-state" style="padding:20px"><button class="btn btn-primary" onclick="openNewBatchModal()">＋ Start First Batch</button></div>';
+      +'<div class="empty-state" style="padding:20px"><button class="btn btn-primary" data-action="openNewBatchModal">＋ Start First Batch</button></div>';
   }else{
     batchCards=active.slice(0,4).map(function(b){
       var d=daysSince(b.startDate),status=getBatchStatus(b);
@@ -43,7 +45,7 @@ function renderDashboard(){
       var lastG=logs.length?logs[logs.length-1].gravity:b.og;
       var abv=b.og&&lastG?calcABV(b.og,lastG)+'%':'—'; // active-only list: never bottled, no fg fallback needed
       var color=getBatchColor(b);
-      return'<div class="card" style="cursor:pointer;margin-bottom:12px;padding:0;overflow:hidden" onclick="showView(\'batch\',\''+b.id+'\')">'
+      return'<div class="card" style="cursor:pointer;margin-bottom:12px;padding:0;overflow:hidden" data-action="showView" data-args=\'["batch","'+b.id+'"]\'>'
         +'<div style="height:3px;background:'+color+'"></div>'
         +'<div style="padding:18px">'
         +'<div class="card-header" style="margin-bottom:12px">'
@@ -68,7 +70,7 @@ function renderDashboard(){
       dayTag=' <span style="display:inline-block;padding:1px 7px;font-family:var(--font-mono);font-size:9.5px;letter-spacing:1px;background:rgba(199,80,80,0.18);color:var(--red2);border-radius:8px;vertical-align:middle">'+fmtDurationCompact(t.daysFromDue).toUpperCase()+' OVERDUE</span>';
     }
     return'<div class="coach-task">'
-      +'<div class="task-cb '+(isTaskDone(t.id)?'checked':'')+'" onclick="toggleTask(\''+t.id+'\',this)">'+(isTaskDone(t.id)?'✓':'')+'</div>'
+      +'<div class="task-cb '+(isTaskDone(t.id)?'checked':'')+'" data-action="toggleTask" data-args=\''+JSON.stringify([t.id])+'\'>'+(isTaskDone(t.id)?'✓':'')+'</div>'
       +'<div><div style="font-size:13px;color:var(--text)">'+escHtml(t.batch)+' — <strong>'+escHtml(t.title)+'</strong>'+dayTag+'</div>'
       +'<div style="font-size:12px;color:var(--text3)">'+escHtml(annotateNutrientDesc(t.desc).substring(0,90))+(t.desc.length>90?'…':'')+'</div></div></div>';
   }).join(''):'<div style="font-size:13px;color:var(--text3);font-style:italic">No tasks today — your batches rest peacefully.</div>';
@@ -89,7 +91,7 @@ function renderDashboard(){
         // previously invisible — this card only ever showed the first batch,
         // silently hiding that a second one shares the vessel.
         var extraNote=occupants.length>1?'<div style="font-size:11px;color:var(--red2);margin-top:2px" title="'+escHtml(occupants.slice(1).map(function(x){return x.name;}).join(', '))+'">⚠ +'+(occupants.length-1)+' more batch'+(occupants.length>2?'es':'')+' also assigned here</div>':'';
-        return'<div onclick="showView(\'batch\',\''+occ.id+'\')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer">'
+        return'<div data-action="showView" data-args=\''+JSON.stringify(['batch',occ.id])+'\' style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer">'
           +'<div style="width:8px;height:38px;border-radius:2px;background:'+(f.color||'#c9a84c')+';flex-shrink:0"></div>'
           +'<div style="flex:1;min-width:0">'
           +'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">'
@@ -101,7 +103,7 @@ function renderDashboard(){
           +extraNote
           +'</div></div>';
       }else{
-        return'<div onclick="openNewBatchModal()" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;opacity:0.72">'
+        return'<div data-action="openNewBatchModal" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer;opacity:0.72">'
           +'<div style="width:8px;height:38px;border-radius:2px;background:rgba(122,168,80,0.5);flex-shrink:0"></div>'
           +'<div style="flex:1;min-width:0">'
           +'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">'
@@ -141,7 +143,7 @@ function renderDashboard(){
       else if(s.status==='in-window-rising'){labelTxt='○ '+s.daysUntilPeak+'D TO PEAK';labelColor='#7aa850';subText='Drinkable now; peaks in '+s.daysUntilPeak+' day'+(s.daysUntilPeak===1?'':'s');}
       else if(s.status==='in-window-falling'){labelTxt='○ POST-PEAK';labelColor='#a08050';subText='Past peak but still in window — '+s.daysUntilMax+' days left';}
       else if(s.status==='past-max'){labelTxt='⚠ PAST WINDOW';labelColor='#a05050';subText='Aged beyond max window — drink soon';}
-      return'<div onclick="showView(\'batch\',\''+b.id+'\')" style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer">'
+      return'<div data-action="showView" data-args=\'["batch","'+b.id+'"]\' style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer">'
         +'<div style="width:8px;height:38px;border-radius:2px;background:'+color+';flex-shrink:0"></div>'
         +'<div style="flex:1;min-width:0">'
         +'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px">'
@@ -154,7 +156,7 @@ function renderDashboard(){
     windowCards='<div class="card" style="margin-top:16px;padding:0;overflow:hidden">'
       +'<div class="card-header" style="padding:14px 14px 8px"><div class="card-title">🍷 DRINKING WINDOW</div></div>'
       +'<div>'+windowRows+'</div>'
-      +(windowItems.length>5?'<div style="padding:8px 14px;text-align:center;border-top:1px solid var(--border)"><button class="btn btn-secondary btn-sm" onclick="showView(\'cellar\')">See all '+windowItems.length+' in cellar →</button></div>':'')
+      +(windowItems.length>5?'<div style="padding:8px 14px;text-align:center;border-top:1px solid var(--border)"><button class="btn btn-secondary btn-sm" data-action="showView" data-args=\'["cellar"]\'>See all '+windowItems.length+' in cellar →</button></div>':'')
       +'</div>';
   }
 
@@ -167,7 +169,7 @@ function renderDashboard(){
     var healthRows=active.slice(0,6).map(function(b){
       var adv=(typeof mwBatchAdvice==='function')?mwBatchAdvice(b):null;
       var h=adv&&adv.health,hm=_advHealthMeta(h&&h.band);
-      return'<div onclick="showView(\'batch\',\''+b.id+'\')" style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer">'
+      return'<div data-action="showView" data-args=\'["batch","'+b.id+'"]\' style="display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid var(--border);cursor:pointer">'
         +'<div style="text-align:center;min-width:36px"><div style="font-family:var(--font-display);font-size:20px;color:'+hm.c+'">'+(h&&h.score!=null?h.score:'—')+'</div></div>'
         +'<div style="flex:1;min-width:0">'
         +'<div style="font-size:12.5px;color:'+getBatchColor(b)+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(b.name)+'</div>'
@@ -177,7 +179,7 @@ function renderDashboard(){
     healthCards='<div class="card" style="margin-top:16px;padding:0;overflow:hidden">'
       +'<div class="card-header" style="padding:14px 14px 8px"><div class="card-title">✦ BATCH HEALTH</div></div>'
       +'<div>'+healthRows+'</div>'
-      +(active.length>6?'<div style="padding:8px 14px;text-align:center;border-top:1px solid var(--border)"><button class="btn btn-secondary btn-sm" onclick="showView(\'batches\')">See all '+active.length+' active →</button></div>':'')
+      +(active.length>6?'<div style="padding:8px 14px;text-align:center;border-top:1px solid var(--border)"><button class="btn btn-secondary btn-sm" data-action="showView" data-args=\'["batches"]\'>See all '+active.length+' active →</button></div>':'')
       +'</div>';
   }
 
@@ -222,10 +224,10 @@ function renderDashboard(){
     +windowCards
     +'</div>'
     +'<div>'
-    +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><div style="font-family:var(--font-display);font-size:11px;color:var(--gold);letter-spacing:2px">✦ TODAY\'S TASKS</div><button class="btn btn-secondary btn-sm" onclick="openGoingAwayCheck()" title="See what needs handling before a planned absence">🧳 Going away?</button></div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px"><div style="font-family:var(--font-display);font-size:11px;color:var(--gold);letter-spacing:2px">✦ TODAY\'S TASKS</div><button class="btn btn-secondary btn-sm" data-action="openGoingAwayCheck" title="See what needs handling before a planned absence">🧳 Going away?</button></div>'
     +'<div class="coach-box"><div class="coach-title">⚗ DAILY BREW LOG · '+new Date().toLocaleDateString(_dloc(),{weekday:'long',day:'numeric',month:'long'})+'</div>'
     +'<div class="coach-tasks">'+taskHtml+'</div>'
-    +(todayTasks.length?'<div style="margin-top:12px"><button class="btn btn-secondary btn-sm" onclick="showView(\'coach\')">See full briefing →</button></div>':'')
+    +(todayTasks.length?'<div style="margin-top:12px"><button class="btn btn-secondary btn-sm" data-action="showView" data-args=\'["coach"]\'>See full briefing →</button></div>':'')
     +'</div>'
     +(modeBatches.length?'<div class="card" style="margin-top:16px"><div class="card-header"><div class="card-title">GRAVITY TREND</div></div><div style="position:relative;height:180px"><canvas id="dash-chart"></canvas></div></div>':'')
     +healthCards
@@ -263,7 +265,7 @@ function renderOnThisDayCard(){
         title:'Started '+b.name,
         sub:(getRecipe(b.recipeId)||{}).style||b.style||'',
         color:getBatchColor(b),
-        action:function(){return'showView(\'batch\',\''+b.id+'\')';}
+        batchId:b.id
       });
     }
   });
@@ -283,7 +285,7 @@ function renderOnThisDayCard(){
       title:'Bottled '+b.name,
       sub:(bot.abv?bot.abv+'% ABV · ':'')+totalBottles(bot)+' bottle'+(totalBottles(bot)!==1?'s':''),
       color:getBatchColor(b),
-      action:function(){return'showView(\'batch\',\''+b.id+'\')';}
+      batchId:b.id
     });
   });
   // Tastings logged on this calendar day in a previous year
@@ -303,7 +305,7 @@ function renderOnThisDayCard(){
         title:'Tasted '+b.name,
         sub:(t.rating?('★'.repeat(t.rating)+'☆'.repeat(5-t.rating)):'')+(t.note?' · '+t.note.slice(0,60)+(t.note.length>60?'…':''):''),
         color:getBatchColor(b),
-        action:function(){return'showView(\'batch\',\''+b.id+'\')';}
+        batchId:b.id
       });
     });
   });
@@ -329,7 +331,7 @@ function renderOnThisDayCard(){
       var label=y===1?'1 year ago':y+' years ago';
       return'<div style="margin-bottom:14px"><div style="font-family:var(--font-mono);font-size:10px;color:var(--gold2);letter-spacing:2px;margin-bottom:6px">'+label.toUpperCase()+' · '+(thisYear-y)+'</div>'
         +yearGroups[y].map(function(e){
-          return'<div onclick="'+e.action()+'" style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg);border-radius:var(--radius);border-left:3px solid '+e.color+';cursor:pointer;margin-bottom:4px;transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
+          return'<div data-action="showView" data-args=\''+JSON.stringify(['batch',e.batchId])+'\' style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--bg);border-radius:var(--radius);border-left:3px solid '+e.color+';cursor:pointer;margin-bottom:4px;transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
             +'<div style="font-size:18px">'+e.icon+'</div>'
             +'<div style="flex:1;min-width:0">'
             +'<div style="font-family:var(--font-display);font-size:13.5px;color:'+e.color+'">'+escHtml(e.title)+'</div>'
@@ -395,7 +397,7 @@ function _renderBatchGroup(title,arr){
       // which used to read as "1.098 → 1.098" — implying nothing fermented.
       var bottlingRec=APP.bottling[b.id];
       var lastG=logs.length?logs[logs.length-1].gravity:((bottlingRec&&bottlingRec.fg!=null)?bottlingRec.fg:b.og);
-      return'<div class="card" style="margin-bottom:8px;cursor:pointer;padding:0;overflow:hidden" onclick="showView(\'batch\',\''+b.id+'\')">'
+      return'<div class="card" style="margin-bottom:8px;cursor:pointer;padding:0;overflow:hidden" data-action="showView" data-args=\'["batch","'+b.id+'"]\'>'
         +'<div style="display:flex;align-items:stretch">'
         +'<div style="width:4px;background:'+color+'"></div>'
         +'<div style="display:flex;align-items:center;gap:16px;padding:14px 18px;flex:1;flex-wrap:wrap">'
@@ -449,7 +451,7 @@ function _batchListResultsHtml(){
   var groups={active:[],bottled:[],complete:[],failed:[]};
   shown.forEach(function(b){var s=getBatchStatus(b);if(s==='failed')groups.failed.push(b);else if(s==='bottled')groups.bottled.push(b);else if(s==='complete')groups.complete.push(b);else groups.active.push(b);});
   var html=_renderBatchGroup('Active',groups.active)+_renderBatchGroup('Bottled',groups.bottled)+_renderBatchGroup('Complete',groups.complete)+(groups.failed.length?_renderBatchGroup('Failed (postmortem)',groups.failed):'');
-  if(total>limit)html+='<div style="text-align:center;margin:16px 0"><button class="btn btn-secondary btn-sm" onclick="showMoreBatches()">Show more · '+(total-limit)+' more</button></div>';
+  if(total>limit)html+='<div style="text-align:center;margin:16px 0"><button class="btn btn-secondary btn-sm" data-action="showMoreBatches">Show more · '+(total-limit)+' more</button></div>';
   return html;
 }
 
@@ -462,20 +464,20 @@ function _batchListSubtitle(total){
 
 function renderBatchList(){
   if(!visibleBatches().length){
-    return'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div class="page-title">My Batches</div><button class="btn btn-primary" onclick="openNewBatchModal()">＋ New Batch</button></div>'
+    return'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div class="page-title">My Batches</div><button class="btn btn-primary" data-action="openNewBatchModal">＋ New Batch</button></div>'
       +'<div class="page-subtitle">The Cellar</div>'
-      +'<div class="empty-state"><div class="es-icon">🍯</div><p>Your cellar awaits its first creation.</p><br><button class="btn btn-primary" onclick="openNewBatchModal()">＋ Begin First Batch</button></div>';
+      +'<div class="empty-state"><div class="es-icon">🍯</div><p>Your cellar awaits its first creation.</p><br><button class="btn btn-primary" data-action="openNewBatchModal">＋ Begin First Batch</button></div>';
   }
   var q=(APP.filters.batchSearch||'');
   var statusFilter=APP.filters.batchStatus||'all';
   var sort=APP.filters.batchSort||'newest';
   var failedCount=visibleBatches().filter(function(b){return getBatchStatus(b)==='failed';}).length;
   var statusChips=[['all','All'],['active','Active'],['bottled','Bottled'],['complete','Complete'],['failed','Failed']]
-    .map(function(x){return'<span class="filter-chip '+(statusFilter===x[0]?'active':'')+'" onclick="setBatchFilter(\''+x[0]+'\')">'+x[1]+(x[0]==='failed'&&failedCount?' · '+failedCount:'')+'</span>';}).join('');
+    .map(function(x){return'<span class="filter-chip '+(statusFilter===x[0]?'active':'')+'" data-action="setBatchFilter" data-args=\''+JSON.stringify([x[0]])+'\'>'+x[1]+(x[0]==='failed'&&failedCount?' · '+failedCount:'')+'</span>';}).join('');
   var sortSel='<select class="search-input" style="max-width:180px;flex:0 0 auto" onchange="setBatchSort(this.value)" title="Sort batches">'
     +[['newest','Newest first'],['oldest','Oldest first'],['name','Name A–Z'],['volume','Volume (high→low)']].map(function(o){return'<option value="'+o[0]+'"'+(sort===o[0]?' selected':'')+'>'+o[1]+'</option>';}).join('')
     +'</select>';
-  return'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div class="page-title">My Batches</div><button class="btn btn-primary" onclick="openNewBatchModal()">＋ New Batch</button></div>'
+  return'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px"><div class="page-title">My Batches</div><button class="btn btn-primary" data-action="openNewBatchModal">＋ New Batch</button></div>'
     +'<div class="page-subtitle" id="batch-list-subtitle">'+_batchListSubtitle(_batchFilterSort().length)+'</div>'
     +'<div class="search-bar"><input type="text" class="search-input" id="batch-search" placeholder="🔍 Search batches by name, recipe, or notes…" value="'+escHtml(q)+'" oninput="updateBatchSearchResults(this.value)">'
     +sortSel
@@ -584,7 +586,7 @@ function renderFermentationProjection(b){
 }
 function renderBatchDetail(){
   var b=getBatch(currentBatchId);
-  if(!b)return'<div class="empty-state"><p>Batch not found.</p><br><button class="btn btn-secondary" onclick="showView(\'batches\')">← Back to Cellar</button></div>';
+  if(!b)return'<div class="empty-state"><p>Batch not found.</p><br><button class="btn btn-secondary" data-action="showView" data-args=\'["batches"]\'>← Back to Cellar</button></div>';
   var isCider=(b.beverageType||'mead')==='cider';
   var recipe=getRecipe(b.recipeId);
   var logs=getBatchLogs(b.id);
@@ -621,7 +623,7 @@ function renderBatchDetail(){
       +_blendLineageHtml(b)
       +(typeof renderBatchTargets==='function'?renderBatchTargets(b):'')
       +'<div class="grid-2">'
-      +'<div><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">BATCH DETAILS</div><button class="btn btn-secondary btn-sm" onclick="openEditBatchModal(\''+b.id+'\')">Edit</button></div>'
+      +'<div><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">BATCH DETAILS</div><button class="btn btn-secondary btn-sm" data-action="openEditBatchModal" data-args=\''+JSON.stringify([b.id])+'\'>Edit</button></div>'
       +'<table class="data-table">'
       +'<tr><td style="color:var(--text3)">Status</td><td>'+statusBadge(status)+'</td></tr>'
       +'<tr><td style="color:var(--text3)">Recipe</td><td>'+escHtml(recipe?recipe.name:(b.style||'Custom'))+'</td></tr>'
@@ -746,7 +748,7 @@ function renderBatchDetail(){
       +'<div style="max-width:760px;margin:0 auto">'+renderBatchLabel(recipe?recipe.id:'r1',currentABV,{batch:b,maxWidth:'420px'})+'</div>'
       +'<div style="font-size:11px;color:var(--text3);margin-top:10px;text-align:center;font-family:var(--font-mono);letter-spacing:1px">'+escHtml(b.name).toUpperCase()+' · '+fmtDate(b.startDate)+(currentABV!=='—'?' · '+currentABV+'% ABV':'')+'</div>'
       +'</div>'
-      +'<div class="card"><div class="card-header"><div class="card-title">JOURNEY'+(b.customSteps&&b.customSteps.length?' <span style="font-family:var(--font-mono);font-size:9px;color:var(--gold2);letter-spacing:1px">· CUSTOM</span>':'')+'</div><button class="btn btn-secondary btn-sm" onclick="openStepEditor(\''+b.id+'\')">'+(appLang()==='nl'?'✎ Schema':'✎ Edit schedule')+'</button></div>'
+      +'<div class="card"><div class="card-header"><div class="card-title">JOURNEY'+(b.customSteps&&b.customSteps.length?' <span style="font-family:var(--font-mono);font-size:9px;color:var(--gold2);letter-spacing:1px">· CUSTOM</span>':'')+'</div><button class="btn btn-secondary btn-sm" data-action="openStepEditor" data-args=\''+JSON.stringify([b.id])+'\'>'+(appLang()==='nl'?'✎ Schema':'✎ Edit schedule')+'</button></div>'
       +'<div class="timeline">'+(timelineHtml||'<p style="color:var(--text3);font-style:italic">No recipe steps available.</p>')+'</div></div>'
       +'</div></div>';
   }
@@ -769,7 +771,7 @@ function renderBatchDetail(){
         +phCell
         +'<td style="font-size:12px;color:var(--text3)">'+escHtml(l.airlock||'—')+'</td>'
         +'<td style="font-style:italic;color:var(--text3);max-width:180px;overflow:hidden;text-overflow:ellipsis">'+escHtml(l.note||'')+'</td>'
-        +'<td><button class="btn btn-danger btn-sm" onclick="deleteLog(\''+b.id+'\',\''+l.id+'\')">✕</button></td></tr>';
+        +'<td><button class="btn btn-danger btn-sm" data-action="deleteLog" data-args=\''+JSON.stringify([b.id,l.id])+'\'>✕</button></td></tr>';
     }).join(''):'<tr><td colspan="'+(anyPH?8:7)+'" style="text-align:center;color:var(--text3);font-style:italic;padding:20px">No readings yet</td></tr>';
     // Prefer the batch's bound fermenter's live temp; fall back to global
     // currentTemp. This is what makes per-fermenter bindings actually useful
@@ -784,13 +786,13 @@ function renderBatchDetail(){
     tabContent='<div class="grid-2">'
       +'<div><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">ADD READING</div></div>'
       +'<div class="form-row"><div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="log-date" value="'+today()+'"></div>'
-      +'<div class="form-group"><label class="form-label">Gravity (SG)'+(b.gravitySensorEntity?' <span style="font-weight:400;color:var(--gold2);font-size:10px;margin-left:6px;font-family:var(--font-mono)">📡 sensor bound</span>':'')+'</label><div style="display:flex;gap:6px"><input class="form-input" type="number" id="log-gravity" placeholder="1.045" step="0.001" min="0.990" max="1.200" style="flex:1">'+(b.gravitySensorEntity?'<button class="btn btn-secondary btn-sm" onclick="pullGravityFromSensor(\''+b.id+'\')" title="Pull latest reading from '+escHtml(b.gravitySensorEntity)+'" style="padding:0 10px">📡</button>':'')+'</div></div></div>'
+      +'<div class="form-group"><label class="form-label">Gravity (SG)'+(b.gravitySensorEntity?' <span style="font-weight:400;color:var(--gold2);font-size:10px;margin-left:6px;font-family:var(--font-mono)">📡 sensor bound</span>':'')+'</label><div style="display:flex;gap:6px"><input class="form-input" type="number" id="log-gravity" placeholder="1.045" step="0.001" min="0.990" max="1.200" style="flex:1">'+(b.gravitySensorEntity?'<button class="btn btn-secondary btn-sm" data-action="pullGravityFromSensor" data-args=\''+JSON.stringify([b.id])+'\' title="Pull latest reading from '+escHtml(b.gravitySensorEntity)+'" style="padding:0 10px">📡</button>':'')+'</div></div></div>'
       +'<div class="form-row"><div class="form-group"><label class="form-label">Temperature (°C)'+tempSrcHint+'</label><input class="form-input" type="number" id="log-temp" placeholder="'+(prefilledT!=null?prefilledT.toFixed(1):'20')+'" step="0.5" value="'+(prefilledT!=null?prefilledT.toFixed(1):'')+'"><div style="font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5;font-style:italic">Active fermentation runs ~3-6°C warmer than the room around it (yeast activity generates real heat). If this is a room/ambient reading rather than a probe on the vessel, the must itself is likely running hotter than this number.</div></div>'
       +'<div class="form-group"><label class="form-label">Airlock Activity</label><select class="form-select" id="log-airlock"><option value="">—</option><option>Very active (&lt;30s)</option><option>Active (30-60s)</option><option>Slow (1-3 min)</option><option>Very slow (3+ min)</option><option>None</option></select></div></div>'
       +'<div class="form-row"><div class="form-group"><label class="form-label">pH <span style="font-weight:400;color:var(--text3);font-size:11px;margin-left:6px">optional · only logged if you enter a value</span></label><input class="form-input" type="number" id="log-ph" placeholder="3.2 — typical healthy range 3.0–3.4" step="0.01" min="2.5" max="4.5"><div style="font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5;font-style:italic">Healthy mead pH during ferment: 3.0–3.4. Below 2.9 means yeast stress (raise pH with potassium carbonate). Above 3.5 risks contamination. Leave blank if you don\'t measure — pH never appears in charts or summaries until you log at least one value.<br><br>Test strips are only a rough ballpark (±0.3-0.5) — fine for a quick check, but a cheap digital meter reads to ~0.1 and is worth it if you\'re making a decision (like buffering) off the number. A meter drifts between uses though — recalibrate with fresh buffer solution before each session, not just once when it\'s new.</div></div>'
       +'<div class="form-group"></div></div>'
       +'<div class="form-group"><label class="form-label">Notes & Observations</label><textarea class="form-textarea" id="log-note" placeholder="Color, aroma, taste, clarity…"></textarea></div>'
-      +'<button class="btn btn-primary" onclick="addLog(\''+b.id+'\')">Log Reading</button></div></div>'
+      +'<button class="btn btn-primary" data-action="addLog" data-args=\''+JSON.stringify([b.id])+'\'>Log Reading</button></div></div>'
       +'<div><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">FERMENTATION CHARTS</div></div>'
       +'<div class="chart-card"><div class="chart-card-title">📉 Gravity &amp; ABV  ·  <span style="color:var(--text3)">SG falls (left), ABV rises (right) · solid = readings, dashed = projection</span></div><div class="chart-wrap" style="height:240px"><canvas id="batch-gravity-chart"></canvas></div></div>'
       +(logs.filter(function(l){return l.gravity!=null;}).length>1?'<div class="chart-card" style="margin-top:12px"><div class="chart-card-title">📊 '+(appLang()==='nl'?'Gistingsanalyse':'Fermentation Analysis')+'  ·  <span style="color:var(--text3);font-size:11px">'+(appLang()==='nl'?'SG · temperatuur · daalsnelheid op één tijdas — zie hoe temperatuur de gisting stuurt':'SG · temperature · drop-rate on one timeline — see how temperature drives fermentation')+'</span></div><div class="chart-wrap" style="height:240px"><canvas id="batch-analysis-chart"></canvas></div></div>':'')
@@ -819,7 +821,7 @@ function renderBatchDetail(){
           return'<div class="chart-card" style="margin-top:12px"><div class="chart-card-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
             +'<span>'+(tBottled?'🌡 Storage Temperature':'🌡 Temperature History')+'  ·  <span style="color:var(--text3);font-size:11px">'+sensorLabel+'</span></span>'
             +'<div style="display:inline-flex;gap:6px;margin-left:auto">'
-            +(function(){var tr=window._batchTempRange||168;return[[24,'24h'],[168,'7d'],[720,'30d']].map(function(o){var a=o[0]===tr;return'<button class="btn btn-secondary btn-sm temp-range-btn" data-trange="'+o[0]+'" onclick="setBatchTempRange(\''+b.id+'\','+o[0]+')" style="padding:6px 12px;font-size:12px;min-width:48px'+(a?';background:rgba(232,196,106,0.18);color:var(--gold2);border-color:var(--gold)':'')+'">'+o[1]+'</button>';}).join('');}())
+            +(function(){var tr=window._batchTempRange||168;return[[24,'24h'],[168,'7d'],[720,'30d']].map(function(o){var a=o[0]===tr;return'<button class="btn btn-secondary btn-sm temp-range-btn" data-trange="'+o[0]+'" data-action="setBatchTempRange" data-args=\''+JSON.stringify([b.id,o[0]])+'\' style="padding:6px 12px;font-size:12px;min-width:48px'+(a?';background:rgba(232,196,106,0.18);color:var(--gold2);border-color:var(--gold)':'')+'">'+o[1]+'</button>';}).join('');}())
             +'</div></div>'
             +'<div class="chart-wrap" style="height:220px;position:relative"><canvas id="batch-temp-history-chart"></canvas>'
             +'<div id="batch-temp-loading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:12px;font-style:italic">Loading history…</div>'
@@ -834,7 +836,7 @@ function renderBatchDetail(){
       +'</div>'
       +'<div class="card"><div class="card-header"><div class="card-title">READING LOG</div></div>'
       +'<table class="data-table"><thead><tr><th>Date</th><th>SG</th><th>ABV</th><th>Temp</th>'+(anyPH?'<th>pH</th>':'')+'<th>Airlock</th><th>Notes</th><th></th></tr></thead><tbody>'+logRows+'</tbody></table>'
-      +(revLogs.length>LOG_CAP?'<div style="text-align:center;margin-top:10px"><button class="btn btn-secondary btn-sm" onclick="toggleBatchLogAll()">'+(window._batchLogShowAll?'Show recent only':('Show all '+revLogs.length+' readings'))+'</button><div style="font-size:11px;color:var(--text3);margin-top:4px">'+(window._batchLogShowAll?('Showing all '+revLogs.length+' readings'):('Showing the latest '+LOG_CAP+' of '+revLogs.length))+'</div></div>':'')
+      +(revLogs.length>LOG_CAP?'<div style="text-align:center;margin-top:10px"><button class="btn btn-secondary btn-sm" data-action="toggleBatchLogAll">'+(window._batchLogShowAll?'Show recent only':('Show all '+revLogs.length+' readings'))+'</button><div style="font-size:11px;color:var(--text3);margin-top:4px">'+(window._batchLogShowAll?('Showing all '+revLogs.length+' readings'):('Showing the latest '+LOG_CAP+' of '+revLogs.length))+'</div></div>':'')
       +'</div>'
       +'</div></div>';
   }
@@ -856,7 +858,7 @@ function renderBatchDetail(){
       for(var i=1;i<=5;i++)stars+='<span style="color:'+(i<=t.rating?'var(--gold2)':'var(--border2)')+'">★</span>';
       return'<div class="tasting-card">'
         +'<div class="tasting-card-header"><div style="font-family:var(--font-mono);font-size:12px;color:var(--text3)">'+fmtDate(t.date)+'</div>'
-        +'<div>'+stars+' <button class="btn btn-danger btn-sm" style="margin-left:8px" onclick="deleteTasting(\''+b.id+'\',\''+t.id+'\')">✕</button></div></div>'
+        +'<div>'+stars+' <button class="btn btn-danger btn-sm" style="margin-left:8px" data-action="deleteTasting" data-args=\''+JSON.stringify([b.id,t.id])+'\'>✕</button></div></div>'
         +(t.wheel&&Object.values(t.wheel).some(function(v){return v>0;})?'<div style="display:flex;gap:14px;align-items:center;margin:8px 0;flex-wrap:wrap"><div style="width:160px;flex-shrink:0">'+getTastingWheelRadarHTML(t.wheel)+'</div><div style="flex:1;min-width:120px;font-size:11px;color:var(--text3);font-family:var(--font-mono);line-height:1.8">'+TASTING_AXES.filter(function(ax){return t.wheel[ax.key]>0;}).map(function(ax){return ax.label+': '+'●'.repeat(t.wheel[ax.key])+'<span style="color:var(--bg4)">'+'●'.repeat(5-t.wheel[ax.key])+'</span>';}).join('<br>')+'</div></div>':'')
         +(t.bjcp?renderBJCPBadge(t.bjcp):'')
         +(t.color?'<div style="font-size:13px;color:var(--text2);margin-bottom:4px"><strong style="color:var(--text3)">Color:</strong> '+escHtml(t.color)+'</div>':'')
@@ -870,7 +872,7 @@ function renderBatchDetail(){
       +'<div><div class="card"><div class="card-header"><div class="card-title">NEW TASTING NOTE</div></div>'
       +'<div class="form-row"><div class="form-group"><label class="form-label">Date</label><input class="form-input" type="date" id="t-date" value="'+today()+'"></div>'
       +'<div class="form-group"><label class="form-label">Rating</label><div class="star-rating" id="t-stars">'
-      +[1,2,3,4,5].map(function(i){return'<span class="star" onclick="setTastingStars('+i+')" id="t-star-'+i+'">★</span>';}).join('')
+      +[1,2,3,4,5].map(function(i){return'<span class="star" data-action="setTastingStars" data-args=\''+JSON.stringify([i])+'\' id="t-star-'+i+'">★</span>';}).join('')
       +'</div><input type="hidden" id="t-rating" value="0"></div></div>'
       +'<div class="form-group"><label class="form-label">Color & Appearance</label><input class="form-input" id="t-color" placeholder="Deep ruby, crystal clear…"></div>'
       +'<div class="form-group"><label class="form-label">Aroma / Nose</label><input class="form-input" id="t-aroma" placeholder="Honey, floral, fruit notes…"></div>'
@@ -879,8 +881,8 @@ function renderBatchDetail(){
       +'<div class="form-group"><label class="form-label">Tasting Wheel <span style="color:var(--text3);font-weight:400;font-size:12px">· tap dots to rate each axis 1-5</span></label><div id="tasting-wheel-container">'+renderTastingWheel(window._tastingWheel||{})+'</div></div>'
       +'<div class="form-group">'+renderBJCPScoresheet()+'</div>'
       +'<div class="form-group"><label class="form-label">Additional Notes</label><textarea class="form-textarea" id="t-note" placeholder="Pairing ideas, comparisons, thoughts…"></textarea></div>'
-      +'<button class="btn btn-primary" onclick="addTasting(\''+b.id+'\')">Add Tasting</button></div></div>'
-      +'<div><div class="card"><div class="card-header"><div class="card-title">TASTING JOURNAL</div>'+(tastings.length>=2?'<button class="btn btn-secondary btn-sm" onclick="openTastingCompareModal(\''+b.id+'\')">📊 Compare</button>':'')+'</div>'+tastingRows+'</div>'
+      +'<button class="btn btn-primary" data-action="addTasting" data-args=\''+JSON.stringify([b.id])+'\'>Add Tasting</button></div></div>'
+      +'<div><div class="card"><div class="card-header"><div class="card-title">TASTING JOURNAL</div>'+(tastings.length>=2?'<button class="btn btn-secondary btn-sm" data-action="openTastingCompareModal" data-args=\''+JSON.stringify([b.id])+'\'>📊 Compare</button>':'')+'</div>'+tastingRows+'</div>'
       +renderTastingEvolution(tastings)
       +'</div>'
       +'</div>'
@@ -906,7 +908,7 @@ function renderBatchDetail(){
         ?'<div style="margin-bottom:12px;padding:10px 12px;border-radius:var(--radius);border-left:3px solid var(--red2);background:rgba(176,58,46,0.1);font-size:12.5px;color:var(--text2);line-height:1.55"><strong style="color:var(--red2)">⚠ Not confirmed stable yet.</strong> No two logged readings 5+ days apart agree — this is a sparkling recipe, and priming on top of leftover fermentable sugar is the most common real cause of bottle bombs. Log one more reading a few days out before bottling if you can.</div>'
         :'<div style="margin-bottom:12px;padding:10px 12px;border-radius:var(--radius);border-left:3px solid #e0843c;background:rgba(224,132,60,0.08);font-size:12.5px;color:var(--text2);line-height:1.55"><strong style="color:#e0843c">⚠ Not confirmed stable yet.</strong> No two logged readings 5+ days apart agree yet. Bottling before fermentation genuinely finishes is the #1 real cause of bottle bombs, especially if you plan to backsweeten. Consider logging one more reading first.</div>';
     }
-    tabContent='<div class="grid-2"><div><div class="card"><div class="card-header"><div class="card-title">BOTTLING RECORD</div><button class="btn btn-primary btn-sm" onclick="startBottlingWorkflow(\''+b.id+'\')" title="Guided step-by-step bottling">🍾 Guided Workflow</button></div>'
+    tabContent='<div class="grid-2"><div><div class="card"><div class="card-header"><div class="card-title">BOTTLING RECORD</div><button class="btn btn-primary btn-sm" data-action="startBottlingWorkflow" data-args=\''+JSON.stringify([b.id])+'\' title="Guided step-by-step bottling">🍾 Guided Workflow</button></div>'
       +btStableWarning
       +'<div class="form-row"><div class="form-group"><label class="form-label">Bottle Date</label><input class="form-input" type="date" id="bt-date" value="'+(bottling.date||today())+'"></div>'
       +'<div class="form-group"><label class="form-label">Final Gravity</label><input class="form-input" type="number" id="bt-fg" step="0.001" placeholder="1.010" value="'+(bottling.fg||lastG||'')+'" oninput="updateBottlingSweetHint(\''+b.id+'\')"></div></div>'
@@ -922,7 +924,7 @@ function renderBatchDetail(){
       +'<div class="form-group"><label class="form-label">Sweetness</label><select class="form-select" id="bt-sweet">'
       +sweetnessOptionLabels(b.beverageType).map(function(o){return'<option'+(bottling.sweetness===o?' selected':'')+'>'+o+'</option>';}).join('')
       +'</select><div id="bt-sweet-hint" style="font-size:11px;color:var(--text3);margin-top:4px">'+_bottlingSweetHintHtml(bottling.fg||lastG,b.beverageType)+'</div>'
-      +(btSig&&btSig.sparkling?'<button type="button" class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="openCarbonationCalcForBatch(\''+b.id+'\')">🍾 Priming Calculator</button>':'')
+      +(btSig&&btSig.sparkling?'<button type="button" class="btn btn-secondary btn-sm" style="margin-top:6px" data-action="openCarbonationCalcForBatch" data-args=\''+JSON.stringify([b.id])+'\'>🍾 Priming Calculator</button>':'')
       +'</div>'
       +'<div class="form-group"><label class="form-label">Closure</label><select class="form-select" id="bt-closure">'
       +'<option value="crown"'+((bottling.closure||'crown')==='crown'?' selected':'')+'>⭕ Crown caps</option>'
@@ -931,17 +933,17 @@ function renderBatchDetail(){
       +'</select></div></div>'
       +(!bottling.date?'<div style="font-size:11.5px;color:var(--text3);font-style:italic;margin:-4px 0 12px">'+(appLang()==='nl'?'Flessen en '+(bottling.closure==='cork'?'kurken':bottling.closure==='swing-top'?'beugeldoppen':'doppen')+' worden afgetrokken van je bijgehouden voorraad.':'Bottles and '+(bottling.closure==='cork'?'corks':bottling.closure==='swing-top'?'swing-top seals':'caps')+' will be deducted from your tracked supplies.')+'</div>':'')
       +'<div class="form-group"><label class="form-label">Notes</label><textarea class="form-textarea" id="bt-notes" placeholder="Bottle type, cap/cork, storage location…">'+escHtml(bottling.notes||'')+'</textarea></div>'
-      +'<button class="btn btn-primary" onclick="saveBottling(\''+b.id+'\')">'+(bottling.date?'Update':'Record')+' Bottling</button>'
-      +(bottling.date?' <button class="btn btn-danger" onclick="clearBottling(\''+b.id+'\')">Clear</button>':'')
+      +'<button class="btn btn-primary" data-action="saveBottling" data-args=\''+JSON.stringify([b.id])+'\'>'+(bottling.date?'Update':'Record')+' Bottling</button>'
+      +(bottling.date?' <button class="btn btn-danger" data-action="clearBottling" data-args=\''+JSON.stringify([b.id])+'\'>Clear</button>':'')
       +'<script>setTimeout(updateBottlingTotalDisplay,10);<\/script>'
       +'</div></div>'
       +'<div><div class="card"><div class="card-header"><div class="card-title">BOTTLE LABEL</div><div style="display:flex;gap:6px;flex-wrap:wrap">'
       +((recipe&&typeof studioHasBack==='function'&&studioHasBack(recipe.id))
-        ?'<button class="btn btn-secondary btn-sm" onclick="downloadLabel(\''+b.id+'\',\'front\')" title="Save the front label as PNG">⬇ Front</button>'
-          +'<button class="btn btn-secondary btn-sm" onclick="downloadLabel(\''+b.id+'\',\'back\')" title="Save the back label as PNG">⬇ Back</button>'
-          +'<button class="btn btn-secondary btn-sm" onclick="downloadLabel(\''+b.id+'\',\'both\')" title="Save front and back as two separate PNG files">⬇ Both</button>'
-        :'<button class="btn btn-secondary btn-sm" onclick="downloadLabel(\''+b.id+'\')" title="Save as PNG">⬇ Save</button>')
-      +'<button class="btn btn-secondary btn-sm" onclick="printLabel(\''+b.id+'\')" title="Print">🖨 Print</button></div></div>'
+        ?'<button class="btn btn-secondary btn-sm" data-action="downloadLabel" data-args=\''+JSON.stringify([b.id,'front'])+'\' title="Save the front label as PNG">⬇ Front</button>'
+          +'<button class="btn btn-secondary btn-sm" data-action="downloadLabel" data-args=\''+JSON.stringify([b.id,'back'])+'\' title="Save the back label as PNG">⬇ Back</button>'
+          +'<button class="btn btn-secondary btn-sm" data-action="downloadLabel" data-args=\''+JSON.stringify([b.id,'both'])+'\' title="Save front and back as two separate PNG files">⬇ Both</button>'
+        :'<button class="btn btn-secondary btn-sm" data-action="downloadLabel" data-args=\''+JSON.stringify([b.id])+'\' title="Save as PNG">⬇ Save</button>')
+      +'<button class="btn btn-secondary btn-sm" data-action="printLabel" data-args=\''+JSON.stringify([b.id])+'\' title="Print">🖨 Print</button></div></div>'
       // Cap the preview at 420px so wide screens don\'t blow up the 900×900
       // square label image into a half-meter horse mosaic. Centered with margin
       // auto. The PNG/print outputs are unaffected — they render at full res.
@@ -949,7 +951,7 @@ function renderBatchDetail(){
       +'<div style="font-size:12px;color:var(--text3);margin-top:12px;font-style:italic;text-align:center">'+(appLang()==='nl'?'Het alcoholpercentage zit verwerkt in de zeshoek. <strong>Opslaan</strong> downloadt een PNG; <strong>Afdrukken</strong> opent een printdialoog op flesetiket-formaat.':'ABV is baked into the hexagon. <strong>Save</strong> downloads a PNG; <strong>Print</strong> opens a print dialog sized for bottle labels.')+'</div>'
       +'</div>'
       +(bottling.date
-        ?'<div class="card" style="margin-top:16px"><div class="card-header"><div class="card-title">📦 STORAGE BOX LABEL</div><div style="display:flex;gap:6px"><button class="btn btn-secondary btn-sm" onclick="downloadStorageLabel(\''+b.id+'\')" title="Save as high-res PNG">⬇ Save</button><button class="btn btn-secondary btn-sm" onclick="printStorageLabel(\''+b.id+'\')" title="Print at 15cm × 10cm">🖨 Print</button></div></div>'
+        ?'<div class="card" style="margin-top:16px"><div class="card-header"><div class="card-title">📦 STORAGE BOX LABEL</div><div style="display:flex;gap:6px"><button class="btn btn-secondary btn-sm" data-action="downloadStorageLabel" data-args=\''+JSON.stringify([b.id])+'\' title="Save as high-res PNG">⬇ Save</button><button class="btn btn-secondary btn-sm" data-action="printStorageLabel" data-args=\''+JSON.stringify([b.id])+'\' title="Print at 15cm × 10cm">🖨 Print</button></div></div>'
         // Storage label is 3:2 landscape — let it fill the card up to 560px wide
         // and scale the embedded SVG to fit. Without this the inline SVG renders
         // at its intrinsic viewBox dimensions (1500×1000) which overflows on
@@ -964,39 +966,39 @@ function renderBatchDetail(){
   }
 
   return'<div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;flex-wrap:wrap">'
-    +'<button class="btn btn-secondary btn-sm" onclick="showView(\'batches\')">← Cellar</button>'
+    +'<button class="btn btn-secondary btn-sm" data-action="showView" data-args=\'["batches"]\'>← Cellar</button>'
     +'<div class="page-title" style="margin-bottom:0;color:'+color+'">'+escHtml(b.name)+'</div>'
     +(b.serial?'<span title="Batch serial — unique per year. Stable from creation; safe to reference on labels and storage boxes." style="font-family:var(--font-mono);font-size:11px;color:var(--text3);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:10px;letter-spacing:0.5px">#'+escHtml(b.serial)+'</span>':'')
     +statusBadge(status)
     +fermentationBadge(b)
     +'<div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap">'
-    +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" onclick="printBatchCertificate(\''+b.id+'\')" title="Print a one-page certificate for this batch">📜 Certificate</button>':'')
-    +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" onclick="openPermanentRecord(\''+b.id+'\')" title="Print or save the complete batch journal — every log, addition, tasting, cost, signed off with brewer name">📜 Complete Record</button>':'')
-    +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" onclick="openGiftCardModal(\''+b.id+'\')" title="Print a small gift card to accompany a gifted bottle">🎁 Gift Card</button>':'')
-    +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" onclick="copyShareLink(\''+b.id+'\')" title="Copy a public share link (unguessable token, resolves live data — nothing is embedded in the URL)">🔗 Share Link</button>':'')
-    +((status==='bottled'||status==='complete')&&typeof hasShareToken==='function'&&hasShareToken(b.id)?'<button class="btn btn-secondary btn-sm" onclick="revokeShareLink(\''+b.id+'\')" title="Revoke the share link — the existing URL stops working immediately">🔗✕ Revoke Link</button>':'')
-    +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" onclick="saveAsTemplate(\''+b.id+'\')" title="Save this batch\'s config as a reusable template">💾 Save Template</button>':'')
-    +(status!=='bottled'&&status!=='complete'?'<button class="btn btn-secondary btn-sm" onclick="openRackModal(\''+b.id+'\')" title="Rack this batch to a different vessel">🔁 Rack to Vessel</button>':'')
-    +(status!=='bottled'&&status!=='complete'?'<button class="btn btn-secondary btn-sm" onclick="showStuckFermDiagnosis(\''+b.id+'\')" title="Diagnose stalled fermentation">🔬 Diagnose</button>':'')
-    +'<button class="btn btn-secondary btn-sm" onclick="openOffFlavorWizard()" title="Mold, off-flavors, smells wrong — work backward from what you\'re seeing/tasting to a likely cause">🧭 Something Wrong?</button>'
-    +(status!=='bottled'&&status!=='complete'?'<button class="btn btn-secondary btn-sm" onclick="printFermenterCard(\''+b.id+'\')" title="Print a card to label/stick on the fermenter">🏷 Fermenter Card</button>':'')
-    +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" onclick="brewAgain(\''+b.id+'\')" title="Create a new batch from this recipe">🔄 Brew Again</button>':'')
+    +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" data-action="printBatchCertificate" data-args=\''+JSON.stringify([b.id])+'\' title="Print a one-page certificate for this batch">📜 Certificate</button>':'')
+    +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" data-action="openPermanentRecord" data-args=\''+JSON.stringify([b.id])+'\' title="Print or save the complete batch journal — every log, addition, tasting, cost, signed off with brewer name">📜 Complete Record</button>':'')
+    +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" data-action="openGiftCardModal" data-args=\''+JSON.stringify([b.id])+'\' title="Print a small gift card to accompany a gifted bottle">🎁 Gift Card</button>':'')
+    +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" data-action="copyShareLink" data-args=\''+JSON.stringify([b.id])+'\' title="Copy a public share link (unguessable token, resolves live data — nothing is embedded in the URL)">🔗 Share Link</button>':'')
+    +((status==='bottled'||status==='complete')&&typeof hasShareToken==='function'&&hasShareToken(b.id)?'<button class="btn btn-secondary btn-sm" data-action="revokeShareLink" data-args=\''+JSON.stringify([b.id])+'\' title="Revoke the share link — the existing URL stops working immediately">🔗✕ Revoke Link</button>':'')
+    +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" data-action="saveAsTemplate" data-args=\''+JSON.stringify([b.id])+'\' title="Save this batch\'s config as a reusable template">💾 Save Template</button>':'')
+    +(status!=='bottled'&&status!=='complete'?'<button class="btn btn-secondary btn-sm" data-action="openRackModal" data-args=\''+JSON.stringify([b.id])+'\' title="Rack this batch to a different vessel">🔁 Rack to Vessel</button>':'')
+    +(status!=='bottled'&&status!=='complete'?'<button class="btn btn-secondary btn-sm" data-action="showStuckFermDiagnosis" data-args=\''+JSON.stringify([b.id])+'\' title="Diagnose stalled fermentation">🔬 Diagnose</button>':'')
+    +'<button class="btn btn-secondary btn-sm" data-action="openOffFlavorWizard" title="Mold, off-flavors, smells wrong — work backward from what you\'re seeing/tasting to a likely cause">🧭 Something Wrong?</button>'
+    +(status!=='bottled'&&status!=='complete'?'<button class="btn btn-secondary btn-sm" data-action="printFermenterCard" data-args=\''+JSON.stringify([b.id])+'\' title="Print a card to label/stick on the fermenter">🏷 Fermenter Card</button>':'')
+    +((status==='bottled'||status==='complete')?'<button class="btn btn-secondary btn-sm" data-action="brewAgain" data-args=\''+JSON.stringify([b.id])+'\' title="Create a new batch from this recipe">🔄 Brew Again</button>':'')
     +(b.failed
-      ?'<button class="btn btn-secondary btn-sm" onclick="openFailureModal(\''+b.id+'\')" title="Edit the failure postmortem notes">✏ Edit Postmortem</button>'
-        +'<button class="btn btn-secondary btn-sm" onclick="unmarkBatchFailed(\''+b.id+'\')" title="Restore this batch to its previous active state">↺ Unfail</button>'
-      :'<button class="btn btn-secondary btn-sm" onclick="openFailureModal(\''+b.id+'\')" title="Record a postmortem for a dumped or failed batch — preserves the lesson without losing the data" style="color:var(--gold2);border-color:var(--gold)">⚰ Mark as Failed</button>')
-    +'<button class="btn btn-danger btn-sm" onclick="deleteBatch(\''+b.id+'\')">Delete</button></div></div>'
+      ?'<button class="btn btn-secondary btn-sm" data-action="openFailureModal" data-args=\''+JSON.stringify([b.id])+'\' title="Edit the failure postmortem notes">✏ Edit Postmortem</button>'
+        +'<button class="btn btn-secondary btn-sm" data-action="unmarkBatchFailed" data-args=\''+JSON.stringify([b.id])+'\' title="Restore this batch to its previous active state">↺ Unfail</button>'
+      :'<button class="btn btn-secondary btn-sm" data-action="openFailureModal" data-args=\''+JSON.stringify([b.id])+'\' title="Record a postmortem for a dumped or failed batch — preserves the lesson without losing the data" style="color:var(--gold2);border-color:var(--gold)">⚰ Mark as Failed</button>')
+    +'<button class="btn btn-danger btn-sm" data-action="deleteBatch" data-args=\''+JSON.stringify([b.id])+'\'>Delete</button></div></div>'
     +(b.failed?renderFailureBanner(b):'')
     +'<div class="brand-bar" style="background:'+color+'"></div>'
     +'<div class="page-subtitle">'+fmtDuration(d)+' · '+(recipe?recipe.style:(b.style||'Custom'))+' · '+(currentABV!=='—'?'Est. '+currentABV+'% ABV':'OG '+(b.og||'?'))+'</div>'
     +'<div class="tabs">'
-    +'<div class="tab '+(activeTab==='overview'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'overview\')">Overview</div>'
-    +'<div class="tab '+(activeTab==='log'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'log\')">Gravity Log</div>'
-    +'<div class="tab '+(activeTab==='additions'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'additions\')">Additions'+(getOverdueAdditions().filter(function(x){return x.batch.id===b.id;}).length?' <span style="background:var(--red);color:#fff;font-size:9px;padding:1px 5px;border-radius:6px;margin-left:4px">!</span>':'')+'</div>'
-    +'<div class="tab '+(activeTab==='coach'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'coach\')">'+(appLang()==='nl'?'⭐ Adviseur':'⭐ Advisor')+'</div>'
-    +'<div class="tab '+(activeTab==='tasting'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'tasting\')">Tasting Notes</div>'
-    +'<div class="tab '+(activeTab==='photos'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'photos\')">Photos'+((APP.photos[b.id]||[]).length?' <span style="background:var(--bg4);color:var(--text3);font-size:9px;padding:1px 5px;border-radius:6px;margin-left:2px">'+(APP.photos[b.id]||[]).length+'</span>':'')+'</div>'
-    +'<div class="tab '+(activeTab==='bottle'?'active':'')+'" onclick="setBatchTab(\''+b.id+'\',\'bottle\')">Bottling</div>'
+    +'<div class="tab '+(activeTab==='overview'?'active':'')+'" data-action="setBatchTab" data-args=\''+JSON.stringify([b.id,'overview'])+'\'>Overview</div>'
+    +'<div class="tab '+(activeTab==='log'?'active':'')+'" data-action="setBatchTab" data-args=\''+JSON.stringify([b.id,'log'])+'\'>Gravity Log</div>'
+    +'<div class="tab '+(activeTab==='additions'?'active':'')+'" data-action="setBatchTab" data-args=\''+JSON.stringify([b.id,'additions'])+'\'>Additions'+(getOverdueAdditions().filter(function(x){return x.batch.id===b.id;}).length?' <span style="background:var(--red);color:#fff;font-size:9px;padding:1px 5px;border-radius:6px;margin-left:4px">!</span>':'')+'</div>'
+    +'<div class="tab '+(activeTab==='coach'?'active':'')+'" data-action="setBatchTab" data-args=\''+JSON.stringify([b.id,'coach'])+'\'>'+(appLang()==='nl'?'⭐ Adviseur':'⭐ Advisor')+'</div>'
+    +'<div class="tab '+(activeTab==='tasting'?'active':'')+'" data-action="setBatchTab" data-args=\''+JSON.stringify([b.id,'tasting'])+'\'>Tasting Notes</div>'
+    +'<div class="tab '+(activeTab==='photos'?'active':'')+'" data-action="setBatchTab" data-args=\''+JSON.stringify([b.id,'photos'])+'\'>Photos'+((APP.photos[b.id]||[]).length?' <span style="background:var(--bg4);color:var(--text3);font-size:9px;padding:1px 5px;border-radius:6px;margin-left:2px">'+(APP.photos[b.id]||[]).length+'</span>':'')+'</div>'
+    +'<div class="tab '+(activeTab==='bottle'?'active':'')+'" data-action="setBatchTab" data-args=\''+JSON.stringify([b.id,'bottle'])+'\'>Bottling</div>'
     +'</div>'+tabContent;
 }
 
@@ -1009,7 +1011,7 @@ function _blendLineageHtml(b){
     if(c.batchId==='__water')return 'water '+pct;
     var src=getBatch(c.batchId);
     var nm=src?src.name:(nl?'onbekend':'unknown');
-    return '<span style="cursor:pointer;color:var(--gold2)" onclick="showView(\'batch\',\''+c.batchId+'\')">'+escHtml(nm)+'</span> '+pct;
+    return '<span style="cursor:pointer;color:var(--gold2)" data-action="showView" data-args=\''+JSON.stringify(['batch',c.batchId])+'\'>'+escHtml(nm)+'</span> '+pct;
   }).join(' + ');
   return '<div class="info-box" style="margin-bottom:16px;border-left-color:var(--gold2)"><div style="font-size:13px;color:var(--text2)">🥂 '+(nl?'Blend van':'Blend of')+': '+parts+'</div></div>';
 }
@@ -1025,7 +1027,7 @@ function _stepEditorRow(s){
     +'<input class="form-input" data-step-day type="number" value="'+(s.day!=null?s.day:0)+'" style="width:60px;flex:0 0 auto" title="Day">'
     +'<div style="flex:1;min-width:0"><input class="form-input" data-step-title value="'+escHtml(s.title||'')+'" placeholder="Title" style="margin-bottom:6px">'
     +'<textarea class="form-textarea" data-step-desc placeholder="Description" style="min-height:46px">'+escHtml(s.desc||'')+'</textarea></div>'
-    +'<button class="btn btn-danger btn-sm" onclick="this.closest(\'[data-step-row]\').remove()" style="flex:0 0 auto">✕</button>'
+    +'<button class="btn btn-danger btn-sm" data-action="_removeBatchStepRow" style="flex:0 0 auto">✕</button>'
     +'</div>';
 }
 function _readStepEditorRows(){
@@ -1051,13 +1053,13 @@ function openStepEditor(batchId){
     +'<div style="font-size:12px;color:var(--text3);margin-bottom:10px">'+(nl?'Pas dagen, titels en omschrijvingen aan. Een opgeslagen schema overschrijft het recept voor déze partij.':'Adjust days, titles and descriptions. A saved schedule overrides the recipe for this batch only.')+(custom?'':' '+(nl?'(Begint vanaf het recept.)':'(Starting from the recipe.)'))+'</div>'
     +tplPicker
     +'<div id="step-editor-rows" style="flex:1;overflow-y:auto;min-height:120px">'+steps.map(_stepEditorRow).join('')+'</div>'
-    +'<button class="btn btn-secondary btn-sm" style="margin-top:8px;align-self:flex-start" onclick="stepEditorAddRow()">＋ '+(nl?'Stap toevoegen':'Add step')+'</button>'
+    +'<button class="btn btn-secondary btn-sm" style="margin-top:8px;align-self:flex-start" data-action="stepEditorAddRow">＋ '+(nl?'Stap toevoegen':'Add step')+'</button>'
     +'<div class="modal-actions" style="border-top:1px solid var(--border);padding-top:12px;margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between">'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-        +(custom?'<button class="btn btn-secondary btn-sm" onclick="resetBatchSteps(\''+b.id+'\')">↺ '+(nl?'Terug naar recept':'Reset to recipe')+'</button>':'')
-        +'<button class="btn btn-secondary btn-sm" onclick="saveStepTemplate(\''+b.id+'\')">💾 '+(nl?'Als sjabloon':'Save as template')+'</button>'
+        +(custom?'<button class="btn btn-secondary btn-sm" data-action="resetBatchSteps" data-args=\''+JSON.stringify([b.id])+'\'>↺ '+(nl?'Terug naar recept':'Reset to recipe')+'</button>':'')
+        +'<button class="btn btn-secondary btn-sm" data-action="saveStepTemplate" data-args=\''+JSON.stringify([b.id])+'\'>💾 '+(nl?'Als sjabloon':'Save as template')+'</button>'
       +'</div>'
-      +'<div style="display:flex;gap:8px"><button class="btn btn-secondary" onclick="closeModal()">'+(nl?'Annuleren':'Cancel')+'</button><button class="btn btn-primary" onclick="saveStepEditor(\''+b.id+'\')">'+(nl?'Opslaan':'Save')+'</button></div>'
+      +'<div style="display:flex;gap:8px"><button class="btn btn-secondary" data-action="closeModal">'+(nl?'Annuleren':'Cancel')+'</button><button class="btn btn-primary" data-action="saveStepEditor" data-args=\''+JSON.stringify([b.id])+'\'>'+(nl?'Opslaan':'Save')+'</button></div>'
     +'</div></div></div>');
 }
 function stepEditorAddRow(){
@@ -1128,7 +1130,7 @@ function renderCompetitions(b){
         +'<div style="font-family:var(--font-mono);font-size:10.5px;color:'+am.c+';letter-spacing:0.5px;margin-top:2px">'+am.l.toUpperCase()+(score?' · '+escHtml(score):'')+(c.date?' · '+fmtDate(c.date):'')+'</div>'
         +(c.notes?'<div style="font-size:12px;color:var(--text2);font-style:italic;margin-top:4px">'+escHtml(c.notes)+'</div>':'')
       +'</div>'
-      +'<button class="btn btn-danger btn-sm" onclick="deleteCompetition(\''+b.id+'\',\''+c.id+'\')">✕</button>'
+      +'<button class="btn btn-danger btn-sm" data-action="deleteCompetition" data-args=\''+JSON.stringify([b.id,c.id])+'\'>✕</button>'
     +'</div>';
   }).join(''):'<div style="color:var(--text3);font-style:italic;font-size:13px;padding:12px 0">'+(nl?'Nog geen wedstrijdinzendingen.':'No competition entries yet.')+'</div>';
   return '<div class="card" style="margin-top:16px"><div class="card-header"><div class="card-title">'+(nl?'🏆 WEDSTRIJDEN &amp; PRIJZEN':'🏆 COMPETITIONS &amp; AWARDS')+'</div></div>'
@@ -1139,7 +1141,7 @@ function renderCompetitions(b){
     +'<div class="form-row"><div class="form-group"><label class="form-label">'+(nl?'Score':'Score')+'</label><input class="form-input" type="number" id="comp-score" step="0.5" placeholder="38"></div>'
     +'<div class="form-group"><label class="form-label">'+(nl?'Max score':'Max score')+'</label><input class="form-input" type="number" id="comp-max" placeholder="50"></div></div>'
     +'<div class="form-group"><label class="form-label">'+(nl?'Notities van de jury':'Judge notes')+'</label><textarea class="form-textarea" id="comp-notes" placeholder="'+(nl?'Feedback, opmerkingen…':'Feedback, remarks…')+'"></textarea></div>'
-    +'<button class="btn btn-primary" onclick="addCompetition(\''+b.id+'\')">'+(nl?'Inzending toevoegen':'Add Entry')+'</button>'
+    +'<button class="btn btn-primary" data-action="addCompetition" data-args=\''+JSON.stringify([b.id])+'\'>'+(nl?'Inzending toevoegen':'Add Entry')+'</button>'
     +'<div style="margin-top:14px">'+rows+'</div>'
     +'</div>';
 }
@@ -1444,11 +1446,10 @@ function isTaskDone(id){
 function isTaskCompletedToday(id){
   return APP.tasksDone&&APP.tasksDone[id]===today();
 }
-// el is an explicit-call holdover (onclick="toggleTask('id',this)", not yet
-// converted everywhere); a data-action call passes no second argument, but
-// _delegateClick's fn.apply(el,args) already binds `this` to the clicked
-// element, so el falls back to it — either calling style updates the
-// checkbox instantly without waiting for a full re-render.
+// Every call site now goes through data-action="toggleTask" data-args='[id]'
+// (no explicit el argument) — _delegateClick's fn.apply(el,args) binds `this`
+// to the clicked element, so el falls back to it. Updates the checkbox
+// instantly without waiting for a full re-render.
 function toggleTask(id,el){
   el=el||this;
   if(!APP.tasksDone)APP.tasksDone={};
@@ -1592,7 +1593,7 @@ function renderCoach(){
   var briefs='';
   var activeBatches=APP.batches.filter(function(b){var s=getBatchStatus(b);return s!=='complete'&&s!=='bottled'&&s!=='failed';});
   if(!activeBatches.length){
-    briefs='<div class="empty-state"><div class="es-icon">🍯</div><p>No active batches to coach.</p><br><button class="btn btn-primary" onclick="openNewBatchModal()">＋ Start Brewing</button></div>';
+    briefs='<div class="empty-state"><div class="es-icon">🍯</div><p>No active batches to coach.</p><br><button class="btn btn-primary" data-action="openNewBatchModal">＋ Start Brewing</button></div>';
   }else{
     briefs=activeBatches.map(function(b){
       var day=daysSince(b.startDate),status=getBatchStatus(b);
@@ -1616,7 +1617,7 @@ function renderCoach(){
         +'<div style="height:3px;background:'+color+'"></div>'
         +'<div style="padding:18px">'
         +'<div class="card-header"><div><div class="card-title" style="color:'+color+'">'+escHtml(b.name)+'</div><div class="card-subtitle" style="display:flex;align-items:center;gap:8px;margin-top:4px">'+fmtDuration(day)+' '+statusBadge(status)+'</div></div>'
-        +'<button class="btn btn-secondary btn-sm" onclick="showView(\'batch\',\''+b.id+'\');setBatchTab(\''+b.id+'\',\'log\')">Log Reading</button></div>'
+        +'<button class="btn btn-secondary btn-sm" data-action="_openBatchLogTab" data-args=\''+JSON.stringify([b.id])+'\'>Log Reading</button></div>'
         +'<div class="info-box" style="margin:0 0 12px;border-left-color:'+color+'"><div style="font-size:13px;color:var(--text2)">'+statusMsg+'</div></div>'
         +(visibleTasks.length?visibleTasks.map(function(td){
           var overdueClass=td.isOverdue?' overdue':'';
@@ -1624,7 +1625,7 @@ function renderCoach(){
           return'<div class="coach-box'+overdueClass+'" style="margin-bottom:12px'+(td.isOverdue?';border-color:var(--red);border-left:4px solid var(--red2);background:linear-gradient(135deg,#251012,#180b0b)':'')+'"><div class="coach-title"'+(td.isOverdue?' style="color:var(--red2)"':'')+'>'+(td.isOverdue?'⚠':'⚗')+(_nl?' ACTIE VEREIST — DAG ':' ACTION DUE — DAY ')+td.day+dayLabel+'</div>'
             +'<div style="font-family:var(--font-display);font-size:14px;color:'+(td.isOverdue?'var(--red2)':'var(--gold2)')+';margin-bottom:6px">'+escHtml(td.title)+'</div>'
             +'<div class="coach-text">'+escHtml(annotateNutrientDesc(td.desc))+'</div>'
-            +'<div class="coach-tasks" style="margin-top:12px"><div class="coach-task"><div class="task-cb '+(td.done?'checked':'')+'" onclick="toggleTask(\''+td.id+'\',this)">'+(td.done?'✓':'')+'</div><span style="font-size:13px">'+(td.done?'Done today — uncheck if not':'Mark as done')+'</span></div></div></div>';
+            +'<div class="coach-tasks" style="margin-top:12px"><div class="coach-task"><div class="task-cb '+(td.done?'checked':'')+'" data-action="toggleTask" data-args=\''+JSON.stringify([td.id])+'\'>'+(td.done?'✓':'')+'</div><span style="font-size:13px">'+(td.done?'Done today — uncheck if not':'Mark as done')+'</span></div></div></div>';
         }).join('')
           :'<div class="info-box green" style="margin-bottom:12px"><div style="font-size:13px;color:var(--green2)">✓ No action today. Verify airlock water and temperature.</div></div>')
         +(nextTask?'<div style="font-size:13px;color:var(--text3)">'+(_nl?'Volgende: ':'Next: ')+'<span style="color:var(--text2)">'+(_nl?'Dag ':'Day ')+nextTask.day+' — '+escHtml((_nl&&typeof STEP_TITLE_NL!=='undefined'&&STEP_TITLE_NL[nextTask.title])||nextTask.title)+'</span> ('+(_nl?'over ':'in ')+fmtDuration(-nextTask.daysFromDue)+')</div>':'')
@@ -1685,7 +1686,7 @@ function renderCoachDrinkingSection(){
       return'<div style="background:rgba(0,0,0,0.18);border-radius:var(--radius);padding:12px;margin-bottom:8px;border-left:3px solid '+titleColor+'">'
         +'<div style="font-family:var(--font-display);font-size:13px;color:'+titleColor+';margin-bottom:4px;letter-spacing:1px">'+icon+' '+escHtml(td.title)+'</div>'
         +'<div style="font-size:13px;color:var(--text2);line-height:1.5;margin-bottom:10px">'+escHtml(stepDescL(td.desc))+'</div>'
-        +'<div class="coach-task" style="margin-top:4px"><div class="task-cb '+(done?'checked':'')+'" onclick="toggleTask(\''+td.id+'\',this)">'+(done?'✓':'')+'</div><span style="font-size:12.5px">'+(done?'Acknowledged today':'Mark acknowledged')+'</span></div>'
+        +'<div class="coach-task" style="margin-top:4px"><div class="task-cb '+(done?'checked':'')+'" data-action="toggleTask" data-args=\''+JSON.stringify([td.id])+'\'>'+(done?'✓':'')+'</div><span style="font-size:12.5px">'+(done?'Acknowledged today':'Mark acknowledged')+'</span></div>'
         +'</div>';
     }).join('');
     return'<div class="card" style="margin-bottom:12px;padding:0;overflow:hidden">'
@@ -1696,7 +1697,7 @@ function renderCoachDrinkingSection(){
       +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">'+onHand+' BOTTLE'+(onHand===1?'':'S')+' ON HAND</div>'
       +'</div>'
       +taskHtml
-      +'<button class="btn btn-secondary btn-sm" onclick="showView(\'batch\',\''+b.id+'\')" style="margin-top:4px">Open '+escHtml(b.name)+' →</button>'
+      +'<button class="btn btn-secondary btn-sm" data-action="showView" data-args=\'["batch","'+b.id+'"]\' style="margin-top:4px">Open '+escHtml(b.name)+' →</button>'
       +'</div></div>';
   }).join('');
   return'<div class="card" style="margin-bottom:16px;padding:0;overflow:hidden">'

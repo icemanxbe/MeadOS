@@ -2,6 +2,47 @@
 // honey/yeast/nutrient libraries, settings, fermenter management
 // Plain script, shared global scope; loaded in order (see index.html).
 'use strict';
+function _openHoneyDetail(name){
+  window.currentHoneyName=name;
+  showView('honey-detail');
+}
+function _openRecipeDetailFromChip(id){
+  currentRecipeId=id;
+  showView('recipe-detail');
+}
+function _startBatchWithHoney(name){
+  openNewBatchModal();
+  setTimeout(function(){
+    var s=document.getElementById('nb-honey-type');
+    if(s){s.value=name;}
+  },200);
+}
+function _openAppleDetail(name){
+  window.currentAppleName=name;
+  showView('apple-detail');
+}
+function _openYeastDetail(id){
+  currentYeastId=id;
+  showView('yeast-detail');
+}
+function _openNutrientDetail(id){
+  currentNutrientId=id;
+  showView('nutrient-detail');
+}
+function _selectSelf(){
+  this.select();
+}
+function _copyCalendarUrl(url){
+  navigator.clipboard&&navigator.clipboard.writeText(url);
+  toast('✦ Calendar URL copied');
+}
+function _confirmDisableCalendarFeed(){
+  if(confirm('Disable the feed? The current link will stop working.'))disableCalendarFeed();
+}
+function _triggerImportFileClick(){
+  document.getElementById('import-file').click();
+}
+
 // ==================== HONEY LIBRARY ====================
 // Full-page Honey Library view (accessible from sidebar)
 function renderHoneyLibrary(){
@@ -53,7 +94,7 @@ function renderHoneyInSeasonCard(){
       var color=(prof&&prof.color)||'var(--gold)';
       var isPeak=h.proximity>=1.0;
       var peakBadge=isPeak?'<span style="font-family:var(--font-mono);font-size:9px;color:var(--green2);letter-spacing:1.5px;margin-left:8px;background:rgba(122,160,64,0.15);padding:1px 6px;border-radius:6px;border:1px solid rgba(122,160,64,0.3)">PEAK</span>':'';
-      return'<span onclick="currentHoneyName=\''+h.name.replace(/\'/g,"\\\'")+'\';showView(\'honey-detail\')" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-family:var(--font-display);font-size:13px;color:'+color+';background:rgba(0,0,0,0.18);border:1px solid '+color+'55;padding:6px 12px;border-radius:14px;margin:3px 4px 3px 0;transition:background 0.15s" onmouseover="this.style.background=\'rgba(0,0,0,0.32)\'" onmouseout="this.style.background=\'rgba(0,0,0,0.18)\'">'+escHtml(h.name)+peakBadge+'</span>';
+      return'<span data-action="_openHoneyDetail" data-args=\''+JSON.stringify([h.name])+'\' style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-family:var(--font-display);font-size:13px;color:'+color+';background:rgba(0,0,0,0.18);border:1px solid '+color+'55;padding:6px 12px;border-radius:14px;margin:3px 4px 3px 0;transition:background 0.15s" onmouseover="this.style.background=\'rgba(0,0,0,0.32)\'" onmouseout="this.style.background=\'rgba(0,0,0,0.18)\'">'+escHtml(h.name)+peakBadge+'</span>';
     }).join('');
     return'<div style="margin-bottom:12px">'
       +'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--gold);letter-spacing:2px;margin-bottom:4px">'+regionLabels[r]+'</div>'
@@ -146,7 +187,7 @@ function renderHoneyLibrarySection(){
     if(!p)return'';
     var recipes=recipesUsingHoney(name);
     var recipePills=recipes.length?recipes.slice(0,4).map(function(r){
-      return'<span onclick="event.stopPropagation();currentRecipeId=\''+r.id+'\';showView(\'recipe-detail\')" style="display:inline-block;font-family:var(--font-mono);font-size:9.5px;background:rgba(0,0,0,0.25);color:'+r.color+';border:1px solid '+r.color+'66;padding:2px 7px;border-radius:8px;margin:2px 3px 2px 0;cursor:pointer">'+escHtml(r.name.substring(0,18))+(r.name.length>18?'…':'')+'</span>';
+      return'<span data-action="_openRecipeDetailFromChip" data-args=\''+JSON.stringify([r.id])+'\' style="display:inline-block;font-family:var(--font-mono);font-size:9.5px;background:rgba(0,0,0,0.25);color:'+r.color+';border:1px solid '+r.color+'66;padding:2px 7px;border-radius:8px;margin:2px 3px 2px 0;cursor:pointer">'+escHtml(r.name.substring(0,18))+(r.name.length>18?'…':'')+'</span>';
     }).join('')+(recipes.length>4?'<span style="font-size:10px;color:var(--text3);font-style:italic;margin-left:4px">+'+(recipes.length-4)+' more</span>':''):'<span style="font-size:11px;color:var(--text3);font-style:italic">Not used in built-in recipes</span>';
     // Header text color adapts to the honey's own luminance — a dark honey
     // (buckwheat, chestnut) with hardcoded dark text would be unreadable.
@@ -157,7 +198,7 @@ function renderHoneyLibrarySection(){
     })(p.color);
     var headDark=headLum<150;
     var headText=headDark?'#f4ecd8':'#1a0f08';
-    return'<div onclick="currentHoneyName=\''+name+'\';showView(\'honey-detail\')" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:transform 0.15s,border-color 0.15s" onmouseover="this.style.borderColor=\''+p.color+'\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.transform=\'translateY(0)\'">'
+    return'<div data-action="_openHoneyDetail" data-args=\''+JSON.stringify([name])+'\' style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:transform 0.15s,border-color 0.15s" onmouseover="this.style.borderColor=\''+p.color+'\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.transform=\'translateY(0)\'">'
       // Color stripe with name
       +'<div style="background:'+p.color+';color:'+headText+';padding:10px 14px;display:flex;justify-content:space-between;align-items:center">'
       +'<div style="font-family:var(--font-display);font-size:15px;font-weight:600;letter-spacing:0.5px">'+escHtml(proseL(name))+'</div>'
@@ -359,8 +400,8 @@ function renderHoneyDetail(){
       suppliersBlock='<div class="card" style="margin-bottom:16px;border-left:3px solid var(--text3)"><div class="card-header"><div class="card-title">🛒 WHERE TO SOURCE</div></div>'
         +'<div style="font-size:13px;color:var(--text2);line-height:1.6">'
         +(appLang()==='nl'
-          ?'Geen van je leveranciers is nog getagd met '+escHtml(name)+'-honing. Voeg leveranciers toe of bewerk ze in de <span style="color:var(--gold2);cursor:pointer;text-decoration:underline" onclick="showView(\'suppliers\')">Leveranciers</span>-weergave en vink de honingsoorten aan die ze voeren om hier inkooptips te zien.'
-          :'None of your suppliers are tagged with '+escHtml(name)+' honey yet. Add or edit suppliers in the <span style="color:var(--gold2);cursor:pointer;text-decoration:underline" onclick="showView(\'suppliers\')">Suppliers</span> view and tick the honey types they stock to see sourcing hints here.')
+          ?'Geen van je leveranciers is nog getagd met '+escHtml(name)+'-honing. Voeg leveranciers toe of bewerk ze in de <span style="color:var(--gold2);cursor:pointer;text-decoration:underline" data-action="showView" data-args=\'["suppliers"]\'>Leveranciers</span>-weergave en vink de honingsoorten aan die ze voeren om hier inkooptips te zien.'
+          :'None of your suppliers are tagged with '+escHtml(name)+' honey yet. Add or edit suppliers in the <span style="color:var(--gold2);cursor:pointer;text-decoration:underline" data-action="showView" data-args=\'["suppliers"]\'>Suppliers</span> view and tick the honey types they stock to see sourcing hints here.')
         +'</div></div>';
     }
   }
@@ -373,7 +414,7 @@ function renderHoneyDetail(){
         var recipe=getRecipe(r.id);
         var style=recipe?recipe.style:'';
         var diff=recipe?recipe.difficulty:'';
-        return'<div onclick="currentRecipeId=\''+r.id+'\';showView(\'recipe-detail\')" style="background:var(--bg);padding:10px 12px;border-radius:var(--radius);cursor:pointer;border-left:3px solid '+r.color+';transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
+        return'<div data-action="_openRecipeDetailFromChip" data-args=\''+JSON.stringify([r.id])+'\' style="background:var(--bg);padding:10px 12px;border-radius:var(--radius);cursor:pointer;border-left:3px solid '+r.color+';transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
           +'<div style="font-family:var(--font-display);font-size:13px;color:'+r.color+';margin-bottom:2px">'+escHtml(r.name)+'</div>'
           +'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3);letter-spacing:1px;text-transform:uppercase">'+escHtml(style)+(diff?' · '+escHtml(diff):'')+'</div>'
           +'</div>';
@@ -395,7 +436,7 @@ function renderHoneyDetail(){
       +'<div style="font-size:13px;color:var(--text3);margin-bottom:12px;line-height:1.6;font-style:italic">'+(appLang()==='nl'?escHtml(name)+' kan de primaire honing in deze recepten vervangen. Elke vermelding beschrijft hoe het karakter verschuift bij de wissel — zodat je weet wat je kunt verwachten voordat je beslist.':escHtml(name)+' can substitute for the primary honey in these recipes. Each entry describes how the character shifts when you make the swap — so you know what to expect before committing.')+'</div>'
       +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px;align-items:start">'
       +alternativeMatches.map(function(m){
-        return'<div onclick="currentRecipeId=\''+m.recipeId+'\';showView(\'recipe-detail\')" style="background:var(--bg);padding:12px 14px;border-radius:var(--radius);cursor:pointer;border-left:3px solid '+m.recipeColor+';transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
+        return'<div data-action="_openRecipeDetailFromChip" data-args=\''+JSON.stringify([m.recipeId])+'\' style="background:var(--bg);padding:12px 14px;border-radius:var(--radius);cursor:pointer;border-left:3px solid '+m.recipeColor+';transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
           +'<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:6px;flex-wrap:wrap">'
           +'<div style="font-family:var(--font-display);font-size:14px;color:'+m.recipeColor+'">'+escHtml(m.recipeName)+'</div>'
           +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.2px;text-transform:uppercase">'+escHtml(m.recipeStyle||'')+'</div>'
@@ -418,7 +459,7 @@ function renderHoneyDetail(){
           var cleanName=simName.replace(/\s*\(.+\)\s*/,'');
           var sp=HONEY_PROFILES[cleanName];
           if(!sp)return'';
-          return'<div onclick="currentHoneyName=\''+cleanName+'\';showView(\'honey-detail\')" style="background:'+sp.color+'22;border:1px solid '+sp.color+';color:'+sp.color+';padding:6px 14px;border-radius:14px;font-family:var(--font-mono);font-size:11px;letter-spacing:0.5px;cursor:pointer">'+escHtml(simName)+'</div>';
+          return'<div data-action="_openHoneyDetail" data-args=\''+JSON.stringify([cleanName])+'\' style="background:'+sp.color+'22;border:1px solid '+sp.color+';color:'+sp.color+';padding:6px 14px;border-radius:14px;font-family:var(--font-mono);font-size:11px;letter-spacing:0.5px;cursor:pointer">'+escHtml(simName)+'</div>';
         }).join('')
         +'</div></div>';
     }
@@ -431,8 +472,8 @@ function renderHoneyDetail(){
 
   // Action buttons
   var actionsBlock='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
-    +'<button class="btn btn-secondary btn-sm" onclick="showView(\'honey\')">← All Honeys</button>'
-    +'<button class="btn btn-primary btn-sm" onclick="openNewBatchModal();setTimeout(function(){var s=document.getElementById(\'nb-honey-type\');if(s){s.value=\''+name+'\';}},200)">＋ Start Batch With '+escHtml(name)+'</button>'
+    +'<button class="btn btn-secondary btn-sm" data-action="showView" data-args=\'["honey"]\'>← All Honeys</button>'
+    +'<button class="btn btn-primary btn-sm" data-action="_startBatchWithHoney" data-args=\''+JSON.stringify([name])+'\'>＋ Start Batch With '+escHtml(name)+'</button>'
     +'</div>';
 
   return'<div class="page-title" style="font-size:18px;margin-bottom:0">Honey Library</div>'
@@ -622,7 +663,7 @@ function renderCiderAppleFitCard(r){
     return header
       +'<div style="padding:9px 11px;background:rgba(0,0,0,0.18);border-radius:var(--radius);border-left:3px solid '+f.color2+';margin-bottom:7px">'
       +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;flex-wrap:wrap">'
-      +'<div style="font-family:var(--font-display);font-size:13px;color:'+f.color2+';cursor:pointer" onclick="window.currentAppleName=\''+f.variety.replace(/'/g,"\\'")+'\';showView(\'apple-detail\')">'+escHtml(f.variety)+' →</div>'
+      +'<div style="font-family:var(--font-display);font-size:13px;color:'+f.color2+';cursor:pointer" data-action="_openAppleDetail" data-args=\''+JSON.stringify([f.variety])+'\'>'+escHtml(f.variety)+' →</div>'
       +'<span style="font-family:var(--font-mono);font-size:9px;color:'+f.color+';letter-spacing:0.5px">'+escHtml(f.badge)+'</span>'
       +'</div>'
       +'<div style="font-size:12px;color:var(--text2);line-height:1.5;font-style:italic">'+escHtml(f.note)+'</div>'
@@ -658,7 +699,7 @@ function renderAppleLibrary(){
     var cat=CIDER_CATEGORY_META[v.tech&&v.tech.category]||{color:'var(--text3)',label:(v.tech&&v.tech.category||'').toUpperCase()};
     var recipes=recipesUsingCiderVariety(name);
     var recipePills=recipes.length?recipes.slice(0,4).map(function(r){
-      return'<span onclick="event.stopPropagation();currentRecipeId=\''+r.id+'\';showView(\'recipe-detail\')" style="display:inline-block;font-family:var(--font-mono);font-size:9.5px;background:rgba(0,0,0,0.25);color:'+r.color+';border:1px solid '+r.color+'66;padding:2px 7px;border-radius:8px;margin:2px 3px 2px 0;cursor:pointer">'+escHtml(r.name.substring(0,18))+(r.name.length>18?'…':'')+'</span>';
+      return'<span data-action="_openRecipeDetailFromChip" data-args=\''+JSON.stringify([r.id])+'\' style="display:inline-block;font-family:var(--font-mono);font-size:9.5px;background:rgba(0,0,0,0.25);color:'+r.color+';border:1px solid '+r.color+'66;padding:2px 7px;border-radius:8px;margin:2px 3px 2px 0;cursor:pointer">'+escHtml(r.name.substring(0,18))+(r.name.length>18?'…':'')+'</span>';
     }).join('')+(recipes.length>4?'<span style="font-size:10px;color:var(--text3);font-style:italic;margin-left:4px">+'+(recipes.length-4)+' more</span>':''):'<span style="font-size:11px;color:var(--text3);font-style:italic">Not used in built-in recipes</span>';
     // Header text color adapts to the variety's own luminance — dark cider
     // apples (Kingston Black, Dabinett) with hardcoded dark text would be
@@ -670,7 +711,7 @@ function renderAppleLibrary(){
     })(v.color);
     var headDark=headLum<150;
     var headText=headDark?'#f4ecd8':'#1a0f08';
-    return'<div onclick="window.currentAppleName=\''+name.replace(/'/g,"\\'")+'\';showView(\'apple-detail\')" style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:transform 0.15s,border-color 0.15s" onmouseover="this.style.borderColor=\''+v.color+'\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.transform=\'translateY(0)\'">'
+    return'<div data-action="_openAppleDetail" data-args=\''+JSON.stringify([name])+'\' style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;transition:transform 0.15s,border-color 0.15s" onmouseover="this.style.borderColor=\''+v.color+'\';this.style.transform=\'translateY(-2px)\'" onmouseout="this.style.borderColor=\'var(--border)\';this.style.transform=\'translateY(0)\'">'
       +'<div style="background:'+v.color+';color:'+headText+';padding:10px 14px;display:flex;justify-content:space-between;align-items:center">'
       +'<div style="font-family:var(--font-display);font-size:15px;font-weight:600;letter-spacing:0.5px">'+escHtml(name)+'</div>'
       +'<div style="font-family:var(--font-mono);font-size:9px;background:'+(headDark?'rgba(255,255,255,0.18)':'rgba(0,0,0,0.18)')+';padding:2px 8px;border-radius:10px;letter-spacing:1.2px;text-transform:uppercase">'+(v.fruit==='pear'?'🍐 ':'🍎 ')+cat.label+'</div>'
@@ -822,7 +863,7 @@ function renderAppleDetail(){
         var recipe=getRecipe(r.id);
         var style=recipe?recipe.style:'';
         var diff=recipe?recipe.difficulty:'';
-        return'<div onclick="currentRecipeId=\''+r.id+'\';showView(\'recipe-detail\')" style="background:var(--bg);padding:10px 12px;border-radius:var(--radius);cursor:pointer;border-left:3px solid '+r.color+';transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
+        return'<div data-action="_openRecipeDetailFromChip" data-args=\''+JSON.stringify([r.id])+'\' style="background:var(--bg);padding:10px 12px;border-radius:var(--radius);cursor:pointer;border-left:3px solid '+r.color+';transition:background 0.15s" onmouseover="this.style.background=\'var(--bg3)\'" onmouseout="this.style.background=\'var(--bg)\'">'
           +'<div style="font-family:var(--font-display);font-size:13px;color:'+r.color+';margin-bottom:2px">'+escHtml(r.name)+'</div>'
           +'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--text3);letter-spacing:1px;text-transform:uppercase">'+escHtml(style)+(diff?' · '+escHtml(diff):'')+'</div>'
           +'</div>';
@@ -834,7 +875,7 @@ function renderAppleDetail(){
   recipesBlock+='</div>';
 
   var actionsBlock='<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">'
-    +'<button class="btn btn-secondary btn-sm" onclick="showView(\'apple-library\')">← All Varieties</button>'
+    +'<button class="btn btn-secondary btn-sm" data-action="showView" data-args=\'["apple-library"]\'>← All Varieties</button>'
     +'</div>';
 
   return'<div class="page-title" style="font-size:18px;margin-bottom:0">Apple &amp; Pear Library</div>'
@@ -888,7 +929,7 @@ function renderYeastLibrary(){
 
   function card(y){
     var availDot=y.widelyAvailable?'<span title="Commonly stocked by homebrew shops" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green2);margin-right:5px;vertical-align:middle"></span>':y.euAvailable?'<span title="EU available" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gold2);margin-right:5px;vertical-align:middle"></span>':'<span title="Import only" style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--red2);margin-right:5px;vertical-align:middle"></span>';
-    return '<div onclick="currentYeastId=\''+y.id+'\';showView(\'yeast-detail\')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:var(--radius);padding:14px 16px;transition:all 0.15s" onmouseover="this.style.background=\'var(--bg3)\';this.style.transform=\'translateX(2px)\'" onmouseout="this.style.background=\'var(--bg2)\';this.style.transform=\'\'">'
+    return '<div data-action="_openYeastDetail" data-args=\''+JSON.stringify([y.id])+'\' style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:var(--radius);padding:14px 16px;transition:all 0.15s" onmouseover="this.style.background=\'var(--bg3)\';this.style.transform=\'translateX(2px)\'" onmouseout="this.style.background=\'var(--bg2)\';this.style.transform=\'\'">'
       +'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">'
         +availDot
         +'<div style="font-family:var(--font-display);font-size:15px;color:var(--gold2);letter-spacing:1px;flex:1">'+escHtml(y.name)+'</div>'
@@ -960,7 +1001,7 @@ function renderYeastDetail(){
     section('USED IN RECIPES',recipesUsing.map(function(r){
       var color=r.tier==='recommended'?'var(--green2)':'var(--gold2)';
       var label=r.tier==='recommended'?'TOP PICK':'ACCEPTABLE';
-      return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)"><div onclick="showView(\'recipes\',\''+r.recipe.id+'\')" style="cursor:pointer;flex:1;color:'+(r.recipe.brandColor||'var(--gold2)')+';font-family:var(--font-display);font-size:13px">'+escHtml(r.recipe.name)+'</div><div style="font-family:var(--font-mono);font-size:9.5px;color:'+color+';letter-spacing:1.5px">'+label+'</div></div>';
+      return '<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)"><div data-action="showView" data-args=\''+JSON.stringify(['recipes',r.recipe.id])+'\' style="cursor:pointer;flex:1;color:'+(r.recipe.brandColor||'var(--gold2)')+';font-family:var(--font-display);font-size:13px">'+escHtml(r.recipe.name)+'</div><div style="font-family:var(--font-mono);font-size:9.5px;color:'+color+';letter-spacing:1.5px">'+label+'</div></div>';
     }).join('')):'';
 
   // Quick-facts side panel
@@ -989,7 +1030,7 @@ function renderYeastDetail(){
 
   return'<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px">'
       +'<div><div class="page-title" style="margin-bottom:4px">'+escHtml(y.name)+'</div><div class="page-subtitle" style="margin-bottom:0">'+escHtml(y.manufacturer)+' · '+y.format+'</div></div>'
-      +'<button class="btn btn-secondary btn-sm" onclick="showView(\'yeast-library\')">← All Yeasts</button>'
+      +'<button class="btn btn-secondary btn-sm" data-action="showView" data-args=\'["yeast-library"]\'>← All Yeasts</button>'
     +'</div>'
     +'<div class="grid-2">'
       +'<div>'
@@ -1024,7 +1065,7 @@ function renderNutrientLibrary(){
   function card(n){
     var availDot=n.widelyAvailable?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--green2);margin-right:5px;vertical-align:middle"></span>':n.euAvailable?'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--gold2);margin-right:5px;vertical-align:middle"></span>':'<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--red2);margin-right:5px;vertical-align:middle"></span>';
     var pkg=n.sachetSize?n.sachetSize+'g sachet':'bulk powder';
-    return '<div onclick="currentNutrientId=\''+n.id+'\';showView(\'nutrient-detail\')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:var(--radius);padding:14px 16px;transition:all 0.15s" onmouseover="this.style.background=\'var(--bg3)\';this.style.transform=\'translateX(2px)\'" onmouseout="this.style.background=\'var(--bg2)\';this.style.transform=\'\'">'
+    return '<div data-action="_openNutrientDetail" data-args=\''+JSON.stringify([n.id])+'\' style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:var(--radius);padding:14px 16px;transition:all 0.15s" onmouseover="this.style.background=\'var(--bg3)\';this.style.transform=\'translateX(2px)\'" onmouseout="this.style.background=\'var(--bg2)\';this.style.transform=\'\'">'
       +'<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:4px">'
         +availDot
         +'<div style="font-family:var(--font-display);font-size:15px;color:var(--gold2);letter-spacing:1px;flex:1">'+escHtml(n.name)+'</div>'
@@ -1041,7 +1082,7 @@ function renderNutrientLibrary(){
       +'<div style="font-family:var(--font-display);font-size:14px;color:var(--gold2);letter-spacing:1.5px;margin-bottom:10px">WHY YEAST NUTRIENT MATTERS</div>'
       +'<div style="font-size:13px;color:var(--text2);line-height:1.7">Honey is naturally <strong>nitrogen-deficient</strong> — typically &lt;30 mg/L YAN (Yeast Assimilable Nitrogen) compared to grape must at 150-300 mg/L. Without supplemental nitrogen, yeast stresses, produces hydrogen sulfide (rotten egg smell), fusel alcohols (harsh solvent notes), and may stall before reaching target ABV. Yeast nutrient supplies what honey doesn\'t.</div>'
       +'<div style="margin-top:10px;display:flex;gap:10px;flex-wrap:wrap">'
-        +'<button class="btn btn-secondary btn-sm" onclick="showView(\'protocol-guide\')">📖 Nutrient Protocols — Full Guide (SNA · TOSNA · TOSCA · TiOSNA)</button>'
+        +'<button class="btn btn-secondary btn-sm" data-action="showView" data-args=\'["protocol-guide"]\'>📖 Nutrient Protocols — Full Guide (SNA · TOSNA · TOSCA · TiOSNA)</button>'
       +'</div>'
     +'</div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(380px,100%),1fr));gap:10px;margin-bottom:24px">'
@@ -1075,7 +1116,7 @@ function renderNutrientDetail(){
     section('USED IN RECIPES',recipesUsingN.map(function(x){
       var color=x.tier==='best'?'var(--green2)':'var(--gold2)';
       var label=x.tier==='best'?'BEST FIT':'ALSO WORKS';
-      return '<div style="padding:7px 0;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:10px"><div onclick="showView(\'recipes\',\''+x.recipe.id+'\')" style="cursor:pointer;flex:1;color:'+(x.recipe.brandColor||'var(--gold2)')+';font-family:var(--font-display);font-size:13px">'+escHtml(x.recipe.name)+'</div><div style="font-family:var(--font-mono);font-size:9.5px;color:'+color+';letter-spacing:1.5px">'+label+'</div></div>'+(x.eff?'<div style="font-size:11.5px;color:var(--text3);font-style:italic;line-height:1.5;margin-top:3px">'+escHtml(x.eff)+'</div>':'')+'</div>';
+      return '<div style="padding:7px 0;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:10px"><div data-action="showView" data-args=\''+JSON.stringify(['recipes',x.recipe.id])+'\' style="cursor:pointer;flex:1;color:'+(x.recipe.brandColor||'var(--gold2)')+';font-family:var(--font-display);font-size:13px">'+escHtml(x.recipe.name)+'</div><div style="font-family:var(--font-mono);font-size:9.5px;color:'+color+';letter-spacing:1.5px">'+label+'</div></div>'+(x.eff?'<div style="font-size:11.5px;color:var(--text3);font-style:italic;line-height:1.5;margin-top:3px">'+escHtml(x.eff)+'</div>':'')+'</div>';
     }).join('')):
     (n.id==='goferm'?section('USED IN RECIPES','<div style="font-size:12.5px;color:var(--text2);line-height:1.6">Go-Ferm is a <strong>rehydration primer used in every recipe</strong>, not a staggered feed — stir it into the warm rehydration water before pitching, then follow each recipe\'s own nutrient schedule.</div>'):'');
   var protLabel=n.protocol==='tosna'?'TOSNA (organic-only)':n.protocol==='goferm'?'Rehydration nutrient':'SNA (staggered)';
@@ -1095,7 +1136,7 @@ function renderNutrientDetail(){
   +'</div>';
   return'<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px">'
       +'<div><div class="page-title" style="margin-bottom:4px">'+escHtml(n.name)+'</div><div class="page-subtitle" style="margin-bottom:0">'+protLabel+'</div></div>'
-      +'<button class="btn btn-secondary btn-sm" onclick="showView(\'nutrient-library\')">← All Nutrients</button>'
+      +'<button class="btn btn-secondary btn-sm" data-action="showView" data-args=\'["nutrient-library"]\'>← All Nutrients</button>'
     +'</div>'
     +'<div class="grid-2">'
       +'<div>'
@@ -1117,7 +1158,7 @@ function renderNutrientDetail(){
 function renderProtocolGuide(){
   return'<div style="display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:14px">'
       +'<div><div class="page-title" style="margin-bottom:4px">Nutrient Protocols</div><div class="page-subtitle" style="margin-bottom:0">Every mead feeding schedule — SNA, TOSNA, TOSCA 2.0, TiOSNA — explained</div></div>'
-      +'<button class="btn btn-secondary btn-sm" onclick="showView(\'nutrient-library\')">← Nutrients</button>'
+      +'<button class="btn btn-secondary btn-sm" data-action="showView" data-args=\'["nutrient-library"]\'>← Nutrients</button>'
     +'</div>'
     +'<div class="card" style="margin-bottom:14px;background:linear-gradient(180deg,rgba(201,163,80,0.05),transparent);border-left:3px solid var(--gold)">'
       +'<div style="font-family:var(--font-display);font-size:16px;color:var(--gold2);letter-spacing:1.5px;margin-bottom:10px">The fundamental problem</div>'
@@ -1163,7 +1204,7 @@ function renderProtocolGuide(){
     // ---- The other schedules ---------------------------------------------
     +'<div class="card" style="margin-top:14px;margin-bottom:14px">'
       +'<div class="card-header"><div class="card-title">⚡ THE OTHER SCHEDULES</div></div>'
-      +'<div style="font-size:13px;color:var(--text2);line-height:1.65;margin-bottom:14px">SNA and TOSNA are the two families. The schedules below are refinements MeadOS also supports — pick any of them from the nutrient dropdown when you start or edit a batch, and the <a onclick="showView(\'tools\')" style="color:var(--gold2);cursor:pointer">TOSCA / TOSNA scheduler</a> in Brewing Tools will compute the exact grams per dose.</div>'
+      +'<div style="font-size:13px;color:var(--text2);line-height:1.65;margin-bottom:14px">SNA and TOSNA are the two families. The schedules below are refinements MeadOS also supports — pick any of them from the nutrient dropdown when you start or edit a batch, and the <a data-action="showView" data-args=\'["tools"]\' style="color:var(--gold2);cursor:pointer">TOSCA / TOSNA scheduler</a> in Brewing Tools will compute the exact grams per dose.</div>'
       +'<div class="grid-3">'
         // TOSCA 2.0
         +'<div style="background:var(--bg2);padding:12px;border-radius:var(--radius);border-left:3px solid var(--green2)">'
@@ -1294,10 +1335,10 @@ function renderSettings(){
     +'<div class="form-group"><label class="form-label">Public URL <span style="font-weight:400;color:var(--text3);font-size:11px;margin-left:6px">optional — for reverse proxies</span></label><input class="form-input" id="set-external-url" type="text" placeholder="https://mead.example.com" value="'+escHtml(APP.settings.externalUrl||'')+'">'
     +'<div style="font-size:12px;color:var(--text3);margin-top:4px">Share links and QR codes are built from this address instead of the URL you happen to be browsing on. Set it when the server sits behind a reverse proxy or is reachable under several hostnames. Leave blank to use the current address. Applies to all devices.</div></div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-    +'<button class="btn btn-primary" onclick="saveHASettings()">Save</button>'
-    +'<button class="btn btn-secondary" onclick="forceSyncNow()" title="Push local data to the server">⬆ Sync Now</button>'
-    +'<button class="btn btn-secondary" onclick="pullFromServer()" title="Replace local data with whatever the server has — useful if another device changed things">⬇ Reload from Server</button>'
-    +'<button class="btn btn-secondary" onclick="verifyServerStorage()">Verify Storage</button></div>'
+    +'<button class="btn btn-primary" data-action="saveHASettings">Save</button>'
+    +'<button class="btn btn-secondary" data-action="forceSyncNow" title="Push local data to the server">⬆ Sync Now</button>'
+    +'<button class="btn btn-secondary" data-action="pullFromServer" title="Replace local data with whatever the server has — useful if another device changed things">⬇ Reload from Server</button>'
+    +'<button class="btn btn-secondary" data-action="verifyServerStorage">Verify Storage</button></div>'
     +'<div id="conn-status" style="margin-top:10px;font-size:13px;color:var(--text3)"></div>'
     +'<div style="margin-top:14px;padding:12px;background:var(--bg);border-radius:var(--radius);border-left:3px solid var(--border2)">'
     +'<div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px;margin-bottom:8px">🔒 EXTERNAL ACCESS PASSWORD</div>'
@@ -1340,11 +1381,11 @@ function renderSettings(){
     +'<div class="form-group"><label class="form-label">HA URL — external <span style="font-weight:400;color:var(--text3);font-size:11px;margin-left:6px">optional</span></label><input class="form-input" id="set-url-external" type="text" placeholder="https://xyz.ui.nabu.casa or https://ha.yourdomain.com" value="'+escHtml(APP.settings.haUrlExternal||'')+'">'
     +'<div style="font-size:12px;color:var(--text3);margin-top:4px">The MeadOS server tries the internal URL first, then the external one. Either field may be left blank.</div></div>'
     +'<div class="form-group"><label class="form-label">Long-Lived Access Token</label><input class="form-input" id="set-token" type="password" autocomplete="off" placeholder="'+(APP._haTokenSet?'•••••••• stored — leave blank to keep it':'HA → Profile → Security → Long-Lived Access Tokens')+'" value="">'
-    +'<div style="font-size:12px;color:var(--text3);margin-top:4px">Stored on the MeadOS server only and used via a server-side proxy — it is never sent to other devices or saved in the synced data.'+(APP._haTokenSet?' <a href="#" onclick="clearHAToken();return false" style="color:var(--red2)">Clear stored token</a>':'')+'</div></div>'
+    +'<div style="font-size:12px;color:var(--text3);margin-top:4px">Stored on the MeadOS server only and used via a server-side proxy — it is never sent to other devices or saved in the synced data.'+(APP._haTokenSet?' <a data-action="clearHAToken" style="color:var(--red2);cursor:pointer">Clear stored token</a>':'')+'</div></div>'
     +'<div class="form-group"><label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text2);cursor:pointer"><input type="checkbox" id="set-useha" '+(APP.settings.useHA?'checked':'')+' style="cursor:pointer"> Enable Home Assistant integration</label></div>'
     +'<div class="form-group"><label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text2);cursor:pointer"><input type="checkbox" id="set-publish-summary" '+(APP.settings.haPublishSummary?'checked':'')+' style="cursor:pointer"> Publish status summary to <code style="font-size:12px">sensor.meadows_data</code> on every save</label></div>'
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" onclick="saveHASettings()">Save &amp; Test</button>'
-    +'<button class="btn btn-secondary" onclick="testConnection()">Test Connection</button></div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn btn-primary" data-action="saveHASettings">Save &amp; Test</button>'
+    +'<button class="btn btn-secondary" data-action="testConnection">Test Connection</button></div>'
     +'<div id="ha-conn-status" style="margin-top:10px;font-size:13px;color:var(--text3)"></div>'
     +'</div>'
     +'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">🌡 TEMPERATURE SENSORS</div></div>'
@@ -1360,7 +1401,7 @@ function renderSettings(){
     +'<div class="form-group"><label class="form-label">Notification Service</label><input class="form-input" id="set-notify" type="text" placeholder="mobile_app_kim_phone" value="'+escHtml(APP.settings.notificationService||'')+'">'
     +'<div style="font-size:12px;color:var(--text3);margin-top:4px">HA service name (without <code>notify.</code> prefix). Find in HA → Developer Tools → Services → Search for <code>notify.</code></div></div>'
     +'<div class="form-group"><label style="display:flex;align-items:center;gap:8px;font-size:14px;color:var(--text2);cursor:pointer"><input type="checkbox" id="set-notif-enabled" '+(APP.settings.notificationsEnabled?'checked':'')+' style="cursor:pointer"> Enable daily brewing notifications</label></div>'
-    +'<button class="btn btn-secondary btn-sm" onclick="testNotification()">Send Test Notification</button></div>'
+    +'<button class="btn btn-secondary btn-sm" data-action="testNotification">Send Test Notification</button></div>'
     +(function(){
       // Calendar feed — HA-free reminders. Subscribe any phone/desktop calendar
       // to a private .ics URL; no Home Assistant required.
@@ -1368,16 +1409,16 @@ function renderSettings(){
       var head='<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">📅 CALENDAR FEED</div></div>'
         +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.55">Subscribe your phone or desktop calendar to your brewing schedule — nutrient doses, racking, bottling and ready/peak dates show up as all-day reminders. No Home Assistant needed. The link is private (an unguessable token); anyone with it can read your schedule, so don\'t post it publicly.</div>';
       if(!tok){
-        return head+'<button class="btn btn-primary btn-sm" onclick="enableCalendarFeed()">Enable calendar feed</button></div>';
+        return head+'<button class="btn btn-primary btn-sm" data-action="enableCalendarFeed">Enable calendar feed</button></div>';
       }
       var webcal=calendarFeedUrl('webcal'), https=calendarFeedUrl();
       return head
         +'<div class="form-group"><label class="form-label">Subscribe URL</label>'
-        +'<input class="form-input" readonly onclick="this.select()" value="'+escHtml(https)+'" style="font-family:var(--font-mono);font-size:12px"></div>'
+        +'<input class="form-input" readonly data-action="_selectSelf" value="'+escHtml(https)+'" style="font-family:var(--font-mono);font-size:12px"></div>'
         +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">'
         +'<a class="btn btn-primary btn-sm" href="'+escHtml(webcal)+'">＋ Subscribe (one-tap)</a>'
-        +'<button class="btn btn-secondary btn-sm" onclick="navigator.clipboard&&navigator.clipboard.writeText(\''+https.replace(/'/g,"\\'")+'\');toast(\'✦ Calendar URL copied\')">Copy URL</button>'
-        +'<button class="btn btn-danger btn-sm" onclick="if(confirm(\'Disable the feed? The current link will stop working.\'))disableCalendarFeed()">Disable</button>'
+        +'<button class="btn btn-secondary btn-sm" data-action="_copyCalendarUrl" data-args=\''+JSON.stringify([https])+'\'>Copy URL</button>'
+        +'<button class="btn btn-danger btn-sm" data-action="_confirmDisableCalendarFeed">Disable</button>'
         +'</div>'
         +'<div style="font-size:11.5px;color:var(--text3);line-height:1.55">Apple Calendar / Google Calendar / Outlook: add a calendar <em>by URL</em> and paste the link above. It refreshes whenever you save changes in MeadOS.</div>'
         +'</div>';
@@ -1411,9 +1452,9 @@ function renderSettings(){
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:6px">A rich Lovelace card you can paste into any HA dashboard. Shows your active batches, fermenter status, drinking-window alerts, next milestone, and a button to open MeadOS — all reading from <code style="background:var(--bg);padding:1px 4px;border-radius:3px;font-size:11px">sensor.meadows_data</code> attributes that MeadOS publishes on every save — requires the Home Assistant connection above with “Publish status summary” enabled.</div>'
     +'<div style="font-size:12px;color:var(--text3);margin-bottom:14px;font-style:italic">Uses only built-in HA cards (markdown, glance, button, conditional) — no HACS dependencies required.</div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-    +'<button class="btn btn-primary" onclick="downloadLovelaceCard()">⬇ Download YAML</button>'
-    +'<button class="btn btn-secondary" onclick="copyLovelaceCard()">📋 Copy to Clipboard</button>'
-    +'<button class="btn btn-secondary" onclick="previewLovelaceCard()">👁 Preview YAML</button>'
+    +'<button class="btn btn-primary" data-action="downloadLovelaceCard">⬇ Download YAML</button>'
+    +'<button class="btn btn-secondary" data-action="copyLovelaceCard">📋 Copy to Clipboard</button>'
+    +'<button class="btn btn-secondary" data-action="previewLovelaceCard">👁 Preview YAML</button>'
     +'</div>'
     +'<div style="margin-top:12px;padding:10px;background:var(--bg);border-radius:var(--radius);border-left:3px solid var(--gold);font-size:12px;color:var(--text2);line-height:1.6">'
     +'<strong style="color:var(--gold2)">How to use:</strong><br>'
@@ -1425,15 +1466,15 @@ function renderSettings(){
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:10px">Export all data as JSON for backup, or as CSV for spreadsheet analysis.</div>'
     +_backupStatusHtml()
     +'<div style="display:flex;gap:10px;flex-wrap:wrap">'
-    +'<button class="btn btn-secondary" onclick="exportData()">Export Backup</button>'
-    +'<button class="btn btn-secondary" onclick="document.getElementById(\'import-file\').click()">Import Backup</button>'
-    +'<button class="btn btn-secondary" onclick="exportBatchesCSV()" title="One row per batch">⬇ Batches CSV</button>'
-    +'<button class="btn btn-secondary" onclick="exportGravityCSV()" title="One row per gravity reading">⬇ Gravity logs CSV</button>'
+    +'<button class="btn btn-secondary" data-action="exportData">Export Backup</button>'
+    +'<button class="btn btn-secondary" data-action="_triggerImportFileClick">Import Backup</button>'
+    +'<button class="btn btn-secondary" data-action="exportBatchesCSV" title="One row per batch">⬇ Batches CSV</button>'
+    +'<button class="btn btn-secondary" data-action="exportGravityCSV" title="One row per gravity reading">⬇ Gravity logs CSV</button>'
     +'<input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)"></div></div>'
-    +'<div class="card"><div class="card-header"><div class="card-title">🧹 UNUSED IMAGES</div><button class="btn btn-secondary btn-sm" onclick="scanOrphanImages()">Scan</button></div>'
+    +'<div class="card"><div class="card-header"><div class="card-title">🧹 UNUSED IMAGES</div><button class="btn btn-secondary btn-sm" data-action="scanOrphanImages">Scan</button></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:8px;line-height:1.55">Uploaded label, brand, and photo images are stored as files on the server (under <code style="font-size:11px">assets/</code>). Over time some stop being referenced by any batch or recipe. Scan to find those orphans and free the space — version history is checked too, so nothing a restorable snapshot still needs is removed.</div>'
     +'<div id="orphan-result" style="font-size:13px;color:var(--text3)">Click <strong>Scan</strong> to check for unused images.</div></div>'
-    +'<div class="card"><div class="card-header"><div class="card-title">VERSION HISTORY</div><button class="btn btn-secondary btn-sm" onclick="loadHistoryPanel()">↻ Refresh</button></div>'
+    +'<div class="card"><div class="card-header"><div class="card-title">VERSION HISTORY</div><button class="btn btn-secondary btn-sm" data-action="loadHistoryPanel">↻ Refresh</button></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px">The server keeps your recent saved snapshots. Restore one if something got messed up — restoring first saves the current state, so it\'s reversible.</div>'
     +'<div id="history-list" style="font-size:13px;color:var(--text3)">Click <strong>Refresh</strong> to load snapshots.</div></div>'
     +'</div>'
@@ -1445,8 +1486,8 @@ function renderSettings(){
         :brandCrestSVG(260))
     +'</div>'
     +'<div style="display:flex;gap:8px;margin-top:12px;justify-content:center">'
-    +'<button class="btn btn-secondary btn-sm" onclick="pickBrandLogo()">🖼 '+(APP.settings.brandLogo?'Change logo…':'Use custom logo…')+'</button>'
-    +(APP.settings.brandLogo?'<button class="btn btn-secondary btn-sm" onclick="clearBrandLogo()">Restore default</button>':'')
+    +'<button class="btn btn-secondary btn-sm" data-action="pickBrandLogo">🖼 '+(APP.settings.brandLogo?'Change logo…':'Use custom logo…')+'</button>'
+    +(APP.settings.brandLogo?'<button class="btn btn-secondary btn-sm" data-action="clearBrandLogo">Restore default</button>':'')
     +'</div>'
     +'<div style="font-size:12px;color:var(--text3);margin-top:10px;text-align:center;font-style:italic">'
     +(APP.settings.brandLogo?'Custom brand logo · shown in the topbar and dashboard.':'Default heraldic crest. Upload a custom image to replace it everywhere.')
@@ -1460,7 +1501,7 @@ function renderSettings(){
     +'</div></div>'
     +'<div class="card"><div class="card-header"><div class="card-title">DANGER ZONE</div></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:16px">Permanently delete all batches, logs, and settings. Cannot be undone.</div>'
-    +'<button class="btn btn-danger" onclick="resetAllData()">Reset All Data</button></div>'
+    +'<button class="btn btn-danger" data-action="resetAllData">Reset All Data</button></div>'
     +renderSourcesCard()
     +'</div></div>'
     +'<div style="text-align:center;font-size:11px;color:var(--text3);margin:26px 0 6px;line-height:1.8">MEADOS · © 2026 <a href="https://github.com/icemanxbe/MeadOS" target="_blank" rel="noopener" style="color:var(--gold2);text-decoration:none">icemanxbe</a><br><a href="https://github.com/icemanxbe/MeadOS/blob/main/LICENSE" target="_blank" rel="noopener" style="color:var(--text3)">PolyForm Noncommercial License 1.0.0</a> — free to use &amp; modify, not to sell</div>';
@@ -1527,7 +1568,7 @@ function renderFermentersCard(){
       var occForTemp=fermenterOccupiedBy(f.id);
       var evF=fermentTempEval(liveTemp.value,getYeastById((occForTemp&&occForTemp.yeast)||'m05'));
       var pillColor=tempZoneColor(evF.zone);
-      tempPill='<span onclick="event.stopPropagation();showFermenterTempAdvice(\''+f.id+'\')" title="'+escHtml(evF.label+' — '+evF.expect)+' · click for detail" style="font-family:var(--font-mono);font-size:10px;background:'+pillColor+'22;color:'+pillColor+';border:1px solid '+pillColor+'55;padding:2px 7px;border-radius:8px;letter-spacing:0.5px;display:inline-flex;align-items:center;gap:3px;cursor:pointer">🌡 '+liveTemp.value.toFixed(1)+liveTemp.unit+(evF.borderline?' ⚠':'')+'</span>';
+      tempPill='<span data-action="showFermenterTempAdvice" data-args=\''+JSON.stringify([f.id])+'\' title="'+escHtml(evF.label+' — '+evF.expect)+' · click for detail" style="font-family:var(--font-mono);font-size:10px;background:'+pillColor+'22;color:'+pillColor+';border:1px solid '+pillColor+'55;padding:2px 7px;border-radius:8px;letter-spacing:0.5px;display:inline-flex;align-items:center;gap:3px;cursor:pointer">🌡 '+liveTemp.value.toFixed(1)+liveTemp.unit+(evF.borderline?' ⚠':'')+'</span>';
     }
     var capLabel=f.capacity?fmtVol(f.capacity):'—';
     var occLine=occ?'<div style="font-size:11.5px;color:'+getBatchColor(occ)+';margin-top:3px;font-style:italic">→ '+escHtml(occ.name)+' (day '+daysSince(occ.startDate)+')</div>':'';
@@ -1542,12 +1583,12 @@ function renderFermentersCard(){
       +occLine
       +'</div>'
       +'<div style="display:flex;gap:4px;flex-shrink:0">'
-      +'<button class="btn btn-secondary btn-sm" onclick="openEditFermenterModal(\''+f.id+'\')" title="Edit">✏</button>'
-      +'<button class="btn btn-secondary btn-sm" onclick="confirmDeleteFermenter(\''+f.id+'\')" title="Delete" style="color:var(--red2)">✕</button>'
+      +'<button class="btn btn-secondary btn-sm" data-action="openEditFermenterModal" data-args=\''+JSON.stringify([f.id])+'\' title="Edit">✏</button>'
+      +'<button class="btn btn-secondary btn-sm" data-action="confirmDeleteFermenter" data-args=\''+JSON.stringify([f.id])+'\' title="Delete" style="color:var(--red2)">✕</button>'
       +'</div>'
       +'</div>';
   }).join('');
-  return'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">⚗ FERMENTERS</div><button class="btn btn-primary btn-sm" onclick="openAddFermenterModal()">＋ Add Fermenter</button></div>'
+  return'<div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">⚗ FERMENTERS</div><button class="btn btn-primary btn-sm" data-action="openAddFermenterModal">＋ Add Fermenter</button></div>'
     +'<div style="font-size:13px;color:var(--text2);margin-bottom:12px">Track each vessel separately. Batches reference a fermenter, and the dashboard surfaces which are free vs occupied. Edit a fermenter to bind it to a Home Assistant temperature sensor — bound fermenters auto-fill the temp field on gravity logs and show a live pill above.</div>'
     +(ferms.length?'<div style="background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden">'+rows+'</div>':'<div style="padding:14px;text-align:center;color:var(--text3);font-style:italic;font-size:13px">No fermenters yet — add one to start tracking.</div>')
     +'</div>';
@@ -1589,7 +1630,7 @@ function openAddFermenterModal(){
     +'<div class="form-group"><label class="form-label">HA Temperature Sensor <span style="font-weight:400;color:var(--text3);font-size:11px;margin-left:6px">optional</span></label>'
     +'<input class="form-input" id="af-tempsensor" type="text" placeholder="sensor.fermenter_X_temp (leave blank to hide)" style="font-family:var(--font-mono);font-size:12px">'
     +'<div style="font-size:11.5px;color:var(--text3);margin-top:4px;line-height:1.5;font-style:italic">Live readings appear on the fermenter card and auto-fill the gravity-log temp field. Optional.</div></div>'
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveAddFermenter()">Add</button></div></div></div>';
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Cancel</button><button class="btn btn-primary" data-action="saveAddFermenter">Add</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
   setTimeout(function(){var el=document.getElementById('af-name');if(el)el.focus();},50);
 }
@@ -1619,7 +1660,7 @@ function openEditFermenterModal(id){
     +'<div class="form-group"><label class="form-label">HA Temperature Sensor <span style="font-weight:400;color:var(--text3);font-size:11px;margin-left:6px">optional</span></label>'
     +'<input class="form-input" id="ef-tempsensor" type="text" placeholder="sensor.fermenter_1_temp (leave blank to hide)" value="'+escHtml(f.tempSensorEntity||'')+'" style="font-family:var(--font-mono);font-size:12px">'
     +'<div style="font-size:11.5px;color:var(--text3);margin-top:4px;line-height:1.5;font-style:italic">Bind this fermenter to a Home Assistant sensor entity (Zigbee2MQTT thermo, Aqara, Bluetooth ranges, etc). When set, the live reading auto-fills the temperature field every time you log gravity, and a small temperature pill shows on the fermenter card. Leave blank to disable.</div></div>'
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveEditFermenter(\''+id+'\')">Save</button></div></div></div>';
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Cancel</button><button class="btn btn-primary" data-action="saveEditFermenter" data-args=\''+JSON.stringify([id])+'\'>Save</button></div></div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }
 

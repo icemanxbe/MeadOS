@@ -18,6 +18,27 @@ function toggleFavoriteRecipe(rid,ev){
   if(currentView==='recipes')updateRecipeSearchResults(APP.filters.recipeSearch||'');
 }
 
+function _openRecipeDetail(id){
+  currentRecipeId=id;
+  showView('recipe-detail');
+}
+function _openYeastDetailFromRecipe(id){
+  currentYeastId=id;
+  showView('yeast-detail');
+}
+function _openNutrientDetailFromRecipe(id){
+  currentNutrientId=id;
+  showView('nutrient-detail');
+}
+function _openHoneyDetailFromRecipe(name){
+  window.currentHoneyName=name;
+  showView('honey-detail');
+}
+function _closeAndOpenBatchFromCal(id){
+  closeModal();
+  showView('batch',id);
+}
+
 // Classify a recipe by total time from brew day to ready-to-drink window
 // (fermentDays + minAgeDays). Buckets: quick (<90d), medium (90-365), long (>365)
 function recipeAgeCategory(r){
@@ -34,10 +55,10 @@ function recipeCardHtml(r){
   var stage=r.additionStage||'none';
   var stageBadge=stageLabels[stage]?'<span style="font-family:var(--font-mono);font-size:9px;color:'+stageColors[stage]+';padding:2px 7px;border-radius:8px;letter-spacing:1.2px;border:1px solid '+stageColors[stage]+';background:rgba(0,0,0,0.2)">'+stageLabels[stage]+'</span>':'';
   var fav=isFavoriteRecipe(r.id);
-  var starBtn='<button class="btn-icon" onclick="toggleFavoriteRecipe(\''+r.id+'\',event)" title="'+(fav?'Unfavorite':'Favorite — pin to top')+'" style="position:absolute;top:8px;right:8px;z-index:2;background:rgba(0,0,0,0.35);width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;color:'+(fav?'#e8c46a':'rgba(255,255,255,0.4)')+';border:1px solid '+(fav?'rgba(232,196,106,0.5)':'rgba(255,255,255,0.15)')+'">'+(fav?'★':'☆')+'</button>';
-  return'<div class="recipe-card" style="position:relative'+(fav?';box-shadow:0 0 0 1px rgba(232,196,106,0.4)':'')+'" onclick="currentRecipeId=\''+r.id+'\';showView(\'recipe-detail\')">'
+  var starBtn='<button class="btn-icon" data-action="toggleFavoriteRecipe" data-args=\''+JSON.stringify([r.id])+'\' title="'+(fav?'Unfavorite':'Favorite — pin to top')+'" style="position:absolute;top:8px;right:8px;z-index:2;background:rgba(0,0,0,0.35);width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16px;color:'+(fav?'#e8c46a':'rgba(255,255,255,0.4)')+';border:1px solid '+(fav?'rgba(232,196,106,0.5)':'rgba(255,255,255,0.15)')+'">'+(fav?'★':'☆')+'</button>';
+  return'<div class="recipe-card" style="position:relative'+(fav?';box-shadow:0 0 0 1px rgba(232,196,106,0.4)':'')+'" data-action="_openRecipeDetail" data-args=\''+JSON.stringify([r.id])+'\'>'
     +starBtn
-    +(r.isCustom?'<button onclick="event.stopPropagation();deleteCustomRecipe(\''+r.id+'\')" title="Delete this recipe" style="position:absolute;bottom:8px;right:8px;z-index:2;background:var(--bg3);border:1px solid var(--border);color:var(--red2);width:26px;height:26px;border-radius:var(--radius);cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center">🗑</button>':'')
+    +(r.isCustom?'<button data-action="deleteCustomRecipe" data-args=\''+JSON.stringify([r.id])+'\' title="Delete this recipe" style="position:absolute;bottom:8px;right:8px;z-index:2;background:var(--bg3);border:1px solid var(--border);color:var(--red2);width:26px;height:26px;border-radius:var(--radius);cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center">🗑</button>':'')
     +'<div class="recipe-card-bar" style="background:'+r.brandColor+'"></div>'
     +'<div class="recipe-card-body">'
     +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:8px;padding-right:36px">'
@@ -96,24 +117,24 @@ function renderRecipes(){
   var favOnly=!!APP.filters.recipeFavoritesOnly;
   var favCount=(APP.settings.favoriteRecipes||[]).length;
   var diffChips=[['all','All'],['Beginner','Beginner'],['Intermediate','Intermediate'],['Advanced','Advanced'],['Expert','Expert']]
-    .map(function(x){return'<span class="filter-chip '+(diffFilter===x[0]?'active':'')+'" onclick="setRecipeFilter(\''+x[0]+'\')">'+x[1]+'</span>';}).join('');
+    .map(function(x){return'<span class="filter-chip '+(diffFilter===x[0]?'active':'')+'" data-action="setRecipeFilter" data-args=\''+JSON.stringify([x[0]])+'\'>'+x[1]+'</span>';}).join('');
   var allCats={};
   visibleRecipes().forEach(function(r){var c=r.category||r.style||'Traditional';allCats[c]=(allCats[c]||0)+1;});
   var catList=[['all','All Styles']].concat(Object.keys(allCats).sort().map(function(c){return[c,c+' ('+allCats[c]+')'];}));
-  var catChips=catList.map(function(x){return'<span class="filter-chip '+(catFilter===x[0]?'active':'')+'" onclick="setRecipeCategoryFilter(\''+x[0]+'\')">'+x[1]+'</span>';}).join('');
+  var catChips=catList.map(function(x){return'<span class="filter-chip '+(catFilter===x[0]?'active':'')+'" data-action="setRecipeCategoryFilter" data-args=\''+JSON.stringify([x[0]])+'\'>'+x[1]+'</span>';}).join('');
   var stageChips=[['all','All stages'],['primary','Primary additions'],['secondary','Secondary additions'],['both','Both'],['none','No additions']]
-    .map(function(x){return'<span class="filter-chip '+(stageFilter===x[0]?'active':'')+'" onclick="setRecipeStageFilter(\''+x[0]+'\')">'+x[1]+'</span>';}).join('');
+    .map(function(x){return'<span class="filter-chip '+(stageFilter===x[0]?'active':'')+'" data-action="setRecipeStageFilter" data-args=\''+JSON.stringify([x[0]])+'\'>'+x[1]+'</span>';}).join('');
   var ageChips=[['all','Any time'],['quick','Quick (< 3mo)'],['medium','Medium (3-12mo)'],['long','Long (1yr+)']]
-    .map(function(x){return'<span class="filter-chip '+(ageFilter===x[0]?'active':'')+'" onclick="setRecipeAgeFilter(\''+x[0]+'\')">'+x[1]+'</span>';}).join('');
-  var favToggle='<span class="filter-chip '+(favOnly?'active':'')+'" onclick="toggleFavOnly()" style="'+(favOnly?'background:rgba(232,196,106,0.2);border-color:#e8c46a;color:#e8c46a':'')+'">★ Favorites'+(favCount?' ('+favCount+')':'')+'</span>';
+    .map(function(x){return'<span class="filter-chip '+(ageFilter===x[0]?'active':'')+'" data-action="setRecipeAgeFilter" data-args=\''+JSON.stringify([x[0]])+'\'>'+x[1]+'</span>';}).join('');
+  var favToggle='<span class="filter-chip '+(favOnly?'active':'')+'" data-action="toggleFavOnly" style="'+(favOnly?'background:rgba(232,196,106,0.2);border-color:#e8c46a;color:#e8c46a':'')+'">★ Favorites'+(favCount?' ('+favCount+')':'')+'</span>';
   var anyFilterActive=q||diffFilter!=='all'||catFilter!=='all'||stageFilter!=='all'||ageFilter!=='all'||favOnly;
   var cards=filtered.map(function(r){return recipeCardHtml(r);}).join('');
   return'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:8px"><div class="page-title" style="margin-bottom:0">Recipes</div>'
     +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
-    +'<button class="btn btn-secondary btn-sm" onclick="importBeerXMLClick()" title="Import a BeerXML recipe file (.xml) from another brewing app">⬇ Import BeerXML</button>'
-    +(APP.customRecipes.length?'<button class="btn btn-secondary btn-sm" onclick="exportAllCustomRecipesBeerXML()" title="Export all custom recipes as BeerXML">⬆ Export Custom</button>':'')
-    +'<button class="btn btn-secondary btn-sm" onclick="openRecipeWizard()" title="Guided designer: pick targets, it works out the OG math and picks a yeast">✦ Designer</button>'
-    +'<button class="btn btn-primary btn-sm" onclick="openCustomRecipeModal()">＋ Create Recipe</button>'
+    +'<button class="btn btn-secondary btn-sm" data-action="importBeerXMLClick" title="Import a BeerXML recipe file (.xml) from another brewing app">⬇ Import BeerXML</button>'
+    +(APP.customRecipes.length?'<button class="btn btn-secondary btn-sm" data-action="exportAllCustomRecipesBeerXML" title="Export all custom recipes as BeerXML">⬆ Export Custom</button>':'')
+    +'<button class="btn btn-secondary btn-sm" data-action="openRecipeWizard" title="Guided designer: pick targets, it works out the OG math and picks a yeast">✦ Designer</button>'
+    +'<button class="btn btn-primary btn-sm" data-action="openCustomRecipeModal">＋ Create Recipe</button>'
     +'</div></div>'
     +'<div class="page-subtitle">'+(activeBevMode()==='cider'?'The Cider Compendium':'The Mead Compendium')+' · '+visibleRecipes().length+' recipe'+(visibleRecipes().length!==1?'s':'')+(APP.customRecipes.length?' ('+APP.customRecipes.length+' yours)':'')+(anyFilterActive?' · '+filtered.length+' shown':'')+'</div>'
     +(typeof renderBrewWhatYouHaveCard==='function'?renderBrewWhatYouHaveCard():'')
@@ -221,7 +242,7 @@ function renderRecipeAnalytics(){
     }
     var compRate=Math.round(s.completionRate*100);
     var compColor=compRate>=80?'var(--green2)':compRate>=50?'var(--honey)':'var(--red2)';
-    return'<tr style="cursor:pointer" onclick="currentRecipeId=\''+r.id+'\';showView(\'recipe-detail\')">'
+    return'<tr style="cursor:pointer" data-action="_openRecipeDetail" data-args=\''+JSON.stringify([r.id])+'\'>'
       +'<td style="color:'+r.brandColor+';font-family:var(--font-display);padding:8px 10px">'+escHtml(r.name)+'</td>'
       +'<td style="text-align:center;font-family:var(--font-mono)">'+s.batchCount+'</td>'
       +'<td style="text-align:center;font-family:var(--font-mono);color:'+compColor+'">'+compRate+'%</td>'
@@ -232,7 +253,7 @@ function renderRecipeAnalytics(){
       +'</tr>';
   }).join('');
   return'<div class="card" style="margin-bottom:14px">'
-    +'<div class="card-header" style="cursor:pointer" onclick="toggleAnalytics()"><div class="card-title">📊 RECIPE PERFORMANCE</div>'
+    +'<div class="card-header" style="cursor:pointer" data-action="toggleAnalytics"><div class="card-title">📊 RECIPE PERFORMANCE</div>'
     +'<div style="margin-left:auto;font-family:var(--font-mono);font-size:11px;color:var(--text3)">'+(collapsed?'▸ show':'▾ hide')+' · '+stats.length+' brewed</div></div>'
     +(collapsed?'':'<div style="font-size:12px;color:var(--text3);margin-bottom:10px;font-style:italic">Aggregated metrics across all your batches. Click any row to open the recipe.</div>'
       +'<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px">'
@@ -750,7 +771,7 @@ function renderRecipeYeastBlock(r){
     if(r.abvTarget&&y.abvMax<r.abvTarget){
       abvFlag='<span style="display:inline-block;margin-left:6px;font-family:var(--font-mono);font-size:9px;color:#d66b6b;background:rgba(200,60,60,0.15);padding:1px 5px;border-radius:6px;letter-spacing:1px">⛔ '+y.abvMax+'% MAX</span>';
     }
-    return'<div onclick="currentYeastId=\''+y.id+'\';showView(\'yeast-detail\')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-left:3px solid '+t.color+';border-radius:var(--radius);padding:9px 12px;transition:all 0.15s" onmouseover="this.style.background=\'var(--bg3)\';this.style.transform=\'translateX(2px)\'" onmouseout="this.style.background=\'var(--bg2)\';this.style.transform=\'\'">'
+    return'<div data-action="_openYeastDetailFromRecipe" data-args=\''+JSON.stringify([y.id])+'\' style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-left:3px solid '+t.color+';border-radius:var(--radius);padding:9px 12px;transition:all 0.15s" onmouseover="this.style.background=\'var(--bg3)\';this.style.transform=\'translateX(2px)\'" onmouseout="this.style.background=\'var(--bg2)\';this.style.transform=\'\'">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'
         +'<span style="color:'+t.color+';font-size:13px;font-family:var(--font-mono);min-width:14px">'+t.icon+'</span>'
         +'<div style="font-family:var(--font-display);font-size:13px;color:var(--text);flex:1;letter-spacing:0.5px">'+escHtml(y.name.split('—')[0].trim())+'</div>'
@@ -765,7 +786,7 @@ function renderRecipeYeastBlock(r){
   var discouragedRows=pairings.discouraged.length?pairings.discouraged.map(function(id){return yeastChip(id,'discouraged');}).join(''):'';
 
   return'<div class="card" style="margin-bottom:16px;border-left:3px solid var(--gold)">'
-    +'<div class="card-header"><div class="card-title">🧫 RECOMMENDED YEAST</div><a onclick="showView(\'yeast-library\')" style="cursor:pointer;font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">all strains →</a></div>'
+    +'<div class="card-header"><div class="card-title">🧫 RECOMMENDED YEAST</div><a data-action="showView" data-args=\'["yeast-library"]\' style="cursor:pointer;font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">all strains →</a></div>'
     +'<div style="font-size:12.5px;color:var(--text3);font-style:italic;line-height:1.55;margin-bottom:12px">'+escHtml(pairings.notes)+'</div>'
     +'<div style="display:flex;flex-direction:column;gap:6px">'+recommendedRows+'</div>'
     +(acceptableRows?'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--gold2);letter-spacing:1.5px;margin:14px 0 6px">ALSO ACCEPTABLE</div><div style="display:flex;flex-direction:column;gap:6px">'+acceptableRows+'</div>':'')
@@ -788,7 +809,7 @@ function renderRecipeNutrientBlock(r){
     if(!n)return'';
     var tc=tier==='recommended'?{color:'var(--green2)',icon:'★',label:'BEST FIT'}:{color:'var(--gold2)',icon:'✓',label:'ALSO WORKS'};
     var eff=(p.effects&&p.effects[nid])||n.description||'';
-    return'<div onclick="currentNutrientId=\''+n.id+'\';showView(\'nutrient-detail\')" style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-left:3px solid '+tc.color+';border-radius:var(--radius);padding:9px 12px;transition:all 0.15s" onmouseover="this.style.background=\'var(--bg3)\';this.style.transform=\'translateX(2px)\'" onmouseout="this.style.background=\'var(--bg2)\';this.style.transform=\'\'">'
+    return'<div data-action="_openNutrientDetailFromRecipe" data-args=\''+JSON.stringify([n.id])+'\' style="cursor:pointer;background:var(--bg2);border:1px solid var(--border);border-left:3px solid '+tc.color+';border-radius:var(--radius);padding:9px 12px;transition:all 0.15s" onmouseover="this.style.background=\'var(--bg3)\';this.style.transform=\'translateX(2px)\'" onmouseout="this.style.background=\'var(--bg2)\';this.style.transform=\'\'">'
       +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">'
         +'<span style="color:'+tc.color+';font-size:13px;font-family:var(--font-mono);min-width:14px">'+tc.icon+'</span>'
         +'<div style="font-family:var(--font-display);font-size:13px;color:var(--text);flex:1;letter-spacing:0.5px">'+escHtml(n.name)+'</div>'
@@ -802,7 +823,7 @@ function renderRecipeNutrientBlock(r){
   // Go-Ferm rehydration note — always relevant
   var goferm=(typeof NUTRIENT_PRODUCTS!=='undefined')&&NUTRIENT_PRODUCTS.find(function(x){return x.id==='goferm';});
   return'<div class="card" style="margin-bottom:16px;border-left:3px solid var(--gold)">'
-    +'<div class="card-header"><div class="card-title">⚗ NUTRIENT STRATEGY</div><a onclick="showView(\'nutrient-library\')" style="cursor:pointer;font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">all nutrients →</a></div>'
+    +'<div class="card-header"><div class="card-title">⚗ NUTRIENT STRATEGY</div><a data-action="showView" data-args=\'["nutrient-library"]\' style="cursor:pointer;font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px">all nutrients →</a></div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">'
       +'<span style="font-family:var(--font-mono);font-size:9.5px;letter-spacing:1px;color:var(--text2);background:var(--bg3);border:1px solid var(--border);padding:3px 9px;border-radius:10px">'+protoLabel+'</span>'
       +(loadCfg.t?'<span style="font-family:var(--font-mono);font-size:9.5px;letter-spacing:1px;color:'+loadCfg.c+';background:'+loadCfg.c+'22;border:1px solid '+loadCfg.c+'66;padding:3px 9px;border-radius:10px">N DEMAND · '+loadCfg.t+'</span>':'')
@@ -811,8 +832,8 @@ function renderRecipeNutrientBlock(r){
     +'<div style="display:flex;flex-direction:column;gap:6px">'+recRows+'</div>'
     +(accRows?'<div style="font-family:var(--font-mono);font-size:9.5px;color:var(--gold2);letter-spacing:1.5px;margin:14px 0 6px">ALSO WORKS</div><div style="display:flex;flex-direction:column;gap:6px">'+accRows+'</div>':'')
     +(goferm?((typeof appLang==='function'&&appLang()==='nl')
-      ?'<div style="margin-top:12px;padding:9px 12px;background:rgba(122,160,64,0.08);border-left:3px solid var(--green);border-radius:var(--radius);font-size:11.5px;color:var(--text2);line-height:1.5"><strong style="color:var(--green2)">Rehydratie:</strong> roer de droge gist in warm water met <span style="cursor:pointer;color:var(--gold2)" onclick="currentNutrientId=\'goferm\';showView(\'nutrient-detail\')">Go-Ferm Protect</span> vóór het enten — dit primt sterolen en micronutriënten voor een schone start, welk schema je ook kiest. Voeg ALLE voedingsdoses toe vóór de 1/3-suikerbreuk om late-DAP-fuselalcoholen te vermijden.</div>'
-      :'<div style="margin-top:12px;padding:9px 12px;background:rgba(122,160,64,0.08);border-left:3px solid var(--green);border-radius:var(--radius);font-size:11.5px;color:var(--text2);line-height:1.5"><strong style="color:var(--green2)">Rehydration:</strong> stir the dry yeast into warm water with <span style="cursor:pointer;color:var(--gold2)" onclick="currentNutrientId=\'goferm\';showView(\'nutrient-detail\')">Go-Ferm Protect</span> before pitching — primes sterols and micronutrients for a clean start, whatever schedule you choose. Add ALL nutrient doses before the 1/3 sugar break to avoid late-DAP fusels.</div>'):'')
+      ?'<div style="margin-top:12px;padding:9px 12px;background:rgba(122,160,64,0.08);border-left:3px solid var(--green);border-radius:var(--radius);font-size:11.5px;color:var(--text2);line-height:1.5"><strong style="color:var(--green2)">Rehydratie:</strong> roer de droge gist in warm water met <span style="cursor:pointer;color:var(--gold2)" data-action="_openNutrientDetailFromRecipe" data-args=\'["goferm"]\'>Go-Ferm Protect</span> vóór het enten — dit primt sterolen en micronutriënten voor een schone start, welk schema je ook kiest. Voeg ALLE voedingsdoses toe vóór de 1/3-suikerbreuk om late-DAP-fuselalcoholen te vermijden.</div>'
+      :'<div style="margin-top:12px;padding:9px 12px;background:rgba(122,160,64,0.08);border-left:3px solid var(--green);border-radius:var(--radius);font-size:11.5px;color:var(--text2);line-height:1.5"><strong style="color:var(--green2)">Rehydration:</strong> stir the dry yeast into warm water with <span style="cursor:pointer;color:var(--gold2)" data-action="_openNutrientDetailFromRecipe" data-args=\'["goferm"]\'>Go-Ferm Protect</span> before pitching — primes sterols and micronutrients for a clean start, whatever schedule you choose. Add ALL nutrient doses before the 1/3 sugar break to avoid late-DAP fusels.</div>'):'')
   +'</div>';
 }
 
@@ -934,7 +955,7 @@ function renderRecipeCostEstimate(r,scaleVol){
   var pack750=(p750s?parseFloat(p750s.pricePerUnit):0)+closureP;
   var pack500=(p500s?parseFloat(p500s.pricePerUnit):0)+closureP;
   if(!honeyPrice){
-    return'<div class="info-box" id="scale-cost-estimate" style="border-left-color:var(--text3);margin-bottom:16px"><div style="font-size:13px;color:var(--text3);font-style:italic">💡 Set your honey price per kg in <a href="#view=settings" onclick="event.preventDefault();showView(\'settings\')" style="color:var(--gold2)">Settings → Costs &amp; Supplies</a> to see brew-cost estimates for this recipe. Add per-unit prices to <a href="#view=supplies" onclick="event.preventDefault();showView(\'supplies\')" style="color:var(--gold2)">Supplies</a> for a more precise estimate.</div></div>';
+    return'<div class="info-box" id="scale-cost-estimate" style="border-left-color:var(--text3);margin-bottom:16px"><div style="font-size:13px;color:var(--text3);font-style:italic">💡 Set your honey price per kg in <a data-action="showView" data-args=\'["settings"]\' style="color:var(--gold2);cursor:pointer">Settings → Costs &amp; Supplies</a> to see brew-cost estimates for this recipe. Add per-unit prices to <a data-action="showView" data-args=\'["supplies"]\' style="color:var(--gold2);cursor:pointer">Supplies</a> for a more precise estimate.</div></div>';
   }
   return'<div class="card" id="scale-cost-estimate" style="margin-bottom:16px"><div class="card-header"><div class="card-title">💰 BREW COST ESTIMATE</div></div>'
     +'<div style="font-size:13px;color:var(--text3);margin-bottom:10px">For '+scaleVol+'L at OG '+r.ogTarget+'. Adjust the SCALE slider above to recalculate.</div>'
@@ -947,7 +968,7 @@ function renderRecipeCostEstimate(r,scaleVol){
     +'<tr><td style="padding:0 0 4px;color:var(--text3);font-size:11px">'+bottles750+' × 750ml after racking</td><td style="text-align:right;font-family:var(--font-mono);color:var(--text)">'+currency+perBottle.toFixed(2)+'/bottle'+(pack750>0?' <span style="color:var(--text3);font-size:10px">+'+currency+pack750.toFixed(2)+' pkg</span>':'')+'</td></tr>'
     +'<tr><td style="padding:0 0 4px;color:var(--text3);font-size:11px">'+bottles500+' × 500ml after racking</td><td style="text-align:right;font-family:var(--font-mono);color:var(--text)">'+currency+perBottle500.toFixed(2)+'/bottle'+(pack500>0?' <span style="color:var(--text3);font-size:10px">+'+currency+pack500.toFixed(2)+' pkg</span>':'')+'</td></tr>'
     +'</table>'
-    +(!yeastSupply||!nutrientSupply?'<div style="margin-top:8px;font-size:11px;color:var(--text3);font-style:italic">💡 Add per-unit prices to <a href="#view=supplies" onclick="event.preventDefault();showView(\'supplies\')" style="color:var(--gold2)">your supplies</a> to replace estimates with actual costs.</div>':'')
+    +(!yeastSupply||!nutrientSupply?'<div style="margin-top:8px;font-size:11px;color:var(--text3);font-style:italic">💡 Add per-unit prices to <a data-action="showView" data-args=\'["supplies"]\' style="color:var(--gold2);cursor:pointer">your supplies</a> to replace estimates with actual costs.</div>':'')
     +(extrasCost?'<div style="margin-top:4px;font-size:11px;color:var(--text3);font-style:italic">Extras are heuristic estimates — your actual cost depends on fruit/spice sourcing.</div>':'')
     +'</div>';
 }
@@ -1000,8 +1021,8 @@ function renderCiderCostEstimate(r,scaleVol){
   var pack500=(p500s?parseFloat(p500s.pricePerUnit):0)+closureP;
   if(!juicePrice){
     return'<div class="info-box" id="scale-cost-estimate" style="border-left-color:var(--text3);margin-bottom:16px"><div style="font-size:13px;color:var(--text3);font-style:italic">'+(nl
-      ?'💡 Stel je sapprijs per liter in bij <a href="#view=settings" onclick="event.preventDefault();showView(\'settings\')" style="color:var(--gold2)">Instellingen → Kosten &amp; Voorraad</a> om brouwkostschattingen voor dit recept te zien. Voeg prijzen per eenheid toe bij <a href="#view=supplies" onclick="event.preventDefault();showView(\'supplies\')" style="color:var(--gold2)">Voorraad</a> voor een nauwkeurigere schatting.'
-      :'💡 Set your apple/pear juice price per L in <a href="#view=settings" onclick="event.preventDefault();showView(\'settings\')" style="color:var(--gold2)">Settings → Costs &amp; Supplies</a> to see brew-cost estimates for this recipe. Add per-unit prices to <a href="#view=supplies" onclick="event.preventDefault();showView(\'supplies\')" style="color:var(--gold2)">Supplies</a> for a more precise estimate.')+'</div></div>';
+      ?'💡 Stel je sapprijs per liter in bij <a data-action="showView" data-args=\'["settings"]\' style="color:var(--gold2);cursor:pointer">Instellingen → Kosten &amp; Voorraad</a> om brouwkostschattingen voor dit recept te zien. Voeg prijzen per eenheid toe bij <a data-action="showView" data-args=\'["supplies"]\' style="color:var(--gold2);cursor:pointer">Voorraad</a> voor een nauwkeurigere schatting.'
+      :'💡 Set your apple/pear juice price per L in <a data-action="showView" data-args=\'["settings"]\' style="color:var(--gold2);cursor:pointer">Settings → Costs &amp; Supplies</a> to see brew-cost estimates for this recipe. Add per-unit prices to <a data-action="showView" data-args=\'["supplies"]\' style="color:var(--gold2);cursor:pointer">Supplies</a> for a more precise estimate.')+'</div></div>';
   }
   return'<div class="card" id="scale-cost-estimate" style="margin-bottom:16px"><div class="card-header"><div class="card-title">💰 '+(nl?'BROUWKOSTSCHATTING':'BREW COST ESTIMATE')+'</div></div>'
     +'<div style="font-size:13px;color:var(--text3);margin-bottom:10px">'+(nl?'Voor '+scaleVol+' L bij OG '+r.ogTarget+'. Pas de SCHAAL-schuif hierboven aan om te herberekenen.':'For '+scaleVol+'L at OG '+r.ogTarget+'. Adjust the SCALE slider above to recalculate.')+'</div>'
@@ -1014,7 +1035,7 @@ function renderCiderCostEstimate(r,scaleVol){
     +'<tr><td style="padding:0 0 4px;color:var(--text3);font-size:11px">'+bottles750+' × 750ml '+(nl?'na overhevelen':'after racking')+'</td><td style="text-align:right;font-family:var(--font-mono);color:var(--text)">'+currency+perBottle.toFixed(2)+'/'+(nl?'fles':'bottle')+(pack750>0?' <span style="color:var(--text3);font-size:10px">+'+currency+pack750.toFixed(2)+' '+(nl?'verp.':'pkg')+'</span>':'')+'</td></tr>'
     +'<tr><td style="padding:0 0 4px;color:var(--text3);font-size:11px">'+bottles500+' × 500ml '+(nl?'na overhevelen':'after racking')+'</td><td style="text-align:right;font-family:var(--font-mono);color:var(--text)">'+currency+perBottle500.toFixed(2)+'/'+(nl?'fles':'bottle')+(pack500>0?' <span style="color:var(--text3);font-size:10px">+'+currency+pack500.toFixed(2)+' '+(nl?'verp.':'pkg')+'</span>':'')+'</td></tr>'
     +'</table>'
-    +(!yeastSupply||!nutrientSupply?'<div style="margin-top:8px;font-size:11px;color:var(--text3);font-style:italic">💡 '+(nl?'Voeg prijzen per eenheid toe bij <a href="#view=supplies" onclick="event.preventDefault();showView(\'supplies\')" style="color:var(--gold2)">je voorraad</a> om schattingen te vervangen door werkelijke kosten.':'Add per-unit prices to <a href="#view=supplies" onclick="event.preventDefault();showView(\'supplies\')" style="color:var(--gold2)">your supplies</a> to replace estimates with actual costs.')+'</div>':'')
+    +(!yeastSupply||!nutrientSupply?'<div style="margin-top:8px;font-size:11px;color:var(--text3);font-style:italic">💡 '+(nl?'Voeg prijzen per eenheid toe bij <a data-action="showView" data-args=\'["supplies"]\' style="color:var(--gold2);cursor:pointer">je voorraad</a> om schattingen te vervangen door werkelijke kosten.':'Add per-unit prices to <a data-action="showView" data-args=\'["supplies"]\' style="color:var(--gold2);cursor:pointer">your supplies</a> to replace estimates with actual costs.')+'</div>':'')
     +(extrasCost?'<div style="margin-top:4px;font-size:11px;color:var(--text3);font-style:italic">'+(nl?'Extra\'s zijn ruwe schattingen — je werkelijke kosten hangen af van fruit-/kruideninkoop.':'Extras are heuristic estimates — your actual cost depends on fruit/spice sourcing.')+'</div>':'')
     +'</div>';
 }
@@ -1032,7 +1053,7 @@ function renderRecipeDetail(){
   var sVal=(ru==='metric'?scaleVol:(scaleVol/UNIT_VOL[ru].toSI));   // slider value in display unit
   var scaleUnitBtns=['metric','us','imperial'].map(function(s){
     var lbl={metric:'Metric · L',us:'US · gal',imperial:'Imp · gal'}[s],on=(s===window.recipeScaleUnit);
-    return'<button type="button" id="rsu-'+s+'" onclick="setRecipeScaleUnit(\''+s+'\')" style="flex:1;padding:6px 4px;border-radius:var(--radius);cursor:pointer;font-family:var(--font-mono);font-size:10px;letter-spacing:0.3px;border:1px solid '+(on?'var(--gold)':'var(--border)')+';background:'+(on?'rgba(201,168,76,0.14)':'var(--bg3)')+';color:'+(on?'var(--gold2)':'var(--text3)')+'">'+lbl+'</button>';
+    return'<button type="button" id="rsu-'+s+'" data-action="setRecipeScaleUnit" data-args=\''+JSON.stringify([s])+'\' style="flex:1;padding:6px 4px;border-radius:var(--radius);cursor:pointer;font-family:var(--font-mono);font-size:10px;letter-spacing:0.3px;border:1px solid '+(on?'var(--gold)':'var(--border)')+';background:'+(on?'rgba(201,168,76,0.14)':'var(--bg3)')+';color:'+(on?'var(--gold2)':'var(--text3)')+'">'+lbl+'</button>';
   }).join('');
   var scaledIngredients=scaleRecipeIngredients(r,scaleVol);
   // Build helper text that names the user's largest vessel + safe max, so the
@@ -1052,12 +1073,12 @@ function renderRecipeDetail(){
     initialWarning='<div style="font-size:12px;color:var(--red2);margin-top:6px">⚠ Above '+fmtRecipeScale(fermInfo.safeMax)+' risks blow-off in your largest vessel ('+escHtml(fermInfo.vesselName)+', '+fmtRecipeScale(fermInfo.capacity)+')</div>';
   }
   return'<div style="display:flex;align-items:center;gap:12px;margin-bottom:4px;flex-wrap:wrap">'
-    +'<button class="btn btn-secondary btn-sm" onclick="showView(\'recipes\')">← Recipes</button>'
+    +'<button class="btn btn-secondary btn-sm" data-action="showView" data-args=\'["recipes"]\'>← Recipes</button>'
     +'<div class="page-title" style="margin-bottom:0;color:'+r.brandColor+'">'+escHtml(r.name)+'</div>'
     +'<div style="margin-left:auto;display:flex;gap:6px">'
-    +'<button class="btn btn-secondary btn-sm" onclick="openLabelStudio(\''+r.id+'\')" title="Design a custom front &amp; back bottle label">🎨 Label Studio</button>'
-    +(r.isCustom?'<button class="btn btn-secondary btn-sm" onclick="openCustomRecipeModal(\''+r.id+'\')">✏ Edit</button>':'<button class="btn btn-secondary btn-sm" onclick="openCustomRecipeModal(\''+r.id+'\')" title="Save a copy as your own custom recipe">⑂ Fork</button>')
-    +(r.isCustom?'<button class="btn btn-danger btn-sm" onclick="deleteCustomRecipe(\''+r.id+'\')" title="Delete this recipe permanently">🗑 Delete</button>':'')
+    +'<button class="btn btn-secondary btn-sm" data-action="openLabelStudio" data-args=\''+JSON.stringify([r.id])+'\' title="Design a custom front &amp; back bottle label">🎨 Label Studio</button>'
+    +(r.isCustom?'<button class="btn btn-secondary btn-sm" data-action="openCustomRecipeModal" data-args=\''+JSON.stringify([r.id])+'\'>✏ Edit</button>':'<button class="btn btn-secondary btn-sm" data-action="openCustomRecipeModal" data-args=\''+JSON.stringify([r.id])+'\' title="Save a copy as your own custom recipe">⑂ Fork</button>')
+    +(r.isCustom?'<button class="btn btn-danger btn-sm" data-action="deleteCustomRecipe" data-args=\''+JSON.stringify([r.id])+'\' title="Delete this recipe permanently">🗑 Delete</button>':'')
     +'</div></div>'
     +'<div class="brand-bar" style="background:'+r.brandColor+'"></div>'
     +'<div class="page-subtitle">'+r.style+' · '+r.difficulty+' · ~'+r.abvTarget+'% ABV · '+r.fermentDays+'-day fermentation</div>'
@@ -1068,7 +1089,7 @@ function renderRecipeDetail(){
       var chips=r.linked.map(function(lk){
         var lr=getRecipe(lk.id);
         if(!lr)return'';
-        return'<span onclick="currentRecipeId=\''+lr.id+'\';showView(\'recipe-detail\')" style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;background:var(--bg3);border:1px solid '+lr.brandColor+'99;color:var(--text);padding:5px 11px;border-radius:14px">↔ '+escHtml(proseL(lr.name))+(lk.label?' · <span style="color:var(--text3)">'+escHtml(proseL(lk.label))+'</span>':'')+'</span>';
+        return'<span data-action="_openRecipeDetail" data-args=\''+JSON.stringify([lr.id])+'\' style="display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;background:var(--bg3);border:1px solid '+lr.brandColor+'99;color:var(--text);padding:5px 11px;border-radius:14px">↔ '+escHtml(proseL(lr.name))+(lk.label?' · <span style="color:var(--text3)">'+escHtml(proseL(lk.label))+'</span>':'')+'</span>';
       }).join('');
       if(!chips)return'';
       return'<div class="info-box" style="border-left-color:var(--gold);margin-bottom:16px">'
@@ -1076,11 +1097,11 @@ function renderRecipeDetail(){
         +(r.linkedNote?'<div style="font-size:13px;color:var(--text2);line-height:1.55;margin-bottom:10px">'+escHtml(r.linkedNote)+'</div>':'')
         +'<div style="display:flex;gap:8px;flex-wrap:wrap">'+chips+'</div></div>';
     }())
-    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px"><button class="btn btn-primary" id="scale-brew-btn" onclick="openNewBatchModal(\''+r.id+'\','+scaleVol+')">Brew This Recipe ('+fmtRecipeScale(scaleVol)+') →</button>'
-    +'<button class="btn btn-secondary" onclick="openPlanBatchModal(null,\''+r.id+'\',window.recipeScaleVol||'+scaleVol+')" title="Queue this recipe into the Brew Plan and shopping list at the current scale">🗓 Plan a Batch</button>'
-    +'<button class="btn btn-secondary" onclick="openBrewSessionPlanner(\''+r.id+'\','+scaleVol+')" title="Print a pre-brew checklist for this recipe">📋 Brew Session Planner</button>'
-    +'<button class="btn btn-secondary" onclick="exportRecipeBeerXML(\''+r.id+'\')" title="Export as BeerXML">⬆ BeerXML</button>'
-    +'<button class="btn btn-secondary" onclick="exportRecipePDF(\''+r.id+'\')" title="Export this recipe as a print-ready PDF">📄 Export PDF</button>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px"><button class="btn btn-primary" id="scale-brew-btn" data-action="openNewBatchModal" data-args=\''+JSON.stringify([r.id,scaleVol])+'\'>Brew This Recipe ('+fmtRecipeScale(scaleVol)+') →</button>'
+    +'<button class="btn btn-secondary" data-action="openPlanBatchModal" data-args=\''+JSON.stringify([null,r.id,window.recipeScaleVol||scaleVol])+'\' title="Queue this recipe into the Brew Plan and shopping list at the current scale">🗓 Plan a Batch</button>'
+    +'<button class="btn btn-secondary" data-action="openBrewSessionPlanner" data-args=\''+JSON.stringify([r.id,scaleVol])+'\' title="Print a pre-brew checklist for this recipe">📋 Brew Session Planner</button>'
+    +'<button class="btn btn-secondary" data-action="exportRecipeBeerXML" data-args=\''+JSON.stringify([r.id])+'\' title="Export as BeerXML">⬆ BeerXML</button>'
+    +'<button class="btn btn-secondary" data-action="exportRecipePDF" data-args=\''+JSON.stringify([r.id])+'\' title="Export this recipe as a print-ready PDF">📄 Export PDF</button>'
     +'</div>'
     +'<div class="recipe-layout">'
     +'<div class="ra-scale"><div class="card" style="margin-bottom:16px"><div class="card-header"><div class="card-title">SCALE</div></div>'
@@ -1111,7 +1132,7 @@ function renderRecipeDetail(){
         var color=prof?prof.color:r.brandColor;
         return'<div style="padding:10px 12px;background:var(--bg);border-radius:var(--radius);border-left:3px solid '+color+'">'
           +'<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap">'
-            +'<div style="font-family:var(--font-display);font-size:13px;color:'+color+';cursor:pointer" onclick="currentHoneyName=\''+t+'\';showView(\'honey-detail\')">'+escHtml(t)+' Honey · open library →</div>'
+            +'<div style="font-family:var(--font-display);font-size:13px;color:'+color+';cursor:pointer" data-action="_openHoneyDetailFromRecipe" data-args=\''+JSON.stringify([t])+'\'>'+escHtml(t)+' Honey · open library →</div>'
           +'</div>'
           +'<div style="display:flex;gap:6px;flex-wrap:wrap">'
           +sup.map(function(s){
@@ -1120,7 +1141,7 @@ function renderRecipeDetail(){
               +'<span style="color:'+color+'">→</span>';
             return s.url
               ?'<a href="'+escHtml(s.url)+'" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);border-radius:12px;font-size:11px;text-decoration:none">'+inner+'</a>'
-              :'<span onclick="showView(\'suppliers\')" style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);border-radius:12px;font-size:11px;cursor:pointer">'+inner+'</span>';
+              :'<span data-action="showView" data-args=\'["suppliers"]\' style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;background:var(--bg3);color:var(--text2);border:1px solid var(--border);border-radius:12px;font-size:11px;cursor:pointer">'+inner+'</span>';
           }).join('')
           +'</div></div>';
       }).filter(function(x){return x;});
@@ -1151,7 +1172,7 @@ function renderRecipeDetail(){
         return header
           +'<div style="padding:9px 11px;background:'+rowBg+';border-radius:var(--radius);border-left:3px solid '+rowBorder+';margin-bottom:7px">'
           +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px;flex-wrap:wrap">'
-          +'<div style="font-family:var(--font-display);font-size:13px;color:'+f.color2+';cursor:pointer" onclick="currentHoneyName=\''+f.honey+'\';showView(\'honey-detail\')">'+escHtml(proseL(f.honey))+' →</div>'
+          +'<div style="font-family:var(--font-display);font-size:13px;color:'+f.color2+';cursor:pointer" data-action="_openHoneyDetailFromRecipe" data-args=\''+JSON.stringify([f.honey])+'\'>'+escHtml(proseL(f.honey))+' →</div>'
           +'<div style="display:flex;align-items:center;gap:6px">'+stock
           +'<span style="font-family:var(--font-mono);font-size:9px;color:'+f.color+';letter-spacing:0.5px">'+escHtml(f.badge)+'</span></div>'
           +'</div>'
@@ -1410,7 +1431,7 @@ function renderCalendar(){
     if(!c.day)return'<div class="cal-day other-month'+weekend+'"></div>';
     var n=(c.events||[]).length;
     var evHtml=(c.events||[]).slice(0,2).map(function(e){return'<div class="cal-event" style="background:linear-gradient(90deg,'+e.color+'33,'+e.color+'12);border-left:2px solid '+e.color+'" title="'+escHtml(e.name)+': '+escHtml(e.title)+'"><span class="cal-ev-ic">'+calEventIcon(e.title)+'</span><span class="cal-ev-tx">'+escHtml(e.title)+'</span></div>';}).join('');
-    var clickHandler=n?'onclick="showCalDayModal(\''+c.dateStr+'\')"':'';
+    var clickHandler=n?'data-action="showCalDayModal" data-args=\''+JSON.stringify([c.dateStr])+'\'':'';
     return'<div class="cal-day'+(c.isToday?' today':'')+(n?' has-event':'')+weekend+'" '+clickHandler+'>'
       +'<div class="cal-num">'+c.day+'</div>'+evHtml
       +(n>2?'<div class="cal-more">+'+(n-2)+' more</div>':'')+'</div>';
@@ -1431,10 +1452,10 @@ function renderCalendar(){
     +'<div class="cal-stat"><div class="cs-label">Active batches</div><div class="cs-value">'+legend.length+'</div><div class="cs-sub">in your schedule</div></div>'
     +'</div>';
   var legendHtml=legend.length?'<div class="cal-legend">'+legend.map(function(l){return'<span class="cal-leg"><span class="dot" style="background:'+l.color+'"></span>'+escHtml(l.name)+'</span>';}).join('')+'</div>':'';
-  var navHeader='<div class="card-header" style="display:flex;align-items:center;justify-content:space-between"><button class="btn btn-secondary btn-sm" onclick="navCalMonth(-1)" title="Previous month">←</button>'
-    +'<div class="card-title" style="text-align:center;flex:1">'+monthName.toUpperCase()+(window._calOffset!==0?' <button class="btn-icon" onclick="navCalToToday()" title="Jump to current month" style="font-size:11px;color:var(--text3);margin-left:6px;padding:0 6px">↺ today</button>':'')+'</div>'
-    +'<button class="btn btn-secondary btn-sm" onclick="navCalMonth(1)" title="Next month">→</button></div>';
-  return'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:8px"><div class="page-title" style="margin-bottom:0">Calendar</div><button class="btn btn-secondary btn-sm" onclick="exportCalendarICS()" title="Download .ics file to subscribe in Google/Apple Calendar">📅 Export to Calendar (.ics)</button></div><div class="page-subtitle">Brewing Schedule &amp; Upcoming Steps</div>'
+  var navHeader='<div class="card-header" style="display:flex;align-items:center;justify-content:space-between"><button class="btn btn-secondary btn-sm" data-action="navCalMonth" data-args=\'[-1]\' title="Previous month">←</button>'
+    +'<div class="card-title" style="text-align:center;flex:1">'+monthName.toUpperCase()+(window._calOffset!==0?' <button class="btn-icon" data-action="navCalToToday" title="Jump to current month" style="font-size:11px;color:var(--text3);margin-left:6px;padding:0 6px">↺ today</button>':'')+'</div>'
+    +'<button class="btn btn-secondary btn-sm" data-action="navCalMonth" data-args=\'[1]\' title="Next month">→</button></div>';
+  return'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:8px"><div class="page-title" style="margin-bottom:0">Calendar</div><button class="btn btn-secondary btn-sm" data-action="exportCalendarICS" title="Download .ics file to subscribe in Google/Apple Calendar">📅 Export to Calendar (.ics)</button></div><div class="page-subtitle">Brewing Schedule &amp; Upcoming Steps</div>'
     +hero
     +'<div class="grid-2">'
     +'<div class="card">'+navHeader
@@ -1445,7 +1466,7 @@ function renderCalendar(){
     +'<div class="card"><div class="card-header"><div class="card-title">UPCOMING EVENTS</div></div>'
     +(upcoming.length?upcoming.map(function(x){
       var dObj=new Date(x[0]+'T00:00:00'),rel=calRelDays(x[0]),accent=x[1][0].color;
-      return'<div class="cal-up-item" onclick="showCalDayModal(\''+x[0]+'\')">'
+      return'<div class="cal-up-item" data-action="showCalDayModal" data-args=\''+JSON.stringify([x[0]])+'\'>'
         +'<div class="cal-up-date" style="border-top-color:'+accent+'"><div class="cal-up-d">'+dObj.getDate()+'</div><div class="cal-up-m">'+dObj.toLocaleDateString(_dloc(),{month:'short'})+'</div></div>'
         +'<div class="cal-up-body"><div class="cal-up-rel">'+(rel===0?'<span class="now">Today</span>':calRelLabel(rel))+'</div>'
         +x[1].map(function(e){return'<div class="cal-up-ev"><span class="ic">'+calEventIcon(e.title)+'</span><span class="nm" style="color:'+e.color+'">'+escHtml(e.name)+'</span><span class="ti">→ '+escHtml(e.title)+'</span></div>';}).join('')
@@ -1482,7 +1503,7 @@ function showCalDayModal(dateStr){
   var existing=document.querySelector('.modal-overlay');
   if(existing)existing.remove();
   var rows=items.length?items.map(function(it){
-    return'<div style="padding:14px;border-left:3px solid '+it.color+';background:var(--bg3);border-radius:6px;margin-bottom:10px;cursor:pointer" onclick="closeModal();showView(\'batch\',\''+it.batch.id+'\')">'
+    return'<div style="padding:14px;border-left:3px solid '+it.color+';background:var(--bg3);border-radius:6px;margin-bottom:10px;cursor:pointer" data-action="_closeAndOpenBatchFromCal" data-args=\''+JSON.stringify([it.batch.id])+'\'>'
       +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><div style="font-family:var(--font-display);font-size:15px;color:'+it.color+'">'+escHtml(it.batch.name)+'</div><div style="font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1.5px">DAY '+it.step.day+'</div></div>'
       +'<div style="font-size:14px;color:var(--gold2);margin-bottom:4px;font-weight:500">'+calEventIcon(it.step.title)+' '+escHtml(it.step.title)+'</div>'
       +'<div style="font-size:12.5px;color:var(--text2);font-style:italic;line-height:1.5">'+escHtml(it.step.desc||'')+'</div>'
@@ -1491,7 +1512,7 @@ function showCalDayModal(dateStr){
   var html='<div class="modal-overlay"><div class="modal" style="max-width:600px">'
     +'<div class="modal-title">📅 '+fmtDate(dateStr)+'</div>'
     +rows
-    +'<div class="modal-actions"><button class="btn btn-secondary" onclick="closeModal()">Close</button></div>'
+    +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Close</button></div>'
     +'</div></div>';
   document.body.insertAdjacentHTML('beforeend',html);
 }
