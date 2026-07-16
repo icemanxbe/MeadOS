@@ -266,7 +266,7 @@ function applyTOSNAToBatch(batchId){
       return a.item&&a.item.indexOf('Fermaid-O')!==-1&&a.date===iso;
     });
     if(exists)return false;
-    APP.additions[batchId].push({
+    var entry={
       id:genId(),
       type:'primary',
       date:iso,
@@ -275,7 +275,9 @@ function applyTOSNAToBatch(batchId){
       removeBy:'',
       removedDate:iso, // Nutrients dissolve — mark "removed" on the same day so they don't show as pending
       notes:'TOSNA dose. Hydrate in a splash of room-temp must, stir gently into the fermenter.'
-    });
+    };
+    APP.additions[batchId].push(entry);
+    additionSyncAdd(batchId,entry);
     return true;
   }
 

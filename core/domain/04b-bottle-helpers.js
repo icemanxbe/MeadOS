@@ -334,11 +334,12 @@ function setSyncStatus(status){
 }
 
 function packageState(){
-  // Gravity readings and competitions are NOT included — they live in their
-  // own tables now, synced through bucketSyncAdd/Delete/DeleteBatch/ReplaceAll
-  // (04-server-ha.js) rather than riding this blob. APP.logs/APP.competitions
-  // stay populated (boot-fetched read caches, see fetchBucket) — just never
-  // written back through this path.
+  // Gravity readings, competitions, tastings, and additions are NOT included
+  // — they live in their own tables now, synced through bucketSyncAdd/Delete/
+  // DeleteBatch/ReplaceAll (04-server-ha.js) rather than riding this blob.
+  // APP.logs/APP.competitions/APP.tastings/APP.additions stay populated
+  // (boot-fetched read caches, see fetchBucket) — just never written back
+  // through this path.
   return{
     batches:APP.batches,
     shareTokens:APP.shareTokens||{},
@@ -350,11 +351,9 @@ function packageState(){
     // open — see buildTempWatchList() in core/sync/04-server-ha.js.
     tempWatch:(typeof buildTempWatchList==='function')?buildTempWatchList():[],
     tasksDone:APP.tasksDone,
-    tastings:APP.tastings,
     bottling:APP.bottling,
     supplies:APP.supplies,
     suppliers:APP.suppliers||[],
-    additions:APP.additions,
     customRecipes:APP.customRecipes,
     notifiedTasks:APP.notifiedTasks,
     templates:APP.templates||[],
@@ -453,11 +452,10 @@ function applyState(d){
   // of the blob applyState is unpacking. Leaving this line in would wipe that
   // cache on every applyState call, since d.logs no longer exists post-cutover.
   APP.tasksDone=d.tasksDone||{};
-  APP.tastings=d.tastings||{};
-  // APP.competitions is deliberately NOT touched here either, same reasoning
-  // as APP.logs just above — its own table now (see fetchBucket), and this
-  // line would wipe the boot-fetched cache since the blob no longer carries
-  // the key.
+  // APP.competitions, APP.tastings, and APP.additions are deliberately NOT
+  // touched here either, same reasoning as APP.logs just above — their own
+  // tables now (see fetchBucket), and these lines would wipe the boot-fetched
+  // caches since the blob no longer carries any of these keys.
   APP.bottling=d.bottling||{};
   // Preserve-if-absent (not reset-to-empty) — matches stepTemplates/plannedBatches/
   // photos below. A backup taken before these buckets existed in exportData()
@@ -468,7 +466,6 @@ function applyState(d){
   // cross-device; restore it into settings (where getCalendarToken reads it).
   if(typeof d.calendarToken==='string')APP.settings.calendarToken=d.calendarToken;
   APP.supplies=d.supplies||[];
-  APP.additions=d.additions||{};
   APP.customRecipes=d.customRecipes||[];
   APP.notifiedTasks=d.notifiedTasks||{};
   APP.fermenters=Array.isArray(d.fermenters)?d.fermenters:(APP.fermenters||[]);

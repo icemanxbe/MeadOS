@@ -22,15 +22,25 @@ API:
     POST /api/asset    -> store an uploaded image as a file under labels/
     GET  /labels/<f>   -> serve label/logo images (public, immutable cache)
 
-Gravity readings live in their own table (not the state blob) — the highest-
-churn, most bounded slice of data, extracted so a routine reading no longer
-means rewriting and re-diffing the entire app state. See db_put_state()'s
-strip-and-adopt of a stale client's blob-embedded logs, and migrate_logs_to_table().
+Gravity readings, competition entries, tasting notes, and batch additions
+each live in their own table (not the state blob) — the highest-churn /
+most bounded slices of data, extracted so a routine reading or note no
+longer means rewriting and re-diffing the entire app state. Each has the
+identical add/delete/delete-batch/import shape below (add is an upsert by
+id, so it also serves in-place edits — see saveAddition's client-side use
+of this for the additions bucket). See db_put_state()'s strip-and-adopt of
+a stale client's still-blob-embedded bucket, and migrate_*_to_table().
     GET  /api/logs             -> {ok, logs:{batchId:[entry,...]}} — all readings
     POST /api/logs/add         -> {batchId, entry} -> insert/replace one reading
     POST /api/logs/delete      -> {batchId, id} -> delete one reading
     POST /api/logs/delete-batch-> {batchId} -> delete all of a batch's readings
     POST /api/logs/import      -> {logs:{batchId:[...]}} -> transactional replace-all
+    GET  /api/competitions             -> {ok, competitions:{batchId:[entry,...]}}
+    POST /api/competitions/add|delete|delete-batch|import -> same shape as /api/logs
+    GET  /api/tastings                 -> {ok, tastings:{batchId:[entry,...]}}
+    POST /api/tastings/add|delete|delete-batch|import -> same shape as /api/logs
+    GET  /api/additions                -> {ok, additions:{batchId:[entry,...]}}
+    POST /api/additions/add|delete|delete-batch|import -> same shape as /api/logs
 
 Optional external-access password: when set (Settings -> Server Data, or
 POST /api/security from a LAN device), every request that does NOT originate
@@ -494,6 +504,51 @@ def db_init():
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_competition_entries_batch ON competition_entries(batch_id, date)"
         )
+        # Tasting notes, extracted out of the state blob the same way. wheel/bjcp
+        # are the client's nested tasting-wheel axis scores and BJCP scoresheet —
+        # stored as JSON TEXT rather than normalized further, matching how the
+        # client already treats them as opaque blobs (see _norm_tasting_entry).
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS tasting_notes (
+                   id         TEXT PRIMARY KEY,
+                   batch_id   TEXT NOT NULL,
+                   date       TEXT NOT NULL,
+                   rating     INTEGER,
+                   color      TEXT,
+                   aroma      TEXT,
+                   flavor     TEXT,
+                   finish     TEXT,
+                   wheel      TEXT,
+                   bjcp       TEXT,
+                   note       TEXT,
+                   created_at TEXT NOT NULL
+               )"""
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_tasting_notes_batch ON tasting_notes(batch_id, date)"
+        )
+        # Batch additions (fruit/spice/nutrient/stabilizer/etc. logged during
+        # fermentation), extracted the same way. Every field is a flat string —
+        # simplest shape of the four extracted buckets, same treatment as
+        # competition_entries. remove_by/removed_date are ISO date strings
+        # (often empty — many additions are permanent and never "removed").
+        conn.execute(
+            """CREATE TABLE IF NOT EXISTS batch_additions (
+                   id           TEXT PRIMARY KEY,
+                   batch_id     TEXT NOT NULL,
+                   date         TEXT NOT NULL,
+                   type         TEXT,
+                   item         TEXT,
+                   amount       TEXT,
+                   remove_by    TEXT,
+                   removed_date TEXT,
+                   notes        TEXT,
+                   created_at   TEXT NOT NULL
+               )"""
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_batch_additions_batch ON batch_additions(batch_id, date)"
+        )
 
 
 def get_config(key):
@@ -638,6 +693,40 @@ def extract_and_adopt_competitions(raw, adopt=True):
     return json.dumps(obj)
 
 
+def extract_and_adopt_tastings(raw, adopt=True):
+    """Same contract as extract_and_adopt_logs, for the "tastings" bucket."""
+    if '"tastings"' not in raw:
+        return raw
+    try:
+        obj = json.loads(raw)
+    except ValueError:
+        return raw
+    tastings = obj.get("tastings")
+    if not isinstance(tastings, dict):
+        return raw
+    if adopt and tastings:
+        db_tastings_adopt(tastings)
+    del obj["tastings"]
+    return json.dumps(obj)
+
+
+def extract_and_adopt_additions(raw, adopt=True):
+    """Same contract as extract_and_adopt_logs, for the "additions" bucket."""
+    if '"additions"' not in raw:
+        return raw
+    try:
+        obj = json.loads(raw)
+    except ValueError:
+        return raw
+    additions = obj.get("additions")
+    if not isinstance(additions, dict):
+        return raw
+    if adopt and additions:
+        db_additions_adopt(additions)
+    del obj["additions"]
+    return json.dumps(obj)
+
+
 def migrate_logs_to_table():
     # One-time on boot: adopt any blob-embedded readings into the table, then
     # strip the key. Guarded by a config marker rather than "is the table
@@ -667,6 +756,34 @@ def migrate_competitions_to_table():
                 conn.execute("UPDATE state SET data = ?, bytes = ? WHERE id = 1",
                              (cleaned, len(cleaned)))
     set_config("competitions_migrated", "1")
+
+
+def migrate_tastings_to_table():
+    # Same contract as migrate_logs_to_table, for the "tastings" bucket.
+    if get_config("tastings_migrated") == "1":
+        return
+    row = db_get_state()
+    if row:
+        cleaned = extract_and_adopt_tastings(row[0], adopt=True)
+        if cleaned is not row[0]:
+            with db_connect() as conn:
+                conn.execute("UPDATE state SET data = ?, bytes = ? WHERE id = 1",
+                             (cleaned, len(cleaned)))
+    set_config("tastings_migrated", "1")
+
+
+def migrate_additions_to_table():
+    # Same contract as migrate_logs_to_table, for the "additions" bucket.
+    if get_config("additions_migrated") == "1":
+        return
+    row = db_get_state()
+    if row:
+        cleaned = extract_and_adopt_additions(row[0], adopt=True)
+        if cleaned is not row[0]:
+            with db_connect() as conn:
+                conn.execute("UPDATE state SET data = ?, bytes = ? WHERE id = 1",
+                             (cleaned, len(cleaned)))
+    set_config("additions_migrated", "1")
 
 
 def ha_proxy_urls():
@@ -938,7 +1055,7 @@ SHARE_BATCH_FIELDS = (
     "volume", "og", "honey", "honeyType", "yeast", "nutrient",
 )
 SHARE_BOTTLING_FIELDS = ("date", "fg", "abv", "sweetness", "bottleCount")
-SHARE_TASTING_FIELDS = ("date", "rating", "appearance", "aroma", "taste", "notes")
+SHARE_TASTING_FIELDS = ("date", "rating", "color", "aroma", "flavor", "finish", "note")
 SHARE_LOG_FIELDS = ("date", "gravity")
 SHARE_PHOTO_FIELDS = ("url", "caption", "stage", "date")
 SHARE_RECIPE_FIELDS = (
@@ -975,15 +1092,20 @@ def build_share_payload(state, token):
     if not batch:
         return None
 
-    # Readings live in their own table now (see module docstring), not the
-    # blob — query directly rather than reading state["logs"].
+    # Readings and tasting notes live in their own tables now (see module
+    # docstring), not the blob — query directly rather than reading
+    # state["logs"] / state["tastings"].
     with db_connect() as conn:
         log_rows = conn.execute(
             "SELECT date, gravity FROM gravity_readings WHERE batch_id = ? ORDER BY date, created_at, id",
             (batch_id,),
         ).fetchall()
+        tasting_rows = conn.execute(
+            "SELECT " + TASTING_ROW_SELECT + " FROM tasting_notes WHERE batch_id = ? ORDER BY date, created_at, id",
+            (batch_id,),
+        ).fetchall()
     logs = [{"date": r[0], "gravity": r[1]} for r in log_rows]
-    tastings = (state.get("tastings") or {}).get(batch_id) or []
+    tastings = [_row_to_tasting_entry(r) for r in tasting_rows]
     bottling = (state.get("bottling") or {}).get(batch_id) or {}
     # Photos ride along too (only /labels/ asset URLs — they're already public
     # static files served by this same server). Whitelisted fields only.
@@ -1374,6 +1496,282 @@ def db_comps_adopt(comps_map):
     return len(rows)
 
 
+# ---- tasting notes (own table, not the state blob — see module docstring) --
+TASTING_ROW_SELECT = "id, batch_id, date, rating, color, aroma, flavor, finish, wheel, bjcp, note, created_at"
+
+
+def _norm_tasting_entry(e):
+    """Validate + whitelist a client-supplied tasting note. wheel/bjcp are
+    stored as JSON TEXT — the client already treats them as opaque nested
+    blobs (tasting-wheel axis scores; a BJCP scoresheet, or null), so there's
+    no benefit to normalizing further than "is it the right shape.\""""
+    if not isinstance(e, dict):
+        raise ValueError("entry must be an object")
+    date = str(e.get("date") or "").strip()
+    if not date:
+        raise ValueError("entry.date is required")
+    eid = str(e.get("id") or "").strip() or _gen_log_id()
+
+    def _s(v, cap=500):
+        return str(v)[:cap] if v is not None else ""
+
+    try:
+        rating = int(e.get("rating") or 0)
+    except (TypeError, ValueError):
+        rating = 0
+
+    wheel = e.get("wheel")
+    bjcp = e.get("bjcp")
+    return {
+        "id": eid, "date": date, "rating": rating,
+        "color": _s(e.get("color")), "aroma": _s(e.get("aroma")),
+        "flavor": _s(e.get("flavor")), "finish": _s(e.get("finish")),
+        "wheel": json.dumps(wheel) if isinstance(wheel, dict) else "{}",
+        "bjcp": json.dumps(bjcp) if isinstance(bjcp, dict) else None,
+        "note": _s(e.get("note"), 4000),
+    }
+
+
+def _row_to_tasting_entry(row):
+    # row = (id, batch_id, date, rating, color, aroma, flavor, finish, wheel, bjcp, note, created_at)
+    try:
+        wheel = json.loads(row[8]) if row[8] else {}
+    except ValueError:
+        wheel = {}
+    bjcp = None
+    if row[9]:
+        try:
+            bjcp = json.loads(row[9])
+        except ValueError:
+            bjcp = None
+    return {"id": row[0], "date": row[2], "rating": row[3] or 0, "color": row[4] or "",
+            "aroma": row[5] or "", "flavor": row[6] or "", "finish": row[7] or "",
+            "wheel": wheel, "bjcp": bjcp, "note": row[10] or ""}
+
+
+def db_tastings_all():
+    with db_connect() as conn:
+        rows = conn.execute(
+            "SELECT " + TASTING_ROW_SELECT + " FROM tasting_notes ORDER BY batch_id, date, created_at, id"
+        ).fetchall()
+    out = {}
+    for r in rows:
+        out.setdefault(r[1], []).append(_row_to_tasting_entry(r))
+    return out
+
+
+def db_tasting_add(batch_id, entry):
+    n = _norm_tasting_entry(entry)
+    now = utcnow()
+    with db_connect() as conn:
+        conn.execute(
+            """INSERT INTO tasting_notes
+                   (id, batch_id, date, rating, color, aroma, flavor, finish, wheel, bjcp, note, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                   batch_id=excluded.batch_id, date=excluded.date, rating=excluded.rating,
+                   color=excluded.color, aroma=excluded.aroma, flavor=excluded.flavor,
+                   finish=excluded.finish, wheel=excluded.wheel, bjcp=excluded.bjcp, note=excluded.note""",
+            (n["id"], batch_id, n["date"], n["rating"], n["color"], n["aroma"],
+             n["flavor"], n["finish"], n["wheel"], n["bjcp"], n["note"], now),
+        )
+        row = conn.execute(
+            "SELECT " + TASTING_ROW_SELECT + " FROM tasting_notes WHERE id = ?", (n["id"],)
+        ).fetchone()
+    return _row_to_tasting_entry(row)
+
+
+def db_tasting_delete(batch_id, entry_id):
+    with db_connect() as conn:
+        cur = conn.execute("DELETE FROM tasting_notes WHERE id = ? AND batch_id = ?", (entry_id, batch_id))
+        return cur.rowcount
+
+
+def db_tasting_delete_batch(batch_id):
+    with db_connect() as conn:
+        cur = conn.execute("DELETE FROM tasting_notes WHERE batch_id = ?", (batch_id,))
+        return cur.rowcount
+
+
+def _norm_tastings_map_rows(tastings_map, now):
+    rows = []
+    for batch_id, entries in (tastings_map or {}).items():
+        if not isinstance(entries, list):
+            continue
+        for e in entries:
+            try:
+                n = _norm_tasting_entry(e)
+            except ValueError:
+                continue
+            rows.append((n["id"], str(batch_id), n["date"], n["rating"], n["color"], n["aroma"],
+                        n["flavor"], n["finish"], n["wheel"], n["bjcp"], n["note"], now))
+    return rows
+
+
+def db_tastings_replace_all(tastings_map):
+    if not isinstance(tastings_map, dict):
+        raise ValueError("tastings must be an object")
+    rows = _norm_tastings_map_rows(tastings_map, utcnow())
+    with db_connect() as conn:
+        conn.execute("DELETE FROM tasting_notes")
+        if rows:
+            conn.executemany(
+                """INSERT INTO tasting_notes
+                       (id, batch_id, date, rating, color, aroma, flavor, finish, wheel, bjcp, note, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                rows,
+            )
+    return len(rows)
+
+
+def db_tastings_adopt(tastings_map):
+    """Same idempotent upsert-only contract as db_logs_adopt, for a stale
+    client's blob-embedded tastings bucket."""
+    rows = _norm_tastings_map_rows(tastings_map, utcnow())
+    if not rows:
+        return 0
+    with db_connect() as conn:
+        conn.executemany(
+            """INSERT INTO tasting_notes
+                   (id, batch_id, date, rating, color, aroma, flavor, finish, wheel, bjcp, note, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                   batch_id=excluded.batch_id, date=excluded.date, rating=excluded.rating,
+                   color=excluded.color, aroma=excluded.aroma, flavor=excluded.flavor,
+                   finish=excluded.finish, wheel=excluded.wheel, bjcp=excluded.bjcp, note=excluded.note""",
+            rows,
+        )
+    return len(rows)
+
+
+# ---- batch additions (own table, not the state blob — see module docstring) --
+ADDITION_ROW_SELECT = "id, batch_id, date, type, item, amount, remove_by, removed_date, notes, created_at"
+
+
+def _norm_addition_entry(e):
+    """Validate + whitelist a client-supplied addition entry. Every field is a
+    flat string — no numeric/boolean coercion needed (amount is free text like
+    "5 g" or "1 tsp"; remove_by/removed_date are ISO date strings, often empty
+    since many addition types are permanent and never marked removed)."""
+    if not isinstance(e, dict):
+        raise ValueError("entry must be an object")
+    date = str(e.get("date") or "").strip()
+    if not date:
+        raise ValueError("entry.date is required")
+    eid = str(e.get("id") or "").strip() or _gen_log_id()
+
+    def _s(v, cap=500):
+        return str(v)[:cap] if v is not None else ""
+
+    return {
+        "id": eid, "date": date, "type": _s(e.get("type"), 64),
+        "item": _s(e.get("item"), 200), "amount": _s(e.get("amount"), 64),
+        "remove_by": _s(e.get("removeBy"), 32), "removed_date": _s(e.get("removedDate"), 32),
+        "notes": _s(e.get("notes"), 4000),
+    }
+
+
+def _row_to_addition_entry(row):
+    # row = (id, batch_id, date, type, item, amount, remove_by, removed_date, notes, created_at)
+    return {"id": row[0], "date": row[2], "type": row[3] or "", "item": row[4] or "",
+            "amount": row[5] or "", "removeBy": row[6] or "", "removedDate": row[7] or "", "notes": row[8] or ""}
+
+
+def db_additions_all():
+    with db_connect() as conn:
+        rows = conn.execute(
+            "SELECT " + ADDITION_ROW_SELECT + " FROM batch_additions ORDER BY batch_id, date, created_at, id"
+        ).fetchall()
+    out = {}
+    for r in rows:
+        out.setdefault(r[1], []).append(_row_to_addition_entry(r))
+    return out
+
+
+def db_addition_add(batch_id, entry):
+    n = _norm_addition_entry(entry)
+    now = utcnow()
+    with db_connect() as conn:
+        conn.execute(
+            """INSERT INTO batch_additions
+                   (id, batch_id, date, type, item, amount, remove_by, removed_date, notes, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                   batch_id=excluded.batch_id, date=excluded.date, type=excluded.type,
+                   item=excluded.item, amount=excluded.amount, remove_by=excluded.remove_by,
+                   removed_date=excluded.removed_date, notes=excluded.notes""",
+            (n["id"], batch_id, n["date"], n["type"], n["item"], n["amount"],
+             n["remove_by"], n["removed_date"], n["notes"], now),
+        )
+        row = conn.execute(
+            "SELECT " + ADDITION_ROW_SELECT + " FROM batch_additions WHERE id = ?", (n["id"],)
+        ).fetchone()
+    return _row_to_addition_entry(row)
+
+
+def db_addition_delete(batch_id, entry_id):
+    with db_connect() as conn:
+        cur = conn.execute("DELETE FROM batch_additions WHERE id = ? AND batch_id = ?", (entry_id, batch_id))
+        return cur.rowcount
+
+
+def db_addition_delete_batch(batch_id):
+    with db_connect() as conn:
+        cur = conn.execute("DELETE FROM batch_additions WHERE batch_id = ?", (batch_id,))
+        return cur.rowcount
+
+
+def _norm_additions_map_rows(additions_map, now):
+    rows = []
+    for batch_id, entries in (additions_map or {}).items():
+        if not isinstance(entries, list):
+            continue
+        for e in entries:
+            try:
+                n = _norm_addition_entry(e)
+            except ValueError:
+                continue
+            rows.append((n["id"], str(batch_id), n["date"], n["type"], n["item"], n["amount"],
+                        n["remove_by"], n["removed_date"], n["notes"], now))
+    return rows
+
+
+def db_additions_replace_all(additions_map):
+    if not isinstance(additions_map, dict):
+        raise ValueError("additions must be an object")
+    rows = _norm_additions_map_rows(additions_map, utcnow())
+    with db_connect() as conn:
+        conn.execute("DELETE FROM batch_additions")
+        if rows:
+            conn.executemany(
+                """INSERT INTO batch_additions
+                       (id, batch_id, date, type, item, amount, remove_by, removed_date, notes, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                rows,
+            )
+    return len(rows)
+
+
+def db_additions_adopt(additions_map):
+    """Same idempotent upsert-only contract as db_logs_adopt, for a stale
+    client's blob-embedded additions bucket."""
+    rows = _norm_additions_map_rows(additions_map, utcnow())
+    if not rows:
+        return 0
+    with db_connect() as conn:
+        conn.executemany(
+            """INSERT INTO batch_additions
+                   (id, batch_id, date, type, item, amount, remove_by, removed_date, notes, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               ON CONFLICT(id) DO UPDATE SET
+                   batch_id=excluded.batch_id, date=excluded.date, type=excluded.type,
+                   item=excluded.item, amount=excluded.amount, remove_by=excluded.remove_by,
+                   removed_date=excluded.removed_date, notes=excluded.notes""",
+            rows,
+        )
+    return len(rows)
+
+
 def db_get_state():
     with db_connect() as conn:
         row = conn.execute(
@@ -1433,6 +1831,8 @@ def db_put_state(raw, adopt=True):
     # only by /api/history/restore (see its call site).
     raw = extract_and_adopt_logs(raw, adopt=adopt)
     raw = extract_and_adopt_competitions(raw, adopt=adopt)
+    raw = extract_and_adopt_tastings(raw, adopt=adopt)
+    raw = extract_and_adopt_additions(raw, adopt=adopt)
     saved_at = None
     summary = None
     try:
@@ -1982,6 +2382,10 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, {"ok": True, "logs": db_logs_all()})
         elif path == "/api/competitions":
             self._send(200, {"ok": True, "competitions": db_comps_all()})
+        elif path == "/api/tastings":
+            self._send(200, {"ok": True, "tastings": db_tastings_all()})
+        elif path == "/api/additions":
+            self._send(200, {"ok": True, "additions": db_additions_all()})
         elif path == "/api/ha-config":
             tok = get_config("ha_token")
             self._send(200, {"ok": True, "hasToken": bool(tok), "tokenExp": _jwt_exp(tok)})
@@ -2434,6 +2838,144 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self._send(200, {"ok": True, "count": count})
             return
+        if path == "/api/tastings/add":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "invalid body"})
+                return
+            batch_id = str(body.get("batchId") or "")
+            if not batch_id:
+                self._send(400, {"ok": False, "error": "batchId required"})
+                return
+            try:
+                entry = db_tasting_add(batch_id, body.get("entry"))
+            except ValueError as e:
+                self._send(400, {"ok": False, "error": str(e)})
+                return
+            self._send(200, {"ok": True, "entry": entry})
+            return
+        if path == "/api/tastings/delete":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "invalid body"})
+                return
+            batch_id = str(body.get("batchId") or "")
+            entry_id = str(body.get("id") or "")
+            if not batch_id or not entry_id:
+                self._send(400, {"ok": False, "error": "batchId and id required"})
+                return
+            deleted = db_tasting_delete(batch_id, entry_id)
+            self._send(200, {"ok": True, "deleted": deleted})
+            return
+        if path == "/api/tastings/delete-batch":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "invalid body"})
+                return
+            batch_id = str(body.get("batchId") or "")
+            if not batch_id:
+                self._send(400, {"ok": False, "error": "batchId required"})
+                return
+            deleted = db_tasting_delete_batch(batch_id)
+            self._send(200, {"ok": True, "deleted": deleted})
+            return
+        if path == "/api/tastings/import":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > MAX_BODY:
+                self.close_connection = True
+                self._send(413 if length > MAX_BODY else 400,
+                           {"ok": False, "error": "missing or oversized body"})
+                return
+            try:
+                body = json.loads(self.rfile.read(length).decode("utf-8"))
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "body is not valid JSON"})
+                return
+            try:
+                count = db_tastings_replace_all(body.get("tastings") if isinstance(body, dict) else None)
+            except ValueError as e:
+                self._send(400, {"ok": False, "error": str(e)})
+                return
+            self._send(200, {"ok": True, "count": count})
+            return
+        if path == "/api/additions/add":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "invalid body"})
+                return
+            batch_id = str(body.get("batchId") or "")
+            if not batch_id:
+                self._send(400, {"ok": False, "error": "batchId required"})
+                return
+            try:
+                entry = db_addition_add(batch_id, body.get("entry"))
+            except ValueError as e:
+                self._send(400, {"ok": False, "error": str(e)})
+                return
+            self._send(200, {"ok": True, "entry": entry})
+            return
+        if path == "/api/additions/delete":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "invalid body"})
+                return
+            batch_id = str(body.get("batchId") or "")
+            entry_id = str(body.get("id") or "")
+            if not batch_id or not entry_id:
+                self._send(400, {"ok": False, "error": "batchId and id required"})
+                return
+            deleted = db_addition_delete(batch_id, entry_id)
+            self._send(200, {"ok": True, "deleted": deleted})
+            return
+        if path == "/api/additions/delete-batch":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+                body = json.loads(self.rfile.read(length).decode("utf-8")) if length else {}
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "invalid body"})
+                return
+            batch_id = str(body.get("batchId") or "")
+            if not batch_id:
+                self._send(400, {"ok": False, "error": "batchId required"})
+                return
+            deleted = db_addition_delete_batch(batch_id)
+            self._send(200, {"ok": True, "deleted": deleted})
+            return
+        if path == "/api/additions/import":
+            try:
+                length = int(self.headers.get("Content-Length", 0))
+            except ValueError:
+                length = 0
+            if length <= 0 or length > MAX_BODY:
+                self.close_connection = True
+                self._send(413 if length > MAX_BODY else 400,
+                           {"ok": False, "error": "missing or oversized body"})
+                return
+            try:
+                body = json.loads(self.rfile.read(length).decode("utf-8"))
+            except (ValueError, UnicodeDecodeError):
+                self._send(400, {"ok": False, "error": "body is not valid JSON"})
+                return
+            try:
+                count = db_additions_replace_all(body.get("additions") if isinstance(body, dict) else None)
+            except ValueError as e:
+                self._send(400, {"ok": False, "error": str(e)})
+                return
+            self._send(200, {"ok": True, "count": count})
+            return
         if path == "/api/history/restore":
             try:
                 length = int(self.headers.get("Content-Length", 0))
@@ -2694,6 +3236,8 @@ def main():
     migrate_ha_token()  # relocate any token still sitting in the stored state blob
     migrate_logs_to_table()  # one-time: adopt blob-embedded gravity readings into their own table
     migrate_competitions_to_table()  # one-time: same, for competition entries
+    migrate_tastings_to_table()  # one-time: same, for tasting notes
+    migrate_additions_to_table()  # one-time: same, for batch additions
     migrate_assets()    # tidy uploads + bundled assets into the assets/ tree
     srv = ThreadingHTTPServer((args.host, args.port), Handler)
     print("MeadOS server running on http://%s:%d" % (args.host, args.port))

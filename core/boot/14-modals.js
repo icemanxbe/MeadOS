@@ -704,13 +704,13 @@ function addTasting(batchId){
   APP.tastings[batchId].push(entry);
   APP.tastings[batchId].sort(function(a,b){return a.date.localeCompare(b.date);});
   window._tastingWheel={};  // reset for next entry
-  scheduleSave();toast('✦ Tasting saved');renderMain();
+  tastingSyncAdd(batchId,entry);toast('✦ Tasting saved');renderMain();
 }
 
 function deleteTasting(batchId,id){
   if(!confirm('Delete this tasting note?'))return;
   APP.tastings[batchId]=(APP.tastings[batchId]||[]).filter(function(t){return t.id!==id;});
-  scheduleSave();toast('Deleted');renderMain();
+  tastingSyncDelete(batchId,id);toast('Deleted');renderMain();
 }
 
 // ==================== PHOTO JOURNAL ====================
@@ -993,9 +993,11 @@ function deleteBatch(id){
   if(!b)return;
   if(!confirm('Permanently delete "'+b.name+'" and all associated logs, tastings, and bottling data?'))return;
   APP.batches=APP.batches.filter(function(x){return x.id!==id;});
-  delete APP.logs[id];delete APP.tastings[id];delete APP.bottling[id];delete APP.competitions[id];
+  delete APP.logs[id];delete APP.tastings[id];delete APP.bottling[id];delete APP.competitions[id];delete APP.additions[id];
   logSyncDeleteBatch(id);
   competitionSyncDeleteBatch(id);
+  tastingSyncDeleteBatch(id);
+  additionSyncDeleteBatch(id);
   scheduleSave();toast('Batch deleted');showView('batches');
 }
 
@@ -1372,13 +1374,18 @@ function importData(event){
         APP.tempAnomalies=d.tempAnomalies||[];
         APP.notifiedTasks=d.notifiedTasks||{};
       }
-      // Gravity readings and competitions live in their own tables now, not
-      // the blob applyState just applied — restore them from the backup
-      // explicitly and push a transactional replace-all to the server.
+      // Gravity readings, competitions, tastings, and additions live in their
+      // own tables now, not the blob applyState just applied — restore them
+      // from the backup explicitly and push a transactional replace-all to
+      // the server.
       APP.logs=(d.logs&&typeof d.logs==='object')?d.logs:{};
       logSyncReplaceAll(APP.logs);
       APP.competitions=(d.competitions&&typeof d.competitions==='object')?d.competitions:{};
       competitionSyncReplaceAll(APP.competitions);
+      APP.tastings=(d.tastings&&typeof d.tastings==='object')?d.tastings:{};
+      tastingSyncReplaceAll(APP.tastings);
+      APP.additions=(d.additions&&typeof d.additions==='object')?d.additions:{};
+      additionSyncReplaceAll(APP.additions);
       if(typeof rebuildRecipes==='function')rebuildRecipes();
       saveSettings();scheduleSave();
       toast('✦ Backup imported');renderMain();
@@ -1435,6 +1442,8 @@ function resetAllData(){
   }
   logSyncReplaceAll({});
   competitionSyncReplaceAll({});
+  tastingSyncReplaceAll({});
+  additionSyncReplaceAll({});
   scheduleSave();
   toast('All batch data reset · labels & recipes preserved');
   showView('dashboard');

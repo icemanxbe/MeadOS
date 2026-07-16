@@ -262,6 +262,165 @@ check("GET /api/competitions after stale-client save -> smoke-stale-comp was ado
       any(e.get("id") == "smoke-stale-comp" for e in (comps2.get("competitions") or {}).get("smoke-c3", [])),
       "got %r" % (comps2.get("competitions"),))
 
+# 9. Tasting notes — same own-table treatment, plus the one real wrinkle this
+# bucket has that the others don't: wheel/bjcp are nested objects, stored as
+# JSON TEXT columns server-side. The add/get round trip below specifically
+# checks those survive intact, not just the flat fields.
+sample_wheel = {"sweetness": 3, "body": 4, "acidity": 2, "honey": 4, "fruit": 0, "spice": 1, "finish": 3, "warmth": 2}
+sample_bjcp = {"aroma": 10, "appearance": 3, "flavor": 17, "mouthfeel": 4, "overall": 8, "total": 42, "descriptor": "Excellent"}
+status, body, _ = post("/api/tastings/add", {"batchId": "smoke-t1", "entry": {
+    "id": "smoke-te1", "date": "2026-01-08", "rating": 4, "color": "Deep gold", "aroma": "Honey, floral",
+    "flavor": "Balanced, dry finish", "finish": "Long, warm", "wheel": sample_wheel, "bjcp": sample_bjcp,
+    "note": "Best batch yet"}})
+try:
+    tasting_added = json.loads(body)
+except ValueError:
+    tasting_added = {}
+check("POST /api/tastings/add -> 200, echoes the normalized entry",
+      status == 200 and tasting_added.get("ok") is True and tasting_added.get("entry", {}).get("id") == "smoke-te1",
+      "got %d %r" % (status, body[:200]))
+check("POST /api/tastings/add -> wheel round-trips intact (nested JSON column)",
+      tasting_added.get("entry", {}).get("wheel") == sample_wheel,
+      "got %r" % (tasting_added.get("entry", {}).get("wheel"),))
+check("POST /api/tastings/add -> bjcp round-trips intact (nested JSON column)",
+      tasting_added.get("entry", {}).get("bjcp") == sample_bjcp,
+      "got %r" % (tasting_added.get("entry", {}).get("bjcp"),))
+
+status, body, _ = get("/api/tastings")
+try:
+    tastings1 = json.loads(body)
+except ValueError:
+    tastings1 = {}
+check("GET /api/tastings after add -> contains smoke-t1/smoke-te1 with wheel/bjcp intact",
+      any(e.get("id") == "smoke-te1" and e.get("wheel") == sample_wheel and e.get("bjcp") == sample_bjcp
+          for e in (tastings1.get("tastings") or {}).get("smoke-t1", [])),
+      "got %r" % (tastings1.get("tastings"),))
+
+# A tasting with no BJCP scoresheet (the common case — most tastings are just
+# notes/rating/wheel) must store bjcp as null, not an empty object or "null" string.
+status, body, _ = post("/api/tastings/add", {"batchId": "smoke-t1", "entry": {
+    "id": "smoke-te2", "date": "2026-01-09", "rating": 3, "wheel": {}, "bjcp": None, "note": "Quick check-in"}})
+try:
+    tasting_added2 = json.loads(body)
+except ValueError:
+    tasting_added2 = {}
+check("POST /api/tastings/add with no bjcp -> entry.bjcp is null, not {}",
+      status == 200 and tasting_added2.get("entry", {}).get("bjcp") is None,
+      "got %d %r" % (status, body[:200]))
+
+status, body, _ = post("/api/tastings/delete", {"batchId": "smoke-t1", "id": "smoke-te1"})
+try:
+    tasting_deleted = json.loads(body)
+except ValueError:
+    tasting_deleted = {}
+check("POST /api/tastings/delete -> 200, deleted:1", status == 200 and tasting_deleted.get("deleted") == 1, "got %d %r" % (status, body[:200]))
+
+status, body, _ = post("/api/tastings/import", {"tastings": {"smoke-t2": [
+    {"id": "smoke-ti1", "date": "2026-01-10", "rating": 5, "color": "Pale straw", "wheel": {"sweetness": 1}}]}})
+try:
+    tasting_imported = json.loads(body)
+except ValueError:
+    tasting_imported = {}
+check("POST /api/tastings/import -> 200, count:1", status == 200 and tasting_imported.get("count") == 1, "got %d %r" % (status, body[:200]))
+
+status, body, _ = post("/api/data", {"batches": [], "tastings": {"smoke-t3": [
+    {"id": "smoke-stale-tasting", "date": "2026-01-11", "rating": 2, "note": "stale client note"}]}})
+check("POST /api/data with embedded tastings bucket -> 200", status == 200, "got %d %r" % (status, body[:200]))
+
+status, body, _ = get("/api/data")
+try:
+    reloaded4 = json.loads(body)
+except ValueError:
+    reloaded4 = {}
+check("GET /api/data after stale-client save -> 'tastings' key stripped", "tastings" not in reloaded4, "got keys: %r" % (list(reloaded4.keys()),))
+
+status, body, _ = get("/api/tastings")
+try:
+    tastings2 = json.loads(body)
+except ValueError:
+    tastings2 = {}
+check("GET /api/tastings after stale-client save -> smoke-stale-tasting was adopted",
+      any(e.get("id") == "smoke-stale-tasting" for e in (tastings2.get("tastings") or {}).get("smoke-t3", [])),
+      "got %r" % (tastings2.get("tastings"),))
+
+# 10. Batch additions — same own-table treatment, simplest shape of the four
+# (every field is a flat string). The one thing worth checking specifically:
+# /add is an upsert by id, and the client relies on that for in-place edits
+# (markAdditionRemoved re-POSTs the same id with an updated removedDate)
+# rather than a separate edit endpoint — verify a second /add with the same
+# id actually updates the row rather than erroring or duplicating it.
+status, body, _ = post("/api/additions/add", {"batchId": "smoke-a1", "entry": {
+    "id": "smoke-ae1", "date": "2026-01-12", "type": "fining", "item": "Bentonite",
+    "amount": "1 tsp/gal", "removeBy": "2026-01-26", "removedDate": "", "notes": "Clarifying before bottling"}})
+try:
+    add_added = json.loads(body)
+except ValueError:
+    add_added = {}
+check("POST /api/additions/add -> 200, echoes the normalized entry",
+      status == 200 and add_added.get("ok") is True and add_added.get("entry", {}).get("id") == "smoke-ae1",
+      "got %d %r" % (status, body[:200]))
+
+status, body, _ = get("/api/additions")
+try:
+    adds1 = json.loads(body)
+except ValueError:
+    adds1 = {}
+check("GET /api/additions after add -> contains smoke-a1/smoke-ae1, removedDate empty",
+      any(e.get("id") == "smoke-ae1" and e.get("removedDate") == "" for e in (adds1.get("additions") or {}).get("smoke-a1", [])),
+      "got %r" % (adds1.get("additions"),))
+
+# The "edit" case: re-POST the same id with removedDate now set (mirrors
+# markAdditionRemoved's client-side upsert) -> same row updates, no duplicate.
+status, body, _ = post("/api/additions/add", {"batchId": "smoke-a1", "entry": {
+    "id": "smoke-ae1", "date": "2026-01-12", "type": "fining", "item": "Bentonite",
+    "amount": "1 tsp/gal", "removeBy": "2026-01-26", "removedDate": "2026-01-20", "notes": "Clarifying before bottling"}})
+check("POST /api/additions/add with same id -> 200, upserts (edit-via-add)", status == 200, "got %d %r" % (status, body[:200]))
+
+status, body, _ = get("/api/additions")
+try:
+    adds2 = json.loads(body)
+except ValueError:
+    adds2 = {}
+matching = [e for e in (adds2.get("additions") or {}).get("smoke-a1", []) if e.get("id") == "smoke-ae1"]
+check("GET /api/additions after edit-via-add -> exactly 1 row, removedDate updated (not duplicated)",
+      len(matching) == 1 and matching[0].get("removedDate") == "2026-01-20",
+      "got %r" % (matching,))
+
+status, body, _ = post("/api/additions/delete", {"batchId": "smoke-a1", "id": "smoke-ae1"})
+try:
+    add_deleted = json.loads(body)
+except ValueError:
+    add_deleted = {}
+check("POST /api/additions/delete -> 200, deleted:1", status == 200 and add_deleted.get("deleted") == 1, "got %d %r" % (status, body[:200]))
+
+status, body, _ = post("/api/additions/import", {"additions": {"smoke-a2": [
+    {"id": "smoke-ai1", "date": "2026-01-13", "type": "primary", "item": "Fermaid-O", "amount": "5 g"}]}})
+try:
+    add_imported = json.loads(body)
+except ValueError:
+    add_imported = {}
+check("POST /api/additions/import -> 200, count:1", status == 200 and add_imported.get("count") == 1, "got %d %r" % (status, body[:200]))
+
+status, body, _ = post("/api/data", {"batches": [], "additions": {"smoke-a3": [
+    {"id": "smoke-stale-add", "date": "2026-01-14", "type": "stabilizer", "item": "Potassium sorbate"}]}})
+check("POST /api/data with embedded additions bucket -> 200", status == 200, "got %d %r" % (status, body[:200]))
+
+status, body, _ = get("/api/data")
+try:
+    reloaded5 = json.loads(body)
+except ValueError:
+    reloaded5 = {}
+check("GET /api/data after stale-client save -> 'additions' key stripped", "additions" not in reloaded5, "got keys: %r" % (list(reloaded5.keys()),))
+
+status, body, _ = get("/api/additions")
+try:
+    adds3 = json.loads(body)
+except ValueError:
+    adds3 = {}
+check("GET /api/additions after stale-client save -> smoke-stale-add was adopted",
+      any(e.get("id") == "smoke-stale-add" for e in (adds3.get("additions") or {}).get("smoke-a3", [])),
+      "got %r" % (adds3.get("additions"),))
+
 print()
 if failures:
     print("%d/%d checks failed: %s" % (len(failures), total, ", ".join(failures)))

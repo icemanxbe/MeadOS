@@ -1386,6 +1386,26 @@
     APP.competitions={};APP.batches=[];
   })();
 
+  // tastings: own table now too, same contract as competitions/gravity readings.
+  (function(){
+    APP.tastings={tx:[{id:'t1',date:'2026-01-01',rating:4,color:'Deep gold',wheel:{sweetness:3},bjcp:null}]};
+    var pkg=packageState();
+    ok('tastings: NOT included in packageState', !('tastings' in pkg), JSON.stringify(pkg.tastings));
+    applyState({tastings:{ty:[{id:'t2',rating:1}]},batches:[]});
+    ok('tastings: untouched by applyState (cache survives an absent/different blob key)', APP.tastings.tx&&APP.tastings.tx[0].rating===4, JSON.stringify(APP.tastings));
+    APP.tastings={};APP.batches=[];
+  })();
+
+  // additions: own table too, same contract as the other three extracted buckets.
+  (function(){
+    APP.additions={ax:[{id:'a1',date:'2026-01-01',type:'fining',item:'Bentonite',removedDate:''}]};
+    var pkg=packageState();
+    ok('additions: NOT included in packageState', !('additions' in pkg), JSON.stringify(pkg.additions));
+    applyState({additions:{ay:[{id:'a2',item:'Oak cubes'}]},batches:[]});
+    ok('additions: untouched by applyState (cache survives an absent/different blob key)', APP.additions.ax&&APP.additions.ax[0].item==='Bentonite', JSON.stringify(APP.additions));
+    APP.additions={};APP.batches=[];
+  })();
+
   // custom step schedules: per-batch override + template persistence
   (function(){
     APP.recipes=[{id:'rA',steps:[{day:0,title:'Brew',desc:'x'},{day:14,title:'Rack',desc:'y'}]}];

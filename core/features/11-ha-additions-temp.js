@@ -321,14 +321,18 @@ function saveAddition(batchId,additionId){
   var idx=APP.additions[batchId].findIndex(function(a){return a.id===entry.id;});
   if(idx>=0)APP.additions[batchId][idx]=entry;
   else APP.additions[batchId].push(entry);
-  closeModal();scheduleSave();toast('✦ Addition logged');renderMain();
+  closeModal();additionSyncAdd(batchId,entry);toast('✦ Addition logged');renderMain();
 }
 
+// Editing an addition (via openAdditionModal(batchId,additionId)) and marking
+// one removed both go through saveAddition/additionSyncAdd's upsert-by-id —
+// no separate "edit" endpoint needed, since the client always has the full
+// current entry in hand before mutating and re-sending it.
 function markAdditionRemoved(batchId,additionId){
   var add=getAdditions(batchId).find(function(a){return a.id===additionId;});
   if(!add)return;
   add.removedDate=today();
-  scheduleSave();toast('✓ Marked as removed');renderMain();
+  additionSyncAdd(batchId,add);toast('✓ Marked as removed');renderMain();
 }
 
 function deleteAddition(batchId,additionId){
@@ -336,7 +340,7 @@ function deleteAddition(batchId,additionId){
   if(APP.additions&&APP.additions[batchId]){
     APP.additions[batchId]=APP.additions[batchId].filter(function(a){return a.id!==additionId;});
   }
-  scheduleSave();toast('Deleted');renderMain();
+  additionSyncDelete(batchId,additionId);toast('Deleted');renderMain();
 }
 
 // Overdue additions across all batches → for dashboard alerts

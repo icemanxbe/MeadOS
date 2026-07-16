@@ -402,7 +402,7 @@ async function loadHistoryPanel(){
   }).join('');
 }
 async function restoreHistorySnapshot(id,label){
-  if(!confirm('Restore the snapshot from '+label+'?\n\nYour current data is saved as a new snapshot first, so you can switch back. Gravity readings are kept as-is — snapshots no longer include them.'))return;
+  if(!confirm('Restore the snapshot from '+label+'?\n\nYour current data is saved as a new snapshot first, so you can switch back. Gravity readings, competition entries, tasting notes, and additions are kept as-is — snapshots no longer include them.'))return;
   try{await saveData();}catch(e){}  // best-effort: ensure current state is in history
   var res=await apiFetch('/api/history/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})});
   if(!res||!res.ok){toast('⚠ Restore failed');return;}
@@ -419,7 +419,7 @@ function openSnapshotRestoreModal(){
   if(typeof closeModal==='function')closeModal();
   var html='<div class="modal-overlay"><div class="modal" style="max-width:520px">'
     +'<div class="modal-title">🕘 Restore from snapshot</div>'
-    +'<div style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.55">'+(appLang()==='nl'?'De server bewaart je recente opgeslagen momentopnames. Herstellen rolt je data terug naar dat punt — je huidige data wordt eerst als een nieuwe momentopname opgeslagen, dus het is omkeerbaar. Gistingsmetingen (SG) blijven ongewijzigd — momentopnames bevatten die niet meer.':'The server keeps your recent saved snapshots. Restoring rolls your data back to that point — your current data is saved as a new snapshot first, so it\'s reversible. Gravity readings are kept as-is — snapshots no longer include them.')+'</div>'
+    +'<div style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.55">'+(appLang()==='nl'?'De server bewaart je recente opgeslagen momentopnames. Herstellen rolt je data terug naar dat punt — je huidige data wordt eerst als een nieuwe momentopname opgeslagen, dus het is omkeerbaar. Gistingsmetingen (SG), wedstrijdinzendingen, proefnotities en toevoegingen blijven ongewijzigd — momentopnames bevatten die niet meer.':'The server keeps your recent saved snapshots. Restoring rolls your data back to that point — your current data is saved as a new snapshot first, so it\'s reversible. Gravity readings, competition entries, tasting notes, and additions are kept as-is — snapshots no longer include them.')+'</div>'
     +'<div id="history-list" style="font-size:13px;color:var(--text3);max-height:55vh;overflow:auto">Loading…</div>'
     +'<div class="modal-actions"><button class="btn btn-secondary" data-action="closeModal">Close</button></div>'
     +'</div></div>';
@@ -621,12 +621,14 @@ if(typeof window!=='undefined'){
 // their own REST endpoints instead of riding the big state-blob save; a
 // small persisted per-bucket queue keeps offline writes working exactly as
 // before (reuses the pendingSync/markPendingSync machinery above). One
-// generalized implementation, per-bucket config below — this is the second
-// bucket (after gravity readings), and a third is coming, so extracting the
-// shared mechanism now beats copy-pasting a ~80-line module a second time.
+// generalized implementation, per-bucket config below — four buckets share
+// it now (gravity readings, competitions, tastings, additions); adding
+// another is a one-line config entry plus a handful of thin wrapper functions.
 var SYNCED_BUCKETS={
   logs:{apiBase:'/api/logs',cacheKey:'meados_logs',listKey:'logs'},
-  competitions:{apiBase:'/api/competitions',cacheKey:'meados_competitions',listKey:'competitions'}
+  competitions:{apiBase:'/api/competitions',cacheKey:'meados_competitions',listKey:'competitions'},
+  tastings:{apiBase:'/api/tastings',cacheKey:'meados_tastings',listKey:'tastings'},
+  additions:{apiBase:'/api/additions',cacheKey:'meados_additions',listKey:'additions'}
 };
 
 function bucketQueue(bucket){
@@ -744,14 +746,27 @@ function competitionSyncDelete(batchId,id){return bucketSyncDelete('competitions
 function competitionSyncDeleteBatch(batchId){return bucketSyncDeleteBatch('competitions',batchId);}
 function competitionSyncReplaceAll(compsMap){return bucketSyncReplaceAll('competitions',compsMap);}
 
+function fetchTastings(){return fetchBucket('tastings');}
+function tastingSyncAdd(batchId,entry){return bucketSyncAdd('tastings',batchId,entry);}
+function tastingSyncDelete(batchId,id){return bucketSyncDelete('tastings',batchId,id);}
+function tastingSyncDeleteBatch(batchId){return bucketSyncDeleteBatch('tastings',batchId);}
+function tastingSyncReplaceAll(tastingsMap){return bucketSyncReplaceAll('tastings',tastingsMap);}
+
+function fetchAdditions(){return fetchBucket('additions');}
+function additionSyncAdd(batchId,entry){return bucketSyncAdd('additions',batchId,entry);}
+function additionSyncDelete(batchId,id){return bucketSyncDelete('additions',batchId,id);}
+function additionSyncDeleteBatch(batchId){return bucketSyncDeleteBatch('additions',batchId);}
+function additionSyncReplaceAll(additionsMap){return bucketSyncReplaceAll('additions',additionsMap);}
+
 async function loadData(){
   setSyncStatus('syncing');
   // Share mode reads the sanitized public endpoint (HA credentials stripped,
   // not password-gated) so share links work for guests. Extracted-bucket data
-  // (gravity readings, competitions) is fetched in parallel — both no-op in
-  // share mode (initShareMode seeds APP.logs from the share payload itself
-  // instead, see 14-bootstrap.js; competitions aren't part of the public
-  // share payload at all).
+  // (gravity readings, competitions, tastings, additions) is fetched in
+  // parallel — all four no-op here, since loadData() itself is never called
+  // in share mode (initShareMode seeds APP.logs/APP.tastings from the share
+  // payload's own "logs"/"tastings" fields directly, see 14-bootstrap.js;
+  // competitions and additions aren't part of the public share payload at all).
   var bucketPromises=Object.keys(SYNCED_BUCKETS).map(fetchBucket);
   var res=await apiFetch(APP._shareMode?'/api/share':'/api/data');
   await Promise.all(bucketPromises);
